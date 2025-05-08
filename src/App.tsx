@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
+import type { FormEvent } from 'react'; // Changed to type-only import
 import './App.css';
+import { TextInput, Button, Box, Text, Link, Label, PageLayout, Flash } from '@primer/react';
+// Commenting out the problematic Table import for now to isolate the issue
+// import { Table } from '@primer/react/drafts';
 
 interface GitHubItem {
   id: number;
@@ -8,14 +12,18 @@ interface GitHubItem {
   pull_request?: object; // Present if it's a Pull Request
   created_at: string;
   updated_at: string;
-  state: string; // Add state field
+  state: string;
 }
+
+// Define a type for Label variants based on Primer's documentation
+type PrimerLabelVariant = 'default' | 'primary' | 'secondary' | 'accent' | 'success' | 'attention' | 'severe' | 'danger' | 'done' | 'sponsors';
 
 function App() {
   const [username, setUsername] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [results, setResults] = useState<GitHubItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   // Load saved state from localStorage
   useEffect(() => {
@@ -40,134 +48,108 @@ function App() {
 
   const fetchGitHubData = async () => {
     if (!username || !startDate || !endDate) {
-      alert('Please fill in all fields.');
+      setError('Please fill in all fields.');
       return;
     }
+    setError(null);
 
     try {
       const response = await fetch(
         `https://api.github.com/search/issues?q=author:${encodeURIComponent(username)}+created:${startDate}..${endDate}`
       );
       const data = await response.json();
-      setResults(data.items || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      alert('Failed to fetch data. Please try again.');
+      if (response.ok) {
+        setResults(data.items || []);
+      } else {
+        setError(data.message || 'Failed to fetch data. Please try again.');
+        setResults([]);
+      }
+    } catch (err: unknown) { // Changed error type to unknown
+      console.error('Error fetching data:', err);
+      if (err instanceof Error) {
+        setError(err.message || 'Failed to fetch data. Please try again.');
+      } else {
+        setError('An unknown error occurred. Please try again.');
+      }
+      setResults([]);
     }
   };
 
   return (
-    <div className="App min-h-screen bg-gray-100 p-4">
-      <h1 className="text-3xl font-bold text-center text-blue-600 mb-6">GitHub Issues & PRs Viewer</h1>
-      <div className="form max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
-        <input
-          type="text"
-          placeholder="GitHub Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full mb-4 p-2 border border-gray-300 rounded"
-        />
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="w-full mb-4 p-2 border border-gray-300 rounded"
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="w-full mb-4 p-2 border border-gray-300 rounded"
-        />
-        <button
-          onClick={fetchGitHubData}
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
-        >
-          Submit
-        </button>
-      </div>
-      <div className="results max-w-4xl mx-auto mt-8">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4">Results</h2>
-        {results.length > 0 ? (
-          <div className="overflow-x-auto shadow-md sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Title
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Type
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    State
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Created At
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Last Updated
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {results.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <a
-                        href={item.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline font-semibold"
-                      >
-                        {item.title}
-                      </a>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          item.pull_request
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
-                        }`}
-                      >
-                        {item.pull_request ? 'PR' : 'Issue'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.state}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(item.updated_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-gray-600">No results to display.</p>
+    <PageLayout>
+      <PageLayout.Header>
+        <Box sx={{padding: '16px'}}>
+          <Text as="h1" sx={{fontSize: 3, fontWeight: 'bold', color: 'fg.default'}}>GitHub Issues & PRs Viewer</Text>
+        </Box>
+      </PageLayout.Header>
+      <PageLayout.Content>
+        <Box sx={{maxWidth: '600px', margin: '0 auto', padding: '16px'}}>
+          <Box as="form" sx={{display: 'flex', flexDirection: 'column', gap: '16px'}} onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); fetchGitHubData(); }}> {/* Typed event `e` */}
+            <TextInput
+              aria-label="GitHub Username"
+              name="username"
+              placeholder="GitHub Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              sx={{width: '100%'}}
+            />
+            <TextInput
+              aria-label="Start Date"
+              name="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              sx={{width: '100%'}}
+            />
+            <TextInput
+              aria-label="End Date"
+              name="endDate"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              sx={{width: '100%'}}
+            />
+            <Button variant="primary" type="submit" sx={{width: '100%'}}>Submit</Button>
+          </Box>
+          {error && (
+            <Flash variant="danger" sx={{marginTop: '16px'}}>
+              {error}
+            </Flash>
+          )}
+        </Box>
+
+        {results.length > 0 && (
+          <Box sx={{marginTop: '24px', padding: '16px'}}>
+            <Text as="h2" sx={{fontSize: 2, fontWeight: 'semibold', marginBottom: '16px'}}>Results</Text>
+            {/* Temporarily replace Table with a simpler list structure */}
+            <ul>
+              {results.map((item) => (
+                <li key={item.id} style={{ marginBottom: '8px', padding: '8px', border: '1px solid #d0d7de', borderRadius: '6px' }}>
+                  <Link href={item.html_url} target="_blank" rel="noopener noreferrer">
+                    <Text sx={{fontWeight: 'bold'}}>{item.title}</Text>
+                  </Link>
+                  <Box sx={{display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px'}}>
+                    <Label variant={item.pull_request ? 'success' : 'default' as PrimerLabelVariant}>
+                      {item.pull_request ? 'PR' : 'Issue'}
+                    </Label>
+                    <Label variant="default">{item.state}</Label>
+                  </Box>
+                  <Box sx={{fontSize: 0, color: 'fg.muted', marginTop: '4px'}}>
+                    <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
+                    <Text sx={{marginLeft: '8px'}}>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
+                  </Box>
+                </li>
+              ))}
+            </ul>
+          </Box>
         )}
-      </div>
-    </div>
+        {results.length === 0 && !error && (
+            <Box sx={{marginTop: '24px', padding: '16px', textAlign: 'center'}}>
+                 <Text>No results to display.</Text>
+            </Box>
+        )}
+      </PageLayout.Content>
+    </PageLayout>
   );
 }
 
