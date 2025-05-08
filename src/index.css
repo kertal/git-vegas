@@ -1,15 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Base colors will be handled by Primer's BaseStyles */
+  /* color: rgba(255, 255, 255, 0.87); */
+  /* background-color: #242424; */
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,17 +16,17 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  /* color: #646cff; */ /* Handled by Primer */
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  /* color: #535bf2; */ /* Handled by Primer */
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+  /* display: flex; */ /* May conflict with PageLayout */
+  /* place-items: center; */ /* May conflict with PageLayout */
   min-width: 320px;
   min-height: 100vh;
 }
@@ -39,7 +36,8 @@ h1 {
   line-height: 1.1;
 }
 
-button {
+/* Default button styles will be handled by Primer Button component */
+/* button {
   border-radius: 8px;
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
@@ -56,9 +54,10 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
+} */
 
-@media (prefers-color-scheme: light) {
+/* Color scheme preferences will be handled by Primer ThemeProvider */
+/* @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
@@ -69,4 +68,4 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
-}
+} */
