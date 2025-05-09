@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, memo, useMemo } from 'react';
-import type { FormEvent, ReactNode } from 'react'; // Changed to type-only import
+import type { FormEvent } from 'react'; // Changed to type-only import
 import './App.css';
 import { TextInput, Button, Box, Text, Link, Label, PageLayout, Flash, Spinner } from '@primer/react';
 import ReactMarkdown from 'react-markdown';
@@ -577,13 +577,6 @@ const ResultsList = memo(function ResultsList() {
 
 // Wrap App component with Context Providers
 function AppWithContexts() {
-  // Create debounced handlers for localStorage updates
-  const debouncedSaveToLocalStorage = useCallback(
-    debounce((key: string, value: string) => {
-      localStorage.setItem(key, value);
-    }, 500),
-    []
-  );
 
   // Get initial values from URL if present, then fall back to localStorage
   const [username, setUsername] = useState(() => {
