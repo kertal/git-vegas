@@ -234,10 +234,15 @@ function App() {
         ? `\nLabels: ${item.labels.map(l => l.name).join(', ')}`
         : '';
       
+      // Format the description if available, with a character limit to prevent excessively long exports
+      const description = item.body
+        ? `\n\n### Description\n${item.body.slice(0, 5000)}${item.body.length > 5000 ? '...(truncated)' : ''}`
+        : '';
+      
       return `## [${type}] ${item.title}\n` +
         `Repository: ${repo}\n` +
         `Status: ${status} | Created: ${createdDate}${labels}\n` +
-        `Link: ${item.html_url}\n`;
+        `Link: ${item.html_url}${description}\n`;
     }).join('\n');
     
     return header + formattedItems;
