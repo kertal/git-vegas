@@ -1,11 +1,20 @@
-import { useState, useEffect } from 'react';
-import type { FormEvent } from 'react'; // Changed to type-only import
+import { useState, useEffect, useCallback, createContext, useContext, memo, useMemo } from 'react';
+import type { FormEvent, ReactNode } from 'react'; // Changed to type-only import
 import './App.css';
 import { TextInput, Button, Box, Text, Link, Label, PageLayout, Flash, Spinner } from '@primer/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 // Commenting out the problematic Table import for now to isolate the issue
 // import { Table } from '@primer/react/drafts';
+
+// Add a simple debounce function
+const debounce = (fn: Function, ms = 300) => {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return function(...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+  };
+};
 
 // Helper function to determine the optimal text color for a given background
 const getContrastColor = (hexColor: string): string => {
@@ -19,6 +28,39 @@ const getContrastColor = (hexColor: string): string => {
   
   // Return black or white based on brightness
   return yiq >= 128 ? '#000' : '#fff';
+};
+
+// Helper function to safely parse a date string
+const isValidDateString = (dateStr: string): boolean => {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  // Check for YYYY-MM-DD format
+  const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateFormatRegex.test(dateStr)) return false;
+  
+  // Check if it's a valid date
+  const date = new Date(dateStr);
+  return !isNaN(date.getTime());
+};
+
+// Helper functions for URL params
+const getParamFromUrl = (param: string): string | null => {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(param);
+};
+
+const updateUrlParams = (params: Record<string, string | null>): void => {
+  const url = new URL(window.location.href);
+  const searchParams = url.searchParams;
+  
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === null || value === '') {
+      searchParams.delete(key);
+    } else {
+      searchParams.set(key, value);
+    }
+  });
+  
+  window.history.replaceState({}, '', url.toString());
 };
 
 interface GitHubItem {
@@ -38,11 +80,530 @@ interface GitHubItem {
 // Define a type for Label variants based on Primer's documentation
 type PrimerLabelVariant = 'default' | 'primary' | 'secondary' | 'accent' | 'success' | 'attention' | 'severe' | 'danger' | 'done' | 'sponsors';
 
-function App() {
-  // Initial state is loaded directly from localStorage
-  const [username, setUsername] = useState(() => localStorage.getItem('github-username') || '');
-  const [startDate, setStartDate] = useState(() => localStorage.getItem('start-date') || '');
-  const [endDate, setEndDate] = useState(() => localStorage.getItem('end-date') || '');
+// Form Context to isolate form state changes
+interface FormContextType {
+  username: string;
+  startDate: string;
+  endDate: string;
+  setUsername: (value: string) => void;
+  setStartDate: (value: string) => void;
+  setEndDate: (value: string) => void;
+  handleSearch: () => void;
+  loading: boolean;
+  loadingProgress: string;
+  error: string | null;
+}
+
+const FormContext = createContext<FormContextType | null>(null);
+
+function useFormContext() {
+  const context = useContext(FormContext);
+  if (!context) {
+    throw new Error('useFormContext must be used within a FormContextProvider');
+  }
+  return context;
+}
+
+// Results Context to isolate results state changes
+interface ResultsContextType {
+  results: GitHubItem[];
+  filteredResults: GitHubItem[];
+  filter: 'all' | 'issue' | 'pr';
+  labelFilter: string;
+  searchText: string;
+  repoFilters: string[];
+  availableLabels: string[];
+  availableRepos: string[];
+  stats: {
+    total: number;
+    issues: number;
+    prs: number;
+    open: number;
+    closed: number;
+  };
+  setFilter: (filter: 'all' | 'issue' | 'pr') => void;
+  setLabelFilter: (filter: string) => void;
+  setSearchText: (text: string) => void;
+  setRepoFilters: (repos: string[]) => void;
+  toggleDescriptionVisibility: (id: number) => void;
+  toggleExpand: (id: number) => void;
+  copyResultsToClipboard: () => void;
+  descriptionVisible: { [id: number]: boolean };
+  expanded: { [id: number]: boolean };
+  clipboardMessage: string | null;
+}
+
+const ResultsContext = createContext<ResultsContextType | null>(null);
+
+function useResultsContext() {
+  const context = useContext(ResultsContext);
+  if (!context) {
+    throw new Error('useResultsContext must be used within a ResultsContextProvider');
+  }
+  return context;
+}
+
+// Component for the search form, wrapped in memo to prevent unnecessary re-renders
+const SearchForm = memo(function SearchForm() {
+  const { 
+    username, setUsername, 
+    startDate, setStartDate, 
+    endDate, setEndDate, 
+    handleSearch, 
+    loading, 
+    loadingProgress,
+    error 
+  } = useFormContext();
+
+  // Debounced handler for localStorage (defined at component level to avoid recreating on each render)
+  const debouncedSaveToLocalStorage = useCallback(
+    debounce((key: string, value: string) => {
+      localStorage.setItem(key, value);
+    }, 500),
+    []
+  );
+
+  // Handle username input with optimized performance
+  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUsername = e.target.value;
+    setUsername(newUsername);
+    debouncedSaveToLocalStorage('github-username', newUsername);
+  }, [debouncedSaveToLocalStorage, setUsername]);
+
+  return (
+    <>
+      <Box sx={{maxWidth: '800px', margin: '0 auto'}}>
+        <Box as="form" 
+          sx={{display: 'flex', flexDirection: 'column', gap: 3}} 
+          onSubmit={(e: FormEvent<HTMLFormElement>) => { 
+            e.preventDefault(); 
+            handleSearch(); 
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Text as="label" htmlFor="username" sx={{ fontWeight: 'bold', fontSize: 1 }}>GitHub Username</Text>
+            <TextInput
+              id="username"
+              aria-label="GitHub Username"
+              name="username"
+              placeholder="GitHub Username"
+              value={username}
+              onChange={handleUsernameChange}
+              sx={{width: '100%'}}
+              block
+            />
+          </Box>
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Text as="label" htmlFor="startDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>Start Date</Text>
+            <TextInput
+              id="startDate"
+              aria-label="Start Date"
+              name="startDate"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              sx={{width: '100%'}}
+              block
+            />
+          </Box>
+          
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Text as="label" htmlFor="endDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>End Date</Text>
+            <TextInput
+              id="endDate"
+              aria-label="End Date"
+              name="endDate"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              sx={{width: '100%'}}
+              block
+            />
+          </Box>
+          
+          <Button variant="primary" type="submit" sx={{width: '100%', mt: 1}}>Search</Button>
+        </Box>
+        {error && (
+          <Flash variant="danger" sx={{marginTop: 3}}>
+            {error}
+          </Flash>
+        )}
+      </Box>
+
+      {loading && (
+        <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
+          <Spinner size="large" />
+          {loadingProgress && (
+            <Text sx={{ mt: 2, color: 'fg.muted' }}>{loadingProgress}</Text>
+          )}
+        </Box>
+      )}
+    </>
+  );
+});
+
+// ResultsList component wrapped in memo to prevent unnecessary re-renders when form state changes
+const ResultsList = memo(function ResultsList() {
+  const {
+    filteredResults,
+    filter,
+    labelFilter,
+    availableLabels,
+    availableRepos,
+    repoFilters,
+    searchText,
+    setFilter,
+    setLabelFilter,
+    setSearchText,
+    setRepoFilters,
+    stats,
+    toggleDescriptionVisibility,
+    toggleExpand,
+    copyResultsToClipboard,
+    descriptionVisible,
+    expanded,
+    clipboardMessage
+  } = useResultsContext();
+
+  return (
+    <>
+      {/* Filter UI */}
+      <Box sx={{maxWidth: '800px', margin: '24px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
+        <Text as="span" sx={{fontWeight: 'bold'}}>Filter:</Text>
+        <Button variant={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')}>All</Button>
+        <Button variant={filter === 'issue' ? 'primary' : 'default'} onClick={() => setFilter('issue')}>Issues</Button>
+        <Button variant={filter === 'pr' ? 'primary' : 'default'} onClick={() => setFilter('pr')}>PRs</Button>
+      </Box>
+
+      {/* Label-Filter UI */}
+      {availableLabels.length > 0 && (
+        <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap'}}>
+          <Text as="span" sx={{fontWeight: 'bold'}}>Label Filter:</Text>
+          <Button
+            size="small"
+            variant={labelFilter === '' ? 'primary' : 'default'}
+            onClick={() => setLabelFilter('')}
+          >All</Button>
+          {availableLabels.map(label => (
+            <Button
+              key={label}
+              size="small"
+              variant={labelFilter === label ? 'primary' : 'default'}
+              onClick={() => setLabelFilter(label)}
+              sx={{bg: labelFilter === label ? undefined : undefined, color: 'fg.default'}}
+            >{label}</Button>
+          ))}
+        </Box>
+      )}
+
+      {/* Repository Filter UI */}
+      {availableRepos.length > 0 && (
+        <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Text as="span" sx={{ fontWeight: 'bold', fontSize: 1 }}>Repository Filter:</Text>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Button
+                size="small"
+                variant={repoFilters.length === 0 ? 'primary' : 'default'}
+                onClick={() => setRepoFilters([])}
+              >
+                All Repositories
+              </Button>
+              {availableRepos.map(repo => (
+                <Button
+                  key={repo}
+                  size="small"
+                  variant={repoFilters.includes(repo) ? 'primary' : 'default'}
+                  onClick={() => {
+                    if (repoFilters.includes(repo)) {
+                      // Remove from selection
+                      setRepoFilters(prev => prev.filter(r => r !== repo));
+                    } else {
+                      // Add to selection
+                      setRepoFilters([...repoFilters, repo]);
+                    }
+                  }}
+                  sx={{
+                    borderColor: repoFilters.includes(repo) ? 'accent.emphasis' : 'border.default',
+                    color: 'fg.default'
+                  }}
+                >
+                  {repo.split('/')[1] || repo} {/* Show only repo name, not owner/repo */}
+                </Button>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* Text Search */}
+      <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <Text as="label" htmlFor="searchText" sx={{ fontWeight: 'bold', fontSize: 1 }}>Text Search</Text>
+          <TextInput
+            id="searchText"
+            aria-label="Text Search"
+            name="searchText"
+            placeholder="Search in title and description..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            leadingVisual={() => (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                <path fillRule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path>
+              </svg>
+            )}
+            trailingAction={searchText ? (
+              <TextInput.Action onClick={() => setSearchText('')} aria-label="Reset search">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
+                  <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
+                </svg>
+              </TextInput.Action>
+            ) : null}
+            sx={{width: '100%'}}
+            block
+          />
+        </Box>
+      </Box>
+
+      {filteredResults.length > 0 && (
+        <Box sx={{maxWidth: '800px', margin: '24px auto'}}>
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 3,
+            borderBottom: '1px solid',
+            borderColor: 'border.default',
+            pb: 2
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Text as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Results</Text>
+              {clipboardMessage && (
+                <Flash variant="success" sx={{ py: 1, px: 2 }}>
+                  {clipboardMessage}
+                </Flash>
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button 
+                onClick={copyResultsToClipboard}
+                variant="outline"
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  fontSize: 1
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ display: 'inline-block', verticalAlign: 'text-bottom' }}>
+                  <path fillRule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
+                  <path fillRule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
+                </svg>
+                Export to Clipboard
+              </Button>
+              <Box sx={{display: 'flex', gap: 3}}>
+                <Box sx={{textAlign: 'center'}}>
+                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'fg.default'}}>{stats.total}</Text>
+                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Total</Text>
+                </Box>
+                <Box sx={{textAlign: 'center'}}>
+                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'accent.fg'}}>{stats.issues}</Text>
+                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Issues</Text>
+                </Box>
+                <Box sx={{textAlign: 'center'}}>
+                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'success.fg'}}>{stats.prs}</Text>
+                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>PRs</Text>
+                </Box>
+                <Box sx={{textAlign: 'center'}}>
+                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'success.fg'}}>{stats.open}</Text>
+                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Open</Text>
+                </Box>
+                <Box sx={{textAlign: 'center'}}>
+                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'done.fg'}}>{stats.closed}</Text>
+                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Closed</Text>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+          <Box>
+            {filteredResults.map((item) => (
+              <Box key={item.id} sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3, bg: 'canvas.subtle' }}>
+                {/* Project info if available */}
+                {item.repository_url && (
+                  <Box sx={{mb: 2}}>
+                    <Text as="span" sx={{fontWeight: 'bold', color: 'fg.muted', fontSize: 1}}>Project: </Text>
+                    <Link
+                      href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{fontSize: 1, color: 'accent.fg'}}
+                    >{item.repository_url.replace('https://api.github.com/repos/', '')}</Link>
+                  </Box>
+                )}
+                <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
+                  <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
+                </Link>
+                <Box sx={{display: 'flex', gap: 1, alignItems: 'center', mb: 1, flexWrap: 'wrap'}}>
+                  <Label variant={item.pull_request ? 'success' : 'accent' as PrimerLabelVariant}>
+                    {item.pull_request ? 'PR' : 'Issue'}
+                  </Label>
+                  <Label variant={item.state === 'open' ? 'success' : 'done' as PrimerLabelVariant}>
+                    {item.state}
+                  </Label>
+                  {/* Display labels nicely */}
+                  {item.labels && item.labels.map(l => (
+                    <Label
+                      key={l.name}
+                      sx={{
+                        ml: 1,
+                        backgroundColor: l.color ? `#${l.color}` : undefined,
+                        color: l.color ? getContrastColor(l.color) : undefined,
+                        fontWeight: 'bold',
+                        fontSize: 0,
+                        cursor: 'pointer',
+                      }}
+                      title={l.description || l.name}
+                      onClick={() => setLabelFilter(l.name)}
+                    >{l.name}</Label>
+                  ))}
+                </Box>
+                <Box sx={{fontSize: 0, color: 'fg.muted', mt: 2, display: 'flex', alignItems: 'center', gap: 3}}>
+                  <Box sx={{display: 'flex', gap: 2}}>
+                    <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
+                    <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
+                  </Box>
+                  {item.body && (
+                    <Button 
+                      size="small" 
+                      variant={descriptionVisible[item.id] ? "primary" : "default"}
+                      onClick={() => toggleDescriptionVisibility(item.id)}
+                      sx={{ ml: 'auto' }}
+                    >
+                      {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
+                    </Button>
+                  )}
+                </Box>
+                
+                {/* Description shown only on demand */}
+                {item.body && descriptionVisible[item.id] && (
+                  <Box sx={{
+                    maxHeight: expanded[item.id] ? 'none' : '200px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    mt: 2,
+                    bg: 'canvas.default',
+                    p: 2,
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'border.muted',
+                    fontSize: 1,
+                    color: 'fg.muted',
+                  }}>
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({node, ...props}) => (
+                          <Link 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            sx={{color: 'accent.fg'}}
+                            {...props} 
+                          />
+                        ),
+                        pre: ({node, ...props}) => (
+                          <Box 
+                            as="pre"
+                            sx={{
+                              bg: 'canvas.subtle',
+                              p: 2,
+                              borderRadius: 1,
+                              overflowX: 'auto',
+                              fontSize: 0,
+                              border: '1px solid',
+                              borderColor: 'border.muted'
+                            }}
+                            {...props}
+                          />
+                        ),
+                        code: ({node, inline, ...props}) => (
+                          inline
+                            ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
+                            : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
+                        ),
+                        img: ({node, ...props}) => (
+                          <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
+                        )
+                      }}
+                    >
+                      {item.body}
+                    </ReactMarkdown>
+                    {!expanded[item.id] && item.body.length > 400 && (
+                      <Box sx={{
+                        position: 'absolute', 
+                        bottom: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '3em', 
+                        background: 'linear-gradient(to bottom, transparent, var(--color-canvas-default) 90%)'
+                      }} />
+                    )}
+                    
+                    {item.body.length > 400 && (
+                      <Button 
+                        size="small" 
+                        variant="invisible" 
+                        onClick={() => toggleExpand(item.id)}
+                        sx={{ mt: 1 }}
+                      >
+                        {expanded[item.id] ? 'Show less' : 'Show more'}
+                      </Button>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+      {filteredResults.length === 0 && (
+        <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
+             <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
+        </Box>
+      )}
+    </>
+  );
+});
+
+// Wrap App component with Context Providers
+function AppWithContexts() {
+  // Create debounced handlers for localStorage updates
+  const debouncedSaveToLocalStorage = useCallback(
+    debounce((key: string, value: string) => {
+      localStorage.setItem(key, value);
+    }, 500),
+    []
+  );
+
+  // Get initial values from URL if present, then fall back to localStorage
+  const [username, setUsername] = useState(() => {
+    const urlUsername = getParamFromUrl('username');
+    if (urlUsername) return urlUsername;
+    return localStorage.getItem('github-username') || '';
+  });
+  
+  const [startDate, setStartDate] = useState(() => {
+    const urlStartDate = getParamFromUrl('startDate');
+    if (urlStartDate && isValidDateString(urlStartDate)) return urlStartDate;
+    return localStorage.getItem('start-date') || '';
+  });
+  
+  const [endDate, setEndDate] = useState(() => {
+    const urlEndDate = getParamFromUrl('endDate');
+    if (urlEndDate && isValidDateString(urlEndDate)) return urlEndDate;
+    return localStorage.getItem('end-date') || '';
+  });
+  
   const [results, setResults] = useState<GitHubItem[]>(() => {
     const savedResults = localStorage.getItem('results');
     return savedResults ? JSON.parse(savedResults) : [];
@@ -77,9 +638,9 @@ function App() {
   const [loadingProgress, setLoadingProgress] = useState<string>('');
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
 
-  // Save state to localStorage on changes
+  // Save state to localStorage on changes (excluding username which is handled separately)
   useEffect(() => {
-    localStorage.setItem('github-username', username);
+    // We handle username with debounced updates, so we don't need to save it here
     localStorage.setItem('start-date', startDate);
     localStorage.setItem('end-date', endDate);
     localStorage.setItem('results', JSON.stringify(results));
@@ -91,13 +652,35 @@ function App() {
     localStorage.setItem('repo-filters', JSON.stringify(repoFilters));
     localStorage.setItem('expanded', JSON.stringify(expanded));
     localStorage.setItem('description-visible', JSON.stringify(descriptionVisible));
-  }, [username, startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible]);
+  }, [startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible]);
+
+  // Auto-fetch results when URL parameters are present on initial load
+  useEffect(() => {
+    const urlUsername = getParamFromUrl('username');
+    const urlStartDate = getParamFromUrl('startDate');
+    const urlEndDate = getParamFromUrl('endDate');
+    
+    // If we have valid URL parameters on first load, automatically fetch the data
+    if (urlUsername && urlStartDate && urlEndDate && 
+        isValidDateString(urlStartDate) && isValidDateString(urlEndDate) && 
+        results.length === 0) {
+      fetchGitHubData();
+    }
+  }, []); // Empty dependency array means this runs only on component mount
 
   const fetchGitHubData = async () => {
     if (!username || !startDate || !endDate) {
       setError('Please fill in all fields.');
       return;
     }
+    
+    // Update URL with current search parameters when the form is submitted
+    updateUrlParams({
+      username: username || null,
+      startDate: isValidDateString(startDate) ? startDate : null,
+      endDate: isValidDateString(endDate) ? endDate : null
+    });
+    
     setError(null);
     setLoading(true);
     setLoadingProgress('Fetching data...');
@@ -173,7 +756,8 @@ function App() {
     }
   };
 
-  const filteredResults = results.filter(item => {
+  // Memoize the filteredResults to prevent recalculations on form changes
+  const filteredResults = useMemo(() => results.filter(item => {
     // Type filter (Issue or PR)
     const typeMatch = 
       filter === 'all' ? true : 
@@ -197,27 +781,27 @@ function App() {
     );
     
     return typeMatch && labelMatch && repoMatch && searchMatch;
-  });
+  }), [results, filter, labelFilter, repoFilters, searchText]);
 
-  // Calculate stats for found items
-  const stats = {
+  // Memoize stats calculation to prevent recalculations on form changes
+  const stats = useMemo(() => ({
     total: filteredResults.length,
     issues: filteredResults.filter(item => !item.pull_request).length,
     prs: filteredResults.filter(item => !!item.pull_request).length,
     open: filteredResults.filter(item => item.state === 'open').length,
     closed: filteredResults.filter(item => item.state === 'closed').length
-  };
+  }), [filteredResults]);
 
-  const toggleExpand = (id: number) => {
+  const toggleExpand = useCallback((id: number) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  }, []);
 
-  const toggleDescriptionVisibility = (id: number) => {
+  const toggleDescriptionVisibility = useCallback((id: number) => {
     setDescriptionVisible(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  }, []);
 
   // Format the filtered results for export to clipboard
-  const formatResultsForExport = (items: GitHubItem[]): string => {
+  const formatResultsForExport = useCallback((items: GitHubItem[]): string => {
     const dateRangeInfo = `GitHub activity from ${startDate} to ${endDate}`;
     const statsInfo = `Total: ${stats.total} (Issues: ${stats.issues}, PRs: ${stats.prs}, Open: ${stats.open}, Closed: ${stats.closed})`;
     
@@ -246,10 +830,10 @@ function App() {
     }).join('\n');
     
     return header + formattedItems;
-  };
+  }, [startDate, endDate, stats, username]);
 
   // Copy formatted results to clipboard
-  const copyResultsToClipboard = async () => {
+  const copyResultsToClipboard = useCallback(async () => {
     try {
       const formattedText = formatResultsForExport(filteredResults);
       await navigator.clipboard.writeText(formattedText);
@@ -268,170 +852,86 @@ function App() {
         setClipboardMessage(null);
       }, 3000);
     }
-  };
+  }, [filteredResults, formatResultsForExport]);
+
+  // Memoized form context value to prevent unnecessary re-renders
+  const formContextValue = useMemo(() => ({
+    username,
+    startDate,
+    endDate,
+    setUsername,
+    setStartDate,
+    setEndDate,
+    handleSearch: fetchGitHubData,
+    loading,
+    loadingProgress,
+    error
+  }), [username, startDate, endDate, loading, loadingProgress, error]);
+
+  // Memoized results context value to prevent unnecessary re-renders
+  const resultsContextValue = useMemo(() => ({
+    results,
+    filteredResults,
+    filter,
+    labelFilter,
+    searchText,
+    repoFilters,
+    availableLabels,
+    availableRepos,
+    stats,
+    setFilter,
+    setLabelFilter,
+    setSearchText,
+    setRepoFilters,
+    toggleDescriptionVisibility,
+    toggleExpand,
+    copyResultsToClipboard,
+    descriptionVisible,
+    expanded,
+    clipboardMessage
+  }), [
+    results, 
+    filteredResults, 
+    filter, 
+    labelFilter, 
+    searchText, 
+    repoFilters, 
+    availableLabels, 
+    availableRepos, 
+    stats, 
+    toggleDescriptionVisibility, 
+    toggleExpand, 
+    copyResultsToClipboard, 
+    descriptionVisible, 
+    expanded, 
+    clipboardMessage
+  ]);
 
   return (
-    <Box sx={{ minHeight: '100vh', bg: 'canvas.default' }}> {/* Outer Box for full page background */}
+    <FormContext.Provider value={formContextValue}>
+      <ResultsContext.Provider value={resultsContextValue}>
+        <App />
+      </ResultsContext.Provider>
+    </FormContext.Provider>
+  );
+}
+
+// Simplified App component that uses the contexts
+function App() {
+  const { loading, loadingProgress } = useFormContext();
+  const { filteredResults } = useResultsContext();
+
+  return (
+    <Box sx={{ minHeight: '100vh', bg: 'canvas.default' }}>
       <PageLayout>
         <PageLayout.Header>
           <Box sx={{padding: 3, borderBottom: '1px solid', borderColor: 'border.default', bg: 'canvas.subtle' }}>
             <Text as="h1" sx={{fontSize: 4, fontWeight: 'semibold', color: 'fg.default'}}>GitHub Issues & PRs Viewer</Text>
           </Box>
         </PageLayout.Header>
-        <PageLayout.Content sx={{ padding: 3 }}> {/* bg: 'canvas.default' is inherited from outer Box, padding remains */}
-          <Box sx={{maxWidth: '800px', margin: '0 auto'}}>
-            <Box as="form" sx={{display: 'flex', flexDirection: 'column', gap: 3}} onSubmit={(e: FormEvent<HTMLFormElement>) => { e.preventDefault(); fetchGitHubData(); }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Text as="label" htmlFor="username" sx={{ fontWeight: 'bold', fontSize: 1 }}>GitHub Username</Text>
-                <TextInput
-                  id="username"
-                  aria-label="GitHub Username"
-                  name="username"
-                  placeholder="GitHub Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  sx={{width: '100%'}}
-                  block
-                />
-              </Box>
-              
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Text as="label" htmlFor="startDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>Start Date</Text>
-                <TextInput
-                  id="startDate"
-                  aria-label="Start Date"
-                  name="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  sx={{width: '100%'}}
-                  block
-                />
-              </Box>
-              
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Text as="label" htmlFor="endDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>End Date</Text>
-                <TextInput
-                  id="endDate"
-                  aria-label="End Date"
-                  name="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  sx={{width: '100%'}}
-                  block
-                />
-              </Box>
-              
-              <Button variant="primary" type="submit" sx={{width: '100%', mt: 1}}>Search</Button>
-            </Box>
-            {error && (
-              <Flash variant="danger" sx={{marginTop: 3}}>
-                {error}
-              </Flash>
-            )}
-          </Box>
-
-          {/* Filter UI */}
-          <Box sx={{maxWidth: '800px', margin: '24px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
-            <Text as="span" sx={{fontWeight: 'bold'}}>Filter:</Text>
-            <Button variant={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')}>All</Button>
-            <Button variant={filter === 'issue' ? 'primary' : 'default'} onClick={() => setFilter('issue')}>Issues</Button>
-            <Button variant={filter === 'pr' ? 'primary' : 'default'} onClick={() => setFilter('pr')}>PRs</Button>
-          </Box>
-
-          {/* Label-Filter UI */}
-          {availableLabels.length > 0 && (
-            <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap'}}>
-              <Text as="span" sx={{fontWeight: 'bold'}}>Label Filter:</Text>
-              <Button
-                size="small"
-                variant={labelFilter === '' ? 'primary' : 'default'}
-                onClick={() => setLabelFilter('')}
-              >All</Button>
-              {availableLabels.map(label => (
-                <Button
-                  key={label}
-                  size="small"
-                  variant={labelFilter === label ? 'primary' : 'default'}
-                  onClick={() => setLabelFilter(label)}
-                  sx={{bg: labelFilter === label ? undefined : undefined, color: 'fg.default'}}
-                >{label}</Button>
-              ))}
-            </Box>
-          )}
-
-          {/* Repository Filter UI */}
-          {availableRepos.length > 0 && (
-            <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Text as="span" sx={{ fontWeight: 'bold', fontSize: 1 }}>Repository Filter:</Text>
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Button
-                    size="small"
-                    variant={repoFilters.length === 0 ? 'primary' : 'default'}
-                    onClick={() => setRepoFilters([])}
-                  >
-                    All Repositories
-                  </Button>
-                  {availableRepos.map(repo => (
-                    <Button
-                      key={repo}
-                      size="small"
-                      variant={repoFilters.includes(repo) ? 'primary' : 'default'}
-                      onClick={() => {
-                        if (repoFilters.includes(repo)) {
-                          // Remove from selection
-                          setRepoFilters(prev => prev.filter(r => r !== repo));
-                        } else {
-                          // Add to selection
-                          setRepoFilters(prev => [...prev, repo]);
-                        }
-                      }}
-                      sx={{
-                        borderColor: repoFilters.includes(repo) ? 'accent.emphasis' : 'border.default',
-                        color: 'fg.default'
-                      }}
-                    >
-                      {repo.split('/')[1] || repo} {/* Show only repo name, not owner/repo */}
-                    </Button>
-                  ))}
-                </Box>
-              </Box>
-            </Box>
-          )}
-
-          {/* Text Search */}
-          {results.length > 0 && (
-            <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Text as="label" htmlFor="searchText" sx={{ fontWeight: 'bold', fontSize: 1 }}>Text Search</Text>
-                <TextInput
-                  id="searchText"
-                  aria-label="Text Search"
-                  name="searchText"
-                  placeholder="Search in title and description..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  leadingVisual={() => (
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                      <path fillRule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path>
-                    </svg>
-                  )}
-                  trailingAction={searchText ? (
-                    <TextInput.Action onClick={() => setSearchText('')} aria-label="Reset search">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                        <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
-                      </svg>
-                    </TextInput.Action>
-                  ) : null}
-                  sx={{width: '100%'}}
-                  block
-                />
-              </Box>
-            </Box>
-          )}
-
+        <PageLayout.Content sx={{ padding: 3 }}>
+          <SearchForm />
+          {!loading && filteredResults.length > 0 && <ResultsList />}
           {loading && (
             <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
               <Spinner size="large" />
@@ -440,211 +940,10 @@ function App() {
               )}
             </Box>
           )}
-
-          {filteredResults.length > 0 && (
-            <Box sx={{maxWidth: '800px', margin: '24px auto'}}>
-              <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 3,
-                borderBottom: '1px solid',
-                borderColor: 'border.default',
-                pb: 2
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Text as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Results</Text>
-                  {clipboardMessage && (
-                    <Flash variant="success" sx={{ py: 1, px: 2 }}>
-                      {clipboardMessage}
-                    </Flash>
-                  )}
-                </Box>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <Button 
-                    onClick={copyResultsToClipboard}
-                    variant="outline"
-                    sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 1,
-                      fontSize: 1
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ display: 'inline-block', verticalAlign: 'text-bottom' }}>
-                      <path fillRule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path>
-                      <path fillRule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path>
-                    </svg>
-                    Export to Clipboard
-                  </Button>
-                  <Box sx={{display: 'flex', gap: 3}}>
-                    <Box sx={{textAlign: 'center'}}>
-                      <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'fg.default'}}>{stats.total}</Text>
-                      <Text sx={{fontSize: 1, color: 'fg.muted'}}>Total</Text>
-                    </Box>
-                    <Box sx={{textAlign: 'center'}}>
-                      <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'accent.fg'}}>{stats.issues}</Text>
-                      <Text sx={{fontSize: 1, color: 'fg.muted'}}>Issues</Text>
-                    </Box>
-                    <Box sx={{textAlign: 'center'}}>
-                      <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'success.fg'}}>{stats.prs}</Text>
-                      <Text sx={{fontSize: 1, color: 'fg.muted'}}>PRs</Text>
-                    </Box>
-                    <Box sx={{textAlign: 'center'}}>
-                      <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'success.fg'}}>{stats.open}</Text>
-                      <Text sx={{fontSize: 1, color: 'fg.muted'}}>Open</Text>
-                    </Box>
-                    <Box sx={{textAlign: 'center'}}>
-                      <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'done.fg'}}>{stats.closed}</Text>
-                      <Text sx={{fontSize: 1, color: 'fg.muted'}}>Closed</Text>
-                    </Box>
-                  </Box>
-                </Box>
-              </Box>
-              <Box>
-                {filteredResults.map((item) => (
-                  <Box key={item.id} sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3, bg: 'canvas.subtle' }}>
-                    {/* Project info if available */}
-                    {item.repository_url && (
-                      <Box sx={{mb: 2}}>
-                        <Text as="span" sx={{fontWeight: 'bold', color: 'fg.muted', fontSize: 1}}>Project: </Text>
-                        <Link
-                          href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{fontSize: 1, color: 'accent.fg'}}
-                        >{item.repository_url.replace('https://api.github.com/repos/', '')}</Link>
-                      </Box>
-                    )}
-                    <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
-                      <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
-                    </Link>
-                    <Box sx={{display: 'flex', gap: 1, alignItems: 'center', mb: 1, flexWrap: 'wrap'}}>
-                      <Label variant={item.pull_request ? 'success' : 'accent' as PrimerLabelVariant}>
-                        {item.pull_request ? 'PR' : 'Issue'}
-                      </Label>
-                      <Label variant={item.state === 'open' ? 'success' : 'done' as PrimerLabelVariant}>
-                        {item.state}
-                      </Label>
-                      {/* Display labels nicely */}
-                      {item.labels && item.labels.map(l => (
-                        <Label
-                          key={l.name}
-                          sx={{
-                            ml: 1,
-                            backgroundColor: l.color ? `#${l.color}` : undefined,
-                            color: l.color ? getContrastColor(l.color) : undefined,
-                            fontWeight: 'bold',
-                            fontSize: 0,
-                            cursor: 'pointer',
-                          }}
-                          title={l.description || l.name}
-                          onClick={() => setLabelFilter(l.name)}
-                        >{l.name}</Label>
-                      ))}
-                    </Box>
-                    <Box sx={{fontSize: 0, color: 'fg.muted', mt: 2, display: 'flex', alignItems: 'center', gap: 3}}>
-                      <Box sx={{display: 'flex', gap: 2}}>
-                        <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
-                        <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
-                      </Box>
-                      {item.body && (
-                        <Button 
-                          size="small" 
-                          variant={descriptionVisible[item.id] ? "primary" : "default"}
-                          onClick={() => toggleDescriptionVisibility(item.id)}
-                          sx={{ ml: 'auto' }}
-                        >
-                          {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
-                        </Button>
-                      )}
-                    </Box>
-                    
-                    {/* Description shown only on demand */}
-                    {item.body && descriptionVisible[item.id] && (
-                      <Box sx={{
-                        maxHeight: expanded[item.id] ? 'none' : '200px',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        mt: 2,
-                        bg: 'canvas.default',
-                        p: 2,
-                        borderRadius: 1,
-                        border: '1px solid',
-                        borderColor: 'border.muted',
-                        fontSize: 1,
-                        color: 'fg.muted',
-                      }}>
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            a: ({node, ...props}) => (
-                              <Link 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                sx={{color: 'accent.fg'}}
-                                {...props} 
-                              />
-                            ),
-                            pre: ({node, ...props}) => (
-                              <Box 
-                                as="pre"
-                                sx={{
-                                  bg: 'canvas.subtle',
-                                  p: 2,
-                                  borderRadius: 1,
-                                  overflowX: 'auto',
-                                  fontSize: 0,
-                                  border: '1px solid',
-                                  borderColor: 'border.muted'
-                                }}
-                                {...props}
-                              />
-                            ),
-                            code: ({node, inline, ...props}) => (
-                              inline
-                                ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
-                                : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
-                            ),
-                            img: ({node, ...props}) => (
-                              <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
-                            )
-                          }}
-                        >
-                          {item.body}
-                        </ReactMarkdown>
-                        {!expanded[item.id] && item.body.length > 400 && (
-                          <Box sx={{
-                            position: 'absolute', 
-                            bottom: 0, 
-                            left: 0, 
-                            width: '100%', 
-                            height: '3em', 
-                            background: 'linear-gradient(to bottom, transparent, var(--color-canvas-default) 90%)'
-                          }} />
-                        )}
-                        
-                        {item.body.length > 400 && (
-                          <Button 
-                            size="small" 
-                            variant="invisible" 
-                            onClick={() => toggleExpand(item.id)}
-                            sx={{ mt: 1 }}
-                          >
-                            {expanded[item.id] ? 'Show less' : 'Show more'}
-                          </Button>
-                        )}
-                      </Box>
-                    )}
-                  </Box>
-                ))}
-              </Box>
+          {filteredResults.length === 0 && !loading && (
+            <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
+                 <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
             </Box>
-          )}
-          {filteredResults.length === 0 && !error && username && startDate && endDate && ( // Show only after a search attempt
-              <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
-                   <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
-              </Box>
           )}
         </PageLayout.Content>
       </PageLayout>
@@ -652,4 +951,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppWithContexts;
