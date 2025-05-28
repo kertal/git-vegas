@@ -97,9 +97,11 @@ interface FormContextType {
   username: string;
   startDate: string;
   endDate: string;
+  githubToken: string;  // Add token
   setUsername: (value: string) => void;
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
+  setGithubToken: (value: string) => void;  // Add token setter
   handleSearch: () => void;
   loading: boolean;
   loadingProgress: string;
@@ -144,7 +146,7 @@ interface ResultsContextType {
   setSortOrder: (sort: 'updated' | 'created') => void;  // Add sort order setter
   setLabelFilter: (filter: string) => void;
   setSearchText: (text: string) => void;
-  setRepoFilters: (repos: string[]) => void;
+  setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
   copyResultsToClipboard: () => void;
@@ -164,12 +166,18 @@ function useResultsContext() {
   return context;
 }
 
+// Add type for code component props
+interface CodeComponentProps extends React.HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+}
+
 // Component for the search form, wrapped in memo to prevent unnecessary re-renders
 const SearchForm = memo(function SearchForm() {
   const { 
     username, setUsername, 
     startDate, setStartDate, 
-    endDate, setEndDate, 
+    endDate, setEndDate,
+    githubToken, setGithubToken,
     handleSearch, 
     loading, 
     loadingProgress,
@@ -201,6 +209,26 @@ const SearchForm = memo(function SearchForm() {
             handleSearch(); 
           }}
         >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <Text as="label" htmlFor="githubToken" sx={{ fontWeight: 'bold', fontSize: 1 }}>
+              GitHub Token (optional)
+              <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
+                - stored in session only
+              </Text>
+            </Text>
+            <TextInput
+              id="githubToken"
+              aria-label="GitHub Token"
+              name="githubToken"
+              type="password"
+              placeholder="GitHub personal access token"
+              value={githubToken}
+              onChange={(e) => setGithubToken(e.target.value)}
+              sx={{width: '100%'}}
+              block
+            />
+          </Box>
+
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <Text as="label" htmlFor="username" sx={{ fontWeight: 'bold', fontSize: 1 }}>GitHub Username(s)</Text>
             <TextInput
@@ -682,7 +710,7 @@ const ResultsList = memo(function ResultsList() {
                             {...props}
                           />
                         ),
-                        code: ({node, inline, ...props}: {node: any, inline?: boolean, [key: string]: any}) => (
+                        code: ({inline, ...props}: CodeComponentProps) => (
                           inline
                             ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
                             : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
@@ -793,6 +821,11 @@ function AppWithContexts() {
     (localStorage.getItem('sort-order') as 'updated' | 'created') || 'updated'
   );
 
+  // Add GitHub token state using sessionStorage
+  const [githubToken, setGithubToken] = useState(() => 
+    sessionStorage.getItem('github-token') || ''
+  );
+
   // Save state to localStorage on changes (excluding username which is handled separately)
   useEffect(() => {
     // We handle username with debounced updates, so we don't need to save it here
@@ -810,6 +843,15 @@ function AppWithContexts() {
     localStorage.setItem('status-filter', statusFilter);
     localStorage.setItem('sort-order', sortOrder);
   }, [startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible, statusFilter, sortOrder]);
+
+  // Save token to sessionStorage when it changes
+  useEffect(() => {
+    if (githubToken) {
+      sessionStorage.setItem('github-token', githubToken);
+    } else {
+      sessionStorage.removeItem('github-token');
+    }
+  }, [githubToken]);
 
   // Auto-fetch results when URL parameters are present on initial load
   useEffect(() => {
@@ -849,6 +891,14 @@ function AppWithContexts() {
     setError(null);
     setLoading(true);
     setLoadingProgress('Fetching data...');
+
+    // Prepare headers for GitHub API requests
+    const headers: HeadersInit = {
+      'Accept': 'application/vnd.github.v3+json'
+    };
+    if (githubToken) {
+      headers['Authorization'] = `token ${githubToken}`;
+    }
     
     try {
       const MAX_PAGES = 5; // Fetch up to 5 pages (500 results total) per user
@@ -868,7 +918,8 @@ function AppWithContexts() {
           setLoadingProgress(`Fetching page ${page} of ${MAX_PAGES} for ${currentUsername}...`);
           
           const response = await fetch(
-            `https://api.github.com/search/issues?q=author:${encodeURIComponent(currentUsername)}+created:${startDate}..${endDate}&per_page=100&page=${page}`
+            `https://api.github.com/search/issues?q=author:${encodeURIComponent(currentUsername)}+created:${startDate}..${endDate}&per_page=100&page=${page}`,
+            { headers }
           );
           
           if (!response.ok) {
@@ -885,7 +936,7 @@ function AppWithContexts() {
             .map(async (pr: GitHubItem) => {
               try {
                 if (pr.pull_request?.url) {
-                  const prResponse = await fetch(pr.pull_request.url);
+                  const prResponse = await fetch(pr.pull_request.url, { headers });
                   if (prResponse.ok) {
                     const prData = await prResponse.json();
                     pr.merged = prData.merged;
@@ -901,7 +952,7 @@ function AppWithContexts() {
             });
           
           // Wait for all PR detail requests
-          await Promise.all(prDetailsPromises);
+          const prDetails = await Promise.all(prDetailsPromises);
           
           // Process items from this page
           items.forEach((item: GitHubItem) => {
@@ -1094,14 +1145,16 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     username,
     startDate,
     endDate,
+    githubToken,
     setUsername,
     setStartDate,
     setEndDate,
+    setGithubToken,
     handleSearch: fetchGitHubData,
     loading,
     loadingProgress,
     error
-  }), [username, startDate, endDate, loading, loadingProgress, error]);
+  }), [username, startDate, endDate, githubToken, loading, loadingProgress, error]);
 
   // Add clearAllFilters function
   const clearAllFilters = useCallback(() => {
