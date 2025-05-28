@@ -82,6 +82,11 @@ interface GitHubItem {
   merged_at?: string;    // Zeitpunkt, an dem der PR gemerged wurde (auf oberster Ebene)
   closed_at?: string;    // Zeitpunkt, an dem der Issue/PR geschlossen wurde
   number?: number; // Added for PR number reference
+  user: {
+    login: string;
+    avatar_url: string;
+    html_url: string;
+  };
 }
 
 // Define a type for Label variants based on Primer's documentation
@@ -462,18 +467,40 @@ const ResultsList = memo(function ResultsList() {
           <Box>
             {filteredResults.map((item) => (
               <Box key={item.id} sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3, bg: 'canvas.subtle' }}>
-                {/* Project info if available */}
-                {item.repository_url && (
-                  <Box sx={{mb: 2}}>
-                    <Text as="span" sx={{fontWeight: 'bold', color: 'fg.muted', fontSize: 1}}>Project: </Text>
-                    <Link
-                      href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{fontSize: 1, color: 'accent.fg'}}
-                    >{item.repository_url.replace('https://api.github.com/repos/', '')}</Link>
-                  </Box>
-                )}
+                {/* Replace the project info section */}
+                <Box sx={{mb: 2, display: 'flex', alignItems: 'center', gap: 2}}>
+                  <img 
+                    src={item.user.avatar_url} 
+                    alt={`${item.user.login}'s avatar`}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      border: '1px solid var(--color-border-default)'
+                    }}
+                  />
+                  <Link
+                    href={item.user.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{fontSize: 1, color: 'fg.muted', textDecoration: 'none', ':hover': { textDecoration: 'underline' }}}
+                  >
+                    {item.user.login}
+                  </Link>
+                  {item.repository_url && (
+                    <>
+                      <Text sx={{color: 'fg.muted'}}>/</Text>
+                      <Link
+                        href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{fontSize: 1, color: 'accent.fg'}}
+                      >
+                        {item.repository_url.replace('https://api.github.com/repos/', '').split('/')[1]}
+                      </Link>
+                    </>
+                  )}
+                </Box>
                 <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
                   <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
                 </Link>
