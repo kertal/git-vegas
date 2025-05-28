@@ -151,6 +151,7 @@ interface ResultsContextType {
   descriptionVisible: { [id: number]: boolean };
   expanded: { [id: number]: boolean };
   clipboardMessage: string | null;
+  clearAllFilters: () => void;  // Add clear all function
 }
 
 const ResultsContext = createContext<ResultsContextType | null>(null);
@@ -287,13 +288,46 @@ const ResultsList = memo(function ResultsList() {
     copyResultsToClipboard,
     descriptionVisible,
     expanded,
-    clipboardMessage
+    clipboardMessage,
+    clearAllFilters
   } = useResultsContext();
+
+  // Helper to check if any filters are active
+  const hasActiveFilters = filter !== 'all' || 
+    statusFilter !== 'all' || 
+    sortOrder !== 'updated' || 
+    labelFilter !== '' || 
+    searchText !== '' || 
+    repoFilters.length > 0;
 
   return (
     <>
+      {/* Add Clear Filters button in a header section */}
+      <Box sx={{
+        maxWidth: '800px',
+        margin: '24px auto 0',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Text as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default'}}>Filters</Text>
+        {hasActiveFilters && (
+          <Button
+            variant="danger"
+            size="small"
+            onClick={clearAllFilters}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/>
+            </svg>
+            Clear All Filters
+          </Button>
+        )}
+      </Box>
+
       {/* Type Filter UI */}
-      <Box sx={{maxWidth: '800px', margin: '24px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
+      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
         <Text as="span" sx={{fontWeight: 'bold'}}>Type:</Text>
         <Button variant={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')}>All</Button>
         <Button variant={filter === 'issue' ? 'primary' : 'default'} onClick={() => setFilter('issue')}>Issues</Button>
@@ -413,7 +447,7 @@ const ResultsList = memo(function ResultsList() {
             trailingAction={searchText ? (
               <TextInput.Action onClick={() => setSearchText('')} aria-label="Reset search">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                  <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
+                  <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06z"></path>
                 </svg>
               </TextInput.Action>
             ) : undefined}
@@ -1069,6 +1103,16 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     error
   }), [username, startDate, endDate, loading, loadingProgress, error]);
 
+  // Add clearAllFilters function
+  const clearAllFilters = useCallback(() => {
+    setFilter('all');
+    setStatusFilter('all');
+    setSortOrder('updated');
+    setLabelFilter('');
+    setSearchText('');
+    setRepoFilters([]);
+  }, []);
+
   // Memoized results context value to prevent unnecessary re-renders
   const resultsContextValue = useMemo(() => ({
     results,
@@ -1093,7 +1137,8 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     copyResultsToClipboard,
     descriptionVisible,
     expanded,
-    clipboardMessage
+    clipboardMessage,
+    clearAllFilters
   }), [
     results, 
     filteredResults, 
@@ -1111,7 +1156,8 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     copyResultsToClipboard, 
     descriptionVisible, 
     expanded, 
-    clipboardMessage
+    clipboardMessage,
+    clearAllFilters
   ]);
 
   return (
