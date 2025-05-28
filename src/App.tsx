@@ -125,7 +125,8 @@ interface ResultsContextType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr';
-  statusFilter: 'all' | 'open' | 'closed';  // Add status filter
+  statusFilter: 'all' | 'open' | 'closed';
+  sortOrder: 'updated' | 'created';  // Add sort order
   labelFilter: string;
   searchText: string;
   repoFilters: string[];
@@ -139,7 +140,8 @@ interface ResultsContextType {
     closed: number;
   };
   setFilter: (filter: 'all' | 'issue' | 'pr') => void;
-  setStatusFilter: (status: 'all' | 'open' | 'closed') => void;  // Add status filter setter
+  setStatusFilter: (status: 'all' | 'open' | 'closed') => void;
+  setSortOrder: (sort: 'updated' | 'created') => void;  // Add sort order setter
   setLabelFilter: (filter: string) => void;
   setSearchText: (text: string) => void;
   setRepoFilters: (repos: string[]) => void;
@@ -267,6 +269,7 @@ const ResultsList = memo(function ResultsList() {
     filteredResults,
     filter,
     statusFilter,
+    sortOrder,
     labelFilter,
     availableLabels,
     availableRepos,
@@ -274,6 +277,7 @@ const ResultsList = memo(function ResultsList() {
     searchText,
     setFilter,
     setStatusFilter,
+    setSortOrder,
     setLabelFilter,
     setSearchText,
     setRepoFilters,
@@ -288,9 +292,9 @@ const ResultsList = memo(function ResultsList() {
 
   return (
     <>
-      {/* Filter UI */}
+      {/* Type Filter UI */}
       <Box sx={{maxWidth: '800px', margin: '24px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
-        <Text as="span" sx={{fontWeight: 'bold'}}>Filter:</Text>
+        <Text as="span" sx={{fontWeight: 'bold'}}>Type:</Text>
         <Button variant={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')}>All</Button>
         <Button variant={filter === 'issue' ? 'primary' : 'default'} onClick={() => setFilter('issue')}>Issues</Button>
         <Button variant={filter === 'pr' ? 'primary' : 'default'} onClick={() => setFilter('pr')}>PRs</Button>
@@ -298,19 +302,35 @@ const ResultsList = memo(function ResultsList() {
 
       {/* Status Filter UI */}
       <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
-        <Text as="span" sx={{fontWeight: 'bold'}}>Status Filter:</Text>
-        <Button
-          variant={statusFilter === 'all' ? 'primary' : 'default'}
-          onClick={() => setStatusFilter('all')}
-        >All</Button>
-        <Button
-          variant={statusFilter === 'open' ? 'primary' : 'default'}
-          onClick={() => setStatusFilter('open')}
-        >Open</Button>
-        <Button
-          variant={statusFilter === 'closed' ? 'primary' : 'default'}
-          onClick={() => setStatusFilter('closed')}
-        >Closed</Button>
+        <Text as="span" sx={{fontWeight: 'bold'}}>Status:</Text>
+        <Button variant={statusFilter === 'all' ? 'primary' : 'default'} onClick={() => setStatusFilter('all')}>All</Button>
+        <Button variant={statusFilter === 'open' ? 'primary' : 'default'} onClick={() => setStatusFilter('open')}>Open</Button>
+        <Button variant={statusFilter === 'closed' ? 'primary' : 'default'} onClick={() => setStatusFilter('closed')}>Closed</Button>
+      </Box>
+
+      {/* Sort Order UI */}
+      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
+        <Text as="span" sx={{fontWeight: 'bold'}}>Sort by:</Text>
+        <Button 
+          variant={sortOrder === 'updated' ? 'primary' : 'default'} 
+          onClick={() => setSortOrder('updated')}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path fillRule="evenodd" d="M2.5 3.5v3h3v-3h-3zM2 2a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V3a1 1 0 00-1-1H2zm4.655 8.595a.75.75 0 010 1.06L4.03 14.28a.75.75 0 01-1.06 0l-2.625-2.625a.75.75 0 011.06-1.06l2.095 2.095 2.095-2.095a.75.75 0 011.06 0z"/>
+          </svg>
+          Last Updated
+        </Button>
+        <Button 
+          variant={sortOrder === 'created' ? 'primary' : 'default'} 
+          onClick={() => setSortOrder('created')}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path fillRule="evenodd" d="M8 3.5a.75.75 0 01.75.75v3.5h3.5a.75.75 0 010 1.5h-3.5v3.5a.75.75 0 01-1.5 0v-3.5h-3.5a.75.75 0 010-1.5h3.5v-3.5A.75.75 0 018 3.5z"/>
+          </svg>
+          Creation Date
+        </Button>
       </Box>
 
       {/* Label-Filter UI */}
@@ -735,6 +755,9 @@ function AppWithContexts() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>(() => 
     (localStorage.getItem('status-filter') as 'all' | 'open' | 'closed') || 'all'
   );
+  const [sortOrder, setSortOrder] = useState<'updated' | 'created'>(() => 
+    (localStorage.getItem('sort-order') as 'updated' | 'created') || 'updated'
+  );
 
   // Save state to localStorage on changes (excluding username which is handled separately)
   useEffect(() => {
@@ -751,7 +774,8 @@ function AppWithContexts() {
     localStorage.setItem('expanded', JSON.stringify(expanded));
     localStorage.setItem('description-visible', JSON.stringify(descriptionVisible));
     localStorage.setItem('status-filter', statusFilter);
-  }, [startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible, statusFilter]);
+    localStorage.setItem('sort-order', sortOrder);
+  }, [startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible, statusFilter, sortOrder]);
 
   // Auto-fetch results when URL parameters are present on initial load
   useEffect(() => {
@@ -920,36 +944,45 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
 };
 
   // Memoize the filteredResults to prevent recalculations on form changes
-  const filteredResults = useMemo(() => results.filter(item => {
-    // Type filter (Issue or PR)
-    const typeMatch = 
-      filter === 'all' ? true : 
-      filter === 'pr' ? !!item.pull_request : 
-      !item.pull_request;
-    
-    // Status filter
-    const statusMatch = 
-      statusFilter === 'all' ? true :
-      statusFilter === item.state;
-    
-    // Label filter
-    const labelMatch = labelFilter ? item.labels?.some(l => l.name === labelFilter) : true;
-    
-    // Repository filter - if repo filters are selected, only show items from those repos
-    const repoMatch = repoFilters.length === 0 ? true : (
-      item.repository_url && repoFilters.includes(
-        item.repository_url.replace('https://api.github.com/repos/', '')
-      )
-    );
-    
-    // Text filter (search in title and description)
-    const searchMatch = searchText.trim() === '' ? true : (
-      (item.title?.toLowerCase().includes(searchText.toLowerCase()) || 
-       item.body?.toLowerCase().includes(searchText.toLowerCase()))
-    );
-    
-    return typeMatch && statusMatch && labelMatch && repoMatch && searchMatch;
-  }), [results, filter, statusFilter, labelFilter, repoFilters, searchText]);
+  const filteredResults = useMemo(() => {
+    const filtered = results.filter(item => {
+      // Type filter (Issue or PR)
+      const typeMatch = 
+        filter === 'all' ? true : 
+        filter === 'pr' ? !!item.pull_request : 
+        !item.pull_request;
+      
+      // Status filter
+      const statusMatch = 
+        statusFilter === 'all' ? true :
+        statusFilter === item.state;
+      
+      // Label filter
+      const labelMatch = labelFilter ? item.labels?.some(l => l.name === labelFilter) : true;
+      
+      // Repository filter - if repo filters are selected, only show items from those repos
+      const repoMatch = repoFilters.length === 0 ? true : (
+        item.repository_url && repoFilters.includes(
+          item.repository_url.replace('https://api.github.com/repos/', '')
+        )
+      );
+      
+      // Text filter (search in title and description)
+      const searchMatch = searchText.trim() === '' ? true : (
+        (item.title?.toLowerCase().includes(searchText.toLowerCase()) || 
+         item.body?.toLowerCase().includes(searchText.toLowerCase()))
+      );
+      
+      return typeMatch && statusMatch && labelMatch && repoMatch && searchMatch;
+    });
+
+    // Sort the filtered results
+    return [...filtered].sort((a, b) => {
+      const dateA = new Date(sortOrder === 'updated' ? a.updated_at : a.created_at);
+      const dateB = new Date(sortOrder === 'updated' ? b.updated_at : b.created_at);
+      return dateB.getTime() - dateA.getTime(); // Most recent first
+    });
+  }, [results, filter, statusFilter, labelFilter, repoFilters, searchText, sortOrder]);
 
   // Memoize stats calculation to prevent recalculations on form changes
   const stats = useMemo(() => ({
@@ -1042,6 +1075,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     filteredResults,
     filter,
     statusFilter,
+    sortOrder,
     labelFilter,
     searchText,
     repoFilters,
@@ -1050,6 +1084,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     stats,
     setFilter,
     setStatusFilter,
+    setSortOrder,
     setLabelFilter,
     setSearchText,
     setRepoFilters,
@@ -1064,6 +1099,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     filteredResults, 
     filter, 
     statusFilter, 
+    sortOrder,
     labelFilter, 
     searchText, 
     repoFilters, 
