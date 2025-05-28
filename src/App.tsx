@@ -120,6 +120,7 @@ interface ResultsContextType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr';
+  statusFilter: 'all' | 'open' | 'closed';  // Add status filter
   labelFilter: string;
   searchText: string;
   repoFilters: string[];
@@ -133,6 +134,7 @@ interface ResultsContextType {
     closed: number;
   };
   setFilter: (filter: 'all' | 'issue' | 'pr') => void;
+  setStatusFilter: (status: 'all' | 'open' | 'closed') => void;  // Add status filter setter
   setLabelFilter: (filter: string) => void;
   setSearchText: (text: string) => void;
   setRepoFilters: (repos: string[]) => void;
@@ -259,12 +261,14 @@ const ResultsList = memo(function ResultsList() {
   const {
     filteredResults,
     filter,
+    statusFilter,
     labelFilter,
     availableLabels,
     availableRepos,
     repoFilters,
     searchText,
     setFilter,
+    setStatusFilter,
     setLabelFilter,
     setSearchText,
     setRepoFilters,
@@ -285,6 +289,23 @@ const ResultsList = memo(function ResultsList() {
         <Button variant={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')}>All</Button>
         <Button variant={filter === 'issue' ? 'primary' : 'default'} onClick={() => setFilter('issue')}>Issues</Button>
         <Button variant={filter === 'pr' ? 'primary' : 'default'} onClick={() => setFilter('pr')}>PRs</Button>
+      </Box>
+
+      {/* Status Filter UI */}
+      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
+        <Text as="span" sx={{fontWeight: 'bold'}}>Status Filter:</Text>
+        <Button
+          variant={statusFilter === 'all' ? 'primary' : 'default'}
+          onClick={() => setStatusFilter('all')}
+        >All</Button>
+        <Button
+          variant={statusFilter === 'open' ? 'primary' : 'default'}
+          onClick={() => setStatusFilter('open')}
+        >Open</Button>
+        <Button
+          variant={statusFilter === 'closed' ? 'primary' : 'default'}
+          onClick={() => setStatusFilter('closed')}
+        >Closed</Button>
       </Box>
 
       {/* Label-Filter UI */}
@@ -460,14 +481,48 @@ const ResultsList = memo(function ResultsList() {
                   <Label variant={item.pull_request ? 'success' : 'accent' as PrimerLabelVariant}>
                     {item.pull_request ? 'PR' : 'Issue'}
                   </Label>
-                  <Label variant={item.state === 'open' ? 'success' : 'done' as PrimerLabelVariant}>
-                    {item.state}
-                  </Label>
-                  {/* PR Merge-Status anzeigen */}
-                  {item.pull_request && item.state === 'closed' && (
-                    <Label variant="sponsors" sx={{ ml: 1 }}>
-                      Gemerged: {calculateDuration(item.created_at, item.merged_at || item.closed_at)}
-                    </Label>
+                  {/* Enhanced state labels with distinct colors */}
+                  {item.pull_request ? (
+                    item.state === 'closed' ? (
+                      item.merged ? (
+                        <Label variant="sponsors" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path fillRule="evenodd" d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5-6.5a.75.75 0 100-1.5.75.75 0 000 1.5zM5.75 15.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+                          </svg>
+                          Merged
+                        </Label>
+                      ) : (
+                        <Label variant="done" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path fillRule="evenodd" d="M2.343 13.657A8 8 0 1113.657 2.343 8 8 0 012.343 13.657zM6.03 4.97a.75.75 0 00-1.06 1.06L6.94 8 4.97 9.97a.75.75 0 101.06 1.06L8 9.06l1.97 1.97a.75.75 0 101.06-1.06L9.06 8l1.97-1.97a.75.75 0 10-1.06-1.06L8 6.94 6.03 4.97z" />
+                          </svg>
+                          Closed
+                        </Label>
+                      )
+                    ) : (
+                      <Label variant="success" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <path fillRule="evenodd" d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z" />
+                        </svg>
+                        Open PR
+                      </Label>
+                    )
+                  ) : (
+                    item.state === 'closed' ? (
+                      <Label variant="done" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <path fillRule="evenodd" d="M1.5 8a6.5 6.5 0 0110.65-5.003.75.75 0 00.959-1.153 8 8 0 102.592 8.33.75.75 0 10-1.444-.407A6.5 6.5 0 011.5 8zM8 12a1 1 0 100-2 1 1 0 000 2zm0-8a.75.75 0 01.75.75v3.5a.75.75 0 11-1.5 0v-3.5A.75.75 0 018 4zm4.78 4.28l3-3a.75.75 0 00-1.06-1.06l-2.47 2.47-.97-.97a.749.749 0 10-1.06 1.06l1.5 1.5a.75.75 0 001.06 0z" />
+                        </svg>
+                        Closed Issue
+                      </Label>
+                    ) : (
+                      <Label variant="success" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z" />
+                        </svg>
+                        Open Issue
+                      </Label>
+                    )
                   )}
                   {/* Display labels nicely */}
                   {item.labels && item.labels.map(l => (
@@ -650,6 +705,9 @@ function AppWithContexts() {
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState<string>('');
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>(() => 
+    (localStorage.getItem('status-filter') as 'all' | 'open' | 'closed') || 'all'
+  );
 
   // Save state to localStorage on changes (excluding username which is handled separately)
   useEffect(() => {
@@ -665,7 +723,8 @@ function AppWithContexts() {
     localStorage.setItem('repo-filters', JSON.stringify(repoFilters));
     localStorage.setItem('expanded', JSON.stringify(expanded));
     localStorage.setItem('description-visible', JSON.stringify(descriptionVisible));
-  }, [startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible]);
+    localStorage.setItem('status-filter', statusFilter);
+  }, [startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible, statusFilter]);
 
   // Auto-fetch results when URL parameters are present on initial load
   useEffect(() => {
@@ -841,6 +900,11 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
       filter === 'pr' ? !!item.pull_request : 
       !item.pull_request;
     
+    // Status filter
+    const statusMatch = 
+      statusFilter === 'all' ? true :
+      statusFilter === item.state;
+    
     // Label filter
     const labelMatch = labelFilter ? item.labels?.some(l => l.name === labelFilter) : true;
     
@@ -857,8 +921,8 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
        item.body?.toLowerCase().includes(searchText.toLowerCase()))
     );
     
-    return typeMatch && labelMatch && repoMatch && searchMatch;
-  }), [results, filter, labelFilter, repoFilters, searchText]);
+    return typeMatch && statusMatch && labelMatch && repoMatch && searchMatch;
+  }), [results, filter, statusFilter, labelFilter, repoFilters, searchText]);
 
   // Memoize stats calculation to prevent recalculations on form changes
   const stats = useMemo(() => ({
@@ -950,6 +1014,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     results,
     filteredResults,
     filter,
+    statusFilter,
     labelFilter,
     searchText,
     repoFilters,
@@ -957,6 +1022,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     availableRepos,
     stats,
     setFilter,
+    setStatusFilter,
     setLabelFilter,
     setSearchText,
     setRepoFilters,
@@ -970,6 +1036,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     results, 
     filteredResults, 
     filter, 
+    statusFilter, 
     labelFilter, 
     searchText, 
     repoFilters, 
