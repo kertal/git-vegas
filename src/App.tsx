@@ -81,6 +81,7 @@ interface GitHubItem {
   merged?: boolean;      // Ob der PR gemerged wurde
   merged_at?: string;    // Zeitpunkt, an dem der PR gemerged wurde (auf oberster Ebene)
   closed_at?: string;    // Zeitpunkt, an dem der Issue/PR geschlossen wurde
+  number?: number; // Added for PR number reference
 }
 
 // Define a type for Label variants based on Primer's documentation
@@ -191,12 +192,12 @@ const SearchForm = memo(function SearchForm() {
           }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="label" htmlFor="username" sx={{ fontWeight: 'bold', fontSize: 1 }}>GitHub Username</Text>
+            <Text as="label" htmlFor="username" sx={{ fontWeight: 'bold', fontSize: 1 }}>GitHub Username(s)</Text>
             <TextInput
               id="username"
-              aria-label="GitHub Username"
+              aria-label="GitHub Usernames"
               name="username"
-              placeholder="GitHub Username"
+              placeholder="Enter usernames (comma-separated for multiple)"
               value={username}
               onChange={handleUsernameChange}
               sx={{width: '100%'}}
@@ -686,6 +687,14 @@ function AppWithContexts() {
       return;
     }
     
+    // Split usernames and trim whitespace
+    const usernames = username.split(',').map(u => u.trim()).filter(u => u);
+    
+    if (usernames.length === 0) {
+      setError('Please provide at least one username.');
+      return;
+    }
+    
     // Update URL with current search parameters when the form is submitted
     updateUrlParams({
       username: username || null,
@@ -698,80 +707,84 @@ function AppWithContexts() {
     setLoadingProgress('Fetching data...');
     
     try {
-      const MAX_PAGES = 5; // Fetch up to 5 pages (500 results total)
+      const MAX_PAGES = 5; // Fetch up to 5 pages (500 results total) per user
       let allItems: GitHubItem[] = [];
       const labelsSet = new Set<string>();
       const reposSet = new Set<string>();
-      let hasMorePages = true;
       
-      // Fetch pages in sequence
-      for (let page = 1; page <= MAX_PAGES && hasMorePages; page++) {
-        setLoadingProgress(`Fetching page ${page} of ${MAX_PAGES}...`);
+      // Fetch data for each username
+      for (let userIndex = 0; userIndex < usernames.length; userIndex++) {
+        const currentUsername = usernames[userIndex];
+        setLoadingProgress(`Fetching data for ${currentUsername} (${userIndex + 1}/${usernames.length})...`);
         
-        const response = await fetch(
-          `https://api.github.com/search/issues?q=author:${encodeURIComponent(username)}+created:${startDate}..${endDate}&per_page=100&page=${page}`
-        );
+        let hasMorePages = true;
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `Failed to fetch page ${page}`);
-        }
-        
-        const data = await response.json();
-        const items = data.items || [];
-        
-        // Fetch additional PR details for merged_at information
-        const prDetailsPromises = items
-          .filter(item => item.pull_request)
-          .map(async (pr) => {
-            try {
-              // Das PR-URL-Format ist normalerweise: https://api.github.com/repos/{owner}/{repo}/pulls/{number}
-              // Wir verwenden die URL aus dem Pull-Request-Objekt
-              if (pr.pull_request?.url) {
-                const prResponse = await fetch(pr.pull_request.url);
-                if (prResponse.ok) {
-                  const prData = await prResponse.json();
-                  // Aktualisiere das PR-Objekt mit den zusätzlichen Informationen
-                  pr.merged = prData.merged;
-                  pr.merged_at = prData.merged_at;
-                  pr.closed_at = prData.closed_at;
+        // Fetch pages in sequence for current user
+        for (let page = 1; page <= MAX_PAGES && hasMorePages; page++) {
+          setLoadingProgress(`Fetching page ${page} of ${MAX_PAGES} for ${currentUsername}...`);
+          
+          const response = await fetch(
+            `https://api.github.com/search/issues?q=author:${encodeURIComponent(currentUsername)}+created:${startDate}..${endDate}&per_page=100&page=${page}`
+          );
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || `Failed to fetch page ${page} for ${currentUsername}`);
+          }
+          
+          const data = await response.json();
+          const items = data.items || [];
+          
+          // Fetch additional PR details for merged_at information
+          const prDetailsPromises = items
+            .filter((item: GitHubItem) => item.pull_request)
+            .map(async (pr: GitHubItem) => {
+              try {
+                if (pr.pull_request?.url) {
+                  const prResponse = await fetch(pr.pull_request.url);
+                  if (prResponse.ok) {
+                    const prData = await prResponse.json();
+                    pr.merged = prData.merged;
+                    pr.merged_at = prData.merged_at;
+                    pr.closed_at = prData.closed_at;
+                  }
                 }
+                return pr;
+              } catch (error) {
+                console.error(`Error fetching PR details for #${pr.number}:`, error);
+                return pr;
               }
-              return pr;
-            } catch (error) {
-              console.error(`Fehler beim Abrufen der PR-Details für #${pr.number}:`, error);
-              return pr; // Gib das ursprüngliche PR-Objekt zurück im Fehlerfall
+            });
+          
+          // Wait for all PR detail requests
+          await Promise.all(prDetailsPromises);
+          
+          // Process items from this page
+          items.forEach((item: GitHubItem) => {
+            // Add labels to set
+            item.labels?.forEach(l => labelsSet.add(l.name));
+            
+            // Add repository to set if available
+            if (item.repository_url) {
+              const repoName = item.repository_url.replace('https://api.github.com/repos/', '');
+              reposSet.add(repoName);
             }
           });
-        
-        // Warte auf alle PR-Detail-Anfragen
-        await Promise.all(prDetailsPromises);
-        
-        // Process items from this page
-        items.forEach((item: GitHubItem) => {
-          // Add labels to set
-          item.labels?.forEach(l => labelsSet.add(l.name));
           
-          // Add repository to set if available
-          if (item.repository_url) {
-            const repoName = item.repository_url.replace('https://api.github.com/repos/', '');
-            reposSet.add(repoName);
+          // Add items from this page to our results
+          allItems = [...allItems, ...items];
+          
+          // Check if we've reached the end of results
+          hasMorePages = items.length === 100 && data.total_count > page * 100;
+          
+          // Add a small delay to avoid rate limiting issues
+          if ((page < MAX_PAGES && hasMorePages) || userIndex < usernames.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Increased delay for multiple users
           }
-        });
-        
-        // Add items from this page to our results
-        allItems = [...allItems, ...items];
-        
-        // Check if we've reached the end of results
-        hasMorePages = items.length === 100 && data.total_count > page * 100;
-        
-        // Add a small delay to avoid rate limiting issues
-        if (page < MAX_PAGES && hasMorePages) {
-          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
       
-      setLoadingProgress(`Found ${allItems.length} results.`);
+      setLoadingProgress(`Found ${allItems.length} results across ${usernames.length} user${usernames.length > 1 ? 's' : ''}.`);
       
       // Update state with all collected items
       setResults(allItems);
