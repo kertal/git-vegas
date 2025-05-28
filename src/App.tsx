@@ -10,7 +10,7 @@ import remarkGfm from 'remark-gfm';
 // Add a simple debounce function
 const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return function(...args: any[]) {
+  return function(this: any, ...args: any[]) {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn.apply(this, args), ms);
   };
@@ -67,7 +67,10 @@ interface GitHubItem {
   id: number;
   html_url: string;
   title: string;
-  pull_request?: object; // Present if it's a Pull Request
+  pull_request?: {
+    merged_at?: string;  // Zeitpunkt, an dem der PR gemerged wurde
+    url?: string;        // URL des PRs für weitere API-Anfragen
+  };
   created_at: string;
   updated_at: string;
   state: string;
@@ -75,6 +78,9 @@ interface GitHubItem {
   labels?: { name: string; color?: string; description?: string }[];
   repository_url?: string;
   repository?: { full_name: string; html_url: string };
+  merged?: boolean;      // Ob der PR gemerged wurde
+  merged_at?: string;    // Zeitpunkt, an dem der PR gemerged wurde (auf oberster Ebene)
+  closed_at?: string;    // Zeitpunkt, an dem der Issue/PR geschlossen wurde
 }
 
 // Define a type for Label variants based on Primer's documentation
@@ -102,6 +108,10 @@ function useFormContext() {
     throw new Error('useFormContext must be used within a FormContextProvider');
   }
   return context;
+}
+
+function calculateDuration(){
+  return 'test';
 }
 
 // Results Context to isolate results state changes
@@ -318,7 +328,7 @@ const ResultsList = memo(function ResultsList() {
                   onClick={() => {
                     if (repoFilters.includes(repo)) {
                       // Remove from selection
-                      setRepoFilters(prev => prev.filter(r => r !== repo));
+                      setRepoFilters((prev: string[]) => prev.filter((r: string) => r !== repo));
                     } else {
                       // Add to selection
                       setRepoFilters([...repoFilters, repo]);
@@ -359,7 +369,7 @@ const ResultsList = memo(function ResultsList() {
                   <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
                 </svg>
               </TextInput.Action>
-            ) : null}
+            ) : undefined}
             sx={{width: '100%'}}
             block
           />
@@ -388,12 +398,13 @@ const ResultsList = memo(function ResultsList() {
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
               <Button 
                 onClick={copyResultsToClipboard}
-                variant="outline"
+                variant="default"
                 sx={{ 
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: 1,
-                  fontSize: 1
+                  fontSize: 1,
+                  borderColor: 'border.default'
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ display: 'inline-block', verticalAlign: 'text-bottom' }}>
@@ -451,6 +462,12 @@ const ResultsList = memo(function ResultsList() {
                   <Label variant={item.state === 'open' ? 'success' : 'done' as PrimerLabelVariant}>
                     {item.state}
                   </Label>
+                  {/* PR Merge-Status anzeigen */}
+                  {item.pull_request && item.state === 'closed' && (
+                    <Label variant="sponsors" sx={{ ml: 1 }}>
+                      Gemerged: {calculateDuration(item.created_at, item.merged_at || item.closed_at)}
+                    </Label>
+                  )}
                   {/* Display labels nicely */}
                   {item.labels && item.labels.map(l => (
                     <Label
@@ -499,7 +516,9 @@ const ResultsList = memo(function ResultsList() {
                     borderColor: 'border.muted',
                     fontSize: 1,
                     color: 'fg.muted',
-                  }}>
+                  }}><pre>
+                    {JSON.stringify(item)}
+                  </pre>
                     <ReactMarkdown 
                       remarkPlugins={[remarkGfm]}
                       components={{
@@ -526,7 +545,7 @@ const ResultsList = memo(function ResultsList() {
                             {...props}
                           />
                         ),
-                        code: ({node, inline, ...props}) => (
+                        code: ({node, inline, ...props}: {node: any, inline?: boolean, [key: string]: any}) => (
                           inline
                             ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
                             : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
@@ -701,6 +720,33 @@ function AppWithContexts() {
         const data = await response.json();
         const items = data.items || [];
         
+        // Fetch additional PR details for merged_at information
+        const prDetailsPromises = items
+          .filter(item => item.pull_request)
+          .map(async (pr) => {
+            try {
+              // Das PR-URL-Format ist normalerweise: https://api.github.com/repos/{owner}/{repo}/pulls/{number}
+              // Wir verwenden die URL aus dem Pull-Request-Objekt
+              if (pr.pull_request?.url) {
+                const prResponse = await fetch(pr.pull_request.url);
+                if (prResponse.ok) {
+                  const prData = await prResponse.json();
+                  // Aktualisiere das PR-Objekt mit den zusätzlichen Informationen
+                  pr.merged = prData.merged;
+                  pr.merged_at = prData.merged_at;
+                  pr.closed_at = prData.closed_at;
+                }
+              }
+              return pr;
+            } catch (error) {
+              console.error(`Fehler beim Abrufen der PR-Details für #${pr.number}:`, error);
+              return pr; // Gib das ursprüngliche PR-Objekt zurück im Fehlerfall
+            }
+          });
+        
+        // Warte auf alle PR-Detail-Anfragen
+        await Promise.all(prDetailsPromises);
+        
         // Process items from this page
         items.forEach((item: GitHubItem) => {
           // Add labels to set
@@ -748,6 +794,31 @@ function AppWithContexts() {
       setLoadingProgress('');
     }
   };
+
+// Hilfsfunktion zur Berechnung der Zeit zwischen zwei Datumsangaben
+const calculateDuration = (startDate: string, endDate: string | undefined): string => {
+  if (!endDate) return "Nicht abgeschlossen";
+  
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Berechnung der Differenz in Millisekunden
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  
+  // Umrechnung in Tage, Stunden, Minuten
+  const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diffTime % (1000 * 60)) / (1000 * 60));
+  
+  // Formatierung der Ausgabe
+  if (days > 0) {
+    return `${days} ${days === 1 ? 'Tag' : 'Tage'}${hours > 0 ? `, ${hours} ${hours === 1 ? 'Stunde' : 'Stunden'}` : ''}`;
+  } else if (hours > 0) {
+    return `${hours} ${hours === 1 ? 'Stunde' : 'Stunden'}${minutes > 0 ? `, ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}` : ''}`;
+  } else {
+    return `${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`;
+  }
+};
 
   // Memoize the filteredResults to prevent recalculations on form changes
   const filteredResults = useMemo(() => results.filter(item => {

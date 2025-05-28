@@ -1,10 +1,209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Event Viewer</title>
+  <style>
+    :root {
+      --bg: #fff;
+      --fg: #222;
+      --card-bg: #f9f9f9;
+      --accent: #0366d6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111;
+        --fg: #ddd;
+        --card-bg: #1e1e1e;
+        --accent: #58a6ff;
+      }
+    }
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      padding: 1rem;
+      background: var(--card-bg);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header input {
+      flex: 1;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    header button {
+      padding: 0.5rem 1rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #status {
+      font-size: 0.9rem;
+      margin-left: auto;
+    }
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    .event {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .event-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: bold;
+    }
+    .timestamp {
+      font-size: 0.85rem;
+      color: #666;
+      margin-left: auto;
+    }
+    details {
+      margin-top: 0.5rem;
+    }
+    summary {
+      cursor: pointer;
+      color: var(--accent);
+    }
+    pre {
+      background: #272822;
+      color: #f8f8f2;
+      padding: 0.5rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 0;
+    }
+  </style>
 </head>
 <body>
-$END$
+<header>
+  <input id="username" type="text" placeholder="GitHub username" value="" />
+  <button id="loadBtn">Load Events</button>
+  <div id="status">Idle</div>
+</header>
+<main id="events"></main>
+
+<script>
+  (() => {
+    const EMOJIS = {
+      PushEvent: '🔄',
+      CreateEvent: '🎉',
+      IssuesEvent: '🐛',
+      IssueCommentEvent: '💬',
+      PullRequestEvent: '🔀',
+      PullRequestReviewEvent: '✅',
+      ForkEvent: '🍴',
+      WatchEvent: '⭐',
+      DeleteEvent: '❌',
+      // add more mappings as needed
+    };
+
+    // Load saved username on page load
+    const savedUsername = localStorage.getItem('githubUsername');
+    if (savedUsername) {
+      document.getElementById('username').value = savedUsername;
+    }
+
+    function render(events) {
+      const container = document.getElementById('events');
+      container.innerHTML = '';
+      
+      if (!Array.isArray(events) || events.length === 0) {
+        container.innerHTML = '<div class="event">No events found</div>';
+        return;
+      }
+
+      events.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      for (const ev of events) {
+        const card = document.createElement('div');
+        card.className = 'event';
+        const header = document.createElement('div');
+        header.className = 'event-header';
+        const emoji = EMOJIS[ev.type] || '📦';
+        header.textContent = emoji + ' ' + ev.type;
+        const ts = document.createElement('div');
+        ts.className = 'timestamp';
+        ts.textContent = new Date(ev.created_at).toLocaleString();
+        header.appendChild(ts);
+        card.appendChild(header);
+        const summary = document.createElement('div');
+        summary.textContent = ev.payload.action
+                ? ev.payload.action.replace(/_/g, ' ') + ' ' + (ev.payload.ref || '')
+                : '';
+        card.appendChild(summary);
+        const details = document.createElement('details');
+        const summaryToggle = document.createElement('summary');
+        summaryToggle.textContent = 'View Raw JSON';
+        const pre = document.createElement('pre');
+        pre.textContent = JSON.stringify(ev, null, 2);
+        details.appendChild(summaryToggle);
+        details.appendChild(pre);
+        card.appendChild(details);
+        container.appendChild(card);
+      }
+    }
+
+    async function fetchAndSync(username) {
+      const url = `https://api.github.com/users/${username}/events`;
+      document.getElementById('status').textContent = 'Syncing...';
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+        }
+        const events = await res.json();
+        if (!Array.isArray(events)) {
+          throw new Error('Invalid response from GitHub API');
+        }
+        localStorage.setItem('githubEvents', JSON.stringify(events));
+        render(events);
+        document.getElementById('status').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+      } catch (e) {
+        console.error(e);
+        document.getElementById('status').textContent = 'Error: ' + e.message;
+        // Try to load cached events if available
+        const cachedEvents = localStorage.getItem('githubEvents');
+        if (cachedEvents) {
+          render(JSON.parse(cachedEvents));
+        }
+      }
+    }
+
+    // Load cached events on page load if available
+    const cachedEvents = localStorage.getItem('githubEvents');
+    if (cachedEvents) {
+      render(JSON.parse(cachedEvents));
+    }
+
+    let syncInterval = null;
+    document.getElementById('loadBtn').addEventListener('click', () => {
+      const user = document.getElementById('username').value.trim();
+      if (!user) return alert('Enter a GitHub username');
+      localStorage.setItem('githubUsername', user);
+      fetchAndSync(user);
+      if (syncInterval) clearInterval(syncInterval);
+      syncInterval = setInterval(() => fetchAndSync(user), 5 * 60 * 1000);
+    });
+  })();
+</script>
 </body>
 </html>
