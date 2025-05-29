@@ -20,7 +20,10 @@ import {
   Heading,
   Stack,
   ThemeProvider,
-  BaseStyles
+  BaseStyles,
+  Dialog,
+  IconButton,
+  useTheme
 } from '@primer/react';
 import {
   IssueOpenedIcon,
@@ -38,7 +41,10 @@ import {
   CalendarIcon,
   GitMergeIcon,
   ChevronUpIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
+  GearIcon,
+  SunIcon,
+  MoonIcon
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -231,7 +237,6 @@ const SearchForm = memo(function SearchForm() {
     username, setUsername, 
     startDate, setStartDate, 
     endDate, setEndDate,
-    githubToken, setGithubToken,
     handleSearch, 
     loading, 
     loadingProgress,
@@ -264,27 +269,6 @@ const SearchForm = memo(function SearchForm() {
           handleSearch(); 
         }}
       >
-        {/* Token field in its own row */}
-        <FormControl>
-          <FormControl.Label>
-            GitHub Token (optional)
-            <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
-              - stored in session only
-            </Text>
-          </FormControl.Label>
-          <TextInput
-            type="password"
-            placeholder="GitHub personal access token"
-            value={githubToken}
-            onChange={(e) => setGithubToken(e.target.value)}
-            block
-            aria-describedby="token-caption"
-          />
-          <FormControl.Caption id="token-caption">
-            Provide a token to increase API rate limits and access private repositories
-          </FormControl.Caption>
-        </FormControl>
-
         {/* Main search fields in a horizontal layout */}
         <Box sx={{
           display: 'grid',
@@ -1321,552 +1305,570 @@ const ResultsList = memo(function ResultsList() {
   );
 });
 
-// Wrap App component with Context Providers
-function AppWithContexts() {
-
-  // Get initial values from URL if present, then fall back to localStorage
-  const [username, setUsername] = useState(() => {
-    const urlUsername = getParamFromUrl('username');
-    if (urlUsername) return urlUsername;
-    return localStorage.getItem('github-username') || '';
-  });
-  
-  const [startDate, setStartDate] = useState(() => {
-    const urlStartDate = getParamFromUrl('startDate');
-    if (urlStartDate && isValidDateString(urlStartDate)) return urlStartDate;
-    return localStorage.getItem('start-date') || '';
-  });
-  
-  const [endDate, setEndDate] = useState(() => {
-    const urlEndDate = getParamFromUrl('endDate');
-    if (urlEndDate && isValidDateString(urlEndDate)) return urlEndDate;
-    return localStorage.getItem('end-date') || '';
-  });
-  
-  const [results, setResults] = useState<GitHubItem[]>(() => {
-    const savedResults = localStorage.getItem('results');
-    return savedResults ? JSON.parse(savedResults) : [];
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'issue' | 'pr'>(() => 
-    (localStorage.getItem('filter') as 'all' | 'issue' | 'pr') || 'all'
+// Add Settings Dialog Component
+const SettingsDialog = memo(function SettingsDialog({ 
+  isOpen, 
+  onDismiss 
+}: { 
+  isOpen: boolean; 
+  onDismiss: () => void;
+}) {
+  const { githubToken, setGithubToken } = useFormContext();
+  const [tokenStorage, setTokenStorage] = useState(() => 
+    localStorage.getItem('github-token-storage') || 'session'
   );
-  const [expanded, setExpanded] = useState<{ [id: number]: boolean }>(() => {
-    const savedExpanded = localStorage.getItem('expanded');
-    return savedExpanded ? JSON.parse(savedExpanded) : {};
+  
+  const handleStorageChange = useCallback((newStorage: string) => {
+    setTokenStorage(newStorage);
+    localStorage.setItem('github-token-storage', newStorage);
+    
+    // Move token to selected storage
+    if (newStorage === 'local') {
+      const sessionToken = sessionStorage.getItem('github-token');
+      if (sessionToken) {
+        localStorage.setItem('github-token', sessionToken);
+        sessionStorage.removeItem('github-token');
+      }
+    } else {
+      const localToken = localStorage.getItem('github-token');
+      if (localToken) {
+        sessionStorage.setItem('github-token', localToken);
+        localStorage.removeItem('github-token');
+      }
+    }
+  }, []);
+
+  const handleTokenChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newToken = e.target.value;
+    setGithubToken(newToken);
+    
+    // Store in selected storage
+    if (tokenStorage === 'local') {
+      if (newToken) {
+        localStorage.setItem('github-token', newToken);
+      } else {
+        localStorage.removeItem('github-token');
+      }
+    } else {
+      if (newToken) {
+        sessionStorage.setItem('github-token', newToken);
+      } else {
+        sessionStorage.removeItem('github-token');
+      }
+    }
+  }, [setGithubToken, tokenStorage]);
+
+  if (!isOpen) return null;
+
+  return (
+    <Dialog
+      onClose={onDismiss}
+      sx={{
+        width: ['90%', '80%', '600px'],
+        maxWidth: '800px',
+        margin: '0 auto'
+      }}
+    >
+      <Dialog.Header>Settings</Dialog.Header>
+      
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ 
+          mb: 3,
+          p: 3,
+          bg: 'accent.subtle',
+          border: '1px solid',
+          borderColor: 'accent.muted',
+          borderRadius: 2
+        }}>
+          <Heading as="h2" sx={{ fontSize: 2, mb: 2, color: 'accent.fg' }}>About GitHub Tokens</Heading>
+          <Text as="p" sx={{ fontSize: 1, mb: 2, color: 'fg.default' }}>
+            A GitHub token is optional but recommended for:
+          </Text>
+          <Text as="ul" sx={{ fontSize: 1, pl: 3, color: 'fg.default' }}>
+            <li>Accessing private repositories</li>
+            <li>Increased API rate limits (5,000/hour vs 60/hour)</li>
+            <li>Reduced likelihood of hitting request limits</li>
+          </Text>
+        </Box>
+
+        <FormControl sx={{ mb: 3 }}>
+          <FormControl.Label>Personal Access Token (Optional)</FormControl.Label>
+          <TextInput
+            type="password"
+            value={githubToken}
+            onChange={handleTokenChange}
+            placeholder="GitHub personal access token"
+            block
+            aria-describedby="token-help"
+            sx={{ bg: 'canvas.default', color: 'fg.default' }}
+          />
+          <FormControl.Caption id="token-help">
+            Use a fine-grained token with minimal permissions - read-only access to repositories is sufficient
+          </FormControl.Caption>
+        </FormControl>
+
+        <FormControl>
+          <FormControl.Label>Token Storage Location</FormControl.Label>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box as="label" sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.default' }}>
+              <input
+                type="radio"
+                name="storage"
+                value="session"
+                checked={tokenStorage === 'session'}
+                onChange={(e) => handleStorageChange(e.target.value)}
+              />
+              Browser Session (Recommended)
+            </Box>
+            <Text sx={{ ml: 4, mb: 2, fontSize: 0, color: 'fg.muted' }}>
+              Token is cleared when you close your browser. Most secure option.
+            </Text>
+            
+            <Box as="label" sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.default' }}>
+              <input
+                type="radio"
+                name="storage"
+                value="local"
+                checked={tokenStorage === 'local'}
+                onChange={(e) => handleStorageChange(e.target.value)}
+              />
+              Local Storage
+            </Box>
+            <Text sx={{ ml: 4, fontSize: 0, color: 'fg.muted' }}>
+              Token persists after browser closes. Less secure but more convenient.
+            </Text>
+          </Box>
+        </FormControl>
+
+        <Box sx={{ 
+          mt: 3, 
+          p: 3, 
+          bg: 'canvas.subtle',
+          border: '1px solid',
+          borderColor: 'border.default',
+          borderRadius: 2
+        }}>
+          <Heading as="h3" sx={{ fontSize: 1, mb: 2, color: 'fg.muted' }}>Security Best Practices</Heading>
+          <Text as="ul" sx={{ fontSize: 0, color: 'fg.muted', pl: 3 }}>
+            <li>Use fine-grained tokens with minimal permissions when possible</li>
+            <li>Never share your token or commit it to version control</li>
+            <li>Set an expiration date on your token for better security</li>
+            <li>Review and revoke tokens regularly in your GitHub settings</li>
+          </Text>
+        </Box>
+      </Box>
+    </Dialog>
+  );
+});
+
+// Add the main App component
+function App() {
+  // State for settings dialog
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Form state with local storage
+  const [username, setUsername] = useState(() => localStorage.getItem('github-username') || '');
+  const [startDate, setStartDate] = useState(() => {
+    const storedDate = localStorage.getItem('github-start-date');
+    if (storedDate) return storedDate;
+    const date = new Date();
+    date.setDate(date.getDate() - 30); // Default to last 30 days
+    return date.toISOString().split('T')[0];
   });
-  const [descriptionVisible, setDescriptionVisible] = useState<{ [id: number]: boolean }>(() => {
-    const savedDescVisible = localStorage.getItem('description-visible');
-    return savedDescVisible ? JSON.parse(savedDescVisible) : {};
+  const [endDate, setEndDate] = useState(() => {
+    const storedDate = localStorage.getItem('github-end-date');
+    if (storedDate) return storedDate;
+    return new Date().toISOString().split('T')[0];
   });
-  const [labelFilter, setLabelFilter] = useState<string>(() => localStorage.getItem('label-filter') || '');
-  const [searchText, setSearchText] = useState<string>(() => localStorage.getItem('search-text') || '');
-  const [availableLabels, setAvailableLabels] = useState<string[]>(() => {
-    const savedLabels = localStorage.getItem('available-labels');
-    return savedLabels ? JSON.parse(savedLabels) : [];
-  });
-  const [availableRepos, setAvailableRepos] = useState<string[]>(() => {
-    const savedRepos = localStorage.getItem('available-repos');
-    return savedRepos ? JSON.parse(savedRepos) : [];
-  });
-  const [repoFilters, setRepoFilters] = useState<string[]>(() => {
-    const savedRepoFilters = localStorage.getItem('repo-filters');
-    return savedRepoFilters ? JSON.parse(savedRepoFilters) : [];
+  const [githubToken, setGithubToken] = useState(() => {
+    return sessionStorage.getItem('github-token') || localStorage.getItem('github-token') || '';
   });
   const [loading, setLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState<string>('');
-  const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'merged'>(() => 
-    (localStorage.getItem('status-filter') as 'all' | 'open' | 'closed' | 'merged') || 'all'
-  );
-  const [sortOrder, setSortOrder] = useState<'updated' | 'created'>(() => 
-    (localStorage.getItem('sort-order') as 'updated' | 'created') || 'updated'
-  );
+  const [loadingProgress, setLoadingProgress] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  // Add GitHub token state using sessionStorage
-  const [githubToken, setGithubToken] = useState(() => 
-    sessionStorage.getItem('github-token') || ''
-  );
-
-  const [isCompactView, setIsCompactView] = useState(() => 
-    localStorage.getItem('is-compact-view') === 'true'
-  );
-
-  const [excludedLabels, setExcludedLabels] = useState<string[]>(() => {
-    const savedExcludedLabels = localStorage.getItem('excluded-labels');
-    return savedExcludedLabels ? JSON.parse(savedExcludedLabels) : [];
+  // Results state with local storage
+  const [results, setResults] = useState<GitHubItem[]>(() => {
+    const storedResults = localStorage.getItem('github-results');
+    return storedResults ? JSON.parse(storedResults) : [];
   });
 
-  // Save state to localStorage on changes (excluding username which is handled separately)
-  useEffect(() => {
-    // We handle username with debounced updates, so we don't need to save it here
-    localStorage.setItem('start-date', startDate);
-    localStorage.setItem('end-date', endDate);
-    localStorage.setItem('results', JSON.stringify(results));
-    localStorage.setItem('filter', filter);
-    localStorage.setItem('label-filter', labelFilter);
-    localStorage.setItem('search-text', searchText);
-    localStorage.setItem('available-labels', JSON.stringify(availableLabels));
-    localStorage.setItem('available-repos', JSON.stringify(availableRepos));
-    localStorage.setItem('repo-filters', JSON.stringify(repoFilters));
-    localStorage.setItem('expanded', JSON.stringify(expanded));
-    localStorage.setItem('description-visible', JSON.stringify(descriptionVisible));
-    localStorage.setItem('status-filter', statusFilter);
-    localStorage.setItem('sort-order', sortOrder);
-    localStorage.setItem('is-compact-view', isCompactView.toString());
-    localStorage.setItem('excluded-labels', JSON.stringify(excludedLabels));
-  }, [startDate, endDate, results, filter, labelFilter, searchText, availableLabels, availableRepos, repoFilters, expanded, descriptionVisible, statusFilter, sortOrder, isCompactView, excludedLabels]);
+  // Background refresh functionality
+  const fetchDataInBackground = useCallback(async (silent = false) => {
+    if (!username) return;
 
-  // Save token to sessionStorage when it changes
-  useEffect(() => {
-    if (githubToken) {
-      sessionStorage.setItem('github-token', githubToken);
-    } else {
-      sessionStorage.removeItem('github-token');
+    if (!silent) {
+      setLoadingProgress('Refreshing data in background...');
     }
-  }, [githubToken]);
 
-  // Auto-fetch results when URL parameters are present on initial load
-  useEffect(() => {
-    const urlUsername = getParamFromUrl('username');
-    const urlStartDate = getParamFromUrl('startDate');
-    const urlEndDate = getParamFromUrl('endDate');
-    
-    // If we have valid URL parameters on first load, automatically fetch the data
-    if (urlUsername && urlStartDate && urlEndDate && 
-        isValidDateString(urlStartDate) && isValidDateString(urlEndDate) && 
-        results.length === 0) {
-      fetchGitHubData();
-    }
-  }, []); // Empty dependency array means this runs only on component mount
-
-  const fetchGitHubData = async () => {
-    if (!username || !startDate || !endDate) {
-      setError('Please fill in all fields.');
-      return;
-    }
-    
-    // Split usernames and trim whitespace
-    const usernames = username.split(',').map(u => u.trim()).filter(u => u);
-    
-    if (usernames.length === 0) {
-      setError('Please provide at least one username.');
-      return;
-    }
-    
-    // Update URL with current search parameters when the form is submitted
-    updateUrlParams({
-      username: username || null,
-      startDate: isValidDateString(startDate) ? startDate : null,
-      endDate: isValidDateString(endDate) ? endDate : null
-    });
-    
-    setError(null);
-    setLoading(true);
-    setLoadingProgress('Fetching data...');
-
-    // Prepare headers for GitHub API requests
-    const headers: HeadersInit = {
-      'Accept': 'application/vnd.github.v3+json'
-    };
-    if (githubToken) {
-      headers['Authorization'] = `token ${githubToken}`;
-    }
-    
     try {
-      const MAX_PAGES = 5; // Fetch up to 5 pages (500 results total) per user
-      let allItems: GitHubItem[] = [];
-      const labelsSet = new Set<string>();
-      const reposSet = new Set<string>();
+      const usernames = username.split(',').map(u => u.trim());
+      const allResults: GitHubItem[] = [];
+
+      for (const user of usernames) {
+        if (!silent) {
+          setLoadingProgress(`Fetching data for ${user}...`);
+        }
+        
+        const headers: HeadersInit = {
+          'Accept': 'application/vnd.github.v3+json'
+        };
+        
+        if (githubToken) {
+          headers['Authorization'] = `token ${githubToken}`;
+        }
+
+        const response = await fetch(
+          `https://api.github.com/search/issues?q=author:${user}+created:${startDate}..${endDate}&per_page=100`,
+          { headers }
+        );
+
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        allResults.push(...data.items);
+      }
+
+      // Compare with existing results and only update if there are changes
+      const currentResults = JSON.stringify(results.map(r => r.id).sort());
+      const newResults = JSON.stringify(allResults.map(r => r.id).sort());
       
-      // Fetch data for each username
-      for (let userIndex = 0; userIndex < usernames.length; userIndex++) {
-        const currentUsername = usernames[userIndex];
-        setLoadingProgress(`Fetching data for ${currentUsername} (${userIndex + 1}/${usernames.length})...`);
-        
-        let hasMorePages = true;
-        
-        // Fetch pages in sequence for current user
-        for (let page = 1; page <= MAX_PAGES && hasMorePages; page++) {
-          setLoadingProgress(`Fetching page ${page} of ${MAX_PAGES} for ${currentUsername}...`);
-          
-          const response = await fetch(
-            `https://api.github.com/search/issues?q=author:${encodeURIComponent(currentUsername)}+updated:${startDate}..${endDate}&per_page=100&page=${page}`,
-            { headers }
-          );
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || `Failed to fetch page ${page} for ${currentUsername}`);
+      if (currentResults !== newResults) {
+        setResults(allResults);
+        if (!silent) {
+          setLoadingProgress('Data updated successfully!');
+          setTimeout(() => setLoadingProgress(''), 2000);
+        }
+      } else if (!silent) {
+        setLoadingProgress('No new updates found');
+        setTimeout(() => setLoadingProgress(''), 2000);
+      }
+    } catch (err) {
+      if (!silent) {
+        setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
+      }
+      console.error('Background fetch error:', err);
+    }
+  }, [username, startDate, endDate, githubToken]);
+
+  // Initial load from local storage and background refresh
+  useEffect(() => {
+    let isSubscribed = true;
+    let initialLoadDone = false;
+
+    const loadInitialData = async () => {
+      // Try to load from localStorage first
+      const storedResults = localStorage.getItem('github-results');
+      let hasValidStoredData = false;
+
+      if (storedResults && isSubscribed) {
+        try {
+          const parsedResults = JSON.parse(storedResults);
+          if (Array.isArray(parsedResults) && parsedResults.length > 0) {
+            setResults(parsedResults);
+            hasValidStoredData = true;
           }
-          
-          const data = await response.json();
-          const items = data.items || [];
-          
-          // Process items from this page
-          items.forEach((item: GitHubItem) => {
-            // For PRs, check if it's merged based on the state and merged_at field
-            if (item.pull_request) {
-              item.merged = !!item.pull_request.merged_at;
-            }
-            
-            // Add labels to set
-            item.labels?.forEach(l => labelsSet.add(l.name));
-            
-            // Add repository to set if available
-            if (item.repository_url) {
-              const repoName = item.repository_url.replace('https://api.github.com/repos/', '');
-              reposSet.add(repoName);
-            }
-          });
-          
-          // Add items from this page to our results
-          allItems = [...allItems, ...items];
-          
-          // Check if we've reached the end of results
-          hasMorePages = items.length === 100 && data.total_count > page * 100;
-          
-          // Add a small delay to avoid rate limiting issues
-          if ((page < MAX_PAGES && hasMorePages) || userIndex < usernames.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Increased delay for multiple users
-          }
+        } catch (error) {
+          console.error('Error parsing stored results:', error);
+          localStorage.removeItem('github-results');
         }
       }
-      
-      setLoadingProgress(`Found ${allItems.length} results across ${usernames.length} user${usernames.length > 1 ? 's' : ''}.`);
-      
-      // Update state with all collected items
-      setResults(allItems);
-      setAvailableLabels(Array.from(labelsSet));
-      setAvailableRepos(Array.from(reposSet));
-      setRepoFilters([]);
-      
-    } catch (err: unknown) {
-      console.error('Error fetching data:', err);
-      if (err instanceof Error) {
-        setError(err.message || 'Failed to fetch data. Please try again.');
-      } else {
-        setError('An unknown error occurred. Please try again.');
+
+      // Only fetch if we have search parameters and no valid stored data
+      if (username && startDate && endDate && (!hasValidStoredData || Date.now() - Number(localStorage.getItem('github-results-timestamp') || 0) > 5 * 60 * 1000)) {
+        await fetchDataInBackground(true);
       }
-      setResults([]);
-      setAvailableLabels([]);
-      setAvailableRepos([]);
-    } finally {
-      setLoading(false);
-      setLoadingProgress('');
+      
+      initialLoadDone = true;
+    };
+
+    loadInitialData();
+
+    // Set up periodic background refresh (every 5 minutes)
+    const refreshInterval = setInterval(() => {
+      if (username && startDate && endDate && isSubscribed && initialLoadDone) {
+        fetchDataInBackground(true);
+      }
+    }, 5 * 60 * 1000);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(refreshInterval);
+    };
+  }, [username, startDate, endDate]);
+
+  // Save results to local storage whenever they change
+  useEffect(() => {
+    if (results.length > 0) {
+      localStorage.setItem('github-results', JSON.stringify(results));
+      localStorage.setItem('github-results-timestamp', Date.now().toString());
     }
-  };
+  }, [results]);
 
-// Hilfsfunktion zur Berechnung der Zeit zwischen zwei Datumsangaben
-const calculateDuration = (startDate: string, endDate: string | undefined): string => {
-  if (!endDate) return "Nicht abgeschlossen";
-  
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  // Berechnung der Differenz in Millisekunden
-  const diffTime = Math.abs(end.getTime() - start.getTime());
-  
-  // Umrechnung in Tage, Stunden, Minuten
-  const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diffTime % (1000 * 60)) / (1000 * 60));
-  
-  // Formatierung der Ausgabe
-  if (days > 0) {
-    return `${days} ${days === 1 ? 'Tag' : 'Tage'}${hours > 0 ? `, ${hours} ${hours === 1 ? 'Stunde' : 'Stunden'}` : ''}`;
-  } else if (hours > 0) {
-    return `${hours} ${hours === 1 ? 'Stunde' : 'Stunden'}${minutes > 0 ? `, ${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}` : ''}`;
-  } else {
-    return `${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`;
-  }
-};
+  // Save search parameters to local storage
+  useEffect(() => {
+    if (username) localStorage.setItem('github-username', username);
+    if (startDate) localStorage.setItem('github-start-date', startDate);
+    if (endDate) localStorage.setItem('github-end-date', endDate);
+  }, [username, startDate, endDate]);
 
-  // Update filteredResults to properly handle merged filter
-  const filteredResults = useMemo(() => {
-    const filtered = results.filter(item => {
-      // Type filter (Issue or PR)
-      const typeMatch = 
-        filter === 'all' ? true : 
-        filter === 'pr' ? !!item.pull_request : 
-        !item.pull_request;
-      
-      // Status filter with proper merge date check
-      const statusMatch = 
-        statusFilter === 'all' ? true :
-        statusFilter === 'merged' ? (
-          !!item.pull_request?.merged_at && 
-          new Date(item.pull_request.merged_at) >= new Date(startDate) &&
-          new Date(item.pull_request.merged_at) <= new Date(endDate)
-        ) :
-        statusFilter === item.state;
-      
-      // Label filter - include and exclude
-      const labelMatch = labelFilter ? item.labels?.some(l => l.name === labelFilter) : true;
-      const excludeMatch = excludedLabels.length === 0 ? true : 
-        !item.labels?.some(l => excludedLabels.includes(l.name));
-      
-      // Repository filter
-      const repoMatch = repoFilters.length === 0 ? true : (
-        item.repository_url && repoFilters.includes(
-          item.repository_url.replace('https://api.github.com/repos/', '')
-        )
-      );
-      
-      // Text filter
-      const searchMatch = searchText.trim() === '' ? true : (
-        (item.title?.toLowerCase().includes(searchText.toLowerCase()) || 
-         item.body?.toLowerCase().includes(searchText.toLowerCase()))
-      );
-      
-      return typeMatch && statusMatch && labelMatch && excludeMatch && repoMatch && searchMatch;
+  // Main search handler
+  const handleSearch = useCallback(async () => {
+    if (!username) {
+      setError('Please enter a GitHub username');
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      setError('Please select both start and end dates');
+      return;
+    }
+
+    if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
+      setError('Invalid date format. Please use YYYY-MM-DD');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    await fetchDataInBackground(false);
+    setLoading(false);
+  }, [username, startDate, endDate, fetchDataInBackground]);
+
+  // Results state
+  const [filter, setFilter] = useState<'all' | 'issue' | 'pr'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'merged'>('all');
+  const [sortOrder, setSortOrder] = useState<'updated' | 'created'>('updated');
+  const [labelFilter, setLabelFilter] = useState('');
+  const [excludedLabels, setExcludedLabels] = useState<string[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [repoFilters, setRepoFilters] = useState<string[]>([]);
+  const [descriptionVisible, setDescriptionVisible] = useState<{[id: number]: boolean}>({});
+  const [expanded, setExpanded] = useState<{[id: number]: boolean}>({});
+  const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
+  const [isCompactView, setIsCompactView] = useState(false);
+
+  // Derived state
+  const availableLabels = useMemo(() => {
+    const labels = new Set<string>();
+    results.forEach(item => {
+      item.labels?.forEach(label => labels.add(label.name));
     });
+    return Array.from(labels);
+  }, [results]);
 
-    return [...filtered].sort((a, b) => {
+  const availableRepos = useMemo(() => {
+    const repos = new Set<string>();
+    results.forEach(item => {
+      if (item.repository_url) {
+        repos.add(item.repository_url.replace('https://api.github.com/repos/', ''));
+      }
+    });
+    return Array.from(repos);
+  }, [results]);
+
+  const stats = useMemo(() => {
+    const total = results.length;
+    const issues = results.filter(item => !item.pull_request).length;
+    const prs = results.filter(item => item.pull_request).length;
+    const open = results.filter(item => item.state === 'open').length;
+    const closed = results.filter(item => item.state === 'closed').length;
+    return { total, issues, prs, open, closed };
+  }, [results]);
+
+  const filteredResults = useMemo(() => {
+    return results.filter(item => {
+      // Apply type filter
+      if (filter === 'pr' && !item.pull_request) return false;
+      if (filter === 'issue' && item.pull_request) return false;
+
+      // Apply status filter
+      if (statusFilter === 'merged' && (!item.pull_request?.merged_at || !item.merged)) return false;
+      if (statusFilter === 'open' && item.state !== 'open') return false;
+      if (statusFilter === 'closed' && item.state !== 'closed') return false;
+
+      // Apply label filters
+      if (labelFilter && !item.labels?.some(l => l.name === labelFilter)) return false;
+      if (excludedLabels.length > 0 && item.labels?.some(l => excludedLabels.includes(l.name))) return false;
+
+      // Apply repo filters
+      if (repoFilters.length > 0) {
+        const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
+        if (!itemRepo || !repoFilters.includes(itemRepo)) return false;
+      }
+
+      // Apply text search
+      if (searchText) {
+        const searchLower = searchText.toLowerCase();
+        const titleMatch = item.title.toLowerCase().includes(searchLower);
+        const bodyMatch = item.body?.toLowerCase().includes(searchLower);
+        if (!titleMatch && !bodyMatch) return false;
+      }
+
+      return true;
+    }).sort((a, b) => {
       const dateA = new Date(sortOrder === 'updated' ? a.updated_at : a.created_at);
       const dateB = new Date(sortOrder === 'updated' ? b.updated_at : b.created_at);
       return dateB.getTime() - dateA.getTime();
     });
-  }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder, startDate, endDate]);
+  }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
 
-  // Memoize stats calculation to prevent recalculations on form changes
-  const stats = useMemo(() => ({
-    total: filteredResults.length,
-    issues: filteredResults.filter(item => !item.pull_request).length,
-    prs: filteredResults.filter(item => !!item.pull_request).length,
-    open: filteredResults.filter(item => item.state === 'open').length,
-    closed: filteredResults.filter(item => item.state === 'closed').length
-  }), [filteredResults]);
+  // Event handlers
+  const toggleDescriptionVisibility = useCallback((id: number) => {
+    setDescriptionVisible(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  }, []);
 
   const toggleExpand = useCallback((id: number) => {
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    setExpanded(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
   }, []);
 
-  const toggleDescriptionVisibility = useCallback((id: number) => {
-    setDescriptionVisible(prev => ({ ...prev, [id]: !prev[id] }));
-  }, []);
+  const copyResultsToClipboard = useCallback((format: 'markdown' | 'html' = 'markdown') => {
+    const formatDate = (dateString: string) => {
+      return new Date(dateString).toLocaleDateString();
+    };
 
-  // Update formatResultsForExport to support both formats
-  const formatResultsForExport = useCallback((items: GitHubItem[], format: 'markdown' | 'html' = 'markdown'): string => {
-    const dateRangeInfo = `GitHub activity from ${startDate} to ${endDate}`;
-    const statsInfo = `Total: ${stats.total} (Issues: ${stats.issues}, PRs: ${stats.prs}, Open: ${stats.open}, Closed: ${stats.closed})`;
-    
+    let text = '';
+    filteredResults.forEach((item, index) => {
+      if (format === 'markdown') {
+        text += `${index + 1}. [${item.title}](${item.html_url})\n`;
+        text += `   - Type: ${item.pull_request ? 'Pull Request' : 'Issue'}\n`;
+        text += `   - Status: ${item.state}${item.merged ? ' (merged)' : ''}\n`;
+        text += `   - Created: ${formatDate(item.created_at)}\n`;
+        text += `   - Updated: ${formatDate(item.updated_at)}\n`;
+        if (item.labels?.length) {
+          text += `   - Labels: ${item.labels.map(l => l.name).join(', ')}\n`;
+        }
+        text += '\n';
+      } else {
+        text += `<li><a href="${item.html_url}">${item.title}</a><br>`;
+        text += `Type: ${item.pull_request ? 'Pull Request' : 'Issue'}<br>`;
+        text += `Status: ${item.state}${item.merged ? ' (merged)' : ''}<br>`;
+        text += `Created: ${formatDate(item.created_at)}<br>`;
+        text += `Updated: ${formatDate(item.updated_at)}`;
+        if (item.labels?.length) {
+          text += `<br>Labels: ${item.labels.map(l => l.name).join(', ')}`;
+        }
+        text += '</li>\n';
+      }
+    });
+
     if (format === 'html') {
-      const header = `<h1>${username}'s GitHub Activity</h1>\n<p>${dateRangeInfo}</p>\n<p>${statsInfo}</p>\n\n`;
-      
-      const formattedItems = `<ul>\n${items.map(item => {
-        const type = item.pull_request ? 'PR' : 'Issue';
-        const status = item.pull_request?.merged_at ? 'merged' : item.state;
-        const repo = item.repository_url 
-          ? item.repository_url.replace('https://api.github.com/repos/', '')
-          : 'Unknown Repository';
-        
-        return `  <li><a href="${item.html_url}">${item.title}</a> (${type}, ${status}) - ${repo}</li>`;
-      }).join('\n')}\n</ul>`;
-      
-      return header + formattedItems;
+      text = `<ul>\n${text}</ul>`;
     }
-    
-    // Original markdown format
-    const header = `# ${username}'s GitHub Activity\n${dateRangeInfo}\n${statsInfo}\n\n`;
-    
-    const formattedItems = items.map(item => {
-      const type = item.pull_request ? 'PR' : 'Issue';
-      const status = item.state;
-      const repo = item.repository_url 
-        ? item.repository_url.replace('https://api.github.com/repos/', '')
-        : 'Unknown Repository';
-      const createdDate = new Date(item.created_at).toLocaleDateString();
-      const labels = item.labels && item.labels.length > 0
-        ? `\nLabels: ${item.labels.map(l => l.name).join(', ')}`
-        : '';
-      
-      const description = item.body
-        ? `\n\n### Description\n${item.body.slice(0, 5000)}${item.body.length > 5000 ? '...(truncated)' : ''}`
-        : '';
-      
-      return `## [${type}] ${item.title}\n` +
-        `Repository: ${repo}\n` +
-        `Status: ${status} | Created: ${createdDate}${labels}\n` +
-        `Link: ${item.html_url}${description}\n`;
-    }).join('\n');
-    
-    return header + formattedItems;
-  }, [startDate, endDate, stats, username]);
 
-  // Update copyResultsToClipboard to support formats
-  const copyResultsToClipboard = useCallback(async (format: 'markdown' | 'html' = 'markdown') => {
-    try {
-      const formattedText = formatResultsForExport(filteredResults, format);
-      await navigator.clipboard.writeText(formattedText);
+    navigator.clipboard.writeText(text).then(() => {
       setClipboardMessage('Results copied to clipboard!');
-      
-      setTimeout(() => {
-        setClipboardMessage(null);
-      }, 3000);
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-      setClipboardMessage('Failed to copy to clipboard. Please try again.');
-      
-      setTimeout(() => {
-        setClipboardMessage(null);
-      }, 3000);
-    }
-  }, [filteredResults, formatResultsForExport]);
+      setTimeout(() => setClipboardMessage(null), 3000);
+    });
+  }, [filteredResults]);
 
-  // Memoized form context value to prevent unnecessary re-renders
-  const formContextValue = useMemo(() => ({
-    username,
-    startDate,
-    endDate,
-    githubToken,
-    setUsername,
-    setStartDate,
-    setEndDate,
-    setGithubToken,
-    handleSearch: fetchGitHubData,
-    loading,
-    loadingProgress,
-    error
-  }), [username, startDate, endDate, githubToken, loading, loadingProgress, error]);
-
-  // Add clearAllFilters function
   const clearAllFilters = useCallback(() => {
     setFilter('all');
     setStatusFilter('all');
     setSortOrder('updated');
     setLabelFilter('');
+    setExcludedLabels([]);
     setSearchText('');
     setRepoFilters([]);
-    setExcludedLabels([]);
   }, []);
-
-  // Memoized results context value to prevent unnecessary re-renders
-  const resultsContextValue = useMemo(() => ({
-    results,
-    filteredResults,
-    filter,
-    statusFilter,
-    sortOrder,
-    labelFilter,
-    excludedLabels,
-    searchText,
-    repoFilters,
-    availableLabels,
-    availableRepos,
-    startDate,    // Add start date
-    endDate,      // Add end date
-    stats,
-    setFilter,
-    setStatusFilter,
-    setSortOrder,
-    setLabelFilter,
-    setExcludedLabels,
-    setSearchText,
-    setRepoFilters,
-    toggleDescriptionVisibility,
-    toggleExpand,
-    copyResultsToClipboard,
-    descriptionVisible,
-    expanded,
-    clipboardMessage,
-    clearAllFilters,
-    isCompactView,
-    setIsCompactView
-  }), [
-    results,
-    filteredResults,
-    filter,
-    statusFilter,
-    sortOrder,
-    labelFilter,
-    excludedLabels,
-    searchText,
-    repoFilters,
-    availableLabels,
-    availableRepos,
-    startDate,    // Add start date
-    endDate,      // Add end date
-    stats,
-    toggleDescriptionVisibility,
-    toggleExpand,
-    copyResultsToClipboard,
-    descriptionVisible,
-    expanded,
-    clipboardMessage,
-    clearAllFilters,
-    isCompactView
-  ]);
-
-  return (
-    <FormContext.Provider value={formContextValue}>
-      <ResultsContext.Provider value={resultsContextValue}>
-        <ThemeProvider>
-          <BaseStyles>
-            <Box sx={{ minHeight: '100vh', bg: 'canvas.default' }}>
-              <PageLayout>
-                <PageLayout.Header>
-                  <Box sx={{padding: 3, borderBottom: '1px solid', borderColor: 'border.default', bg: 'canvas.subtle' }}>
-                    <Heading as="h1" sx={{fontSize: 4, fontWeight: 'semibold', color: 'fg.default'}}>GitHub Issues & PRs Viewer</Heading>
-                  </Box>
-                </PageLayout.Header>
-                <PageLayout.Content sx={{ padding: 3 }}>
-                  <SearchForm />
-                  {!loading && filteredResults.length > 0 && <ResultsList />}
-                  {loading && (
-                    <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
-                      <Spinner size="large" />
-                      {loadingProgress && (
-                        <Text sx={{ mt: 2, color: 'fg.muted' }}>{loadingProgress}</Text>
-                      )}
-                    </Box>
-                  )}
-                  {filteredResults.length === 0 && !loading && (
-                    <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
-                      <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
-                    </Box>
-                  )}
-                </PageLayout.Content>
-              </PageLayout>
-            </Box>
-          </BaseStyles>
-        </ThemeProvider>
-      </ResultsContext.Provider>
-    </FormContext.Provider>
-  );
-}
-
-// Simplified App component that uses the contexts
-function App() {
-  const { loading, loadingProgress } = useFormContext();
-  const { filteredResults } = useResultsContext();
 
   return (
     <ThemeProvider>
       <BaseStyles>
-        <Box sx={{ minHeight: '100vh', bg: 'canvas.default' }}>
+        <Box sx={{ 
+          minHeight: '100vh',
+          bg: 'canvas.default',
+          color: 'fg.default'
+        }}>
           <PageLayout>
             <PageLayout.Header>
-              <Box sx={{padding: 3, borderBottom: '1px solid', borderColor: 'border.default', bg: 'canvas.subtle' }}>
-                <Heading as="h1" sx={{fontSize: 4, fontWeight: 'semibold', color: 'fg.default'}}>GitHub Issues & PRs Viewer</Heading>
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: 3,
+                borderBottom: '1px solid',
+                borderColor: 'border.default'
+              }}>
+                <Heading sx={{ fontSize: 3, m: 0 }}>GitHub Issues & PRs Viewer</Heading>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <IconButton
+                    icon={GearIcon}
+                    aria-label="Settings"
+                    onClick={() => setIsSettingsOpen(true)}
+                    variant="invisible"
+                    sx={{
+                      color: 'fg.default',
+                      '&:hover': { color: 'accent.fg' }
+                    }}
+                  />
+                </Box>
               </Box>
             </PageLayout.Header>
-            <PageLayout.Content sx={{ padding: 3 }}>
-              <SearchForm />
-              {!loading && filteredResults.length > 0 && <ResultsList />}
-              {loading && (
-                <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
-                  <Spinner size="large" />
-                  {loadingProgress && (
-                    <Text sx={{ mt: 2, color: 'fg.muted' }}>{loadingProgress}</Text>
-                  )}
-                </Box>
-              )}
-              {filteredResults.length === 0 && !loading && (
-                <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
-                  <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
-                </Box>
-              )}
+
+            <PageLayout.Content>
+              <FormContext.Provider value={{
+                username,
+                startDate,
+                endDate,
+                githubToken,
+                setUsername,
+                setStartDate,
+                setEndDate,
+                setGithubToken,
+                handleSearch,
+                loading,
+                loadingProgress,
+                error
+              }}>
+                <ResultsContext.Provider value={{
+                  results,
+                  filteredResults,
+                  filter,
+                  statusFilter,
+                  sortOrder,
+                  labelFilter,
+                  excludedLabels,
+                  searchText,
+                  repoFilters,
+                  availableLabels,
+                  availableRepos,
+                  startDate,
+                  endDate,
+                  stats,
+                  setFilter,
+                  setStatusFilter,
+                  setSortOrder,
+                  setLabelFilter,
+                  setExcludedLabels,
+                  setSearchText,
+                  setRepoFilters,
+                  toggleDescriptionVisibility,
+                  toggleExpand,
+                  copyResultsToClipboard,
+                  descriptionVisible,
+                  expanded,
+                  clipboardMessage,
+                  clearAllFilters,
+                  isCompactView,
+                  setIsCompactView
+                }}>
+                  <SearchForm />
+                  <ResultsList />
+                  <SettingsDialog 
+                    isOpen={isSettingsOpen}
+                    onDismiss={() => setIsSettingsOpen(false)}
+                  />
+                </ResultsContext.Provider>
+              </FormContext.Provider>
             </PageLayout.Content>
           </PageLayout>
         </Box>
@@ -1875,4 +1877,5 @@ function App() {
   );
 }
 
-export default AppWithContexts;
+// Add default export
+export default App;
