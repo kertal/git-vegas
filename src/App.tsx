@@ -22,6 +22,22 @@ import {
   ThemeProvider,
   BaseStyles
 } from '@primer/react';
+import {
+  IssueOpenedIcon,
+  GitPullRequestIcon,
+  CheckIcon,
+  XIcon,
+  SearchIcon,
+  FilterIcon,
+  SortAscIcon,
+  SortDescIcon,
+  TrashIcon,
+  EyeIcon,
+  EyeClosedIcon,
+  ClockIcon,
+  CalendarIcon,
+  GitMergeIcon
+} from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 // Commenting out the problematic Table import for now to isolate the issue
@@ -204,7 +220,7 @@ const buttonStyles = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: 1
+  gap: 2
 };
 
 // Component for the search form, wrapped in memo to prevent unnecessary re-renders
@@ -488,6 +504,7 @@ const ResultsList = memo(function ResultsList() {
               onClick={clearAllFilters}
               sx={buttonStyles}
             >
+              <TrashIcon size={16} />
               Clear All Filters
             </Button>
           )}
@@ -512,7 +529,9 @@ const ResultsList = memo(function ResultsList() {
           <Box sx={{ p: 3 }}>
             {/* Type Filter UI */}
             <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Type</Heading>
+              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
+                <FilterIcon size={16} /> Type
+              </Heading>
               <ButtonGroup>
                 <Button 
                   variant={filter === 'all' ? 'primary' : 'default'} 
@@ -528,6 +547,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
+                  <IssueOpenedIcon size={16} />
                   Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels, dateRange)})
                 </Button>
                 <Button 
@@ -536,6 +556,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
+                  <GitPullRequestIcon size={16} />
                   PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels, dateRange)})
                 </Button>
               </ButtonGroup>
@@ -543,7 +564,9 @@ const ResultsList = memo(function ResultsList() {
 
             {/* Status Filter UI */}
             <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Status</Heading>
+              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
+                <FilterIcon size={16} /> Status
+              </Heading>
               <ButtonGroup>
                 <Button 
                   variant={statusFilter === 'all' ? 'primary' : 'default'} 
@@ -559,6 +582,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
+                  <IssueOpenedIcon size={16} />
                   Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels, dateRange)})
                 </Button>
                 <Button 
@@ -567,6 +591,9 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <XIcon size={12} />
+                  </Box>
                   Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels, dateRange)})
                 </Button>
                 <Button 
@@ -576,9 +603,16 @@ const ResultsList = memo(function ResultsList() {
                   sx={{ 
                     ...buttonStyles,
                     borderColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
-                    color: statusFilter === 'merged' ? 'done.fg' : undefined
+                    backgroundColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
+                    color: statusFilter === 'merged' ? 'fg.onEmphasis' : undefined,
+                    '&:hover:not([disabled])': {
+                      backgroundColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
+                      borderColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
+                      color: statusFilter === 'merged' ? 'fg.onEmphasis' : undefined
+                    }
                   }}
                 >
+                  <GitMergeIcon size={16} />
                   Merged in {startDate} - {endDate} ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
                 </Button>
               </ButtonGroup>
@@ -586,7 +620,9 @@ const ResultsList = memo(function ResultsList() {
 
             {/* Sort Order UI */}
             <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Sort by</Heading>
+              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
+                <SortAscIcon size={16} /> Sort by
+              </Heading>
               <ButtonGroup>
                 <Button 
                   variant={sortOrder === 'updated' ? 'primary' : 'default'} 
@@ -594,6 +630,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
+                  <ClockIcon size={16} />
                   Last Updated
                 </Button>
                 <Button 
@@ -602,6 +639,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
+                  <CalendarIcon size={16} />
                   Creation Date
                 </Button>
               </ButtonGroup>
@@ -749,6 +787,7 @@ const ResultsList = memo(function ResultsList() {
                     color: isCompactView ? 'accent.fg' : 'fg.default'
                   }}
                 >
+                  {isCompactView ? <EyeIcon size={16} /> : <EyeClosedIcon size={16} />}
                   {isCompactView ? 'Detailed View' : 'Compact View'}
                 </Button>
                 <Button 
@@ -820,9 +859,65 @@ const ResultsList = memo(function ResultsList() {
                     {item.title}
                   </Link>
                   <Stack direction="horizontal" alignItems="center" sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}>
-                    <StateLabel status={item.pull_request ? 'pullRequest' : 'issueOpened'}>
-                      {item.pull_request ? 'PR' : 'Issue'}
-                    </StateLabel>
+                    {item.pull_request ? (
+                      item.merged ? (
+                        <Box 
+                          as="span"
+                          aria-label="Merged Pull Request"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'done.fg'
+                          }}
+                        >
+                          <GitMergeIcon size={16} />
+                        </Box>
+                      ) : item.state === 'closed' ? (
+                        <Box 
+                          as="span"
+                          aria-label="Closed Pull Request"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'closed.fg'
+                          }}
+                        >
+                          <GitPullRequestIcon size={16} />
+                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                            <XIcon size={12} />
+                          </Box>
+                        </Box>
+                      ) : (
+                        <Box 
+                          as="span"
+                          aria-label="Open Pull Request"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'open.fg'
+                          }}
+                        >
+                          <GitPullRequestIcon size={16} />
+                        </Box>
+                      )
+                    ) : (
+                      <Box 
+                        as="span"
+                        aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          color: item.state === 'closed' ? 'closed.fg' : 'open.fg'
+                        }}
+                      >
+                        <IssueOpenedIcon size={16} />
+                        {item.state === 'closed' && (
+                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                            <XIcon size={12} />
+                          </Box>
+                        )}
+                      </Box>
+                    )}
                     <Text>•</Text>
                     <BranchName>{item.repository_url?.split('/').slice(-2).join('/')}</BranchName>
                     <Text>•</Text>
@@ -871,26 +966,92 @@ const ResultsList = memo(function ResultsList() {
                     <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
                   </Link>
                   <Stack direction="horizontal" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
-                    <StateLabel status={item.pull_request ? 'pullRequest' : 'issueOpened'}>
-                      {item.pull_request ? 'PR' : 'Issue'}
-                    </StateLabel>
-                    {/* Status labels */}
                     {item.pull_request ? (
-                      item.state === 'closed' ? (
-                        item.merged ? (
-                          <StateLabel status="pullRequestMerged">Merged</StateLabel>
-                        ) : (
-                          <StateLabel status="closed">Closed</StateLabel>
-                        )
+                      item.merged ? (
+                        <Box 
+                          as="span"
+                          aria-label="Merged Pull Request"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'done.fg',
+                            bg: 'done.subtle',
+                            border: '1px solid',
+                            borderColor: 'done.emphasis',
+                            borderRadius: '2em',
+                            px: 2,
+                            py: 1
+                          }}
+                        >
+                          <GitMergeIcon size={16} />
+                          <Text sx={{ ml: 1 }}>Merged</Text>
+                        </Box>
+                      ) : item.state === 'closed' ? (
+                        <Box 
+                          as="span"
+                          aria-label="Closed Pull Request"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'closed.fg',
+                            bg: 'closed.subtle',
+                            border: '1px solid',
+                            borderColor: 'closed.emphasis',
+                            borderRadius: '2em',
+                            px: 2,
+                            py: 1
+                          }}
+                        >
+                          <GitPullRequestIcon size={16} />
+                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                            <XIcon size={12} />
+                          </Box>
+                          <Text sx={{ ml: 1 }}>Closed</Text>
+                        </Box>
                       ) : (
-                        <StateLabel status="open">Open PR</StateLabel>
+                        <Box 
+                          as="span"
+                          aria-label="Open Pull Request"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            color: 'open.fg',
+                            bg: 'open.subtle',
+                            border: '1px solid',
+                            borderColor: 'open.emphasis',
+                            borderRadius: '2em',
+                            px: 2,
+                            py: 1
+                          }}
+                        >
+                          <GitPullRequestIcon size={16} />
+                          <Text sx={{ ml: 1 }}>Open</Text>
+                        </Box>
                       )
                     ) : (
-                      item.state === 'closed' ? (
-                        <StateLabel status="closed">Closed Issue</StateLabel>
-                      ) : (
-                        <StateLabel status="open">Open Issue</StateLabel>
-                      )
+                      <Box 
+                        as="span"
+                        aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          color: item.state === 'closed' ? 'closed.fg' : 'open.fg',
+                          bg: item.state === 'closed' ? 'closed.subtle' : 'open.subtle',
+                          border: '1px solid',
+                          borderColor: item.state === 'closed' ? 'closed.emphasis' : 'open.emphasis',
+                          borderRadius: '2em',
+                          px: 2,
+                          py: 1
+                        }}
+                      >
+                        <IssueOpenedIcon size={16} />
+                        {item.state === 'closed' && (
+                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                            <XIcon size={12} />
+                          </Box>
+                        )}
+                        <Text sx={{ ml: 1 }}>{item.state === 'closed' ? 'Closed' : 'Open'}</Text>
+                      </Box>
                     )}
                     {/* Display labels */}
                     {item.labels && item.labels.map(l => (
@@ -916,7 +1077,7 @@ const ResultsList = memo(function ResultsList() {
                       <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
                       <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
                       {item.pull_request?.merged_at && (
-                        <Text sx={{ color: 'done.fg' }}>
+                        <Text sx={{ color: 'done.fg', fontWeight: 'bold' }}>
                           Merged: {new Date(item.pull_request.merged_at).toLocaleDateString()}
                         </Text>
                       )}
@@ -931,8 +1092,9 @@ const ResultsList = memo(function ResultsList() {
                         size="small"
                         variant={descriptionVisible[item.id] ? "primary" : "default"}
                         onClick={() => toggleDescriptionVisibility(item.id)}
-                        sx={{ ml: 'auto' }}
+                        sx={{ ml: 'auto', ...buttonStyles }}
                       >
+                        {descriptionVisible[item.id] ? <EyeClosedIcon size={16} /> : <EyeIcon size={16} />}
                         {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
                       </Button>
                     )}
