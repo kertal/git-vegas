@@ -961,72 +961,70 @@ const ResultsList = memo(function ResultsList() {
                       flex: 1
                     }}
                   >
-                    {item.title}
-                  </Link>
-                  <Stack direction="horizontal" alignItems="center" sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}>
-                    {item.pull_request ? (
-                      (item.pull_request.merged_at || item.merged) ? (
-                        <Box 
-                          as="span"
-                          aria-label="Merged Pull Request"
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color: 'done.fg'
-                          }}
-                        >
-                          <GitMergeIcon size={16} />
-                          <Text sx={{ ml: 1 }}>Merged</Text>
-                        </Box>
-                      ) : item.state === 'closed' ? (
-                        <Box 
-                          as="span"
-                          aria-label="Closed Pull Request"
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color: 'closed.fg'
-                          }}
-                        >
-                          <GitPullRequestIcon size={16} />
-                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                            <XIcon size={12} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      {item.pull_request ? (
+                        (item.pull_request.merged_at || item.merged) ? (
+                          <Box 
+                            as="span"
+                            aria-label="Merged Pull Request"
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              color: 'done.fg'
+                            }}
+                          >
+                            <GitMergeIcon size={16} />
                           </Box>
-                          <Text sx={{ ml: 1 }}>Closed</Text>
-                        </Box>
+                        ) : item.state === 'closed' ? (
+                          <Box 
+                            as="span"
+                            aria-label="Closed Pull Request"
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              color: 'closed.fg'
+                            }}
+                          >
+                            <GitPullRequestIcon size={16} />
+                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                              <XIcon size={12} />
+                            </Box>
+                          </Box>
+                        ) : (
+                          <Box 
+                            as="span"
+                            aria-label="Open Pull Request"
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              color: 'open.fg'
+                            }}
+                          >
+                            <GitPullRequestIcon size={16} />
+                          </Box>
+                        )
                       ) : (
                         <Box 
                           as="span"
-                          aria-label="Open Pull Request"
+                          aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
                           sx={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            color: 'open.fg'
+                            color: item.state === 'closed' ? 'closed.fg' : 'open.fg'
                           }}
                         >
-                          <GitPullRequestIcon size={16} />
-                          <Text sx={{ ml: 1 }}>Open</Text>
+                          <IssueOpenedIcon size={16} />
+                          {item.state === 'closed' && (
+                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                              <XIcon size={12} />
+                            </Box>
+                          )}
                         </Box>
-                      )
-                    ) : (
-                      <Box 
-                        as="span"
-                        aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          color: item.state === 'closed' ? 'closed.fg' : 'open.fg'
-                        }}
-                      >
-                        <IssueOpenedIcon size={16} />
-                        {item.state === 'closed' && (
-                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                            <XIcon size={12} />
-                          </Box>
-                        )}
-                        <Text sx={{ ml: 1 }}>{item.state === 'closed' ? 'Closed' : 'Open'}</Text>
-                      </Box>
-                    )}
+                      )}
+                      <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
+                    </Box>
+                  </Link>
+                  <Stack direction="horizontal" alignItems="center" sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}>
                     <Text>•</Text>
                     <BranchName>{item.repository_url?.split('/').slice(-2).join('/')}</BranchName>
                     <Text>•</Text>
@@ -1072,102 +1070,75 @@ const ResultsList = memo(function ResultsList() {
                     )}
                   </Stack>
                   <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
-                    <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
-                  </Link>
-                  <Stack direction="horizontal" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
-                    {item.pull_request ? (
-                      (item.pull_request.merged_at || item.merged) ? (
-                        <Box 
-                          as="span"
-                          aria-label="Merged Pull Request"
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color: 'done.fg',
-                            bg: 'done.subtle',
-                            border: '1px solid',
-                            borderColor: 'done.emphasis',
-                            borderRadius: '2em',
-                            px: 2,
-                            py: 1
-                          }}
-                        >
-                          <GitMergeIcon size={16} />
-                          <Text sx={{ ml: 1 }}>Merged</Text>
-                        </Box>
-                      ) : item.state === 'closed' ? (
-                        <Box 
-                          as="span"
-                          aria-label="Closed Pull Request"
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color: 'closed.fg',
-                            bg: 'closed.subtle',
-                            border: '1px solid',
-                            borderColor: 'closed.emphasis',
-                            borderRadius: '2em',
-                            px: 2,
-                            py: 1
-                          }}
-                        >
-                          <GitPullRequestIcon size={16} />
-                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                            <XIcon size={12} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      {item.pull_request ? (
+                        (item.pull_request.merged_at || item.merged) ? (
+                          <Box 
+                            as="span"
+                            aria-label="Merged Pull Request"
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              color: 'done.fg'
+                            }}
+                          >
+                            <GitMergeIcon size={16} />
                           </Box>
-                          <Text sx={{ ml: 1 }}>Closed</Text>
-                        </Box>
+                        ) : item.state === 'closed' ? (
+                          <Box 
+                            as="span"
+                            aria-label="Closed Pull Request"
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              color: 'closed.fg'
+                            }}
+                          >
+                            <GitPullRequestIcon size={16} />
+                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                              <XIcon size={12} />
+                            </Box>
+                          </Box>
+                        ) : (
+                          <Box 
+                            as="span"
+                            aria-label="Open Pull Request"
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              color: 'open.fg'
+                            }}
+                          >
+                            <GitPullRequestIcon size={16} />
+                          </Box>
+                        )
                       ) : (
                         <Box 
                           as="span"
-                          aria-label="Open Pull Request"
+                          aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
                           sx={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            color: 'open.fg',
-                            bg: 'open.subtle',
-                            border: '1px solid',
-                            borderColor: 'open.emphasis',
-                            borderRadius: '2em',
-                            px: 2,
-                            py: 1
+                            color: item.state === 'closed' ? 'closed.fg' : 'open.fg'
                           }}
                         >
-                          <GitPullRequestIcon size={16} />
-                          <Text sx={{ ml: 1 }}>Open</Text>
+                          <IssueOpenedIcon size={16} />
+                          {item.state === 'closed' && (
+                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                              <XIcon size={12} />
+                            </Box>
+                          )}
                         </Box>
-                      )
-                    ) : (
-                      <Box 
-                        as="span"
-                        aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          color: item.state === 'closed' ? 'closed.fg' : 'open.fg',
-                          bg: item.state === 'closed' ? 'closed.subtle' : 'open.subtle',
-                          border: '1px solid',
-                          borderColor: item.state === 'closed' ? 'closed.emphasis' : 'open.emphasis',
-                          borderRadius: '2em',
-                          px: 2,
-                          py: 1
-                        }}
-                      >
-                        <IssueOpenedIcon size={16} />
-                        {item.state === 'closed' && (
-                          <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                            <XIcon size={12} />
-                          </Box>
-                        )}
-                        <Text sx={{ ml: 1 }}>{item.state === 'closed' ? 'Closed' : 'Open'}</Text>
-                      </Box>
-                    )}
+                      )}
+                      <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
+                    </Box>
+                  </Link>
+                  <Stack direction="horizontal" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
                     {/* Display labels */}
                     {item.labels && item.labels.map(l => (
                       <Label
                         key={l.name}
                         sx={{
-                          ml: 1,
                           backgroundColor: l.color ? `#${l.color}` : undefined,
                           color: l.color ? getContrastColor(l.color) : undefined,
                           fontWeight: 'bold',
