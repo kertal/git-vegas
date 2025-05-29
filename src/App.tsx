@@ -273,9 +273,9 @@ const SearchForm = memo(function SearchForm() {
         {/* Main search fields in a horizontal layout */}
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(200px, 2fr) repeat(2, minmax(150px, 1fr))',
+          gridTemplateColumns: 'minmax(200px, 2fr) repeat(2, minmax(150px, 1fr)) auto',
           gap: 3,
-          alignItems: 'flex-start'
+          alignItems: 'flex-end'
         }}>
           <FormControl>
             <FormControl.Label required>GitHub Username(s)</FormControl.Label>
@@ -292,7 +292,7 @@ const SearchForm = memo(function SearchForm() {
               You can enter multiple usernames separated by commas
             </FormControl.Caption>
           </FormControl>
-
+          
           <FormControl>
             <FormControl.Label required>Start Date</FormControl.Label>
             <TextInput
@@ -304,7 +304,7 @@ const SearchForm = memo(function SearchForm() {
               required
             />
           </FormControl>
-
+          
           <FormControl>
             <FormControl.Label required>End Date</FormControl.Label>
             <TextInput
@@ -316,15 +316,17 @@ const SearchForm = memo(function SearchForm() {
               required
             />
           </FormControl>
-        </Box>
 
-        {/* Search button in its own row */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
           <Button 
             variant="primary" 
             type="submit" 
             disabled={loading}
-            sx={{ minWidth: '120px' }}
+            sx={{ 
+              minWidth: '120px',
+              height: '32px',
+              alignSelf: 'flex-start',
+              mt: '2px' // Small adjustment to align with inputs
+            }}
           >
             {loading ? <Spinner size="small" /> : 'Search'}
           </Button>
@@ -974,6 +976,7 @@ const ResultsList = memo(function ResultsList() {
                             }}
                           >
                             <GitMergeIcon size={16} />
+                            <Text sx={{ ml: 1 }}>Merged</Text>
                           </Box>
                         ) : item.state === 'closed' ? (
                           <Box 
@@ -986,9 +989,7 @@ const ResultsList = memo(function ResultsList() {
                             }}
                           >
                             <GitPullRequestIcon size={16} />
-                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                              <XIcon size={12} />
-                            </Box>
+                            <Text sx={{ ml: 1 }}>Closed</Text>
                           </Box>
                         ) : (
                           <Box 
@@ -1001,6 +1002,7 @@ const ResultsList = memo(function ResultsList() {
                             }}
                           >
                             <GitPullRequestIcon size={16} />
+                            <Text sx={{ ml: 1 }}>Open</Text>
                           </Box>
                         )
                       ) : (
@@ -1019,6 +1021,7 @@ const ResultsList = memo(function ResultsList() {
                               <XIcon size={12} />
                             </Box>
                           )}
+                          <Text sx={{ ml: 1 }}>{item.state === 'closed' ? 'Closed' : 'Open'}</Text>
                         </Box>
                       )}
                       <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
@@ -1095,9 +1098,6 @@ const ResultsList = memo(function ResultsList() {
                             }}
                           >
                             <GitPullRequestIcon size={16} />
-                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                              <XIcon size={12} />
-                            </Box>
                           </Box>
                         ) : (
                           <Box 
