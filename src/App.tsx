@@ -44,7 +44,8 @@ import {
   ChevronDownIcon,
   GearIcon,
   SunIcon,
-  MoonIcon
+  MoonIcon,
+  MarkGithubIcon
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -1455,6 +1456,11 @@ function App() {
   // State for settings dialog
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
+  // Update document title
+  useEffect(() => {
+    document.title = 'PRIssues';
+  }, []);
+
   // Form state with URL params and local storage fallback
   const [username, setUsername] = useState(() => {
     const urlUsername = getParamFromUrl('username');
@@ -1838,8 +1844,9 @@ function App() {
                 borderColor: 'border.default',
                 height: '56px'
               }}>
-                <Box sx={{ pl: 3 }}>
-                  <Heading sx={{ fontSize: 3, m: 0 }}>GitHub Issues & PRs Viewer</Heading>
+                <Box sx={{ pl: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <MarkGithubIcon size={24} />
+                  <Heading sx={{ fontSize: 3, m: 0 }}>PRIssues</Heading>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
                   <IconButton
