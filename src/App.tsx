@@ -276,7 +276,6 @@ const SearchForm = memo(function SearchForm() {
         }}>
           <Box>
             <FormControl>
-              <FormControl.Label required>GitHub Username(s)</FormControl.Label>
               <TextInput
                 placeholder="Enter usernames (comma-separated for multiple)"
                 value={username}
@@ -289,7 +288,6 @@ const SearchForm = memo(function SearchForm() {
           </Box>
           
           <FormControl>
-            <FormControl.Label required>Start Date</FormControl.Label>
             <TextInput
               type="date"
               value={startDate}
@@ -301,7 +299,6 @@ const SearchForm = memo(function SearchForm() {
           </FormControl>
           
           <FormControl>
-            <FormControl.Label required>End Date</FormControl.Label>
             <TextInput
               type="date"
               value={endDate}
@@ -312,7 +309,7 @@ const SearchForm = memo(function SearchForm() {
             />
           </FormControl>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', pb: '6px' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
             <Button 
               variant="primary" 
               type="submit" 
