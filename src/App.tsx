@@ -1828,18 +1828,20 @@ function App() {
           bg: 'canvas.default',
           color: 'fg.default'
         }}>
-          <PageLayout>
-            <PageLayout.Header>
+          <PageLayout sx={{ '--spacing': '0 !important' }}>
+            <PageLayout.Header sx={{ p: 0 }}>
               <Box sx={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                p: 3,
                 borderBottom: '1px solid',
-                borderColor: 'border.default'
+                borderColor: 'border.default',
+                height: '56px'
               }}>
-                <Heading sx={{ fontSize: 3, m: 0 }}>GitHub Issues & PRs Viewer</Heading>
-                <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ pl: 3 }}>
+                  <Heading sx={{ fontSize: 3, m: 0 }}>GitHub Issues & PRs Viewer</Heading>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
                   <IconButton
                     icon={GearIcon}
                     aria-label="Settings"
@@ -1854,7 +1856,7 @@ function App() {
               </Box>
             </PageLayout.Header>
 
-            <PageLayout.Content>
+            <PageLayout.Content sx={{ px: 3, py: 4 }}>
               <FormContext.Provider value={{
                 username,
                 startDate,
