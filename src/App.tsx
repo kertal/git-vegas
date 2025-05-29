@@ -187,6 +187,7 @@ interface ResultsContextType {
     prs: number;
     open: number;
     closed: number;
+    merged: number;
   };
   setFilter: (filter: 'all' | 'issue' | 'pr') => void;
   setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
@@ -345,7 +346,7 @@ const SearchForm = memo(function SearchForm() {
   );
 });
 
-// Update countItemsMatchingFilter to accept date range
+// Update countItemsMatchingFilter to properly handle merged PRs
 const countItemsMatchingFilter = (
   items: GitHubItem[], 
   filterType: string, 
@@ -363,15 +364,17 @@ const countItemsMatchingFilter = (
     case 'status':
       if (filterValue === 'merged') {
         return items.filter(item => 
-          item.pull_request?.merged_at && 
-          new Date(item.pull_request.merged_at) >= new Date(dateRange.startDate) &&
-          new Date(item.pull_request.merged_at) <= new Date(dateRange.endDate)
+          item.pull_request && (item.pull_request.merged_at || item.merged)
         ).length;
       }
-      return items.filter(item => 
-        filterValue === 'all' ? true :
-        item.state === filterValue
-      ).length;
+      return items.filter(item => {
+        if (filterValue === 'all') return true;
+        if (item.pull_request) {
+          if (item.pull_request.merged_at || item.merged) return false; // Don't count merged PRs as closed
+          return item.state === filterValue;
+        }
+        return item.state === filterValue;
+      }).length;
     case 'label':
       return items.filter(item => 
         item.labels?.some(l => l.name === filterValue) &&
@@ -962,7 +965,7 @@ const ResultsList = memo(function ResultsList() {
                   </Link>
                   <Stack direction="horizontal" alignItems="center" sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}>
                     {item.pull_request ? (
-                      item.merged ? (
+                      (item.pull_request.merged_at || item.merged) ? (
                         <Box 
                           as="span"
                           aria-label="Merged Pull Request"
@@ -973,6 +976,7 @@ const ResultsList = memo(function ResultsList() {
                           }}
                         >
                           <GitMergeIcon size={16} />
+                          <Text sx={{ ml: 1 }}>Merged</Text>
                         </Box>
                       ) : item.state === 'closed' ? (
                         <Box 
@@ -988,6 +992,7 @@ const ResultsList = memo(function ResultsList() {
                           <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
                             <XIcon size={12} />
                           </Box>
+                          <Text sx={{ ml: 1 }}>Closed</Text>
                         </Box>
                       ) : (
                         <Box 
@@ -1000,6 +1005,7 @@ const ResultsList = memo(function ResultsList() {
                           }}
                         >
                           <GitPullRequestIcon size={16} />
+                          <Text sx={{ ml: 1 }}>Open</Text>
                         </Box>
                       )
                     ) : (
@@ -1018,6 +1024,7 @@ const ResultsList = memo(function ResultsList() {
                             <XIcon size={12} />
                           </Box>
                         )}
+                        <Text sx={{ ml: 1 }}>{item.state === 'closed' ? 'Closed' : 'Open'}</Text>
                       </Box>
                     )}
                     <Text>•</Text>
@@ -1069,7 +1076,7 @@ const ResultsList = memo(function ResultsList() {
                   </Link>
                   <Stack direction="horizontal" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
                     {item.pull_request ? (
-                      item.merged ? (
+                      (item.pull_request.merged_at || item.merged) ? (
                         <Box 
                           as="span"
                           aria-label="Merged Pull Request"
@@ -1673,9 +1680,20 @@ function App() {
     const total = results.length;
     const issues = results.filter(item => !item.pull_request).length;
     const prs = results.filter(item => item.pull_request).length;
-    const open = results.filter(item => item.state === 'open').length;
-    const closed = results.filter(item => item.state === 'closed').length;
-    return { total, issues, prs, open, closed };
+    const merged = results.filter(item => item.pull_request && (item.pull_request.merged_at || item.merged)).length;
+    const open = results.filter(item => {
+      if (item.pull_request) {
+        return item.state === 'open';
+      }
+      return item.state === 'open';
+    }).length;
+    const closed = results.filter(item => {
+      if (item.pull_request) {
+        return item.state === 'closed' && !item.pull_request.merged_at && !item.merged;
+      }
+      return item.state === 'closed';
+    }).length;
+    return { total, issues, prs, open, closed, merged };
   }, [results]);
 
   const filteredResults = useMemo(() => {
@@ -1685,9 +1703,14 @@ function App() {
       if (filter === 'issue' && item.pull_request) return false;
 
       // Apply status filter
-      if (statusFilter === 'merged' && (!item.pull_request?.merged_at || !item.merged)) return false;
-      if (statusFilter === 'open' && item.state !== 'open') return false;
-      if (statusFilter === 'closed' && item.state !== 'closed') return false;
+      if (statusFilter === 'merged') {
+        if (!item.pull_request) return false;
+        return item.pull_request.merged_at || item.merged;
+      }
+      if (statusFilter !== 'all') {
+        if (item.pull_request && (item.pull_request.merged_at || item.merged)) return false;
+        return item.state === statusFilter;
+      }
 
       // Apply label filters
       if (labelFilter && !item.labels?.some(l => l.name === labelFilter)) return false;
