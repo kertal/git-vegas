@@ -502,7 +502,7 @@ const ResultsList = memo(function ResultsList() {
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Heading as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default', m: 0}}>
-              <FilterIcon size={16} /> Filters
+              Filters
             </Heading>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -513,7 +513,6 @@ const ResultsList = memo(function ResultsList() {
                 onClick={clearAllFilters}
                 sx={buttonStyles}
               >
-                <TrashIcon size={16} />
                 Clear All Filters
               </Button>
             )}
@@ -527,7 +526,6 @@ const ResultsList = memo(function ResultsList() {
                 ':hover': { color: 'fg.default' }
               }}
             >
-              {areFiltersCollapsed ? <ChevronDownIcon size={16} /> : <ChevronUpIcon size={16} />}
               {areFiltersCollapsed ? 'Show Filters' : 'Hide Filters'}
             </Button>
           </Box>
@@ -553,25 +551,23 @@ const ResultsList = memo(function ResultsList() {
             {/* Type Filter UI */}
             <Stack sx={{ mb: 4 }}>
               <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
-                <FilterIcon size={16} /> Type
+                Type
               </Heading>
               <ButtonGroup>
-                <Button 
+                <Button
                   variant={filter === 'issue' ? 'primary' : 'default'} 
                   onClick={() => setFilter(filter === 'issue' ? 'all' : 'issue')}
                   size="small"
                   sx={buttonStyles}
                 >
-                  <IssueOpenedIcon size={16} />
                   Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels, dateRange)})
                 </Button>
-                <Button 
+                <Button
                   variant={filter === 'pr' ? 'primary' : 'default'} 
                   onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
                   size="small"
                   sx={buttonStyles}
                 >
-                  <GitPullRequestIcon size={16} />
                   PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels, dateRange)})
                 </Button>
               </ButtonGroup>
@@ -580,7 +576,7 @@ const ResultsList = memo(function ResultsList() {
             {/* Status Filter UI */}
             <Stack sx={{ mb: 4 }}>
               <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
-                <FilterIcon size={16} /> Status
+                Status
               </Heading>
               <ButtonGroup>
                 <Button 
@@ -589,7 +585,6 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  <IssueOpenedIcon size={16} />
                   Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels, dateRange)})
                 </Button>
                 <Button 
@@ -598,29 +593,15 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
-                    <XIcon size={12} />
-                  </Box>
                   Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels, dateRange)})
                 </Button>
                 <Button 
                   variant={statusFilter === 'merged' ? 'primary' : 'default'} 
                   onClick={() => setStatusFilter(statusFilter === 'merged' ? 'all' : 'merged')}
                   size="small"
-                  sx={{ 
-                    ...buttonStyles,
-                    borderColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
-                    backgroundColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
-                    color: statusFilter === 'merged' ? 'fg.onEmphasis' : undefined,
-                    '&:hover:not([disabled])': {
-                      backgroundColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
-                      borderColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
-                      color: statusFilter === 'merged' ? 'fg.onEmphasis' : undefined
-                    }
-                  }}
+                  sx={buttonStyles}
                 >
-                  <GitMergeIcon size={16} />
-                  Merged in {startDate} - {endDate} ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
+                  Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
                 </Button>
               </ButtonGroup>
             </Stack>
@@ -1181,12 +1162,11 @@ const ResultsList = memo(function ResultsList() {
                     </Stack>
                     {item.body && (
                       <Button 
-                        size="small"
+                        size="small" 
                         variant={descriptionVisible[item.id] ? "primary" : "default"}
                         onClick={() => toggleDescriptionVisibility(item.id)}
                         sx={{ ml: 'auto', ...buttonStyles }}
                       >
-                        {descriptionVisible[item.id] ? <EyeClosedIcon size={16} /> : <EyeIcon size={16} />}
                         {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
                       </Button>
                     )}
