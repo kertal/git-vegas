@@ -534,16 +534,8 @@ const ResultsList = memo(function ResultsList() {
               </Heading>
               <ButtonGroup>
                 <Button 
-                  variant={filter === 'all' ? 'primary' : 'default'} 
-                  onClick={() => setFilter('all')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  All ({countItemsMatchingFilter(baseResults, 'type', 'all', excludedLabels, dateRange)})
-                </Button>
-                <Button 
                   variant={filter === 'issue' ? 'primary' : 'default'} 
-                  onClick={() => setFilter('issue')}
+                  onClick={() => setFilter(filter === 'issue' ? 'all' : 'issue')}
                   size="small"
                   sx={buttonStyles}
                 >
@@ -552,7 +544,7 @@ const ResultsList = memo(function ResultsList() {
                 </Button>
                 <Button 
                   variant={filter === 'pr' ? 'primary' : 'default'} 
-                  onClick={() => setFilter('pr')}
+                  onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
                   size="small"
                   sx={buttonStyles}
                 >
@@ -569,16 +561,8 @@ const ResultsList = memo(function ResultsList() {
               </Heading>
               <ButtonGroup>
                 <Button 
-                  variant={statusFilter === 'all' ? 'primary' : 'default'} 
-                  onClick={() => setStatusFilter('all')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  All ({countItemsMatchingFilter(baseResults, 'status', 'all', excludedLabels, dateRange)})
-                </Button>
-                <Button 
                   variant={statusFilter === 'open' ? 'primary' : 'default'} 
-                  onClick={() => setStatusFilter('open')}
+                  onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
                   size="small"
                   sx={buttonStyles}
                 >
@@ -587,7 +571,7 @@ const ResultsList = memo(function ResultsList() {
                 </Button>
                 <Button 
                   variant={statusFilter === 'closed' ? 'primary' : 'default'} 
-                  onClick={() => setStatusFilter('closed')}
+                  onClick={() => setStatusFilter(statusFilter === 'closed' ? 'all' : 'closed')}
                   size="small"
                   sx={buttonStyles}
                 >
@@ -598,7 +582,7 @@ const ResultsList = memo(function ResultsList() {
                 </Button>
                 <Button 
                   variant={statusFilter === 'merged' ? 'primary' : 'default'} 
-                  onClick={() => setStatusFilter('merged')}
+                  onClick={() => setStatusFilter(statusFilter === 'merged' ? 'all' : 'merged')}
                   size="small"
                   sx={{ 
                     ...buttonStyles,
@@ -618,33 +602,6 @@ const ResultsList = memo(function ResultsList() {
               </ButtonGroup>
             </Stack>
 
-            {/* Sort Order UI */}
-            <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
-                <SortAscIcon size={16} /> Sort by
-              </Heading>
-              <ButtonGroup>
-                <Button 
-                  variant={sortOrder === 'updated' ? 'primary' : 'default'} 
-                  onClick={() => setSortOrder('updated')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  <ClockIcon size={16} />
-                  Last Updated
-                </Button>
-                <Button 
-                  variant={sortOrder === 'created' ? 'primary' : 'default'} 
-                  onClick={() => setSortOrder('created')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  <CalendarIcon size={16} />
-                  Creation Date
-                </Button>
-              </ButtonGroup>
-            </Stack>
-
             {/* Label Filters */}
             {availableLabels.length > 0 && (
               <>
@@ -657,13 +614,6 @@ const ResultsList = memo(function ResultsList() {
                     </Text>
                   </Heading>
                   <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Button
-                      size="small"
-                      variant={labelFilter === '' ? 'primary' : 'default'}
-                      onClick={() => setLabelFilter('')}
-                    >
-                      All ({baseResults.length})
-                    </Button>
                     {availableLabels
                       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
                       .map(label => {
@@ -677,7 +627,7 @@ const ResultsList = memo(function ResultsList() {
                             key={label}
                             size="small"
                             variant={labelFilter === label ? 'primary' : 'default'}
-                            onClick={() => setLabelFilter(label)}
+                            onClick={() => setLabelFilter(labelFilter === label ? '' : label)}
                             sx={{
                               color: hasMatches ? 'fg.default' : 'fg.muted',
                               opacity: (!hasMatches || excludedLabels.includes(label)) ? 0.5 : 1,
@@ -775,7 +725,27 @@ const ResultsList = memo(function ResultsList() {
                 </Flash>
               )}
             </Box>
-            <Stack alignItems="center" sx={{ gap: 3 }}>
+            <Stack direction="horizontal" alignItems="center" sx={{ gap: 3 }}>
+              <ButtonGroup>
+                <Button 
+                  variant={sortOrder === 'updated' ? 'primary' : 'default'} 
+                  onClick={() => setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')}
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  <ClockIcon size={16} />
+                  Last Updated
+                </Button>
+                <Button 
+                  variant={sortOrder === 'created' ? 'primary' : 'default'} 
+                  onClick={() => setSortOrder(sortOrder === 'created' ? 'updated' : 'created')}
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  <CalendarIcon size={16} />
+                  Creation Date
+                </Button>
+              </ButtonGroup>
               <ButtonGroup>
                 <Button
                   onClick={() => setIsCompactView(!isCompactView)}
