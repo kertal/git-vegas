@@ -36,7 +36,9 @@ import {
   EyeClosedIcon,
   ClockIcon,
   CalendarIcon,
-  GitMergeIcon
+  GitMergeIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -459,6 +461,9 @@ const ResultsList = memo(function ResultsList() {
     });
   }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
 
+  // Add statsVisible state
+  const [statsVisible, setStatsVisible] = useState(true);
+
   return (
     <Box>
       {/* Filters Section */}
@@ -483,7 +488,22 @@ const ResultsList = memo(function ResultsList() {
           borderColor: 'border.default'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Heading as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default', m: 0}}>Filters</Heading>
+            <Heading as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default', m: 0}}>
+              <FilterIcon size={16} /> Filters
+            </Heading>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            {hasActiveFilters && (
+              <Button
+                variant="danger"
+                size="small"
+                onClick={clearAllFilters}
+                sx={buttonStyles}
+              >
+                <TrashIcon size={16} />
+                Clear All Filters
+              </Button>
+            )}
             <Button
               variant="invisible"
               size="small"
@@ -494,20 +514,10 @@ const ResultsList = memo(function ResultsList() {
                 ':hover': { color: 'fg.default' }
               }}
             >
+              {areFiltersCollapsed ? <ChevronDownIcon size={16} /> : <ChevronUpIcon size={16} />}
               {areFiltersCollapsed ? 'Show Filters' : 'Hide Filters'}
             </Button>
           </Box>
-          {hasActiveFilters && (
-            <Button
-              variant="danger"
-              size="small"
-              onClick={clearAllFilters}
-              sx={buttonStyles}
-            >
-              <TrashIcon size={16} />
-              Clear All Filters
-            </Button>
-          )}
         </Box>
 
         {/* Filter Summary when collapsed */}
@@ -696,6 +706,132 @@ const ResultsList = memo(function ResultsList() {
         )}
       </Box>
 
+      {/* Statistics Section */}
+      <Box sx={{
+        maxWidth: '1200px',
+        margin: '24px auto',
+        bg: 'canvas.default',
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'border.default',
+        p: 3
+      }}>
+        {/* Statistics header */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 3,
+          pb: 3,
+          borderBottom: '1px solid',
+          borderColor: 'border.muted'
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Statistics</Heading>
+            <Text sx={{ fontSize: 1, color: 'fg.muted' }}>({stats.total} items)</Text>
+          </Box>
+          <Button
+            variant="invisible"
+            onClick={() => setStatsVisible(!statsVisible)}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              color: 'fg.muted',
+              ':hover': { color: 'fg.default' }
+            }}
+          >
+            {statsVisible ? 'Hide Details' : 'Show Details'}
+            {statsVisible ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+          </Button>
+        </Box>
+
+        {/* Statistics content */}
+        <Box sx={{
+          overflow: 'hidden',
+          maxHeight: statsVisible ? '500px' : '0px',
+          transition: 'max-height 0.3s ease-in-out, opacity 0.2s ease-in-out',
+          opacity: statsVisible ? 1 : 0
+        }}>
+          <Stack direction="horizontal" sx={{ gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              px: 3,
+              py: 1,
+              bg: 'canvas.subtle',
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2
+            }}>
+              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'fg.default'}}>{stats.total}</Text>
+              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Total</Text>
+            </Box>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              px: 3,
+              py: 1,
+              bg: 'canvas.subtle',
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2
+            }}>
+              <IssueOpenedIcon size={16} />
+              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'accent.fg'}}>{stats.issues}</Text>
+              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Issues</Text>
+            </Box>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              px: 3,
+              py: 1,
+              bg: 'canvas.subtle',
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2
+            }}>
+              <GitPullRequestIcon size={16} />
+              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'success.fg'}}>{stats.prs}</Text>
+              <Text sx={{fontSize: 1, color: 'fg.muted'}}>PRs</Text>
+            </Box>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              px: 3,
+              py: 1,
+              bg: 'canvas.subtle',
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2
+            }}>
+              <IssueOpenedIcon size={16} />
+              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'open.fg'}}>{stats.open}</Text>
+              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Open</Text>
+            </Box>
+            <Box sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              px: 3,
+              py: 1,
+              bg: 'canvas.subtle',
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2
+            }}>
+              <CheckIcon size={16} />
+              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'done.fg'}}>{stats.closed}</Text>
+              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Closed</Text>
+            </Box>
+          </Stack>
+        </Box>
+      </Box>
+
       {/* Results Section */}
       {filteredResults.length > 0 && (
         <Box sx={{
@@ -773,28 +909,6 @@ const ResultsList = memo(function ResultsList() {
                   Export to Clipboard
                 </Button>
               </ButtonGroup>
-              <Stack direction="horizontal" sx={{ gap: 3 }}>
-                <Box sx={{textAlign: 'center'}}>
-                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'fg.default'}}>{stats.total}</Text>
-                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Total</Text>
-                </Box>
-                <Box sx={{textAlign: 'center'}}>
-                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'accent.fg'}}>{stats.issues}</Text>
-                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Issues</Text>
-                </Box>
-                <Box sx={{textAlign: 'center'}}>
-                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'success.fg'}}>{stats.prs}</Text>
-                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>PRs</Text>
-                </Box>
-                <Box sx={{textAlign: 'center'}}>
-                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'success.fg'}}>{stats.open}</Text>
-                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Open</Text>
-                </Box>
-                <Box sx={{textAlign: 'center'}}>
-                  <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'done.fg'}}>{stats.closed}</Text>
-                  <Text sx={{fontSize: 1, color: 'fg.muted'}}>Closed</Text>
-                </Box>
-              </Stack>
             </Stack>
           </Box>
 
