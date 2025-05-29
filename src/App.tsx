@@ -967,8 +967,8 @@ const ResultsList = memo(function ResultsList() {
                   {/* Description shown only on demand */}
                   {item.body && descriptionVisible[item.id] && (
                     <Box sx={{
-                      maxHeight: expanded[item.id] ? 'none' : '200px',
-                      overflow: 'hidden',
+                      maxHeight: expanded[item.id] ? '500px' : '200px',
+                      overflow: 'auto',
                       position: 'relative',
                       mt: 2,
                       bg: 'canvas.default',
@@ -979,52 +979,61 @@ const ResultsList = memo(function ResultsList() {
                       fontSize: 1,
                       color: 'fg.muted',
                     }}>
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a: ({node, ...props}) => (
-                            <Link 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              sx={{color: 'accent.fg'}}
-                              {...props} 
-                            />
-                          ),
-                          pre: ({node, ...props}) => (
-                            <Box 
-                              as="pre"
-                              sx={{
-                                bg: 'canvas.subtle',
-                                p: 2,
-                                borderRadius: 1,
-                                overflowX: 'auto',
-                                fontSize: 0,
-                                border: '1px solid',
-                                borderColor: 'border.muted'
-                              }}
-                              {...props}
-                            />
-                          ),
-                          code: ({inline, ...props}: CodeComponentProps) => (
-                            inline
-                              ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
-                              : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
-                          ),
-                          img: ({node, ...props}) => (
-                            <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
-                          )
-                        }}
-                      >
-                        {item.body}
-                      </ReactMarkdown>
+                      <Box sx={{
+                        position: 'relative',
+                        '& pre': {
+                          maxWidth: '100%',
+                          overflow: 'auto'
+                        }
+                      }}>
+                        <ReactMarkdown 
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({node, ...props}) => (
+                              <Link 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                sx={{color: 'accent.fg'}}
+                                {...props} 
+                              />
+                            ),
+                            pre: ({node, ...props}) => (
+                              <Box 
+                                as="pre"
+                                sx={{
+                                  bg: 'canvas.subtle',
+                                  p: 2,
+                                  borderRadius: 1,
+                                  overflowX: 'auto',
+                                  fontSize: 0,
+                                  border: '1px solid',
+                                  borderColor: 'border.muted'
+                                }}
+                                {...props}
+                              />
+                            ),
+                            code: ({inline, ...props}: CodeComponentProps) => (
+                              inline
+                                ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
+                                : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
+                            ),
+                            img: ({node, ...props}) => (
+                              <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
+                            )
+                          }}
+                        >
+                          {item.body}
+                        </ReactMarkdown>
+                      </Box>
                       {!expanded[item.id] && item.body.length > 400 && (
                         <Box sx={{
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          width: '100%', 
-                          height: '3em', 
-                          background: 'linear-gradient(to bottom, transparent, var(--color-canvas-default) 90%)'
+                          position: 'sticky',
+                          bottom: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '3em',
+                          background: 'linear-gradient(to bottom, transparent, var(--color-canvas-default) 90%)',
+                          pointerEvents: 'none'
                         }} />
                       )}
                       
@@ -1033,7 +1042,15 @@ const ResultsList = memo(function ResultsList() {
                           size="small"
                           variant="invisible"
                           onClick={() => toggleExpand(item.id)}
-                          sx={{ mt: 1 }}
+                          sx={{ 
+                            mt: 1,
+                            position: 'sticky',
+                            bottom: 0,
+                            bg: 'canvas.default',
+                            width: '100%',
+                            textAlign: 'center',
+                            py: 2
+                          }}
                         >
                           {expanded[item.id] ? 'Show less' : 'Show more'}
                         </Button>
