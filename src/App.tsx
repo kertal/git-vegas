@@ -127,14 +127,16 @@ interface ResultsContextType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr';
-  statusFilter: 'all' | 'open' | 'closed' | 'merged';  // Add merged status
-  sortOrder: 'updated' | 'created';  // Add sort order
+  statusFilter: 'all' | 'open' | 'closed' | 'merged';
+  sortOrder: 'updated' | 'created';
   labelFilter: string;
-  excludedLabels: string[];  // Add excluded labels
+  excludedLabels: string[];
   searchText: string;
   repoFilters: string[];
   availableLabels: string[];
   availableRepos: string[];
+  startDate: string;  // Add start date
+  endDate: string;    // Add end date
   stats: {
     total: number;
     issues: number;
@@ -144,9 +146,9 @@ interface ResultsContextType {
   };
   setFilter: (filter: 'all' | 'issue' | 'pr') => void;
   setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
-  setSortOrder: (sort: 'updated' | 'created') => void;  // Add sort order setter
+  setSortOrder: (sort: 'updated' | 'created') => void;
   setLabelFilter: (filter: string) => void;
-  setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;  // Add setter
+  setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setSearchText: (text: string) => void;
   setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
   toggleDescriptionVisibility: (id: number) => void;
@@ -155,7 +157,7 @@ interface ResultsContextType {
   descriptionVisible: { [id: number]: boolean };
   expanded: { [id: number]: boolean };
   clipboardMessage: string | null;
-  clearAllFilters: () => void;  // Add clear all function
+  clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: (value: boolean) => void;
 }
@@ -306,8 +308,14 @@ const SearchForm = memo(function SearchForm() {
   );
 });
 
-// Add helper function to count items matching a filter
-const countItemsMatchingFilter = (items: GitHubItem[], filterType: string, filterValue: string, excludedLabels: string[]): number => {
+// Update countItemsMatchingFilter to accept date range
+const countItemsMatchingFilter = (
+  items: GitHubItem[], 
+  filterType: string, 
+  filterValue: string, 
+  excludedLabels: string[],
+  dateRange: { startDate: string; endDate: string }
+): number => {
   switch (filterType) {
     case 'type':
       return items.filter(item => 
@@ -317,7 +325,11 @@ const countItemsMatchingFilter = (items: GitHubItem[], filterType: string, filte
       ).length;
     case 'status':
       if (filterValue === 'merged') {
-        return items.filter(item => item.pull_request?.merged_at).length;
+        return items.filter(item => 
+          item.pull_request?.merged_at && 
+          new Date(item.pull_request.merged_at) >= new Date(dateRange.startDate) &&
+          new Date(item.pull_request.merged_at) <= new Date(dateRange.endDate)
+        ).length;
       }
       return items.filter(item => 
         filterValue === 'all' ? true :
@@ -337,7 +349,7 @@ const countItemsMatchingFilter = (items: GitHubItem[], filterType: string, filte
   }
 };
 
-// ResultsList component wrapped in memo to prevent unnecessary re-renders when form state changes
+// Update ResultsList to pass date range to countItemsMatchingFilter
 const ResultsList = memo(function ResultsList() {
   const {
     results,
@@ -371,6 +383,7 @@ const ResultsList = memo(function ResultsList() {
   } = useResultsContext();
 
   const { startDate, endDate } = useFormContext();
+  const dateRange = { startDate, endDate };
 
   // Helper to check if any filters are active
   const hasActiveFilters = filter !== 'all' || 
@@ -396,13 +409,7 @@ const ResultsList = memo(function ResultsList() {
     });
   }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
 
-  // Format date range for display
-  const dateRange = useMemo(() => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
-  }, [startDate, endDate]);
-
+  // Update all calls to countItemsMatchingFilter to include dateRange
   return (
     <>
       {/* Add Clear Filters button in a header section */}
@@ -436,19 +443,19 @@ const ResultsList = memo(function ResultsList() {
           variant={filter === 'all' ? 'primary' : 'default'} 
           onClick={() => setFilter('all')}
         >
-          All ({countItemsMatchingFilter(baseResults, 'type', 'all', excludedLabels)})
+          All ({countItemsMatchingFilter(baseResults, 'type', 'all', excludedLabels, dateRange)})
         </Button>
         <Button 
           variant={filter === 'issue' ? 'primary' : 'default'} 
           onClick={() => setFilter('issue')}
         >
-          Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels)})
+          Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels, dateRange)})
         </Button>
         <Button 
           variant={filter === 'pr' ? 'primary' : 'default'} 
           onClick={() => setFilter('pr')}
         >
-          PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
+          PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels, dateRange)})
         </Button>
       </Box>
 
@@ -459,19 +466,19 @@ const ResultsList = memo(function ResultsList() {
           variant={statusFilter === 'all' ? 'primary' : 'default'} 
           onClick={() => setStatusFilter('all')}
         >
-          All ({countItemsMatchingFilter(baseResults, 'status', 'all', excludedLabels)})
+          All ({countItemsMatchingFilter(baseResults, 'status', 'all', excludedLabels, dateRange)})
         </Button>
         <Button 
           variant={statusFilter === 'open' ? 'primary' : 'default'} 
           onClick={() => setStatusFilter('open')}
         >
-          Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels)})
+          Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels, dateRange)})
         </Button>
         <Button 
           variant={statusFilter === 'closed' ? 'primary' : 'default'} 
           onClick={() => setStatusFilter('closed')}
         >
-          Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels)})
+          Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels, dateRange)})
         </Button>
         <Button 
           variant={statusFilter === 'merged' ? 'primary' : 'default'} 
@@ -487,7 +494,7 @@ const ResultsList = memo(function ResultsList() {
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path fillRule="evenodd" d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5-6.5a.75.75 0 100-1.5.75.75 0 000 1.5zM5.75 15.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
           </svg>
-          Merged in {dateRange} ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
+          Merged in {startDate} - {endDate} ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
         </Button>
       </Box>
 
@@ -539,9 +546,8 @@ const ResultsList = memo(function ResultsList() {
                 {availableLabels
                   .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
                   .map(label => {
-                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
-                    // Count without other filters (except excludes) to show potential matches
-                    const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels);
+                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
+                    const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels, dateRange);
                     const hasMatches = currentCount > 0;
                     const hasPotentialMatches = potentialCount > 0;
                     
@@ -588,9 +594,8 @@ const ResultsList = memo(function ResultsList() {
                 {availableLabels
                   .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
                   .map(label => {
-                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
-                    // Count without other filters to show potential matches
-                    const potentialCount = countItemsMatchingFilter(results, 'label', label, []);
+                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
+                    const potentialCount = countItemsMatchingFilter(results, 'label', label, [], dateRange);
                     const hasMatches = currentCount > 0;
                     const hasPotentialMatches = potentialCount > 0;
 
@@ -643,77 +648,6 @@ const ResultsList = memo(function ResultsList() {
           </Box>
         </>
       )}
-
-      {/* Repository Filter UI */}
-      {availableRepos.length > 0 && (
-        <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="span" sx={{ fontWeight: 'bold', fontSize: 1 }}>Repository Filter:</Text>
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Button
-                size="small"
-                variant={repoFilters.length === 0 ? 'primary' : 'default'}
-                onClick={() => setRepoFilters([])}
-              >
-                All Repositories ({baseResults.length})
-              </Button>
-              {availableRepos.map(repo => {
-                const count = countItemsMatchingFilter(baseResults, 'repo', repo, excludedLabels);
-                const repoName = repo.split('/')[1] || repo;
-                return (
-                  <Button
-                    key={repo}
-                    size="small"
-                    variant={repoFilters.includes(repo) ? 'primary' : 'default'}
-                    onClick={() => {
-                      if (repoFilters.includes(repo)) {
-                        setRepoFilters(prev => prev.filter(r => r !== repo));
-                      } else {
-                        setRepoFilters(prev => [...prev, repo]);
-                      }
-                    }}
-                    sx={{
-                      borderColor: repoFilters.includes(repo) ? 'accent.emphasis' : 'border.default',
-                      color: 'fg.default'
-                    }}
-                  >
-                    {repoName} ({count})
-                  </Button>
-                );
-              })}
-            </Box>
-          </Box>
-        </Box>
-      )}
-
-      {/* Text Search */}
-      <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <Text as="label" htmlFor="searchText" sx={{ fontWeight: 'bold', fontSize: 1 }}>Text Search</Text>
-          <TextInput
-            id="searchText"
-            aria-label="Text Search"
-            name="searchText"
-            placeholder="Search in title and description..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            leadingVisual={() => (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                <path fillRule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path>
-              </svg>
-            )}
-            trailingAction={searchText ? (
-              <TextInput.Action onClick={() => setSearchText('')} aria-label="Reset search">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
-                  <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06z"></path>
-                </svg>
-              </TextInput.Action>
-            ) : undefined}
-            sx={{width: '100%'}}
-            block
-          />
-        </Box>
-      </Box>
 
       {filteredResults.length > 0 && (
         <Box sx={{maxWidth: '800px', margin: '24px auto'}}>
@@ -793,275 +727,268 @@ const ResultsList = memo(function ResultsList() {
               </Box>
             </Box>
           </Box>
-
-          {/* Compact View */}
-          {isCompactView ? (
-            <Box as="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
-              {filteredResults.map((item) => (
-                <Box 
-                  as="li" 
-                  key={item.id} 
-                  sx={{ 
-                    borderBottom: '1px solid',
-                    borderColor: 'border.muted',
-                    py: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2
-                  }}
-                >
-                  <img 
-                    src={item.user.avatar_url} 
-                    alt={`${item.user.login}'s avatar`}
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
-                      border: '1px solid var(--color-border-default)'
-                    }}
-                  />
-                  <Link
-                    href={item.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{
-                      color: 'accent.fg',
-                      textDecoration: 'none',
-                      ':hover': { textDecoration: 'underline' },
-                      flex: 1
-                    }}
-                  >
-                    {item.title}
-                  </Link>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.muted', fontSize: 0 }}>
-                    <Text>{item.pull_request ? 'PR' : 'Issue'}</Text>
-                    <Text>•</Text>
-                    <Text>{item.repository_url?.split('/').slice(-2).join('/')}</Text>
-                    <Text>•</Text>
-                    <Text>{new Date(item.updated_at).toLocaleDateString()}</Text>
-                  </Box>
-                </Box>
-              ))}
-            </Box>
-          ) : (
-            <Box>
-              {filteredResults.map((item) => (
-                <Box key={item.id} sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3, bg: 'canvas.subtle' }}>
-                  {/* Replace the project info section */}
-                  <Box sx={{mb: 2, display: 'flex', alignItems: 'center', gap: 2}}>
-                    <img 
-                      src={item.user.avatar_url} 
-                      alt={`${item.user.login}'s avatar`}
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        border: '1px solid var(--color-border-default)'
-                      }}
-                    />
-                    <Link
-                      href={item.user.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{fontSize: 1, color: 'fg.muted', textDecoration: 'none', ':hover': { textDecoration: 'underline' }}}
-                    >
-                      {item.user.login}
-                    </Link>
-                    {item.repository_url && (
-                      <>
-                        <Text sx={{color: 'fg.muted'}}>/</Text>
-                        <Link
-                          href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{fontSize: 1, color: 'accent.fg'}}
-                        >
-                          {item.repository_url.replace('https://api.github.com/repos/', '').split('/')[1]}
-                        </Link>
-                      </>
-                    )}
-                  </Box>
-                  <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
-                    <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
-                  </Link>
-                  <Box sx={{display: 'flex', gap: 1, alignItems: 'center', mb: 1, flexWrap: 'wrap'}}>
-                    <Label variant={item.pull_request ? 'success' : 'accent' as PrimerLabelVariant}>
-                      {item.pull_request ? 'PR' : 'Issue'}
-                    </Label>
-                    {/* Enhanced state labels with distinct colors */}
-                    {item.pull_request ? (
-                      item.state === 'closed' ? (
-                        item.merged ? (
-                          <Label variant="sponsors" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                              <path fillRule="evenodd" d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5-6.5a.75.75 0 100-1.5.75.75 0 000 1.5zM5.75 15.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
-                            </svg>
-                            Merged
-                          </Label>
-                        ) : (
-                          <Label variant="done" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                              <path fillRule="evenodd" d="M2.343 13.657A8 8 0 1113.657 2.343 8 8 0 012.343 13.657zM6.03 4.97a.75.75 0 00-1.06 1.06L6.94 8 4.97 9.97a.75.75 0 101.06 1.06L8 9.06l1.97 1.97a.75.75 0 101.06-1.06L9.06 8l1.97-1.97a.75.75 0 10-1.06-1.06L8 6.94 6.03 4.97z" />
-                            </svg>
-                            Closed
-                          </Label>
-                        )
-                      ) : (
-                        <Label variant="success" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path fillRule="evenodd" d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z" />
-                          </svg>
-                          Open PR
-                        </Label>
-                      )
-                    ) : (
-                      item.state === 'closed' ? (
-                        <Label variant="done" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path fillRule="evenodd" d="M1.5 8a6.5 6.5 0 0110.65-5.003.75.75 0 00.959-1.153 8 8 0 102.592 8.33.75.75 0 10-1.444-.407A6.5 6.5 0 011.5 8zM8 12a1 1 0 100-2 1 1 0 000 2zm0-8a.75.75 0 01.75.75v3.5a.75.75 0 11-1.5 0v-3.5A.75.75 0 018 4zm4.78 4.28l3-3a.75.75 0 00-1.06-1.06l-2.47 2.47-.97-.97a.749.749 0 10-1.06 1.06l1.5 1.5a.75.75 0 001.06 0z" />
-                          </svg>
-                          Closed Issue
-                        </Label>
-                      ) : (
-                        <Label variant="success" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                            <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z" />
-                          </svg>
-                          Open Issue
-                        </Label>
-                      )
-                    )}
-                    {/* Display labels nicely */}
-                    {item.labels && item.labels.map(l => (
-                      <Label
-                        key={l.name}
-                        sx={{
-                          ml: 1,
-                          backgroundColor: l.color ? `#${l.color}` : undefined,
-                          color: l.color ? getContrastColor(l.color) : undefined,
-                          fontWeight: 'bold',
-                          fontSize: 0,
-                          cursor: 'pointer',
-                        }}
-                        title={l.description || l.name}
-                        onClick={() => setLabelFilter(l.name)}
-                      >{l.name}</Label>
-                    ))}
-                  </Box>
-                  <Box sx={{fontSize: 0, color: 'fg.muted', mt: 2, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap'}}>
-                    <Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
-                      <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
-                      <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
-                      {item.pull_request?.merged_at && (
-                        <Text sx={{ color: 'done.fg' }}>
-                          Merged: {new Date(item.pull_request.merged_at).toLocaleDateString()}
-                        </Text>
-                      )}
-                      {item.state === 'closed' && !item.pull_request?.merged_at && (
-                        <Text sx={{ color: 'danger.fg' }}>
-                          Closed: {new Date(item.closed_at!).toLocaleDateString()}
-                        </Text>
-                      )}
-                    </Box>
-                    {item.body && (
-                      <Button 
-                        size="small" 
-                        variant={descriptionVisible[item.id] ? "primary" : "default"}
-                        onClick={() => toggleDescriptionVisibility(item.id)}
-                        sx={{ ml: 'auto' }}
-                      >
-                        {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
-                      </Button>
-                    )}
-                  </Box>
-                  
-                  {/* Description shown only on demand */}
-                  {item.body && descriptionVisible[item.id] && (
-                    <Box sx={{
-                      maxHeight: expanded[item.id] ? 'none' : '200px',
-                      overflow: 'hidden',
-                      position: 'relative',
-                      mt: 2,
-                      bg: 'canvas.default',
-                      p: 2,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'border.muted',
-                      fontSize: 1,
-                      color: 'fg.muted',
-                    }}><pre>
-                      {JSON.stringify(item)}
-                    </pre>
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a: ({node, ...props}) => (
-                            <Link 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              sx={{color: 'accent.fg'}}
-                              {...props} 
-                            />
-                          ),
-                          pre: ({node, ...props}) => (
-                            <Box 
-                              as="pre"
-                              sx={{
-                                bg: 'canvas.subtle',
-                                p: 2,
-                                borderRadius: 1,
-                                overflowX: 'auto',
-                                fontSize: 0,
-                                border: '1px solid',
-                                borderColor: 'border.muted'
-                              }}
-                              {...props}
-                            />
-                          ),
-                          code: ({inline, ...props}: CodeComponentProps) => (
-                            inline
-                              ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
-                              : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
-                          ),
-                          img: ({node, ...props}) => (
-                            <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
-                          )
-                        }}
-                      >
-                        {item.body}
-                      </ReactMarkdown>
-                      {!expanded[item.id] && item.body.length > 400 && (
-                        <Box sx={{
-                          position: 'absolute', 
-                          bottom: 0, 
-                          left: 0, 
-                          width: '100%', 
-                          height: '3em', 
-                          background: 'linear-gradient(to bottom, transparent, var(--color-canvas-default) 90%)'
-                        }} />
-                      )}
-                      
-                      {item.body.length > 400 && (
-                        <Button 
-                          size="small" 
-                          variant="invisible" 
-                          onClick={() => toggleExpand(item.id)}
-                          sx={{ mt: 1 }}
-                        >
-                          {expanded[item.id] ? 'Show less' : 'Show more'}
-                        </Button>
-                      )}
-                    </Box>
-                  )}
-                </Box>
-              ))}
-            </Box>
-          )}
         </Box>
       )}
-      {filteredResults.length === 0 && (
-        <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
-             <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
+
+      {/* Compact View */}
+      {isCompactView ? (
+        <Box as="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+          {filteredResults.map((item) => (
+            <Box 
+              as="li" 
+              key={item.id} 
+              sx={{ 
+                borderBottom: '1px solid',
+                borderColor: 'border.muted',
+                py: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2
+              }}
+            >
+              <img 
+                src={item.user.avatar_url} 
+                alt={`${item.user.login}'s avatar`}
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  border: '1px solid var(--color-border-default)'
+                }}
+              />
+              <Link
+                href={item.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  color: 'accent.fg',
+                  textDecoration: 'none',
+                  ':hover': { textDecoration: 'underline' },
+                  flex: 1
+                }}
+              >
+                {item.title}
+              </Link>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.muted', fontSize: 0 }}>
+                <Text>{item.pull_request ? 'PR' : 'Issue'}</Text>
+                <Text>•</Text>
+                <Text>{item.repository_url?.split('/').slice(-2).join('/')}</Text>
+                <Text>•</Text>
+                <Text>{new Date(item.updated_at).toLocaleDateString()}</Text>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      ) : (
+        <Box>
+          {filteredResults.map((item) => (
+            <Box key={item.id} sx={{ border: '1px solid', borderColor: 'border.default', borderRadius: 2, p: 3, mb: 3, bg: 'canvas.subtle' }}>
+              {/* Project info section */}
+              <Box sx={{mb: 2, display: 'flex', alignItems: 'center', gap: 2}}>
+                <img 
+                  src={item.user.avatar_url} 
+                  alt={`${item.user.login}'s avatar`}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    border: '1px solid var(--color-border-default)'
+                  }}
+                />
+                <Link
+                  href={item.user.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{fontSize: 1, color: 'fg.muted', textDecoration: 'none', ':hover': { textDecoration: 'underline' }}}
+                >
+                  {item.user.login}
+                </Link>
+                {item.repository_url && (
+                  <>
+                    <Text sx={{color: 'fg.muted'}}>/</Text>
+                    <Link
+                      href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{fontSize: 1, color: 'accent.fg'}}
+                    >
+                      {item.repository_url.replace('https://api.github.com/repos/', '').split('/')[1]}
+                    </Link>
+                  </>
+                )}
+              </Box>
+              <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
+                <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
+              </Link>
+              <Box sx={{display: 'flex', gap: 1, alignItems: 'center', mb: 1, flexWrap: 'wrap'}}>
+                <Label variant={item.pull_request ? 'success' : 'accent' as PrimerLabelVariant}>
+                  {item.pull_request ? 'PR' : 'Issue'}
+                </Label>
+                {/* Enhanced state labels with distinct colors */}
+                {item.pull_request ? (
+                  item.state === 'closed' ? (
+                    item.merged ? (
+                      <Label variant="sponsors" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <path fillRule="evenodd" d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5-6.5a.75.75 0 100-1.5.75.75 0 000 1.5zM5.75 15.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+                        </svg>
+                        Merged
+                      </Label>
+                    ) : (
+                      <Label variant="done" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                          <path fillRule="evenodd" d="M2.343 13.657A8 8 0 1113.657 2.343 8 8 0 012.343 13.657zM6.03 4.97a.75.75 0 00-1.06 1.06L6.94 8 4.97 9.97a.75.75 0 101.06 1.06L8 9.06l1.97 1.97a.75.75 0 101.06-1.06L9.06 8l1.97-1.97a.75.75 0 10-1.06-1.06L8 6.94 6.03 4.97z" />
+                        </svg>
+                        Closed
+                      </Label>
+                    )
+                  ) : (
+                    <Label variant="success" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path fillRule="evenodd" d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z" />
+                      </svg>
+                      Open PR
+                    </Label>
+                  )
+                ) : (
+                  item.state === 'closed' ? (
+                    <Label variant="done" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path fillRule="evenodd" d="M1.5 8a6.5 6.5 0 0110.65-5.003.75.75 0 00.959-1.153 8 8 0 102.592 8.33.75.75 0 10-1.444-.407A6.5 6.5 0 011.5 8zM8 12a1 1 0 100-2 1 1 0 000 2zm0-8a.75.75 0 01.75.75v3.5a.75.75 0 11-1.5 0v-3.5A.75.75 0 018 4zm4.78 4.28l3-3a.75.75 0 00-1.06-1.06l-2.47 2.47-.97-.97a.749.749 0 10-1.06 1.06l1.5 1.5a.75.75 0 001.06 0z" />
+                      </svg>
+                      Closed Issue
+                    </Label>
+                  ) : (
+                    <Label variant="success" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                        <path fillRule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z" />
+                      </svg>
+                      Open Issue
+                    </Label>
+                  )
+                )}
+                {/* Display labels nicely */}
+                {item.labels && item.labels.map(l => (
+                  <Label
+                    key={l.name}
+                    sx={{
+                      ml: 1,
+                      backgroundColor: l.color ? `#${l.color}` : undefined,
+                      color: l.color ? getContrastColor(l.color) : undefined,
+                      fontWeight: 'bold',
+                      fontSize: 0,
+                      cursor: 'pointer',
+                    }}
+                    title={l.description || l.name}
+                    onClick={() => setLabelFilter(l.name)}
+                  >{l.name}</Label>
+                ))}
+              </Box>
+              <Box sx={{fontSize: 0, color: 'fg.muted', mt: 2, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap'}}>
+                <Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
+                  <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
+                  <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
+                  {item.pull_request?.merged_at && (
+                    <Text sx={{ color: 'done.fg' }}>
+                      Merged: {new Date(item.pull_request.merged_at).toLocaleDateString()}
+                    </Text>
+                  )}
+                  {item.state === 'closed' && !item.pull_request?.merged_at && (
+                    <Text sx={{ color: 'danger.fg' }}>
+                      Closed: {new Date(item.closed_at!).toLocaleDateString()}
+                    </Text>
+                  )}
+                </Box>
+                {item.body && (
+                  <Button 
+                    size="small" 
+                    variant={descriptionVisible[item.id] ? "primary" : "default"}
+                    onClick={() => toggleDescriptionVisibility(item.id)}
+                    sx={{ ml: 'auto' }}
+                  >
+                    {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
+                  </Button>
+                )}
+              </Box>
+              
+              {/* Description shown only on demand */}
+              {item.body && descriptionVisible[item.id] && (
+                <Box sx={{
+                  maxHeight: expanded[item.id] ? 'none' : '200px',
+                  overflow: 'hidden',
+                  position: 'relative',
+                  mt: 2,
+                  bg: 'canvas.default',
+                  p: 2,
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'border.muted',
+                  fontSize: 1,
+                  color: 'fg.muted',
+                }}>
+                  <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({node, ...props}) => (
+                        <Link 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          sx={{color: 'accent.fg'}}
+                          {...props} 
+                        />
+                      ),
+                      pre: ({node, ...props}) => (
+                        <Box 
+                          as="pre"
+                          sx={{
+                            bg: 'canvas.subtle',
+                            p: 2,
+                            borderRadius: 1,
+                            overflowX: 'auto',
+                            fontSize: 0,
+                            border: '1px solid',
+                            borderColor: 'border.muted'
+                          }}
+                          {...props}
+                        />
+                      ),
+                      code: ({inline, ...props}: CodeComponentProps) => (
+                        inline
+                          ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
+                          : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
+                      ),
+                      img: ({node, ...props}) => (
+                        <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
+                      )
+                    }}
+                  >
+                    {item.body}
+                  </ReactMarkdown>
+                  {!expanded[item.id] && item.body.length > 400 && (
+                    <Box sx={{
+                      position: 'absolute', 
+                      bottom: 0, 
+                      left: 0, 
+                      width: '100%', 
+                      height: '3em', 
+                      background: 'linear-gradient(to bottom, transparent, var(--color-canvas-default) 90%)'
+                    }} />
+                  )}
+                  
+                  {item.body.length > 400 && (
+                    <Button 
+                      size="small" 
+                      variant="invisible" 
+                      onClick={() => toggleExpand(item.id)}
+                      sx={{ mt: 1 }}
+                    >
+                      {expanded[item.id] ? 'Show less' : 'Show more'}
+                    </Button>
+                  )}
+                </Box>
+              )}
+            </Box>
+          ))}
         </Box>
       )}
     </>
@@ -1329,7 +1256,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
   }
 };
 
-  // Memoize the filteredResults to prevent recalculations on form changes
+  // Update filteredResults to properly handle merged filter
   const filteredResults = useMemo(() => {
     const filtered = results.filter(item => {
       // Type filter (Issue or PR)
@@ -1338,10 +1265,14 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
         filter === 'pr' ? !!item.pull_request : 
         !item.pull_request;
       
-      // Status filter
+      // Status filter with proper merge date check
       const statusMatch = 
         statusFilter === 'all' ? true :
-        statusFilter === 'merged' ? !!item.pull_request?.merged_at :
+        statusFilter === 'merged' ? (
+          !!item.pull_request?.merged_at && 
+          new Date(item.pull_request.merged_at) >= new Date(startDate) &&
+          new Date(item.pull_request.merged_at) <= new Date(endDate)
+        ) :
         statusFilter === item.state;
       
       // Label filter - include and exclude
@@ -1365,13 +1296,12 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
       return typeMatch && statusMatch && labelMatch && excludeMatch && repoMatch && searchMatch;
     });
 
-    // Sort the filtered results
     return [...filtered].sort((a, b) => {
       const dateA = new Date(sortOrder === 'updated' ? a.updated_at : a.created_at);
       const dateB = new Date(sortOrder === 'updated' ? b.updated_at : b.created_at);
-      return dateB.getTime() - dateA.getTime(); // Most recent first
+      return dateB.getTime() - dateA.getTime();
     });
-  }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
+  }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder, startDate, endDate]);
 
   // Memoize stats calculation to prevent recalculations on form changes
   const stats = useMemo(() => ({
@@ -1498,6 +1428,8 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     repoFilters,
     availableLabels,
     availableRepos,
+    startDate,    // Add start date
+    endDate,      // Add end date
     stats,
     setFilter,
     setStatusFilter,
@@ -1527,6 +1459,8 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
     repoFilters,
     availableLabels,
     availableRepos,
+    startDate,    // Add start date
+    endDate,      // Add end date
     stats,
     toggleDescriptionVisibility,
     toggleExpand,
