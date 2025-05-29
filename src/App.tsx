@@ -385,13 +385,46 @@ const ResultsList = memo(function ResultsList() {
   const { startDate, endDate } = useFormContext();
   const dateRange = { startDate, endDate };
 
+  // Add state for filter collapse
+  const [areFiltersCollapsed, setAreFiltersCollapsed] = useState(false);
+
   // Helper to check if any filters are active
   const hasActiveFilters = filter !== 'all' || 
     statusFilter !== 'all' || 
     sortOrder !== 'updated' || 
     labelFilter !== '' || 
     searchText !== '' || 
-    repoFilters.length > 0;
+    repoFilters.length > 0 ||
+    excludedLabels.length > 0;
+
+  // Function to generate filter summary text
+  const getFilterSummary = () => {
+    const summaryParts = [];
+
+    if (filter !== 'all') {
+      summaryParts.push(`Type: ${filter === 'pr' ? 'PRs' : 'Issues'}`);
+    }
+    if (statusFilter !== 'all') {
+      summaryParts.push(`Status: ${statusFilter}`);
+    }
+    if (sortOrder !== 'updated') {
+      summaryParts.push('Sorted by creation date');
+    }
+    if (labelFilter) {
+      summaryParts.push(`Label: ${labelFilter}`);
+    }
+    if (excludedLabels.length > 0) {
+      summaryParts.push(`Excluded labels: ${excludedLabels.join(', ')}`);
+    }
+    if (searchText) {
+      summaryParts.push(`Search: "${searchText}"`);
+    }
+    if (repoFilters.length > 0) {
+      summaryParts.push(`Repos: ${repoFilters.join(', ')}`);
+    }
+
+    return summaryParts.join(' | ');
+  };
 
   // Get base results for counting (before text search filter)
   const baseResults = useMemo(() => {
@@ -409,255 +442,301 @@ const ResultsList = memo(function ResultsList() {
     });
   }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
 
-  // Update all calls to countItemsMatchingFilter to include dateRange
   return (
     <>
-      {/* Add Clear Filters button in a header section */}
+      {/* Filters Section */}
       <Box sx={{
         maxWidth: '800px',
-        margin: '24px auto 0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+        margin: '24px auto',
+        borderBottom: '1px solid',
+        borderColor: 'border.default',
+        pb: 3
       }}>
-        <Text as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default'}}>Filters</Text>
-        {hasActiveFilters && (
-          <Button
-            variant="danger"
-            size="small"
-            onClick={clearAllFilters}
-            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-              <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/>
-            </svg>
-            Clear All Filters
-          </Button>
+        {/* Filters header with collapse toggle */}
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 2
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Text as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default'}}>Filters</Text>
+            <Button
+              variant="invisible"
+              size="small"
+              onClick={() => setAreFiltersCollapsed(!areFiltersCollapsed)}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+              {areFiltersCollapsed ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M12.78 6.22a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06 0L3.22 7.28a.75.75 0 011.06-1.06L8 9.94l3.72-3.72a.75.75 0 011.06 0z"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.47 11.78a.75.75 0 001.06 0l4.25-4.25a.75.75 0 00-1.06-1.06L8 10.19 4.28 6.47a.75.75 0 00-1.06 1.06l4.25 4.25z"/>
+                </svg>
+              )}
+              {areFiltersCollapsed ? 'Show Filters' : 'Hide Filters'}
+            </Button>
+          </Box>
+          {hasActiveFilters && (
+            <Button
+              variant="danger"
+              size="small"
+              onClick={clearAllFilters}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/>
+              </svg>
+              Clear All Filters
+            </Button>
+          )}
+        </Box>
+
+        {/* Filter Summary when collapsed */}
+        {areFiltersCollapsed && hasActiveFilters && (
+          <Box sx={{
+            margin: '8px 0',
+            padding: 2,
+            borderRadius: 2,
+            bg: 'canvas.subtle',
+            border: '1px solid',
+            borderColor: 'border.default'
+          }}>
+            <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
+              Active Filters: {getFilterSummary()}
+            </Text>
+          </Box>
+        )}
+
+        {/* Collapsible Filter UI */}
+        {!areFiltersCollapsed && (
+          <Box sx={{ mt: 3 }}>
+            {/* Type Filter UI */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3 }}>
+              <Text as="span" sx={{fontWeight: 'bold'}}>Type:</Text>
+              <Button 
+                variant={filter === 'all' ? 'primary' : 'default'} 
+                onClick={() => setFilter('all')}
+              >
+                All ({countItemsMatchingFilter(baseResults, 'type', 'all', excludedLabels, dateRange)})
+              </Button>
+              <Button 
+                variant={filter === 'issue' ? 'primary' : 'default'} 
+                onClick={() => setFilter('issue')}
+              >
+                Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels, dateRange)})
+              </Button>
+              <Button 
+                variant={filter === 'pr' ? 'primary' : 'default'} 
+                onClick={() => setFilter('pr')}
+              >
+                PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels, dateRange)})
+              </Button>
+            </Box>
+
+            {/* Status Filter UI */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3, flexWrap: 'wrap' }}>
+              <Text as="span" sx={{fontWeight: 'bold'}}>Status:</Text>
+              <Button 
+                variant={statusFilter === 'all' ? 'primary' : 'default'} 
+                onClick={() => setStatusFilter('all')}
+              >
+                All ({countItemsMatchingFilter(baseResults, 'status', 'all', excludedLabels, dateRange)})
+              </Button>
+              <Button 
+                variant={statusFilter === 'open' ? 'primary' : 'default'} 
+                onClick={() => setStatusFilter('open')}
+              >
+                Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels, dateRange)})
+              </Button>
+              <Button 
+                variant={statusFilter === 'closed' ? 'primary' : 'default'} 
+                onClick={() => setStatusFilter('closed')}
+              >
+                Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels, dateRange)})
+              </Button>
+              <Button 
+                variant={statusFilter === 'merged' ? 'primary' : 'default'} 
+                onClick={() => setStatusFilter('merged')}
+                sx={{ 
+                  borderColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
+                  color: statusFilter === 'merged' ? 'done.fg' : undefined,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5-6.5a.75.75 0 100-1.5.75.75 0 000 1.5zM5.75 15.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+                </svg>
+                Merged in {startDate} - {endDate} ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
+              </Button>
+            </Box>
+
+            {/* Sort Order UI */}
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3 }}>
+              <Text as="span" sx={{fontWeight: 'bold'}}>Sort by:</Text>
+              <Button 
+                variant={sortOrder === 'updated' ? 'primary' : 'default'} 
+                onClick={() => setSortOrder('updated')}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M2.5 3.5v3h3v-3h-3zM2 2a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V3a1 1 0 00-1-1H2zm4.655 8.595a.75.75 0 010 1.06L4.03 14.28a.75.75 0 01-1.06 0l-2.625-2.625a.75.75 0 011.06-1.06l2.095 2.095 2.095-2.095a.75.75 0 011.06 0z"/>
+                </svg>
+                Last Updated
+              </Button>
+              <Button 
+                variant={sortOrder === 'created' ? 'primary' : 'default'} 
+                onClick={() => setSortOrder('created')}
+                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 3.5a.75.75 0 01.75.75v3.5h3.5a.75.75 0 010 1.5h-3.5v3.5a.75.75 0 01-1.5 0v-3.5h-3.5a.75.75 0 010-1.5h3.5v-3.5A.75.75 0 018 3.5z"/>
+                </svg>
+                Creation Date
+              </Button>
+            </Box>
+
+            {/* Label Filters */}
+            {availableLabels.length > 0 && (
+              <>
+                {/* Inclusive Label Filter */}
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Text as="span" sx={{fontWeight: 'bold', fontSize: 2, color: 'success.fg', display: 'flex', alignItems: 'center', gap: 2}}>
+                      Label Filter (inclusive)
+                      <Text as="span" sx={{fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
+                        - show items with selected label
+                      </Text>
+                    </Text>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <Button
+                        size="small"
+                        variant={labelFilter === '' ? 'primary' : 'default'}
+                        onClick={() => setLabelFilter('')}
+                      >
+                        All ({baseResults.length})
+                      </Button>
+                      {availableLabels
+                        .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+                        .map(label => {
+                          const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
+                          const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels, dateRange);
+                          const hasMatches = currentCount > 0;
+                          const hasPotentialMatches = potentialCount > 0;
+                          
+                          return (
+                            <Button
+                              key={label}
+                              size="small"
+                              variant={labelFilter === label ? 'primary' : 'default'}
+                              onClick={() => setLabelFilter(label)}
+                              sx={{
+                                bg: labelFilter === label ? undefined : undefined,
+                                color: hasMatches ? 'fg.default' : 'fg.muted',
+                                opacity: (!hasMatches || excludedLabels.includes(label)) ? 0.5 : 1,
+                                cursor: (!hasPotentialMatches || excludedLabels.includes(label)) ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none'
+                              }}
+                              disabled={!hasPotentialMatches || excludedLabels.includes(label)}
+                              title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                <path fillRule="evenodd" d="M2.5 7.775V2.75a.25.25 0 01.25-.25h5.025a.25.25 0 01.177.073l6.25 6.25a.25.25 0 010 .354l-5.025 5.025a.25.25 0 01-.354 0l-6.25-6.25a.25.25 0 01-.073-.177zm-1.5 0V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 010 2.474l-5.026 5.026a1.75 1.75 0 01-2.474 0l-6.25-6.25A1.75 1.75 0 011 7.775zM6 5a1 1 0 100 2 1 1 0 000-2z"/>
+                              </svg>
+                              {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
+                            </Button>
+                          );
+                        })}
+                    </Box>
+                  </Box>
+                </Box>
+
+                {/* Exclusive Label Filter */}
+                <Box sx={{ mb: 3 }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <Text as="span" sx={{fontWeight: 'bold', fontSize: 2, color: 'danger.fg', display: 'flex', alignItems: 'center', gap: 2}}>
+                      Label Filter (exclusive)
+                      <Text as="span" sx={{fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
+                        - hide items with selected labels
+                      </Text>
+                    </Text>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {availableLabels
+                        .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+                        .map(label => {
+                          const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
+                          const potentialCount = countItemsMatchingFilter(results, 'label', label, [], dateRange);
+                          const hasMatches = currentCount > 0;
+                          const hasPotentialMatches = potentialCount > 0;
+
+                          return (
+                            <Button
+                              key={label}
+                              size="small"
+                              variant={excludedLabels.includes(label) ? 'danger' : 'default'}
+                              onClick={() => {
+                                if (excludedLabels.includes(label)) {
+                                  setExcludedLabels(prev => prev.filter(l => l !== label));
+                                } else {
+                                  setExcludedLabels(prev => [...prev, label]);
+                                  if (labelFilter === label) {
+                                    setLabelFilter('');
+                                  }
+                                }
+                              }}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                opacity: (!hasMatches || labelFilter === label) ? 0.5 : 1,
+                                cursor: (!hasPotentialMatches || labelFilter === label) ? 'not-allowed' : 'pointer',
+                                textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none'
+                              }}
+                              disabled={!hasPotentialMatches || labelFilter === label}
+                              title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
+                            >
+                              {excludedLabels.includes(label) ? (
+                                <>
+                                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/>
+                                  </svg>
+                                  {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
+                                </>
+                              ) : (
+                                <>
+                                  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path fillRule="evenodd" d="M2.5 7.775V2.75a.25.25 0 01.25-.25h5.025a.25.25 0 01.177.073l6.25 6.25a.25.25 0 010 .354l-5.025 5.025a.25.25 0 01-.354 0l-6.25-6.25a.25.25 0 01-.073-.177zm-1.5 0V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 010 2.474l-5.026 5.026a1.75 1.75 0 01-2.474 0l-6.25-6.25A1.75 1.75 0 011 7.775zM6 5a1 1 0 100 2 1 1 0 000-2z"/>
+                                  </svg>
+                                  {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
+                                </>
+                              )}
+                            </Button>
+                          );
+                        })}
+                    </Box>
+                  </Box>
+                </Box>
+              </>
+            )}
+          </Box>
         )}
       </Box>
 
-      {/* Type Filter UI */}
-      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
-        <Text as="span" sx={{fontWeight: 'bold'}}>Type:</Text>
-        <Button 
-          variant={filter === 'all' ? 'primary' : 'default'} 
-          onClick={() => setFilter('all')}
-        >
-          All ({countItemsMatchingFilter(baseResults, 'type', 'all', excludedLabels, dateRange)})
-        </Button>
-        <Button 
-          variant={filter === 'issue' ? 'primary' : 'default'} 
-          onClick={() => setFilter('issue')}
-        >
-          Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels, dateRange)})
-        </Button>
-        <Button 
-          variant={filter === 'pr' ? 'primary' : 'default'} 
-          onClick={() => setFilter('pr')}
-        >
-          PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels, dateRange)})
-        </Button>
-      </Box>
-
-      {/* Status Filter UI */}
-      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap'}}>
-        <Text as="span" sx={{fontWeight: 'bold'}}>Status:</Text>
-        <Button 
-          variant={statusFilter === 'all' ? 'primary' : 'default'} 
-          onClick={() => setStatusFilter('all')}
-        >
-          All ({countItemsMatchingFilter(baseResults, 'status', 'all', excludedLabels, dateRange)})
-        </Button>
-        <Button 
-          variant={statusFilter === 'open' ? 'primary' : 'default'} 
-          onClick={() => setStatusFilter('open')}
-        >
-          Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels, dateRange)})
-        </Button>
-        <Button 
-          variant={statusFilter === 'closed' ? 'primary' : 'default'} 
-          onClick={() => setStatusFilter('closed')}
-        >
-          Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels, dateRange)})
-        </Button>
-        <Button 
-          variant={statusFilter === 'merged' ? 'primary' : 'default'} 
-          onClick={() => setStatusFilter('merged')}
-          sx={{ 
-            borderColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
-            color: statusFilter === 'merged' ? 'done.fg' : undefined,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path fillRule="evenodd" d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5-6.5a.75.75 0 100-1.5.75.75 0 000 1.5zM5.75 15.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
-          </svg>
-          Merged in {startDate} - {endDate} ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
-        </Button>
-      </Box>
-
-      {/* Sort Order UI */}
-      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
-        <Text as="span" sx={{fontWeight: 'bold'}}>Sort by:</Text>
-        <Button 
-          variant={sortOrder === 'updated' ? 'primary' : 'default'} 
-          onClick={() => setSortOrder('updated')}
-          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path fillRule="evenodd" d="M2.5 3.5v3h3v-3h-3zM2 2a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V3a1 1 0 00-1-1H2zm4.655 8.595a.75.75 0 010 1.06L4.03 14.28a.75.75 0 01-1.06 0l-2.625-2.625a.75.75 0 011.06-1.06l2.095 2.095 2.095-2.095a.75.75 0 011.06 0z"/>
-          </svg>
-          Last Updated
-        </Button>
-        <Button 
-          variant={sortOrder === 'created' ? 'primary' : 'default'} 
-          onClick={() => setSortOrder('created')}
-          sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <path fillRule="evenodd" d="M8 3.5a.75.75 0 01.75.75v3.5h3.5a.75.75 0 010 1.5h-3.5v3.5a.75.75 0 01-1.5 0v-3.5h-3.5a.75.75 0 010-1.5h3.5v-3.5A.75.75 0 018 3.5z"/>
-          </svg>
-          Creation Date
-        </Button>
-      </Box>
-
-      {/* Label Filters */}
-      {availableLabels.length > 0 && (
-        <>
-          {/* Inclusive Label Filter */}
-          <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Text as="span" sx={{fontWeight: 'bold', fontSize: 2, color: 'success.fg', display: 'flex', alignItems: 'center', gap: 2}}>
-                Label Filter (inclusive)
-                <Text as="span" sx={{fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
-                  - show items with selected label
-                </Text>
-              </Text>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                <Button
-                  size="small"
-                  variant={labelFilter === '' ? 'primary' : 'default'}
-                  onClick={() => setLabelFilter('')}
-                >
-                  All ({baseResults.length})
-                </Button>
-                {availableLabels
-                  .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-                  .map(label => {
-                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
-                    const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels, dateRange);
-                    const hasMatches = currentCount > 0;
-                    const hasPotentialMatches = potentialCount > 0;
-                    
-                    return (
-                      <Button
-                        key={label}
-                        size="small"
-                        variant={labelFilter === label ? 'primary' : 'default'}
-                        onClick={() => setLabelFilter(label)}
-                        sx={{
-                          bg: labelFilter === label ? undefined : undefined,
-                          color: hasMatches ? 'fg.default' : 'fg.muted',
-                          opacity: (!hasMatches || excludedLabels.includes(label)) ? 0.5 : 1,
-                          cursor: (!hasPotentialMatches || excludedLabels.includes(label)) ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none'
-                        }}
-                        disabled={!hasPotentialMatches || excludedLabels.includes(label)}
-                        title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                          <path fillRule="evenodd" d="M2.5 7.775V2.75a.25.25 0 01.25-.25h5.025a.25.25 0 01.177.073l6.25 6.25a.25.25 0 010 .354l-5.025 5.025a.25.25 0 01-.354 0l-6.25-6.25a.25.25 0 01-.073-.177zm-1.5 0V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 010 2.474l-5.026 5.026a1.75 1.75 0 01-2.474 0l-6.25-6.25A1.75 1.75 0 011 7.775zM6 5a1 1 0 100 2 1 1 0 000-2z"/>
-                        </svg>
-                        {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
-                      </Button>
-                    );
-                  })}
-              </Box>
-            </Box>
-          </Box>
-
-          {/* Exclusive Label Filter */}
-          <Box sx={{maxWidth: '800px', margin: '16px auto 0'}}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Text as="span" sx={{fontWeight: 'bold', fontSize: 2, color: 'danger.fg', display: 'flex', alignItems: 'center', gap: 2}}>
-                Label Filter (exclusive)
-                <Text as="span" sx={{fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
-                  - hide items with selected labels
-                </Text>
-              </Text>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                {availableLabels
-                  .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-                  .map(label => {
-                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
-                    const potentialCount = countItemsMatchingFilter(results, 'label', label, [], dateRange);
-                    const hasMatches = currentCount > 0;
-                    const hasPotentialMatches = potentialCount > 0;
-
-                    return (
-                      <Button
-                        key={label}
-                        size="small"
-                        variant={excludedLabels.includes(label) ? 'danger' : 'default'}
-                        onClick={() => {
-                          if (excludedLabels.includes(label)) {
-                            setExcludedLabels(prev => prev.filter(l => l !== label));
-                          } else {
-                            setExcludedLabels(prev => [...prev, label]);
-                            if (labelFilter === label) {
-                              setLabelFilter('');
-                            }
-                          }
-                        }}
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 1,
-                          opacity: (!hasMatches || labelFilter === label) ? 0.5 : 1,
-                          cursor: (!hasPotentialMatches || labelFilter === label) ? 'not-allowed' : 'pointer',
-                          textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none'
-                        }}
-                        disabled={!hasPotentialMatches || labelFilter === label}
-                        title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
-                      >
-                        {excludedLabels.includes(label) ? (
-                          <>
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                              <path fillRule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"/>
-                            </svg>
-                            {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
-                          </>
-                        ) : (
-                          <>
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                              <path fillRule="evenodd" d="M2.5 7.775V2.75a.25.25 0 01.25-.25h5.025a.25.25 0 01.177.073l6.25 6.25a.25.25 0 010 .354l-5.025 5.025a.25.25 0 01-.354 0l-6.25-6.25a.25.25 0 01-.073-.177zm-1.5 0V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 010 2.474l-5.026 5.026a1.75 1.75 0 01-2.474 0l-6.25-6.25A1.75 1.75 0 011 7.775zM6 5a1 1 0 100 2 1 1 0 000-2z"/>
-                            </svg>
-                            {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
-                          </>
-                        )}
-                      </Button>
-                    );
-                  })}
-              </Box>
-            </Box>
-          </Box>
-        </>
-      )}
-
+      {/* Results Section - Always Visible */}
       {filteredResults.length > 0 && (
-        <Box sx={{maxWidth: '800px', margin: '24px auto'}}>
+        <Box sx={{maxWidth: '800px', margin: '0 auto'}}>
           <Box sx={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             mb: 3,
-            borderBottom: '1px solid',
-            borderColor: 'border.default',
             pb: 2
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
