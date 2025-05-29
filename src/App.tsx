@@ -127,7 +127,7 @@ interface ResultsContextType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr';
-  statusFilter: 'all' | 'open' | 'closed';
+  statusFilter: 'all' | 'open' | 'closed' | 'merged';  // Add merged status
   sortOrder: 'updated' | 'created';  // Add sort order
   labelFilter: string;
   searchText: string;
@@ -142,7 +142,7 @@ interface ResultsContextType {
     closed: number;
   };
   setFilter: (filter: 'all' | 'issue' | 'pr') => void;
-  setStatusFilter: (status: 'all' | 'open' | 'closed') => void;
+  setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
   setSortOrder: (sort: 'updated' | 'created') => void;  // Add sort order setter
   setLabelFilter: (filter: string) => void;
   setSearchText: (text: string) => void;
@@ -312,6 +312,9 @@ const countItemsMatchingFilter = (items: GitHubItem[], filterType: string, filte
         !item.pull_request
       ).length;
     case 'status':
+      if (filterValue === 'merged') {
+        return items.filter(item => item.pull_request?.merged_at).length;
+      }
       return items.filter(item => 
         filterValue === 'all' ? true :
         item.state === filterValue
@@ -357,6 +360,8 @@ const ResultsList = memo(function ResultsList() {
     clearAllFilters
   } = useResultsContext();
 
+  const { startDate, endDate } = useFormContext();
+
   // Helper to check if any filters are active
   const hasActiveFilters = filter !== 'all' || 
     statusFilter !== 'all' || 
@@ -378,6 +383,13 @@ const ResultsList = memo(function ResultsList() {
       return labelMatch && repoMatch;
     });
   }, [filteredResults, labelFilter, repoFilters]);
+
+  // Format date range for display
+  const dateRange = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    return `${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+  }, [startDate, endDate]);
 
   return (
     <>
@@ -429,7 +441,7 @@ const ResultsList = memo(function ResultsList() {
       </Box>
 
       {/* Status Filter UI */}
-      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
+      <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap'}}>
         <Text as="span" sx={{fontWeight: 'bold'}}>Status:</Text>
         <Button 
           variant={statusFilter === 'all' ? 'primary' : 'default'} 
@@ -448,6 +460,22 @@ const ResultsList = memo(function ResultsList() {
           onClick={() => setStatusFilter('closed')}
         >
           Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed')})
+        </Button>
+        <Button 
+          variant={statusFilter === 'merged' ? 'primary' : 'default'} 
+          onClick={() => setStatusFilter('merged')}
+          sx={{ 
+            borderColor: statusFilter === 'merged' ? 'done.emphasis' : undefined,
+            color: statusFilter === 'merged' ? 'done.fg' : undefined,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path fillRule="evenodd" d="M5 3.254V3.25v.005a.75.75 0 110-.005v.004zm.45 1.9a2.25 2.25 0 10-1.95.218v5.256a2.25 2.25 0 101.5 0V7.123A5.735 5.735 0 009.25 9h1.378a2.251 2.251 0 100-1.5H9.25a4.25 4.25 0 01-3.8-2.346zM12.75 9a.75.75 0 100-1.5.75.75 0 000 1.5zm-8.5-6.5a.75.75 0 100-1.5.75.75 0 000 1.5zM5.75 15.5a.75.75 0 100-1.5.75.75 0 000 1.5z" />
+          </svg>
+          Merged in {dateRange} ({countItemsMatchingFilter(baseResults, 'status', 'merged')})
         </Button>
       </Box>
 
@@ -911,8 +939,8 @@ function AppWithContexts() {
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState<string>('');
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed'>(() => 
-    (localStorage.getItem('status-filter') as 'all' | 'open' | 'closed') || 'all'
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'merged'>(() => 
+    (localStorage.getItem('status-filter') as 'all' | 'open' | 'closed' | 'merged') || 'all'
   );
   const [sortOrder, setSortOrder] = useState<'updated' | 'created'>(() => 
     (localStorage.getItem('sort-order') as 'updated' | 'created') || 'updated'
@@ -1118,6 +1146,7 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
       // Status filter
       const statusMatch = 
         statusFilter === 'all' ? true :
+        statusFilter === 'merged' ? !!item.pull_request?.merged_at :
         statusFilter === item.state;
       
       // Label filter
