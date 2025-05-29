@@ -244,7 +244,12 @@ const SearchForm = memo(function SearchForm() {
           </Box>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="label" htmlFor="startDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>Start Date</Text>
+            <Text as="label" htmlFor="startDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>
+              Start Date (Last Updated)
+              <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
+                - when items were last updated
+              </Text>
+            </Text>
             <TextInput
               id="startDate"
               aria-label="Start Date"
@@ -258,7 +263,12 @@ const SearchForm = memo(function SearchForm() {
           </Box>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="label" htmlFor="endDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>End Date</Text>
+            <Text as="label" htmlFor="endDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>
+              End Date (Last Updated)
+              <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
+                - when items were last updated
+              </Text>
+            </Text>
             <TextInput
               id="endDate"
               aria-label="End Date"
@@ -291,6 +301,33 @@ const SearchForm = memo(function SearchForm() {
     </>
   );
 });
+
+// Add helper function to count items matching a filter
+const countItemsMatchingFilter = (items: GitHubItem[], filterType: string, filterValue: string): number => {
+  switch (filterType) {
+    case 'type':
+      return items.filter(item => 
+        filterValue === 'all' ? true :
+        filterValue === 'pr' ? !!item.pull_request :
+        !item.pull_request
+      ).length;
+    case 'status':
+      return items.filter(item => 
+        filterValue === 'all' ? true :
+        item.state === filterValue
+      ).length;
+    case 'label':
+      return items.filter(item => 
+        item.labels?.some(l => l.name === filterValue)
+      ).length;
+    case 'repo':
+      return items.filter(item => 
+        item.repository_url?.replace('https://api.github.com/repos/', '') === filterValue
+      ).length;
+    default:
+      return 0;
+  }
+};
 
 // ResultsList component wrapped in memo to prevent unnecessary re-renders when form state changes
 const ResultsList = memo(function ResultsList() {
@@ -328,6 +365,20 @@ const ResultsList = memo(function ResultsList() {
     searchText !== '' || 
     repoFilters.length > 0;
 
+  // Get base results for counting (before text search filter)
+  const baseResults = useMemo(() => {
+    return filteredResults.filter(item => {
+      // Apply only the other active filters, not the current one being counted
+      const labelMatch = labelFilter ? item.labels?.some(l => l.name === labelFilter) : true;
+      const repoMatch = repoFilters.length === 0 ? true : (
+        item.repository_url && repoFilters.includes(
+          item.repository_url.replace('https://api.github.com/repos/', '')
+        )
+      );
+      return labelMatch && repoMatch;
+    });
+  }, [filteredResults, labelFilter, repoFilters]);
+
   return (
     <>
       {/* Add Clear Filters button in a header section */}
@@ -357,17 +408,47 @@ const ResultsList = memo(function ResultsList() {
       {/* Type Filter UI */}
       <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
         <Text as="span" sx={{fontWeight: 'bold'}}>Type:</Text>
-        <Button variant={filter === 'all' ? 'primary' : 'default'} onClick={() => setFilter('all')}>All</Button>
-        <Button variant={filter === 'issue' ? 'primary' : 'default'} onClick={() => setFilter('issue')}>Issues</Button>
-        <Button variant={filter === 'pr' ? 'primary' : 'default'} onClick={() => setFilter('pr')}>PRs</Button>
+        <Button 
+          variant={filter === 'all' ? 'primary' : 'default'} 
+          onClick={() => setFilter('all')}
+        >
+          All ({countItemsMatchingFilter(baseResults, 'type', 'all')})
+        </Button>
+        <Button 
+          variant={filter === 'issue' ? 'primary' : 'default'} 
+          onClick={() => setFilter('issue')}
+        >
+          Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue')})
+        </Button>
+        <Button 
+          variant={filter === 'pr' ? 'primary' : 'default'} 
+          onClick={() => setFilter('pr')}
+        >
+          PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr')})
+        </Button>
       </Box>
 
       {/* Status Filter UI */}
       <Box sx={{maxWidth: '800px', margin: '16px auto 0', display: 'flex', gap: 2, alignItems: 'center'}}>
         <Text as="span" sx={{fontWeight: 'bold'}}>Status:</Text>
-        <Button variant={statusFilter === 'all' ? 'primary' : 'default'} onClick={() => setStatusFilter('all')}>All</Button>
-        <Button variant={statusFilter === 'open' ? 'primary' : 'default'} onClick={() => setStatusFilter('open')}>Open</Button>
-        <Button variant={statusFilter === 'closed' ? 'primary' : 'default'} onClick={() => setStatusFilter('closed')}>Closed</Button>
+        <Button 
+          variant={statusFilter === 'all' ? 'primary' : 'default'} 
+          onClick={() => setStatusFilter('all')}
+        >
+          All ({countItemsMatchingFilter(baseResults, 'status', 'all')})
+        </Button>
+        <Button 
+          variant={statusFilter === 'open' ? 'primary' : 'default'} 
+          onClick={() => setStatusFilter('open')}
+        >
+          Open ({countItemsMatchingFilter(baseResults, 'status', 'open')})
+        </Button>
+        <Button 
+          variant={statusFilter === 'closed' ? 'primary' : 'default'} 
+          onClick={() => setStatusFilter('closed')}
+        >
+          Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed')})
+        </Button>
       </Box>
 
       {/* Sort Order UI */}
@@ -403,7 +484,9 @@ const ResultsList = memo(function ResultsList() {
             size="small"
             variant={labelFilter === '' ? 'primary' : 'default'}
             onClick={() => setLabelFilter('')}
-          >All</Button>
+          >
+            All ({baseResults.length})
+          </Button>
           {availableLabels.map(label => (
             <Button
               key={label}
@@ -411,7 +494,9 @@ const ResultsList = memo(function ResultsList() {
               variant={labelFilter === label ? 'primary' : 'default'}
               onClick={() => setLabelFilter(label)}
               sx={{bg: labelFilter === label ? undefined : undefined, color: 'fg.default'}}
-            >{label}</Button>
+            >
+              {label} ({countItemsMatchingFilter(baseResults, 'label', label)})
+            </Button>
           ))}
         </Box>
       )}
@@ -427,30 +512,32 @@ const ResultsList = memo(function ResultsList() {
                 variant={repoFilters.length === 0 ? 'primary' : 'default'}
                 onClick={() => setRepoFilters([])}
               >
-                All Repositories
+                All Repositories ({baseResults.length})
               </Button>
-              {availableRepos.map(repo => (
-                <Button
-                  key={repo}
-                  size="small"
-                  variant={repoFilters.includes(repo) ? 'primary' : 'default'}
-                  onClick={() => {
-                    if (repoFilters.includes(repo)) {
-                      // Remove from selection
-                      setRepoFilters((prev: string[]) => prev.filter((r: string) => r !== repo));
-                    } else {
-                      // Add to selection
-                      setRepoFilters([...repoFilters, repo]);
-                    }
-                  }}
-                  sx={{
-                    borderColor: repoFilters.includes(repo) ? 'accent.emphasis' : 'border.default',
-                    color: 'fg.default'
-                  }}
-                >
-                  {repo.split('/')[1] || repo} {/* Show only repo name, not owner/repo */}
-                </Button>
-              ))}
+              {availableRepos.map(repo => {
+                const count = countItemsMatchingFilter(baseResults, 'repo', repo);
+                const repoName = repo.split('/')[1] || repo;
+                return (
+                  <Button
+                    key={repo}
+                    size="small"
+                    variant={repoFilters.includes(repo) ? 'primary' : 'default'}
+                    onClick={() => {
+                      if (repoFilters.includes(repo)) {
+                        setRepoFilters(prev => prev.filter(r => r !== repo));
+                      } else {
+                        setRepoFilters(prev => [...prev, repo]);
+                      }
+                    }}
+                    sx={{
+                      borderColor: repoFilters.includes(repo) ? 'accent.emphasis' : 'border.default',
+                      color: 'fg.default'
+                    }}
+                  >
+                    {repoName} ({count})
+                  </Button>
+                );
+              })}
             </Box>
           </Box>
         </Box>
@@ -650,10 +737,20 @@ const ResultsList = memo(function ResultsList() {
                     >{l.name}</Label>
                   ))}
                 </Box>
-                <Box sx={{fontSize: 0, color: 'fg.muted', mt: 2, display: 'flex', alignItems: 'center', gap: 3}}>
-                  <Box sx={{display: 'flex', gap: 2}}>
+                <Box sx={{fontSize: 0, color: 'fg.muted', mt: 2, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap'}}>
+                  <Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
                     <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
                     <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
+                    {item.pull_request?.merged_at && (
+                      <Text sx={{ color: 'done.fg' }}>
+                        Merged: {new Date(item.pull_request.merged_at).toLocaleDateString()}
+                      </Text>
+                    )}
+                    {item.state === 'closed' && !item.pull_request?.merged_at && (
+                      <Text sx={{ color: 'danger.fg' }}>
+                        Closed: {new Date(item.closed_at!).toLocaleDateString()}
+                      </Text>
+                    )}
                   </Box>
                   {item.body && (
                     <Button 
@@ -918,7 +1015,7 @@ function AppWithContexts() {
           setLoadingProgress(`Fetching page ${page} of ${MAX_PAGES} for ${currentUsername}...`);
           
           const response = await fetch(
-            `https://api.github.com/search/issues?q=author:${encodeURIComponent(currentUsername)}+created:${startDate}..${endDate}&per_page=100&page=${page}`,
+            `https://api.github.com/search/issues?q=author:${encodeURIComponent(currentUsername)}+updated:${startDate}..${endDate}&per_page=100&page=${page}`,
             { headers }
           );
           
@@ -930,32 +1027,13 @@ function AppWithContexts() {
           const data = await response.json();
           const items = data.items || [];
           
-          // Fetch additional PR details for merged_at information
-          const prDetailsPromises = items
-            .filter((item: GitHubItem) => item.pull_request)
-            .map(async (pr: GitHubItem) => {
-              try {
-                if (pr.pull_request?.url) {
-                  const prResponse = await fetch(pr.pull_request.url, { headers });
-                  if (prResponse.ok) {
-                    const prData = await prResponse.json();
-                    pr.merged = prData.merged;
-                    pr.merged_at = prData.merged_at;
-                    pr.closed_at = prData.closed_at;
-                  }
-                }
-                return pr;
-              } catch (error) {
-                console.error(`Error fetching PR details for #${pr.number}:`, error);
-                return pr;
-              }
-            });
-          
-          // Wait for all PR detail requests
-          const prDetails = await Promise.all(prDetailsPromises);
-          
           // Process items from this page
           items.forEach((item: GitHubItem) => {
+            // For PRs, check if it's merged based on the state and merged_at field
+            if (item.pull_request) {
+              item.merged = !!item.pull_request.merged_at;
+            }
+            
             // Add labels to set
             item.labels?.forEach(l => labelsSet.add(l.name));
             
