@@ -1,7 +1,27 @@
 import { useState, useEffect, useCallback, createContext, useContext, memo, useMemo } from 'react';
 import type { FormEvent } from 'react'; // Changed to type-only import
 import './App.css';
-import { TextInput, Button, Box, Text, Link, Label, PageLayout, Flash, Spinner } from '@primer/react';
+import {
+  TextInput,
+  Button,
+  Box,
+  Text,
+  Link,
+  Label,
+  PageLayout,
+  Flash,
+  Spinner,
+  FormControl,
+  ButtonGroup,
+  Avatar,
+  Timeline,
+  BranchName,
+  StateLabel,
+  Heading,
+  Stack,
+  ThemeProvider,
+  BaseStyles
+} from '@primer/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 // Commenting out the problematic Table import for now to isolate the issue
@@ -200,7 +220,6 @@ const SearchForm = memo(function SearchForm() {
     error 
   } = useFormContext();
 
-  // Debounced handler for localStorage (defined at component level to avoid recreating on each render)
   const debouncedSaveToLocalStorage = useCallback(
     debounce((key: string, value: string) => {
       localStorage.setItem(key, value);
@@ -208,7 +227,6 @@ const SearchForm = memo(function SearchForm() {
     []
   );
 
-  // Handle username input with optimized performance
   const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newUsername = e.target.value;
     setUsername(newUsername);
@@ -216,105 +234,78 @@ const SearchForm = memo(function SearchForm() {
   }, [debouncedSaveToLocalStorage, setUsername]);
 
   return (
-    <>
-      <Box sx={{maxWidth: '800px', margin: '0 auto'}}>
-        <Box as="form" 
-          sx={{display: 'flex', flexDirection: 'column', gap: 3}} 
-          onSubmit={(e: FormEvent<HTMLFormElement>) => { 
-            e.preventDefault(); 
-            handleSearch(); 
-          }}
-        >
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="label" htmlFor="githubToken" sx={{ fontWeight: 'bold', fontSize: 1 }}>
-              GitHub Token (optional)
-              <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
-                - stored in session only
-              </Text>
+    <Box sx={{maxWidth: '800px', margin: '0 auto'}}>
+      <Box as="form" 
+        sx={{display: 'flex', flexDirection: 'column', gap: 3}} 
+        onSubmit={(e: FormEvent<HTMLFormElement>) => { 
+          e.preventDefault(); 
+          handleSearch(); 
+        }}
+      >
+        <FormControl>
+          <FormControl.Label>
+            GitHub Token (optional)
+            <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
+              - stored in session only
             </Text>
-            <TextInput
-              id="githubToken"
-              aria-label="GitHub Token"
-              name="githubToken"
-              type="password"
-              placeholder="GitHub personal access token"
-              value={githubToken}
-              onChange={(e) => setGithubToken(e.target.value)}
-              sx={{width: '100%'}}
-              block
-            />
-          </Box>
+          </FormControl.Label>
+          <TextInput
+            type="password"
+            placeholder="GitHub personal access token"
+            value={githubToken}
+            onChange={(e) => setGithubToken(e.target.value)}
+            block
+          />
+        </FormControl>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="label" htmlFor="username" sx={{ fontWeight: 'bold', fontSize: 1 }}>GitHub Username(s)</Text>
-            <TextInput
-              id="username"
-              aria-label="GitHub Usernames"
-              name="username"
-              placeholder="Enter usernames (comma-separated for multiple)"
-              value={username}
-              onChange={handleUsernameChange}
-              sx={{width: '100%'}}
-              block
-            />
-          </Box>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="label" htmlFor="startDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>
-              Start Date (Last Updated)
-              <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
-                - when items were last updated
-              </Text>
+        <FormControl>
+          <FormControl.Label>GitHub Username(s)</FormControl.Label>
+          <TextInput
+            placeholder="Enter usernames (comma-separated for multiple)"
+            value={username}
+            onChange={handleUsernameChange}
+            block
+          />
+        </FormControl>
+        
+        <FormControl>
+          <FormControl.Label>
+            Start Date (Last Updated)
+            <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
+              - when items were last updated
             </Text>
-            <TextInput
-              id="startDate"
-              aria-label="Start Date"
-              name="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              sx={{width: '100%'}}
-              block
-            />
-          </Box>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Text as="label" htmlFor="endDate" sx={{ fontWeight: 'bold', fontSize: 1 }}>
-              End Date (Last Updated)
-              <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
-                - when items were last updated
-              </Text>
+          </FormControl.Label>
+          <TextInput
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            block
+          />
+        </FormControl>
+        
+        <FormControl>
+          <FormControl.Label>
+            End Date (Last Updated)
+            <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
+              - when items were last updated
             </Text>
-            <TextInput
-              id="endDate"
-              aria-label="End Date"
-              name="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              sx={{width: '100%'}}
-              block
-            />
-          </Box>
-          
-          <Button variant="primary" type="submit" sx={{width: '100%', mt: 1}}>Search</Button>
-        </Box>
-        {error && (
-          <Flash variant="danger" sx={{marginTop: 3}}>
-            {error}
-          </Flash>
-        )}
+          </FormControl.Label>
+          <TextInput
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            block
+          />
+        </FormControl>
+        
+        <Button variant="primary" type="submit" sx={{width: '100%', mt: 1}}>Search</Button>
       </Box>
-
-      {loading && (
-        <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
-          <Spinner size="large" />
-          {loadingProgress && (
-            <Text sx={{ mt: 2, color: 'fg.muted' }}>{loadingProgress}</Text>
-          )}
-        </Box>
+      {error && (
+        <Flash variant="danger" sx={{marginTop: 3}}>
+          {error}
+        </Flash>
       )}
-    </>
+    </Box>
   );
 });
 
@@ -476,7 +467,7 @@ const ResultsList = memo(function ResultsList() {
           borderColor: 'border.default'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Text as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default', m: 0}}>Filters</Text>
+            <Heading as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default', m: 0}}>Filters</Heading>
             <Button
               variant="invisible"
               size="small"
@@ -520,9 +511,9 @@ const ResultsList = memo(function ResultsList() {
         {!areFiltersCollapsed && (
           <Box sx={{ p: 3 }}>
             {/* Type Filter UI */}
-            <Box sx={{ mb: 4 }}>
-              <Text as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Type</Text>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Stack sx={{ mb: 4 }}>
+              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Type</Heading>
+              <ButtonGroup>
                 <Button 
                   variant={filter === 'all' ? 'primary' : 'default'} 
                   onClick={() => setFilter('all')}
@@ -547,13 +538,13 @@ const ResultsList = memo(function ResultsList() {
                 >
                   PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels, dateRange)})
                 </Button>
-              </Box>
-            </Box>
+              </ButtonGroup>
+            </Stack>
 
             {/* Status Filter UI */}
-            <Box sx={{ mb: 4 }}>
-              <Text as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Status</Text>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Stack sx={{ mb: 4 }}>
+              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Status</Heading>
+              <ButtonGroup>
                 <Button 
                   variant={statusFilter === 'all' ? 'primary' : 'default'} 
                   onClick={() => setStatusFilter('all')}
@@ -590,13 +581,13 @@ const ResultsList = memo(function ResultsList() {
                 >
                   Merged in {startDate} - {endDate} ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
                 </Button>
-              </Box>
-            </Box>
+              </ButtonGroup>
+            </Stack>
 
             {/* Sort Order UI */}
-            <Box sx={{ mb: 4 }}>
-              <Text as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Sort by</Text>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Stack sx={{ mb: 4 }}>
+              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>Sort by</Heading>
+              <ButtonGroup>
                 <Button 
                   variant={sortOrder === 'updated' ? 'primary' : 'default'} 
                   onClick={() => setSortOrder('updated')}
@@ -613,20 +604,20 @@ const ResultsList = memo(function ResultsList() {
                 >
                   Creation Date
                 </Button>
-              </Box>
-            </Box>
+              </ButtonGroup>
+            </Stack>
 
             {/* Label Filters */}
             {availableLabels.length > 0 && (
               <>
                 {/* Inclusive Label Filter */}
-                <Box sx={{ mb: 4 }}>
-                  <Text as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'success.fg', mb: 2 }}>
+                <Stack sx={{ mb: 4 }}>
+                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'success.fg', mb: 2 }}>
                     Label Filter (inclusive)
                     <Text as="span" sx={{ml: 2, fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
                       - show items with selected label
                     </Text>
-                  </Text>
+                  </Heading>
                   <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                     <Button
                       size="small"
@@ -663,16 +654,16 @@ const ResultsList = memo(function ResultsList() {
                         );
                       })}
                   </Box>
-                </Box>
+                </Stack>
 
                 {/* Exclusive Label Filter */}
-                <Box sx={{ mb: 4 }}>
-                  <Text as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'danger.fg', mb: 2 }}>
+                <Stack sx={{ mb: 4 }}>
+                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'danger.fg', mb: 2 }}>
                     Label Filter (exclusive)
                     <Text as="span" sx={{ml: 2, fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
                       - hide items with selected labels
                     </Text>
-                  </Text>
+                  </Heading>
                   <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                     {availableLabels
                       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
@@ -710,7 +701,7 @@ const ResultsList = memo(function ResultsList() {
                         );
                       })}
                   </Box>
-                </Box>
+                </Stack>
               </>
             )}
           </Box>
@@ -739,15 +730,15 @@ const ResultsList = memo(function ResultsList() {
             borderColor: 'border.muted'
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Text as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Results</Text>
+              <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Results</Heading>
               {clipboardMessage && (
                 <Flash variant="success" sx={{ py: 1, px: 2 }}>
                   {clipboardMessage}
                 </Flash>
               )}
             </Box>
-            <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', gap: 2 }}>
+            <Stack alignItems="center" sx={{ gap: 3 }}>
+              <ButtonGroup>
                 <Button
                   onClick={() => setIsCompactView(!isCompactView)}
                   variant="default"
@@ -772,8 +763,8 @@ const ResultsList = memo(function ResultsList() {
                 >
                   Export to Clipboard
                 </Button>
-              </Box>
-              <Box sx={{display: 'flex', gap: 3}}>
+              </ButtonGroup>
+              <Stack direction="horizontal" sx={{ gap: 3 }}>
                 <Box sx={{textAlign: 'center'}}>
                   <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'fg.default'}}>{stats.total}</Text>
                   <Text sx={{fontSize: 1, color: 'fg.muted'}}>Total</Text>
@@ -794,8 +785,8 @@ const ResultsList = memo(function ResultsList() {
                   <Text sx={{fontSize: 4, fontWeight: 'bold', color: 'done.fg'}}>{stats.closed}</Text>
                   <Text sx={{fontSize: 1, color: 'fg.muted'}}>Closed</Text>
                 </Box>
-              </Box>
-            </Box>
+              </Stack>
+            </Stack>
           </Box>
 
           {/* Results List */}
@@ -814,16 +805,7 @@ const ResultsList = memo(function ResultsList() {
                     gap: 2
                   }}
                 >
-                  <img 
-                    src={item.user.avatar_url} 
-                    alt={`${item.user.login}'s avatar`}
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: '50%',
-                      border: '1px solid var(--color-border-default)'
-                    }}
-                  />
+                  <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={20} />
                   <Link
                     href={item.html_url}
                     target="_blank"
@@ -837,40 +819,32 @@ const ResultsList = memo(function ResultsList() {
                   >
                     {item.title}
                   </Link>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.muted', fontSize: 0 }}>
-                    <Text>{item.pull_request ? 'PR' : 'Issue'}</Text>
+                  <Stack direction="horizontal" alignItems="center" sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}>
+                    <StateLabel status={item.pull_request ? 'pullRequest' : 'issueOpened'}>
+                      {item.pull_request ? 'PR' : 'Issue'}
+                    </StateLabel>
                     <Text>•</Text>
-                    <Text>{item.repository_url?.split('/').slice(-2).join('/')}</Text>
+                    <BranchName>{item.repository_url?.split('/').slice(-2).join('/')}</BranchName>
                     <Text>•</Text>
                     <Text>{new Date(item.updated_at).toLocaleDateString()}</Text>
-                  </Box>
+                  </Stack>
                 </Box>
               ))}
             </Box>
           ) : (
-            <Box>
+            <Stack sx={{ gap: 3 }}>
               {filteredResults.map((item) => (
                 <Box key={item.id} sx={{ 
                   border: '1px solid',
                   borderColor: 'border.default',
                   borderRadius: 2,
                   p: 3,
-                  mb: 3,
                   bg: 'canvas.subtle',
                   ':last-child': { mb: 0 }
                 }}>
                   {/* Project info section */}
-                  <Box sx={{mb: 2, display: 'flex', alignItems: 'center', gap: 2}}>
-                    <img 
-                      src={item.user.avatar_url} 
-                      alt={`${item.user.login}'s avatar`}
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        border: '1px solid var(--color-border-default)'
-                      }}
-                    />
+                  <Stack direction="horizontal" alignItems="center" sx={{ mb: 2, gap: 2 }}>
+                    <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={24} />
                     <Link
                       href={item.user.html_url}
                       target="_blank"
@@ -892,30 +866,30 @@ const ResultsList = memo(function ResultsList() {
                         </Link>
                       </>
                     )}
-                  </Box>
+                  </Stack>
                   <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
                     <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
                   </Link>
-                  <Box sx={{display: 'flex', gap: 1, alignItems: 'center', mb: 1, flexWrap: 'wrap'}}>
-                    <Label variant={item.pull_request ? 'success' : 'accent' as PrimerLabelVariant}>
+                  <Stack direction="horizontal" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                    <StateLabel status={item.pull_request ? 'pullRequest' : 'issueOpened'}>
                       {item.pull_request ? 'PR' : 'Issue'}
-                    </Label>
+                    </StateLabel>
                     {/* Status labels */}
                     {item.pull_request ? (
                       item.state === 'closed' ? (
                         item.merged ? (
-                          <Label variant="sponsors">Merged</Label>
+                          <StateLabel status="pullRequestMerged">Merged</StateLabel>
                         ) : (
-                          <Label variant="done">Closed</Label>
+                          <StateLabel status="closed">Closed</StateLabel>
                         )
                       ) : (
-                        <Label variant="success">Open PR</Label>
+                        <StateLabel status="open">Open PR</StateLabel>
                       )
                     ) : (
                       item.state === 'closed' ? (
-                        <Label variant="done">Closed Issue</Label>
+                        <StateLabel status="closed">Closed Issue</StateLabel>
                       ) : (
-                        <Label variant="success">Open Issue</Label>
+                        <StateLabel status="open">Open Issue</StateLabel>
                       )
                     )}
                     {/* Display labels */}
@@ -936,9 +910,9 @@ const ResultsList = memo(function ResultsList() {
                         {l.name}
                       </Label>
                     ))}
-                  </Box>
-                  <Box sx={{fontSize: 0, color: 'fg.muted', mt: 2, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap'}}>
-                    <Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
+                  </Stack>
+                  <Stack direction="horizontal" alignItems="center" sx={{ fontSize: 0, color: 'fg.muted', mt: 2, flexWrap: 'wrap', gap: 3 }}>
+                    <Stack direction="horizontal" sx={{ flexWrap: 'wrap', gap: 2 }}>
                       <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
                       <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
                       {item.pull_request?.merged_at && (
@@ -951,7 +925,7 @@ const ResultsList = memo(function ResultsList() {
                           Closed: {new Date(item.closed_at!).toLocaleDateString()}
                         </Text>
                       )}
-                    </Box>
+                    </Stack>
                     {item.body && (
                       <Button 
                         size="small"
@@ -962,7 +936,7 @@ const ResultsList = memo(function ResultsList() {
                         {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
                       </Button>
                     )}
-                  </Box>
+                  </Stack>
                   
                   {/* Description shown only on demand */}
                   {item.body && descriptionVisible[item.id] && (
@@ -1059,7 +1033,7 @@ const ResultsList = memo(function ResultsList() {
                   )}
                 </Box>
               ))}
-            </Box>
+            </Stack>
           )}
         </Box>
       )}
@@ -1547,7 +1521,36 @@ const calculateDuration = (startDate: string, endDate: string | undefined): stri
   return (
     <FormContext.Provider value={formContextValue}>
       <ResultsContext.Provider value={resultsContextValue}>
-        <App />
+        <ThemeProvider>
+          <BaseStyles>
+            <Box sx={{ minHeight: '100vh', bg: 'canvas.default' }}>
+              <PageLayout>
+                <PageLayout.Header>
+                  <Box sx={{padding: 3, borderBottom: '1px solid', borderColor: 'border.default', bg: 'canvas.subtle' }}>
+                    <Heading as="h1" sx={{fontSize: 4, fontWeight: 'semibold', color: 'fg.default'}}>GitHub Issues & PRs Viewer</Heading>
+                  </Box>
+                </PageLayout.Header>
+                <PageLayout.Content sx={{ padding: 3 }}>
+                  <SearchForm />
+                  {!loading && filteredResults.length > 0 && <ResultsList />}
+                  {loading && (
+                    <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
+                      <Spinner size="large" />
+                      {loadingProgress && (
+                        <Text sx={{ mt: 2, color: 'fg.muted' }}>{loadingProgress}</Text>
+                      )}
+                    </Box>
+                  )}
+                  {filteredResults.length === 0 && !loading && (
+                    <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
+                      <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
+                    </Box>
+                  )}
+                </PageLayout.Content>
+              </PageLayout>
+            </Box>
+          </BaseStyles>
+        </ThemeProvider>
       </ResultsContext.Provider>
     </FormContext.Provider>
   );
@@ -1559,32 +1562,36 @@ function App() {
   const { filteredResults } = useResultsContext();
 
   return (
-    <Box sx={{ minHeight: '100vh', bg: 'canvas.default' }}>
-      <PageLayout>
-        <PageLayout.Header>
-          <Box sx={{padding: 3, borderBottom: '1px solid', borderColor: 'border.default', bg: 'canvas.subtle' }}>
-            <Text as="h1" sx={{fontSize: 4, fontWeight: 'semibold', color: 'fg.default'}}>GitHub Issues & PRs Viewer</Text>
-          </Box>
-        </PageLayout.Header>
-        <PageLayout.Content sx={{ padding: 3 }}>
-          <SearchForm />
-          {!loading && filteredResults.length > 0 && <ResultsList />}
-          {loading && (
-            <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
-              <Spinner size="large" />
-              {loadingProgress && (
-                <Text sx={{ mt: 2, color: 'fg.muted' }}>{loadingProgress}</Text>
+    <ThemeProvider>
+      <BaseStyles>
+        <Box sx={{ minHeight: '100vh', bg: 'canvas.default' }}>
+          <PageLayout>
+            <PageLayout.Header>
+              <Box sx={{padding: 3, borderBottom: '1px solid', borderColor: 'border.default', bg: 'canvas.subtle' }}>
+                <Heading as="h1" sx={{fontSize: 4, fontWeight: 'semibold', color: 'fg.default'}}>GitHub Issues & PRs Viewer</Heading>
+              </Box>
+            </PageLayout.Header>
+            <PageLayout.Content sx={{ padding: 3 }}>
+              <SearchForm />
+              {!loading && filteredResults.length > 0 && <ResultsList />}
+              {loading && (
+                <Box sx={{maxWidth: '800px', margin: '32px auto', textAlign: 'center'}}>
+                  <Spinner size="large" />
+                  {loadingProgress && (
+                    <Text sx={{ mt: 2, color: 'fg.muted' }}>{loadingProgress}</Text>
+                  )}
+                </Box>
               )}
-            </Box>
-          )}
-          {filteredResults.length === 0 && !loading && (
-            <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
-                 <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
-            </Box>
-          )}
-        </PageLayout.Content>
-      </PageLayout>
-    </Box>
+              {filteredResults.length === 0 && !loading && (
+                <Box sx={{maxWidth: '800px', margin: '24px auto', textAlign: 'center'}}>
+                  <Text sx={{color: 'fg.default'}}>No results to display for the given criteria.</Text>
+                </Box>
+              )}
+            </PageLayout.Content>
+          </PageLayout>
+        </Box>
+      </BaseStyles>
+    </ThemeProvider>
   );
 }
 
