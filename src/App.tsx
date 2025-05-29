@@ -273,25 +273,23 @@ const SearchForm = memo(function SearchForm() {
         {/* Main search fields in a horizontal layout */}
         <Box sx={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(200px, 2fr) repeat(2, minmax(150px, 1fr)) auto',
+          gridTemplateColumns: 'minmax(300px, 3fr) repeat(2, minmax(150px, 1fr)) auto',
           gap: 3,
-          alignItems: 'flex-end'
+          alignItems: 'flex-start'
         }}>
-          <FormControl>
-            <FormControl.Label required>GitHub Username(s)</FormControl.Label>
-            <TextInput
-              placeholder="Enter usernames (comma-separated for multiple)"
-              value={username}
-              onChange={handleUsernameChange}
-              aria-required="true"
-              block
-              aria-describedby="username-caption"
-              required
-            />
-            <FormControl.Caption id="username-caption">
-              You can enter multiple usernames separated by commas
-            </FormControl.Caption>
-          </FormControl>
+          <Box>
+            <FormControl>
+              <FormControl.Label required>GitHub Username(s)</FormControl.Label>
+              <TextInput
+                placeholder="Enter usernames (comma-separated for multiple)"
+                value={username}
+                onChange={handleUsernameChange}
+                aria-required="true"
+                block
+                required
+              />
+            </FormControl>
+          </Box>
           
           <FormControl>
             <FormControl.Label required>Start Date</FormControl.Label>
@@ -317,19 +315,19 @@ const SearchForm = memo(function SearchForm() {
             />
           </FormControl>
 
-          <Button 
-            variant="primary" 
-            type="submit" 
-            disabled={loading}
-            sx={{ 
-              minWidth: '120px',
-              height: '32px',
-              alignSelf: 'flex-start',
-              mt: '2px' // Small adjustment to align with inputs
-            }}
-          >
-            {loading ? <Spinner size="small" /> : 'Search'}
-          </Button>
+          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%', pb: '6px' }}>
+            <Button 
+              variant="primary" 
+              type="submit" 
+              disabled={loading}
+              sx={{ 
+                minWidth: '120px',
+                height: '32px'
+              }}
+            >
+              {loading ? <Spinner size="small" /> : 'Search'}
+            </Button>
+          </Box>
         </Box>
       </Box>
 
@@ -869,22 +867,58 @@ const ResultsList = memo(function ResultsList() {
           {/* Results header */}
           <Box sx={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            flexDirection: 'column',
+            gap: 3,
             mb: 3,
             pb: 3,
             borderBottom: '1px solid',
             borderColor: 'border.muted'
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Results</Heading>
-              {clipboardMessage && (
-                <Flash variant="success" sx={{ py: 1, px: 2 }}>
-                  {clipboardMessage}
-                </Flash>
-              )}
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Heading sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Results</Heading>
+                {clipboardMessage && (
+                  <Flash variant="success" sx={{ py: 1, px: 2 }}>
+                    {clipboardMessage}
+                  </Flash>
+                )}
+              </Box>
+              <ButtonGroup>
+                <Button
+                  onClick={() => setIsCompactView(true)}
+                  variant={isCompactView ? "primary" : "default"}
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Compact
+                </Button>
+                <Button
+                  onClick={() => setIsCompactView(false)}
+                  variant={!isCompactView ? "primary" : "default"}
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Detailed
+                </Button>
+              </ButtonGroup>
             </Box>
-            <Stack direction="horizontal" alignItems="center" sx={{ gap: 3 }}>
+
+            {/* Actions toolbar */}
+            <Box sx={{
+              display: 'flex',
+              gap: 2,
+              alignItems: 'center',
+              bg: 'canvas.subtle',
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'border.default'
+            }}>
+              <Text sx={{ fontSize: 1, color: 'fg.muted', mr: 1 }}>Sort by:</Text>
               <ButtonGroup>
                 <Button 
                   variant={sortOrder === 'updated' ? 'primary' : 'default'} 
@@ -892,7 +926,6 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  <ClockIcon size={16} />
                   Last Updated
                 </Button>
                 <Button 
@@ -901,38 +934,25 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  <CalendarIcon size={16} />
                   Creation Date
                 </Button>
               </ButtonGroup>
-              <ButtonGroup>
-                <Button
-                  onClick={() => setIsCompactView(!isCompactView)}
-                  variant="default"
-                  size="small"
-                  sx={{ 
-                    ...buttonStyles,
-                    borderColor: isCompactView ? 'accent.emphasis' : 'border.default',
-                    color: isCompactView ? 'accent.fg' : 'fg.default'
-                  }}
-                >
-                  {isCompactView ? <EyeIcon size={16} /> : <EyeClosedIcon size={16} />}
-                  {isCompactView ? 'Detailed View' : 'Compact View'}
-                </Button>
-                <Button 
-                  onClick={() => copyResultsToClipboard(isCompactView ? 'html' : 'markdown')}
-                  variant="default"
-                  size="small"
-                  sx={{ 
-                    ...buttonStyles,
-                    fontSize: 1,
-                    borderColor: 'border.default'
-                  }}
-                >
-                  Export to Clipboard
-                </Button>
-              </ButtonGroup>
-            </Stack>
+
+              <Box sx={{ width: 1, borderRight: '1px solid', borderColor: 'border.muted' }} />
+
+              <Button 
+                onClick={() => copyResultsToClipboard(isCompactView ? 'html' : 'markdown')}
+                variant="default"
+                size="small"
+                sx={{ 
+                  ...buttonStyles,
+                  fontSize: 1,
+                  borderColor: 'border.default'
+                }}
+              >
+                Export to Clipboard
+              </Button>
+            </Box>
           </Box>
 
           {/* Results List */}
