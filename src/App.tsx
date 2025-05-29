@@ -94,16 +94,13 @@ const getParamFromUrl = (param: string): string | null => {
 
 const updateUrlParams = (params: Record<string, string | null>): void => {
   const url = new URL(window.location.href);
-  const searchParams = url.searchParams;
-  
   Object.entries(params).forEach(([key, value]) => {
     if (value === null || value === '') {
-      searchParams.delete(key);
+      url.searchParams.delete(key);
     } else {
-      searchParams.set(key, value);
+      url.searchParams.set(key, value);
     }
   });
-  
   window.history.replaceState({}, '', url.toString());
 };
 
@@ -446,9 +443,6 @@ const ResultsList = memo(function ResultsList() {
     }
     if (statusFilter !== 'all') {
       summaryParts.push(`Status: ${statusFilter}`);
-    }
-    if (sortOrder !== 'updated') {
-      summaryParts.push('Sorted by creation date');
     }
     if (labelFilter) {
       summaryParts.push(`Label: ${labelFilter}`);
@@ -1464,20 +1458,55 @@ function App() {
   // State for settings dialog
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Form state with local storage
-  const [username, setUsername] = useState(() => localStorage.getItem('github-username') || '');
+  // Form state with URL params and local storage fallback
+  const [username, setUsername] = useState(() => {
+    const urlUsername = getParamFromUrl('username');
+    if (urlUsername) return urlUsername;
+    return localStorage.getItem('github-username') || '';
+  });
+
   const [startDate, setStartDate] = useState(() => {
+    const urlStartDate = getParamFromUrl('startDate');
+    if (urlStartDate && isValidDateString(urlStartDate)) return urlStartDate;
+    
     const storedDate = localStorage.getItem('github-start-date');
-    if (storedDate) return storedDate;
+    if (storedDate && isValidDateString(storedDate)) return storedDate;
+    
     const date = new Date();
     date.setDate(date.getDate() - 30); // Default to last 30 days
     return date.toISOString().split('T')[0];
   });
+
   const [endDate, setEndDate] = useState(() => {
+    const urlEndDate = getParamFromUrl('endDate');
+    if (urlEndDate && isValidDateString(urlEndDate)) return urlEndDate;
+    
     const storedDate = localStorage.getItem('github-end-date');
-    if (storedDate) return storedDate;
+    if (storedDate && isValidDateString(storedDate)) return storedDate;
+    
     return new Date().toISOString().split('T')[0];
   });
+
+  // Update URL and localStorage when values change
+  useEffect(() => {
+    updateUrlParams({
+      username,
+      startDate,
+      endDate
+    });
+
+    if (username) localStorage.setItem('github-username', username);
+    if (startDate) localStorage.setItem('github-start-date', startDate);
+    if (endDate) localStorage.setItem('github-end-date', endDate);
+  }, [username, startDate, endDate]);
+
+  // Handle username changes
+  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newUsername = e.target.value;
+    setUsername(newUsername);
+  }, []);
+
+  // Form state with local storage
   const [githubToken, setGithubToken] = useState(() => {
     return sessionStorage.getItem('github-token') || localStorage.getItem('github-token') || '';
   });
