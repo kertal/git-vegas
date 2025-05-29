@@ -252,14 +252,19 @@ const SearchForm = memo(function SearchForm() {
   }, [debouncedSaveToLocalStorage, setUsername]);
 
   return (
-    <Box sx={{maxWidth: '800px', margin: '0 auto'}}>
+    <Box sx={{maxWidth: '1200px', margin: '0 auto'}}>
       <Box as="form" 
-        sx={{display: 'flex', flexDirection: 'column', gap: 3}} 
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3
+        }} 
         onSubmit={(e: FormEvent<HTMLFormElement>) => { 
           e.preventDefault(); 
           handleSearch(); 
         }}
       >
+        {/* Token field in its own row */}
         <FormControl>
           <FormControl.Label>
             GitHub Token (optional)
@@ -273,54 +278,83 @@ const SearchForm = memo(function SearchForm() {
             value={githubToken}
             onChange={(e) => setGithubToken(e.target.value)}
             block
+            aria-describedby="token-caption"
           />
+          <FormControl.Caption id="token-caption">
+            Provide a token to increase API rate limits and access private repositories
+          </FormControl.Caption>
         </FormControl>
 
-        <FormControl>
-          <FormControl.Label>GitHub Username(s)</FormControl.Label>
-          <TextInput
-            placeholder="Enter usernames (comma-separated for multiple)"
-            value={username}
-            onChange={handleUsernameChange}
-            block
-          />
-        </FormControl>
-        
-        <FormControl>
-          <FormControl.Label>
-            Start Date (Last Updated)
-            <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
-              - when items were last updated
-            </Text>
-          </FormControl.Label>
-          <TextInput
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            block
-          />
-        </FormControl>
-        
-        <FormControl>
-          <FormControl.Label>
-            End Date (Last Updated)
-            <Text as="span" sx={{ ml: 1, color: 'fg.muted', fontWeight: 'normal' }}>
-              - when items were last updated
-            </Text>
-          </FormControl.Label>
-          <TextInput
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            block
-          />
-        </FormControl>
-        
-        <Button variant="primary" type="submit" sx={{width: '100%', mt: 1}}>Search</Button>
+        {/* Main search fields in a horizontal layout */}
+        <Box sx={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(200px, 2fr) repeat(2, minmax(150px, 1fr))',
+          gap: 3,
+          alignItems: 'flex-start'
+        }}>
+          <FormControl>
+            <FormControl.Label required>GitHub Username(s)</FormControl.Label>
+            <TextInput
+              placeholder="Enter usernames (comma-separated for multiple)"
+              value={username}
+              onChange={handleUsernameChange}
+              aria-required="true"
+              block
+              aria-describedby="username-caption"
+              required
+            />
+            <FormControl.Caption id="username-caption">
+              You can enter multiple usernames separated by commas
+            </FormControl.Caption>
+          </FormControl>
+
+          <FormControl>
+            <FormControl.Label required>Start Date</FormControl.Label>
+            <TextInput
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              aria-required="true"
+              block
+              required
+            />
+          </FormControl>
+
+          <FormControl>
+            <FormControl.Label required>End Date</FormControl.Label>
+            <TextInput
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              aria-required="true"
+              block
+              required
+            />
+          </FormControl>
+        </Box>
+
+        {/* Search button in its own row */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Button 
+            variant="primary" 
+            type="submit" 
+            disabled={loading}
+            sx={{ minWidth: '120px' }}
+          >
+            {loading ? <Spinner size="small" /> : 'Search'}
+          </Button>
+        </Box>
       </Box>
+
       {error && (
         <Flash variant="danger" sx={{marginTop: 3}}>
           {error}
+        </Flash>
+      )}
+
+      {loading && loadingProgress && (
+        <Flash variant="default" sx={{marginTop: 3}}>
+          {loadingProgress}
         </Flash>
       )}
     </Box>
