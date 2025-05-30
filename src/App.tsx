@@ -1724,26 +1724,6 @@ function App() {
     return Array.from(labels);
   }, [results]);
 
-  const stats = useMemo(() => {
-    const total = results.length;
-    const issues = results.filter(item => !item.pull_request).length;
-    const prs = results.filter(item => item.pull_request).length;
-    const merged = results.filter(item => item.pull_request && (item.pull_request.merged_at || item.merged)).length;
-    const open = results.filter(item => {
-      if (item.pull_request) {
-        return item.state === 'open';
-      }
-      return item.state === 'open';
-    }).length;
-    const closed = results.filter(item => {
-      if (item.pull_request) {
-        return item.state === 'closed' && !item.pull_request.merged_at && !item.merged;
-      }
-      return item.state === 'closed';
-    }).length;
-    return { total, issues, prs, open, closed, merged };
-  }, [results]);
-
   const filteredResults = useMemo(() => {
     return results.filter(item => {
       // Apply type filter
@@ -1785,6 +1765,26 @@ function App() {
       return dateB.getTime() - dateA.getTime();
     });
   }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
+
+  const stats = useMemo(() => {
+    const total = results.length;
+    const issues = results.filter(item => !item.pull_request).length;
+    const prs = results.filter(item => item.pull_request).length;
+    const merged = results.filter(item => item.pull_request && (item.pull_request.merged_at || item.merged)).length;
+    const open = results.filter(item => {
+      if (item.pull_request) {
+        return item.state === 'open';
+      }
+      return item.state === 'open';
+    }).length;
+    const closed = results.filter(item => {
+      if (item.pull_request) {
+        return item.state === 'closed' && !item.pull_request.merged_at && !item.merged;
+      }
+      return item.state === 'closed';
+    }).length;
+    return { total, issues, prs, open, closed, merged };
+  }, [results]);
 
   // Event handlers
   const toggleDescriptionVisibility = useCallback((id: number) => {
