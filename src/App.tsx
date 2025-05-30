@@ -677,9 +677,9 @@ const ResultsList = memo(function ResultsList() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          mb: 3,
-          pb: 3,
-          borderBottom: '1px solid',
+          mb: statsVisible ? 3 : 0,
+          pb: statsVisible ? 3 : 0,
+          borderBottom: statsVisible ? '1px solid' : 'none',
           borderColor: 'border.muted'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
