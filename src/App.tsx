@@ -430,7 +430,7 @@ const ResultsList = memo(function ResultsList() {
       {/* Filters Section */}
       <Box sx={{
         maxWidth: '1200px',
-        margin: '24px auto',
+        margin: '16px auto',
         bg: 'canvas.subtle',
         borderRadius: 2,
         border: '1px solid',
@@ -443,13 +443,13 @@ const ResultsList = memo(function ResultsList() {
           justifyContent: 'space-between',
           alignItems: 'center',
           gap: 2,
-          p: 3,
+          p: 2,
           bg: 'canvas.default',
           borderBottom: '1px solid',
           borderColor: 'border.default'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>
+            <Heading as="h2" sx={{fontSize: 2, fontWeight: 'semibold', color: 'fg.default', m: 0}}>
               Filters
             </Heading>
           </Box>
@@ -461,7 +461,7 @@ const ResultsList = memo(function ResultsList() {
                 onClick={clearAllFilters}
                 sx={buttonStyles}
               >
-                Clear All Filters
+                Clear All
               </Button>
             )}
             <Button
@@ -474,7 +474,7 @@ const ResultsList = memo(function ResultsList() {
                 ':hover': { color: 'fg.default' }
               }}
             >
-              {areFiltersCollapsed ? 'Show Filters' : 'Hide Filters'}
+              {areFiltersCollapsed ? 'Show' : 'Hide'}
             </Button>
           </Box>
         </Box>
@@ -482,7 +482,7 @@ const ResultsList = memo(function ResultsList() {
         {/* Filter Summary when collapsed */}
         {areFiltersCollapsed && hasActiveFilters && (
           <Box sx={{
-            p: 3,
+            p: 2,
             bg: 'canvas.subtle',
             borderBottom: '1px solid',
             borderColor: 'border.default'
@@ -495,77 +495,85 @@ const ResultsList = memo(function ResultsList() {
 
         {/* Filter UI */}
         {!areFiltersCollapsed && (
-          <Box sx={{ p: 3 }}>
-            {/* Type Filter UI */}
-            <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'fg.muted', mb: 2 }}>
-                Type
-              </Heading>
-              <ButtonGroup>
-                <Button
-                  variant={filter === 'issue' ? 'primary' : 'default'} 
-                  onClick={() => setFilter(filter === 'issue' ? 'all' : 'issue')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels)})
-                </Button>
-                <Button
-                  variant={filter === 'pr' ? 'primary' : 'default'} 
-                  onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
-                </Button>
-              </ButtonGroup>
-            </Stack>
+          <Box sx={{ p: 2 }}>
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 3
+            }}>
+              {/* Type Filter UI */}
+              <Stack sx={{ gap: 1 }}>
+                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
+                  Type
+                </Heading>
+                <ButtonGroup>
+                  <Button
+                    variant={filter === 'issue' ? 'primary' : 'default'} 
+                    onClick={() => setFilter(filter === 'issue' ? 'all' : 'issue')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels)})
+                  </Button>
+                  <Button
+                    variant={filter === 'pr' ? 'primary' : 'default'} 
+                    onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
+                  </Button>
+                </ButtonGroup>
+              </Stack>
 
-            {/* Status Filter UI */}
-            <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'fg.muted', mb: 2 }}>
-                Status
-              </Heading>
-              <ButtonGroup>
-                <Button 
-                  variant={statusFilter === 'open' ? 'primary' : 'default'} 
-                  onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels)})
-                </Button>
-                <Button 
-                  variant={statusFilter === 'closed' ? 'primary' : 'default'} 
-                  onClick={() => setStatusFilter(statusFilter === 'closed' ? 'all' : 'closed')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels)})
-                </Button>
-                <Button 
-                  variant={statusFilter === 'merged' ? 'primary' : 'default'} 
-                  onClick={() => setStatusFilter(statusFilter === 'merged' ? 'all' : 'merged')}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
-                </Button>
-              </ButtonGroup>
-            </Stack>
+              {/* Status Filter UI */}
+              <Stack sx={{ gap: 1 }}>
+                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
+                  Status
+                </Heading>
+                <ButtonGroup>
+                  <Button 
+                    variant={statusFilter === 'open' ? 'primary' : 'default'} 
+                    onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels)})
+                  </Button>
+                  <Button 
+                    variant={statusFilter === 'closed' ? 'primary' : 'default'} 
+                    onClick={() => setStatusFilter(statusFilter === 'closed' ? 'all' : 'closed')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels)})
+                  </Button>
+                  <Button 
+                    variant={statusFilter === 'merged' ? 'primary' : 'default'} 
+                    onClick={() => setStatusFilter(statusFilter === 'merged' ? 'all' : 'merged')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
+                  </Button>
+                </ButtonGroup>
+              </Stack>
+            </Box>
 
             {/* Label Filters */}
             {availableLabels.length > 0 && (
-              <>
+              <Box sx={{ mt: 3 }}>
                 {/* Inclusive Label Filter */}
-                <Stack sx={{ mb: 4 }}>
-                  <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'success.fg', mb: 2 }}>
-                    Label Filter (inclusive)
-                    <Text as="span" sx={{ml: 2, fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
-                      - show items with selected label
+                <Stack sx={{ gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'success.fg' }}>
+                      Labels (include)
+                    </Heading>
+                    <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
+                      show items with selected label
                     </Text>
-                  </Heading>
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                     {availableLabels
                       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
                       .map(label => {
@@ -584,7 +592,10 @@ const ResultsList = memo(function ResultsList() {
                               color: hasMatches ? 'fg.default' : 'fg.muted',
                               opacity: (!hasMatches || excludedLabels.includes(label)) ? 0.5 : 1,
                               cursor: (!hasPotentialMatches || excludedLabels.includes(label)) ? 'not-allowed' : 'pointer',
-                              textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none'
+                              textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
+                              fontSize: 0,
+                              py: 0,
+                              height: '24px'
                             }}
                             disabled={!hasPotentialMatches || excludedLabels.includes(label)}
                             title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
@@ -597,14 +608,16 @@ const ResultsList = memo(function ResultsList() {
                 </Stack>
 
                 {/* Exclusive Label Filter */}
-                <Stack sx={{ mb: 4 }}>
-                  <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'danger.fg', mb: 2 }}>
-                    Label Filter (exclusive)
-                    <Text as="span" sx={{ml: 2, fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
-                      - hide items with selected labels
+                <Stack sx={{ mt: 2, gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'danger.fg' }}>
+                      Labels (exclude)
+                    </Heading>
+                    <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
+                      hide items with selected labels
                     </Text>
-                  </Heading>
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                     {availableLabels
                       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
                       .map(label => {
@@ -631,7 +644,10 @@ const ResultsList = memo(function ResultsList() {
                             sx={{
                               opacity: (!hasMatches || labelFilter === label) ? 0.5 : 1,
                               cursor: (!hasPotentialMatches || labelFilter === label) ? 'not-allowed' : 'pointer',
-                              textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none'
+                              textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
+                              fontSize: 0,
+                              py: 0,
+                              height: '24px'
                             }}
                             disabled={!hasPotentialMatches || labelFilter === label}
                             title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
@@ -642,7 +658,7 @@ const ResultsList = memo(function ResultsList() {
                       })}
                   </Box>
                 </Stack>
-              </>
+              </Box>
             )}
           </Box>
         )}
