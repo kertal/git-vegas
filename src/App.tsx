@@ -20,7 +20,8 @@ import {
   ThemeProvider,
   BaseStyles,
   Dialog,
-  IconButton
+  IconButton,
+  ToggleSwitch
 } from '@primer/react';
 import {
   IssueOpenedIcon,
@@ -801,85 +802,89 @@ const ResultsList = memo(function ResultsList() {
           {/* Results header */}
           <Box sx={{
             display: 'flex',
-            flexDirection: 'column',
-            gap: 3,
+            justifyContent: 'space-between',
+            alignItems: 'center',
             mb: 3,
             pb: 3,
             borderBottom: '1px solid',
             borderColor: 'border.muted'
           }}>
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>Results</Heading>
-                {clipboardMessage && (
-                  <Flash variant="success" sx={{ py: 1, px: 2 }}>
-                    {clipboardMessage}
-                  </Flash>
-                )}
-              </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>Results</Heading>
+              {clipboardMessage && (
+                <Flash variant="success" sx={{ py: 1, px: 2 }}>
+                  {clipboardMessage}
+                </Flash>
+              )}
             </Box>
-
-            {/* Actions toolbar */}
-            <Box sx={{
-              display: 'flex',
-              gap: 2,
-              alignItems: 'center',
-              bg: 'canvas.subtle',
-              p: 2,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'border.default'
-            }}>
-              <Text sx={{ fontSize: 1, color: 'fg.muted', mr: 1 }}>Sort by:</Text>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
               <ButtonGroup>
-                <Button 
-                  variant={sortOrder === 'updated' ? 'primary' : 'default'} 
-                  onClick={() => setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')}
+                <Button
                   size="small"
+                  variant={!isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(false)}
                   sx={buttonStyles}
                 >
-                  Last Updated
+                  Detailed
                 </Button>
-                <Button 
-                  variant={sortOrder === 'created' ? 'primary' : 'default'} 
-                  onClick={() => setSortOrder(sortOrder === 'created' ? 'updated' : 'created')}
+                <Button
                   size="small"
+                  variant={isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(true)}
                   sx={buttonStyles}
                 >
-                  Creation Date
+                  Compact
                 </Button>
               </ButtonGroup>
+            </Box>
+          </Box>
 
-              <Box sx={{ width: 1, borderRight: '1px solid', borderColor: 'border.muted' }} />
-
+          {/* Actions toolbar */}
+          <Box sx={{
+            display: 'flex',
+            gap: 2,
+            alignItems: 'center',
+            bg: 'canvas.subtle',
+            p: 2,
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'border.default'
+          }}>
+            <Text sx={{ fontSize: 1, color: 'fg.muted', mr: 1 }}>Sort by:</Text>
+            <ButtonGroup>
               <Button 
-                onClick={() => copyResultsToClipboard(isCompactView ? 'html' : 'markdown')}
-                variant="default"
+                variant={sortOrder === 'updated' ? 'primary' : 'default'} 
+                onClick={() => setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')}
                 size="small"
-                sx={{ 
-                  ...buttonStyles,
-                  fontSize: 1,
-                  borderColor: 'border.default'
-                }}
-              >
-                Export to Clipboard
-              </Button>
-
-              <Box sx={{ width: 1, borderRight: '1px solid', borderColor: 'border.muted' }} />
-
-              <Button
-                variant={isCompactView ? 'primary' : 'default'}
-                size="small"
-                onClick={() => setIsCompactView(!isCompactView)}
                 sx={buttonStyles}
               >
-                {isCompactView ? 'Detailed View' : 'Compact View'}
+                Last Updated
               </Button>
-            </Box>
+              <Button 
+                variant={sortOrder === 'created' ? 'primary' : 'default'} 
+                onClick={() => setSortOrder(sortOrder === 'created' ? 'updated' : 'created')}
+                size="small"
+                sx={buttonStyles}
+              >
+                Creation Date
+              </Button>
+            </ButtonGroup>
+
+            <Box sx={{ width: 1, borderRight: '1px solid', borderColor: 'border.muted' }} />
+
+            <Button 
+              onClick={() => copyResultsToClipboard(isCompactView ? 'html' : 'markdown')}
+              variant="default"
+              size="small"
+              sx={{ 
+                ...buttonStyles,
+                fontSize: 1,
+                borderColor: 'border.default'
+              }}
+            >
+              Export to Clipboard
+            </Button>
           </Box>
 
           {/* Results List */}
