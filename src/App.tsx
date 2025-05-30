@@ -1388,6 +1388,120 @@ const SettingsDialog = memo(function SettingsDialog({
   );
 });
 
+// Slot Machine Loader Component
+const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoading }: { avatarUrls: string[], isLoading: boolean }) {
+  const getRandomPositions = useCallback((itemCount: number) => {
+    return Array(3).fill(0).map(() => Math.floor(Math.random() * itemCount));
+  }, []);
+
+  const symbols = ['🎰', '💎', '7️⃣'];  // Reduced emoji set as fallback
+  
+  // Ensure we have at least 3 items by filling with emojis if needed
+  const allItems = avatarUrls.length >= 3 
+    ? avatarUrls 
+    : [...avatarUrls, ...symbols.slice(0, 3 - avatarUrls.length)];
+
+  const [positions, setPositions] = useState(() => getRandomPositions(allItems.length));
+  const [spinning, setSpinning] = useState([false, false, false]);
+  
+  // Reset positions when items change
+  useEffect(() => {
+    setPositions(getRandomPositions(allItems.length));
+  }, [allItems.length, getRandomPositions]);
+  
+  useEffect(() => {
+    if (isLoading) {
+      setSpinning([true, true, true]);
+      const intervals = positions.map((_, index) => {
+        const randomSpeed = Math.floor(Math.random() * 50) + 50;
+        return setInterval(() => {
+          setPositions(prev => {
+            const newPositions = [...prev];
+            const randomJump = Math.floor(Math.random() * 3) + 1;
+            newPositions[index] = (prev[index] + randomJump) % allItems.length;
+            return newPositions;
+          });
+        }, randomSpeed);
+      });
+
+      return () => intervals.forEach(interval => clearInterval(interval));
+    } else {
+      // When stopping, set new random positions
+      setPositions(getRandomPositions(allItems.length));
+      
+      const stopTimeouts = spinning.map((_, index) => {
+        return setTimeout(() => {
+          setSpinning(prev => {
+            const newSpinning = [...prev];
+            newSpinning[index] = false;
+            return newSpinning;
+          });
+        }, 100 + (index * 150));
+      });
+
+      return () => stopTimeouts.forEach(timeout => clearTimeout(timeout));
+    }
+  }, [isLoading, allItems.length, getRandomPositions]);
+
+  const SlotReel = ({ position, isSpinning, index }: { position: number; isSpinning: boolean; index: number }) => (
+    <Box sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      width: '24px',
+      height: '24px',
+      border: '1px solid',
+      borderColor: 'border.default',
+      borderRadius: '4px',
+      bg: 'canvas.subtle',
+      overflow: 'hidden',
+      position: 'relative',
+      animation: isSpinning ? 'shake 0.1s infinite' : 'none',
+      '@keyframes shake': {
+        '0%': { transform: 'translateY(-1px)' },
+        '50%': { transform: 'translateY(1px)' },
+        '100%': { transform: 'translateY(-1px)' }
+      }
+    }}>
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        height: '100%',
+        transition: 'transform 0.2s ease',
+      }}>
+        {typeof allItems[position] === 'string' && allItems[position].startsWith('http') 
+          ? <Avatar src={allItems[position]} size={20} /> 
+          : <Text sx={{ fontSize: 2, lineHeight: 1 }}>{allItems[position]}</Text>
+        }
+      </Box>
+    </Box>
+  );
+
+  return (
+    <Box sx={{
+      display: 'flex',
+      gap: 1,
+      padding: '2px',
+      bg: 'canvas.default',
+      borderRadius: '6px',
+      border: '1px solid',
+      borderColor: 'border.default',
+      boxShadow: 'shadow.small'
+    }}>
+      {positions.map((position, index) => (
+        <SlotReel 
+          key={index}
+          position={position}
+          isSpinning={spinning[index]}
+          index={index}
+        />
+      ))}
+    </Box>
+  );
+});
+
 // Add the main App component
 function App() {
   // State for settings dialog
@@ -1763,12 +1877,30 @@ function App() {
                 alignItems: 'center',
                 borderBottom: '1px solid',
                 borderColor: 'border.default',
-                height: '56px'
+                height: '56px',
+                position: 'relative'
               }}>
                 <Box sx={{ pl: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                
                   <Heading sx={{ fontSize: 3, m: 0 }}> 🎰 Git Vegas</Heading>
                 </Box>
+                
+                {/* Center slot machine */}
+                <Box sx={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}>
+                  <SlotMachineLoader 
+                    avatarUrls={[...new Set(results
+                      .map(item => item.user.avatar_url)
+                      .filter(Boolean)
+                    )]}
+                    isLoading={loading}
+                  />
+                </Box>
+
                 <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
                   <IconButton
                     icon={GearIcon}
@@ -1844,3 +1976,4 @@ function App() {
 
 // Add default export
 export default App;
+
