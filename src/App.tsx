@@ -1647,32 +1647,23 @@ function App() {
         if (githubToken) {
           headers['Authorization'] = `token ${githubToken}`;
         }
-
+        
         const response = await fetch(
           `https://api.github.com/search/issues?q=author:${user}+created:${startDate}..${endDate}&per_page=100`,
           { headers }
         );
-
+        
         if (!response.ok) {
           throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
         }
-
+        
         const data = await response.json();
         allResults.push(...data.items);
       }
 
-      // Compare with existing results and only update if there are changes
-      const currentResults = JSON.stringify(results.map(r => r.id).sort());
-      const newResults = JSON.stringify(allResults.map(r => r.id).sort());
-      
-      if (currentResults !== newResults) {
-        setResults(allResults);
-        if (!silent) {
-          setLoadingProgress('Data updated successfully!');
-          setTimeout(() => setLoadingProgress(''), 2000);
-        }
-      } else if (!silent) {
-        setLoadingProgress('No new updates found');
+      setResults(allResults);
+      if (!silent) {
+        setLoadingProgress('Data updated successfully!');
         setTimeout(() => setLoadingProgress(''), 2000);
       }
     } catch (err) {
@@ -1683,53 +1674,7 @@ function App() {
     }
   }, [username, startDate, endDate, githubToken]);
 
-  // Initial load from local storage and background refresh
-  useEffect(() => {
-    let isSubscribed = true;
-    let initialLoadDone = false;
-
-    const loadInitialData = async () => {
-      // Try to load from localStorage first
-      const storedResults = localStorage.getItem('github-results');
-      let hasValidStoredData = false;
-
-      if (storedResults && isSubscribed) {
-        try {
-          const parsedResults = JSON.parse(storedResults);
-          if (Array.isArray(parsedResults) && parsedResults.length > 0) {
-            setResults(parsedResults);
-            hasValidStoredData = true;
-          }
-        } catch (error) {
-          console.error('Error parsing stored results:', error);
-          localStorage.removeItem('github-results');
-        }
-      }
-
-      // Only fetch if we have search parameters and no valid stored data
-      if (username && startDate && endDate && (!hasValidStoredData || Date.now() - Number(localStorage.getItem('github-results-timestamp') || 0) > 5 * 60 * 1000)) {
-        await fetchDataInBackground(true);
-      }
-      
-      initialLoadDone = true;
-    };
-
-    loadInitialData();
-
-    // Set up periodic background refresh (every 5 minutes)
-    const refreshInterval = setInterval(() => {
-      if (username && startDate && endDate && isSubscribed && initialLoadDone) {
-        fetchDataInBackground(true);
-      }
-    }, 5 * 60 * 1000);
-
-    return () => {
-      isSubscribed = false;
-      clearInterval(refreshInterval);
-    };
-  }, [username, startDate, endDate]);
-
-  // Save results to local storage whenever they change
+  // Remove automatic initial load and background refresh
   useEffect(() => {
     if (results.length > 0) {
       localStorage.setItem('github-results', JSON.stringify(results));
