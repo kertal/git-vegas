@@ -687,6 +687,12 @@ const ResultsList = memo(function ResultsList() {
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>Results</Heading>
+              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
+                {hasActiveFilters 
+                  ? `${filteredResults.length} filtered / ${results.length} total`
+                  : `${results.length} items`
+                }
+              </Text>
               {clipboardMessage && (
                 <Flash variant="success" sx={{ py: 1, px: 2 }}>
                   {clipboardMessage}
