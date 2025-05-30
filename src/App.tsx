@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, memo, useMemo } from 'react';
-import type { FormEvent } from 'react'; // Changed to type-only import
+import type { FormEvent } from 'react';
 import './App.css';
 import {
   TextInput,
@@ -14,38 +14,22 @@ import {
   FormControl,
   ButtonGroup,
   Avatar,
-  Timeline,
   BranchName,
-  StateLabel,
   Heading,
   Stack,
   ThemeProvider,
   BaseStyles,
   Dialog,
-  IconButton,
-  useTheme
+  IconButton
 } from '@primer/react';
 import {
   IssueOpenedIcon,
   GitPullRequestIcon,
   CheckIcon,
   XIcon,
-  SearchIcon,
-  FilterIcon,
-  SortAscIcon,
-  SortDescIcon,
-  TrashIcon,
-  EyeIcon,
-  EyeClosedIcon,
-  ClockIcon,
-  CalendarIcon,
   GitMergeIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  GearIcon,
-  SunIcon,
-  MoonIcon,
-  MarkGithubIcon
+  MarkGithubIcon,
+  GearIcon
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -131,9 +115,6 @@ interface GitHubItem {
   };
 }
 
-// Define a type for Label variants based on Primer's documentation
-type PrimerLabelVariant = 'default' | 'primary' | 'secondary' | 'accent' | 'success' | 'attention' | 'severe' | 'danger' | 'done' | 'sponsors';
-
 // Form Context to isolate form state changes
 interface FormContextType {
   username: string;
@@ -160,10 +141,6 @@ function useFormContext() {
   return context;
 }
 
-function calculateDuration(){
-  return 'test';
-}
-
 // Results Context to isolate results state changes
 interface ResultsContextType {
   results: GitHubItem[];
@@ -176,9 +153,6 @@ interface ResultsContextType {
   searchText: string;
   repoFilters: string[];
   availableLabels: string[];
-  availableRepos: string[];
-  startDate: string;  // Add start date
-  endDate: string;    // Add end date
   stats: {
     total: number;
     issues: number;
@@ -192,8 +166,6 @@ interface ResultsContextType {
   setSortOrder: (sort: 'updated' | 'created') => void;
   setLabelFilter: (filter: string) => void;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
-  setSearchText: (text: string) => void;
-  setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
   copyResultsToClipboard: (format?: 'markdown' | 'html') => void;
@@ -202,7 +174,6 @@ interface ResultsContextType {
   clipboardMessage: string | null;
   clearAllFilters: () => void;
   isCompactView: boolean;
-  setIsCompactView: (value: boolean) => void;
 }
 
 const ResultsContext = createContext<ResultsContextType | null>(null);
@@ -341,13 +312,12 @@ const SearchForm = memo(function SearchForm() {
   );
 });
 
-// Update countItemsMatchingFilter to properly handle merged PRs
+// Update countItemsMatchingFilter to remove dateRange parameter
 const countItemsMatchingFilter = (
   items: GitHubItem[], 
   filterType: string, 
   filterValue: string, 
-  excludedLabels: string[],
-  dateRange: { startDate: string; endDate: string }
+  excludedLabels: string[]
 ): number => {
   switch (filterType) {
     case 'type':
@@ -365,7 +335,7 @@ const countItemsMatchingFilter = (
       return items.filter(item => {
         if (filterValue === 'all') return true;
         if (item.pull_request) {
-          if (item.pull_request.merged_at || item.merged) return false; // Don't count merged PRs as closed
+          if (item.pull_request.merged_at || item.merged) return false;
           return item.state === filterValue;
         }
         return item.state === filterValue;
@@ -397,15 +367,12 @@ const ResultsList = memo(function ResultsList() {
     searchText,
     repoFilters,
     availableLabels,
-    availableRepos,
     stats,
     setFilter,
     setStatusFilter,
     setSortOrder,
     setLabelFilter,
     setExcludedLabels,
-    setSearchText,
-    setRepoFilters,
     toggleDescriptionVisibility,
     toggleExpand,
     copyResultsToClipboard,
@@ -413,12 +380,8 @@ const ResultsList = memo(function ResultsList() {
     expanded,
     clipboardMessage,
     clearAllFilters,
-    isCompactView,
-    setIsCompactView
+    isCompactView
   } = useResultsContext();
-
-  const { startDate, endDate } = useFormContext();
-  const dateRange = { startDate, endDate };
 
   // Add state for filter collapse
   const [areFiltersCollapsed, setAreFiltersCollapsed] = useState(false);
@@ -560,7 +523,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels, dateRange)})
+                  Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels)})
                 </Button>
                 <Button
                   variant={filter === 'pr' ? 'primary' : 'default'} 
@@ -568,7 +531,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels, dateRange)})
+                  PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
                 </Button>
               </ButtonGroup>
             </Stack>
@@ -585,7 +548,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels, dateRange)})
+                  Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels)})
                 </Button>
                 <Button 
                   variant={statusFilter === 'closed' ? 'primary' : 'default'} 
@@ -593,7 +556,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels, dateRange)})
+                  Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels)})
                 </Button>
                 <Button 
                   variant={statusFilter === 'merged' ? 'primary' : 'default'} 
@@ -601,7 +564,7 @@ const ResultsList = memo(function ResultsList() {
                   size="small"
                   sx={buttonStyles}
                 >
-                  Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels, dateRange)})
+                  Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
                 </Button>
               </ButtonGroup>
             </Stack>
@@ -621,8 +584,8 @@ const ResultsList = memo(function ResultsList() {
                     {availableLabels
                       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
                       .map(label => {
-                        const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
-                        const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels, dateRange);
+                        const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
+                        const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels);
                         const hasMatches = currentCount > 0;
                         const hasPotentialMatches = potentialCount > 0;
                         
@@ -660,8 +623,8 @@ const ResultsList = memo(function ResultsList() {
                     {availableLabels
                       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
                       .map(label => {
-                        const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels, dateRange);
-                        const potentialCount = countItemsMatchingFilter(results, 'label', label, [], dateRange);
+                        const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
+                        const potentialCount = countItemsMatchingFilter(results, 'label', label, []);
                         const hasMatches = currentCount > 0;
                         const hasPotentialMatches = potentialCount > 0;
 
@@ -736,7 +699,6 @@ const ResultsList = memo(function ResultsList() {
             }}
           >
             {statsVisible ? 'Hide Details' : 'Show Details'}
-            {statsVisible ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
           </Button>
         </Box>
 
@@ -860,24 +822,6 @@ const ResultsList = memo(function ResultsList() {
                   </Flash>
                 )}
               </Box>
-              <ButtonGroup>
-                <Button
-                  onClick={() => setIsCompactView(true)}
-                  variant={isCompactView ? "primary" : "default"}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Compact
-                </Button>
-                <Button
-                  onClick={() => setIsCompactView(false)}
-                  variant={!isCompactView ? "primary" : "default"}
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Detailed
-                </Button>
-              </ButtonGroup>
             </Box>
 
             {/* Actions toolbar */}
@@ -1447,7 +1391,7 @@ function App() {
     if (urlUsername) return urlUsername;
     return localStorage.getItem('github-username') || '';
   });
-
+  
   const [startDate, setStartDate] = useState(() => {
     const urlStartDate = getParamFromUrl('startDate');
     if (urlStartDate && isValidDateString(urlStartDate)) return urlStartDate;
@@ -1459,7 +1403,7 @@ function App() {
     date.setDate(date.getDate() - 30); // Default to last 30 days
     return date.toISOString().split('T')[0];
   });
-
+  
   const [endDate, setEndDate] = useState(() => {
     const urlEndDate = getParamFromUrl('endDate');
     if (urlEndDate && isValidDateString(urlEndDate)) return urlEndDate;
@@ -1482,12 +1426,6 @@ function App() {
     if (startDate) localStorage.setItem('github-start-date', startDate);
     if (endDate) localStorage.setItem('github-end-date', endDate);
   }, [username, startDate, endDate]);
-
-  // Handle username changes
-  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newUsername = e.target.value;
-    setUsername(newUsername);
-  }, []);
 
   // Form state with local storage
   const [githubToken, setGithubToken] = useState(() => {
@@ -1658,7 +1596,7 @@ function App() {
   const [descriptionVisible, setDescriptionVisible] = useState<{[id: number]: boolean}>({});
   const [expanded, setExpanded] = useState<{[id: number]: boolean}>({});
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
-  const [isCompactView, setIsCompactView] = useState(false);
+  const isCompactView = false;
 
   // Derived state
   const availableLabels = useMemo(() => {
@@ -1667,16 +1605,6 @@ function App() {
       item.labels?.forEach(label => labels.add(label.name));
     });
     return Array.from(labels);
-  }, [results]);
-
-  const availableRepos = useMemo(() => {
-    const repos = new Set<string>();
-    results.forEach(item => {
-      if (item.repository_url) {
-        repos.add(item.repository_url.replace('https://api.github.com/repos/', ''));
-      }
-    });
-    return Array.from(repos);
   }, [results]);
 
   const stats = useMemo(() => {
@@ -1869,17 +1797,12 @@ function App() {
                   searchText,
                   repoFilters,
                   availableLabels,
-                  availableRepos,
-                  startDate,
-                  endDate,
                   stats,
                   setFilter,
                   setStatusFilter,
                   setSortOrder,
                   setLabelFilter,
                   setExcludedLabels,
-                  setSearchText,
-                  setRepoFilters,
                   toggleDescriptionVisibility,
                   toggleExpand,
                   copyResultsToClipboard,
@@ -1887,8 +1810,7 @@ function App() {
                   expanded,
                   clipboardMessage,
                   clearAllFilters,
-                  isCompactView,
-                  setIsCompactView
+                  isCompactView
                 }}>
                   <SearchForm />
                   <ResultsList />
