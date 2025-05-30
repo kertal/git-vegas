@@ -32,8 +32,6 @@ import {
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-// Commenting out the problematic Table import for now to isolate the issue
-// import { Table } from '@primer/react/drafts';
 
 // Add a simple debounce function
 const debounce = (fn: Function, ms = 300) => {
@@ -1546,11 +1544,6 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
 function App() {
   // State for settings dialog
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  // Update document title
-  useEffect(() => {
-    document.title = '🎰 Git Vegas';
-  }, []);
 
   // Form state with URL params and local storage fallback
   const [username, setUsername] = useState(() => {
