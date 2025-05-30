@@ -28,7 +28,6 @@ import {
   CheckIcon,
   XIcon,
   GitMergeIcon,
-  MarkGithubIcon,
   GearIcon
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
@@ -1443,7 +1442,7 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
     }
   }, [isLoading, allItems.length]);
 
-  const SlotReel = ({ position, isSpinning, index }: { position: number; isSpinning: boolean; index: number }) => {
+  const SlotReel = ({ position, isSpinning }: { position: number; isSpinning: boolean; index?: number }) => {
     // Ensure we always have a valid position
     const safePosition = position % allItems.length;
     const currentItem = allItems[safePosition];
@@ -1536,7 +1535,6 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
             key={index}
             position={position}
             isSpinning={spinning[index]}
-            index={index}
           />
         ))}
       </Box>
