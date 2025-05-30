@@ -1394,20 +1394,23 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
     return Array(3).fill(0).map(() => Math.floor(Math.random() * itemCount));
   }, []);
 
-  const symbols = ['🎰', '💎', '7️⃣'];  // Reduced emoji set as fallback
+  // Default emojis as fallback
+  const defaultSymbols = ['🎰', '💎', '7️⃣', '🎲', '🎮', '🎪', '🎨', '🎭', '🎪'];
   
-  // Ensure we have at least 3 items by filling with emojis if needed
-  const allItems = avatarUrls.length >= 3 
+  // Ensure we always have items to display
+  const allItems = avatarUrls.length > 0 
     ? avatarUrls 
-    : [...avatarUrls, ...symbols.slice(0, 3 - avatarUrls.length)];
+    : defaultSymbols;
 
   const [positions, setPositions] = useState(() => getRandomPositions(allItems.length));
   const [spinning, setSpinning] = useState([false, false, false]);
   
   // Reset positions when items change
   useEffect(() => {
-    setPositions(getRandomPositions(allItems.length));
-  }, [allItems.length, getRandomPositions]);
+    if (!isLoading && allItems.length > 0) {
+      setPositions(getRandomPositions(allItems.length));
+    }
+  }, [allItems.length, getRandomPositions, isLoading]);
   
   useEffect(() => {
     if (isLoading) {
@@ -1426,9 +1429,6 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
 
       return () => intervals.forEach(interval => clearInterval(interval));
     } else {
-      // When stopping, set new random positions
-      setPositions(getRandomPositions(allItems.length));
-      
       const stopTimeouts = spinning.map((_, index) => {
         return setTimeout(() => {
           setSpinning(prev => {
@@ -1441,63 +1441,105 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
 
       return () => stopTimeouts.forEach(timeout => clearTimeout(timeout));
     }
-  }, [isLoading, allItems.length, getRandomPositions]);
+  }, [isLoading, allItems.length]);
 
-  const SlotReel = ({ position, isSpinning, index }: { position: number; isSpinning: boolean; index: number }) => (
-    <Box sx={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '24px',
-      height: '24px',
-      border: '1px solid',
-      borderColor: 'border.default',
-      borderRadius: '4px',
-      bg: 'canvas.subtle',
-      overflow: 'hidden',
-      position: 'relative',
-      animation: isSpinning ? 'shake 0.1s infinite' : 'none',
-      '@keyframes shake': {
-        '0%': { transform: 'translateY(-1px)' },
-        '50%': { transform: 'translateY(1px)' },
-        '100%': { transform: 'translateY(-1px)' }
-      }
-    }}>
+  const SlotReel = ({ position, isSpinning, index }: { position: number; isSpinning: boolean; index: number }) => {
+    // Ensure we always have a valid position
+    const safePosition = position % allItems.length;
+    const currentItem = allItems[safePosition];
+    
+    // Create array of visible items for animation
+    const visibleItems = isSpinning 
+      ? [-1, 0, 1].map(offset => {
+          const pos = (safePosition + offset + allItems.length) % allItems.length;
+          return allItems[pos];
+        })
+      : [currentItem, currentItem, currentItem];
+
+    return (
       <Box sx={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '100%',
-        height: '100%',
-        transition: 'transform 0.2s ease',
+        width: '24px',
+        height: '24px',
+        border: '1px solid',
+        borderColor: 'border.default',
+        borderRadius: '4px',
+        bg: 'canvas.subtle',
+        overflow: 'hidden',
+        position: 'relative'
       }}>
-        {typeof allItems[position] === 'string' && allItems[position].startsWith('http') 
-          ? <Avatar src={allItems[position]} size={20} /> 
-          : <Text sx={{ fontSize: 2, lineHeight: 1 }}>{allItems[position]}</Text>
-        }
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          height: '72px',
+          transform: `translateY(-24px)`,
+          transition: isSpinning ? 'none' : 'transform 0.3s cubic-bezier(0.4, 2, 0.5, 1)',
+          animation: isSpinning ? 'spin 0.2s infinite linear' : 'none',
+          '@keyframes spin': {
+            '0%': { transform: 'translateY(0px)' },
+            '100%': { transform: 'translateY(-24px)' }
+          }
+        }}>
+          {visibleItems.map((item, i) => (
+            <Box key={i} sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
+              flexShrink: 0,
+              opacity: i === 1 ? 1 : 0,
+              transform: !isSpinning && i === 1 ? 'scale(1.1)' : 'scale(1)',
+              transition: 'all 0.3s ease',
+              bg: !isSpinning && i === 1 ? 'accent.subtle' : 'transparent',
+              borderRadius: '2px'
+            }}>
+              {item && (
+                typeof item === 'string' && item.startsWith('http')
+                  ? <Avatar src={item} size={20} /> 
+                  : <Text sx={{ fontSize: 2, lineHeight: 1 }}>{item}</Text>
+              )}
+            </Box>
+          ))}
+        </Box>
       </Box>
-    </Box>
-  );
+    );
+  };
+
+  // Check if all reels have stopped spinning
+  const allStopped = !spinning.some(s => s);
 
   return (
     <Box sx={{
       display: 'flex',
-      gap: 1,
-      padding: '2px',
-      bg: 'canvas.default',
-      borderRadius: '6px',
-      border: '1px solid',
-      borderColor: 'border.default',
-      boxShadow: 'shadow.small'
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 1
     }}>
-      {positions.map((position, index) => (
-        <SlotReel 
-          key={index}
-          position={position}
-          isSpinning={spinning[index]}
-          index={index}
-        />
-      ))}
+      <Box sx={{
+        display: 'flex',
+        gap: 1,
+        padding: '2px',
+        bg: 'canvas.default',
+        borderRadius: '6px',
+        border: '1px solid',
+        borderColor: allStopped ? 'accent.emphasis' : 'border.default',
+        boxShadow: allStopped ? 'shadow.medium' : 'shadow.small',
+        transition: 'all 0.3s ease'
+      }}>
+        {positions.map((position, index) => (
+          <SlotReel 
+            key={index}
+            position={position}
+            isSpinning={spinning[index]}
+            index={index}
+          />
+        ))}
+      </Box>
     </Box>
   );
 });
@@ -1567,6 +1609,28 @@ function App() {
     const storedResults = localStorage.getItem('github-results');
     return storedResults ? JSON.parse(storedResults) : [];
   });
+
+  // Add state for stored avatars
+  const [storedAvatars, setStoredAvatars] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('github-avatars');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Update stored avatars when results change
+  useEffect(() => {
+    if (results.length > 0) {
+      const newAvatars = [...new Set([
+        ...storedAvatars,
+        ...results.map(item => item.user.avatar_url)
+      ])].filter(Boolean);
+      setStoredAvatars(newAvatars);
+      localStorage.setItem('github-avatars', JSON.stringify(newAvatars));
+    }
+  }, [results, storedAvatars]);
 
   // Background refresh functionality
   const fetchDataInBackground = useCallback(async (silent = false) => {
@@ -1893,10 +1957,12 @@ function App() {
                   alignItems: 'center'
                 }}>
                   <SlotMachineLoader 
-                    avatarUrls={[...new Set(results
-                      .map(item => item.user.avatar_url)
-                      .filter(Boolean)
-                    )]}
+                    avatarUrls={storedAvatars.length > 0 
+                      ? storedAvatars 
+                      : results
+                        .map(item => item.user.avatar_url)
+                        .filter(Boolean)
+                    }
                     isLoading={loading}
                   />
                 </Box>
