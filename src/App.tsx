@@ -148,14 +148,6 @@ interface ResultsContextType {
   searchText: string;
   repoFilters: string[];
   availableLabels: string[];
-  stats: {
-    total: number;
-    issues: number;
-    prs: number;
-    open: number;
-    closed: number;
-    merged: number;
-  };
   setFilter: (filter: 'all' | 'issue' | 'pr') => void;
   setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
   setSortOrder: (sort: 'updated' | 'created') => void;
@@ -363,7 +355,6 @@ const ResultsList = memo(function ResultsList() {
     searchText,
     repoFilters,
     availableLabels,
-    stats,
     setFilter,
     setStatusFilter,
     setSortOrder,
@@ -433,9 +424,6 @@ const ResultsList = memo(function ResultsList() {
       return labelMatch && excludeMatch && repoMatch;
     });
   }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
-
-  // Add statsVisible state
-  const [statsVisible, setStatsVisible] = useState(true);
 
   return (
     <Box>
@@ -658,131 +646,6 @@ const ResultsList = memo(function ResultsList() {
             )}
           </Box>
         )}
-      </Box>
-
-      {/* Statistics Section */}
-      <Box sx={{
-        maxWidth: '1200px',
-        margin: '24px auto',
-        bg: 'canvas.default',
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'border.default',
-        p: 3
-      }}>
-        {/* Statistics header */}
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: statsVisible ? 3 : 0,
-          pb: statsVisible ? 3 : 0,
-          borderBottom: statsVisible ? '1px solid' : 'none',
-          borderColor: 'border.muted'
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>Statistics</Heading>
-            <Text sx={{ fontSize: 1, color: 'fg.muted' }}>({stats.total} items)</Text>
-          </Box>
-          <Button
-            variant="invisible"
-            onClick={() => setStatsVisible(!statsVisible)}
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              color: 'fg.muted',
-              ':hover': { color: 'fg.default' }
-            }}
-          >
-            {statsVisible ? 'Hide Details' : 'Show Details'}
-          </Button>
-        </Box>
-
-        {/* Statistics content */}
-        <Box sx={{
-          overflow: 'hidden',
-          maxHeight: statsVisible ? '500px' : '0px',
-          transition: 'max-height 0.3s ease-in-out, opacity 0.2s ease-in-out',
-          opacity: statsVisible ? 1 : 0
-        }}>
-          <Stack direction="horizontal" sx={{ gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              px: 3,
-              py: 1,
-              bg: 'canvas.subtle',
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2
-            }}>
-              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'fg.default'}}>{stats.total}</Text>
-              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Total</Text>
-            </Box>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              px: 3,
-              py: 1,
-              bg: 'canvas.subtle',
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2
-            }}>
-              <IssueOpenedIcon size={16} />
-              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'accent.fg'}}>{stats.issues}</Text>
-              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Issues</Text>
-            </Box>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              px: 3,
-              py: 1,
-              bg: 'canvas.subtle',
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2
-            }}>
-              <GitPullRequestIcon size={16} />
-              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'success.fg'}}>{stats.prs}</Text>
-              <Text sx={{fontSize: 1, color: 'fg.muted'}}>PRs</Text>
-            </Box>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              px: 3,
-              py: 1,
-              bg: 'canvas.subtle',
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2
-            }}>
-              <IssueOpenedIcon size={16} />
-              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'open.fg'}}>{stats.open}</Text>
-              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Open</Text>
-            </Box>
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 2,
-              px: 3,
-              py: 1,
-              bg: 'canvas.subtle',
-              border: '1px solid',
-              borderColor: 'border.default',
-              borderRadius: 2
-            }}>
-              <CheckIcon size={16} />
-              <Text sx={{fontSize: 3, fontWeight: 'bold', color: 'done.fg'}}>{stats.closed}</Text>
-              <Text sx={{fontSize: 1, color: 'fg.muted'}}>Closed</Text>
-            </Box>
-          </Stack>
-        </Box>
       </Box>
 
       {/* Results Section */}
@@ -1766,26 +1629,6 @@ function App() {
     });
   }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
 
-  const stats = useMemo(() => {
-    const total = results.length;
-    const issues = results.filter(item => !item.pull_request).length;
-    const prs = results.filter(item => item.pull_request).length;
-    const merged = results.filter(item => item.pull_request && (item.pull_request.merged_at || item.merged)).length;
-    const open = results.filter(item => {
-      if (item.pull_request) {
-        return item.state === 'open';
-      }
-      return item.state === 'open';
-    }).length;
-    const closed = results.filter(item => {
-      if (item.pull_request) {
-        return item.state === 'closed' && !item.pull_request.merged_at && !item.merged;
-      }
-      return item.state === 'closed';
-    }).length;
-    return { total, issues, prs, open, closed, merged };
-  }, [results]);
-
   // Event handlers
   const toggleDescriptionVisibility = useCallback((id: number) => {
     setDescriptionVisible(prev => ({
@@ -1971,7 +1814,6 @@ function App() {
               searchText,
               repoFilters,
               availableLabels,
-              stats,
               setFilter,
               setStatusFilter,
               setSortOrder,
