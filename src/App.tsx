@@ -1801,44 +1801,83 @@ function App() {
     }));
   }, []);
 
-  const copyResultsToClipboard = useCallback((format: 'markdown' | 'html' = 'markdown') => {
+  const copyResultsToClipboard = useCallback(() => {
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString();
     };
 
-    let text = '';
+    let plainText = '';
+    let htmlContent = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Helvetica, Arial, sans-serif;">\n';
+
     filteredResults.forEach((item, index) => {
-      if (format === 'markdown') {
-        text += `${index + 1}. [${item.title}](${item.html_url})\n`;
-        text += `   - Type: ${item.pull_request ? 'Pull Request' : 'Issue'}\n`;
-        text += `   - Status: ${item.state}${item.merged ? ' (merged)' : ''}\n`;
-        text += `   - Created: ${formatDate(item.created_at)}\n`;
-        text += `   - Updated: ${formatDate(item.updated_at)}\n`;
-        if (item.labels?.length) {
-          text += `   - Labels: ${item.labels.map(l => l.name).join(', ')}\n`;
-        }
-        text += '\n';
-      } else {
-        text += `<li><a href="${item.html_url}">${item.title}</a><br>`;
-        text += `Type: ${item.pull_request ? 'Pull Request' : 'Issue'}<br>`;
-        text += `Status: ${item.state}${item.merged ? ' (merged)' : ''}<br>`;
-        text += `Created: ${formatDate(item.created_at)}<br>`;
-        text += `Updated: ${formatDate(item.updated_at)}`;
-        if (item.labels?.length) {
-          text += `<br>Labels: ${item.labels.map(l => l.name).join(', ')}`;
-        }
-        text += '</li>\n';
+      // Plain text format
+      plainText += `${index + 1}. ${item.title}\n`;
+      plainText += `   Link: ${item.html_url}\n`;
+      plainText += `   Type: ${item.pull_request ? 'Pull Request' : 'Issue'}\n`;
+      plainText += `   Status: ${item.state}${item.merged ? ' (merged)' : ''}\n`;
+      plainText += `   Created: ${formatDate(item.created_at)}\n`;
+      plainText += `   Updated: ${formatDate(item.updated_at)}\n`;
+      if (item.labels?.length) {
+        plainText += `   Labels: ${item.labels.map(l => l.name).join(', ')}\n`;
       }
+      plainText += '\n';
+
+      // HTML format with styling
+      htmlContent += `<div style="margin-bottom: 16px;">\n`;
+      htmlContent += `  <div style="font-size: 16px; margin-bottom: 8px;">\n`;
+      htmlContent += `    ${index + 1}. <a href="${item.html_url}" style="color: #0969da; text-decoration: none;">${item.title}</a>\n`;
+      htmlContent += `  </div>\n`;
+      htmlContent += `  <div style="color: #57606a; font-size: 14px; margin-left: 24px;">\n`;
+      htmlContent += `    <div>Type: ${item.pull_request ? 'Pull Request' : 'Issue'}</div>\n`;
+      htmlContent += `    <div>Status: <span style="color: ${
+        item.merged ? '#8250df' : 
+        item.state === 'closed' ? '#cf222e' : '#1a7f37'
+      };">${item.state}${item.merged ? ' (merged)' : ''}</span></div>\n`;
+      htmlContent += `    <div>Created: ${formatDate(item.created_at)}</div>\n`;
+      htmlContent += `    <div>Updated: ${formatDate(item.updated_at)}</div>\n`;
+      if (item.labels?.length) {
+        htmlContent += `    <div style="margin-top: 4px;">Labels: `;
+        htmlContent += item.labels.map(l => {
+          const bgColor = l.color ? `#${l.color}` : '#ededed';
+          const textColor = l.color ? getContrastColor(l.color) : '#000000';
+          return `<span style="
+            display: inline-block;
+            padding: 0 7px;
+            font-size: 12px;
+            font-weight: 500;
+            line-height: 18px;
+            border-radius: 2em;
+            background-color: ${bgColor};
+            color: ${textColor};
+            margin-right: 4px;
+          ">${l.name}</span>`;
+        }).join('');
+        htmlContent += `</div>\n`;
+      }
+      htmlContent += `  </div>\n`;
+      htmlContent += `</div>\n`;
     });
 
-    if (format === 'html') {
-      text = `<ul>\n${text}</ul>`;
+    htmlContent += '</div>';
+
+    // Use the Clipboard API to write both formats
+    try {
+      const clipboardItem = new ClipboardItem({
+        'text/plain': new Blob([plainText], { type: 'text/plain' }),
+        'text/html': new Blob([htmlContent], { type: 'text/html' })
+      });
+      
+      navigator.clipboard.write([clipboardItem]).then(() => {
+        setClipboardMessage('Results copied to clipboard with formatting!');
+        setTimeout(() => setClipboardMessage(null), 3000);
+      });
+    } catch (err) {
+      // Fallback to basic text clipboard if the advanced API is not available
+      navigator.clipboard.writeText(plainText).then(() => {
+        setClipboardMessage('Results copied to clipboard (plain text only)');
+        setTimeout(() => setClipboardMessage(null), 3000);
+      });
     }
-
-    navigator.clipboard.writeText(text).then(() => {
-      setClipboardMessage('Results copied to clipboard!');
-      setTimeout(() => setClipboardMessage(null), 3000);
-    });
   }, [filteredResults]);
 
   const clearAllFilters = useCallback(() => {
