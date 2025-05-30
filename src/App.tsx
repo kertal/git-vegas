@@ -17,11 +17,8 @@ import {
   BranchName,
   Heading,
   Stack,
-  ThemeProvider,
-  BaseStyles,
   Dialog,
-  IconButton,
-  ToggleSwitch
+  IconButton
 } from '@primer/react';
 import {
   IssueOpenedIcon,
@@ -1586,10 +1583,6 @@ function App() {
       startDate,
       endDate
     });
-
-    if (username) localStorage.setItem('github-username', username);
-    if (startDate) localStorage.setItem('github-start-date', startDate);
-    if (endDate) localStorage.setItem('github-end-date', endDate);
   }, [username, startDate, endDate]);
 
   // Form state with local storage
@@ -1629,21 +1622,17 @@ function App() {
   }, [results, storedAvatars]);
 
   // Background refresh functionality
-  const fetchDataInBackground = useCallback(async (silent = false) => {
+  const fetchDataInBackground = useCallback(async () => {
     if (!username) return;
 
-    if (!silent) {
-      setLoadingProgress('Refreshing data in background...');
-    }
+    setLoadingProgress('Refreshing data in background...');
 
     try {
       const usernames = username.split(',').map(u => u.trim());
       const allResults: GitHubItem[] = [];
 
       for (const user of usernames) {
-        if (!silent) {
-          setLoadingProgress(`Fetching data for ${user}...`);
-        }
+        setLoadingProgress(`Fetching data for ${user}...`);
         
         const headers: HeadersInit = {
           'Accept': 'application/vnd.github.v3+json'
@@ -1667,14 +1656,10 @@ function App() {
       }
 
       setResults(allResults);
-      if (!silent) {
-        setLoadingProgress('Data updated successfully!');
-        setTimeout(() => setLoadingProgress(''), 2000);
-      }
+      setLoadingProgress('Data updated successfully!');
+      setTimeout(() => setLoadingProgress(''), 2000);
     } catch (err) {
-      if (!silent) {
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
-      }
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
       console.error('Background fetch error:', err);
     }
   }, [username, startDate, endDate, githubToken]);
@@ -1687,7 +1672,7 @@ function App() {
     }
   }, [results]);
 
-  // Save search parameters to local storage
+  // Remove duplicate localStorage updates
   useEffect(() => {
     if (username) localStorage.setItem('github-username', username);
     if (startDate) localStorage.setItem('github-start-date', startDate);
@@ -1713,7 +1698,7 @@ function App() {
 
     setLoading(true);
     setError(null);
-    await fetchDataInBackground(false);
+    await fetchDataInBackground();
     setLoading(false);
   }, [username, startDate, endDate, fetchDataInBackground]);
 
@@ -1867,117 +1852,113 @@ function App() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <BaseStyles>
-        <Box sx={{ 
-          minHeight: '100vh',
-          bg: 'canvas.default',
-          color: 'fg.default'
-        }}>
-          <PageLayout sx={{ '--spacing': '0 !important' }}>
-            <PageLayout.Header sx={{ p: 0 }}>
-              <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                borderBottom: '1px solid',
-                borderColor: 'border.default',
-                height: '56px',
-                position: 'relative'
-              }}>
-                <Box sx={{ pl: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Heading sx={{ fontSize: 3, m: 0 }}> 🎰 Git Vegas</Heading>
-                </Box>
-                
-                {/* Center slot machine */}
-                <Box sx={{
-                  position: 'absolute',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  alignItems: 'center'
-                }}>
-                  <SlotMachineLoader 
-                    avatarUrls={storedAvatars.length > 0 
-                      ? storedAvatars 
-                      : results
-                        .map(item => item.user.avatar_url)
-                        .filter(Boolean)
-                    }
-                    isLoading={loading}
-                  />
-                </Box>
+    <Box sx={{ 
+      minHeight: '100vh',
+      bg: 'canvas.default',
+      color: 'fg.default'
+    }}>
+      <PageLayout sx={{ '--spacing': '0 !important' }}>
+        <PageLayout.Header sx={{ p: 0 }}>
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid',
+            borderColor: 'border.default',
+            height: '56px',
+            position: 'relative'
+          }}>
+            <Box sx={{ pl: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Heading sx={{ fontSize: 3, m: 0 }}>🎰 Git Vegas</Heading>
+            </Box>
+            
+            {/* Center slot machine */}
+            <Box sx={{
+              position: 'absolute',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <SlotMachineLoader 
+                avatarUrls={storedAvatars.length > 0 
+                  ? storedAvatars 
+                  : results
+                    .map(item => item.user.avatar_url)
+                    .filter(Boolean)
+                }
+                isLoading={loading}
+              />
+            </Box>
 
-                <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
-                  <IconButton
-                    icon={GearIcon}
-                    aria-label="Settings"
-                    onClick={() => setIsSettingsOpen(true)}
-                    variant="invisible"
-                    sx={{
-                      color: 'fg.default',
-                      '&:hover': { color: 'accent.fg' }
-                    }}
-                  />
-                </Box>
-              </Box>
-            </PageLayout.Header>
+            <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
+              <IconButton
+                icon={GearIcon}
+                aria-label="Settings"
+                onClick={() => setIsSettingsOpen(true)}
+                variant="invisible"
+                sx={{
+                  color: 'fg.default',
+                  '&:hover': { color: 'accent.fg' }
+                }}
+              />
+            </Box>
+          </Box>
+        </PageLayout.Header>
 
-            <PageLayout.Content sx={{ px: 3, py: 4 }}>
-              <FormContext.Provider value={{
-                username,
-                startDate,
-                endDate,
-                githubToken,
-                setUsername,
-                setStartDate,
-                setEndDate,
-                setGithubToken,
-                handleSearch,
-                loading,
-                loadingProgress,
-                error
-              }}>
-                <ResultsContext.Provider value={{
-                  results,
-                  filteredResults,
-                  filter,
-                  statusFilter,
-                  sortOrder,
-                  labelFilter,
-                  excludedLabels,
-                  searchText,
-                  repoFilters,
-                  availableLabels,
-                  stats,
-                  setFilter,
-                  setStatusFilter,
-                  setSortOrder,
-                  setLabelFilter,
-                  setExcludedLabels,
-                  toggleDescriptionVisibility,
-                  toggleExpand,
-                  copyResultsToClipboard,
-                  descriptionVisible,
-                  expanded,
-                  clipboardMessage,
-                  clearAllFilters,
-                  isCompactView,
-                  setIsCompactView
-                }}>
-                  <SearchForm />
-                  <ResultsList />
-                  <SettingsDialog 
-                    isOpen={isSettingsOpen}
-                    onDismiss={() => setIsSettingsOpen(false)}
-                  />
-                </ResultsContext.Provider>
-              </FormContext.Provider>
-            </PageLayout.Content>
-          </PageLayout>
-        </Box>
-      </BaseStyles>
-    </ThemeProvider>
+        <PageLayout.Content sx={{ px: 3, py: 4 }}>
+          <FormContext.Provider value={{
+            username,
+            startDate,
+            endDate,
+            githubToken,
+            setUsername,
+            setStartDate,
+            setEndDate,
+            setGithubToken,
+            handleSearch,
+            loading,
+            loadingProgress,
+            error
+          }}>
+            <ResultsContext.Provider value={{
+              results,
+              filteredResults,
+              filter,
+              statusFilter,
+              sortOrder,
+              labelFilter,
+              excludedLabels,
+              searchText,
+              repoFilters,
+              availableLabels,
+              stats,
+              setFilter,
+              setStatusFilter,
+              setSortOrder,
+              setLabelFilter,
+              setExcludedLabels,
+              toggleDescriptionVisibility,
+              toggleExpand,
+              copyResultsToClipboard,
+              descriptionVisible,
+              expanded,
+              clipboardMessage,
+              clearAllFilters,
+              isCompactView,
+              setIsCompactView
+            }}>
+              <SearchForm />
+              <ResultsList />
+              <SettingsDialog 
+                isOpen={isSettingsOpen}
+                onDismiss={() => setIsSettingsOpen(false)}
+              />
+            </ResultsContext.Provider>
+          </FormContext.Provider>
+        </PageLayout.Content>
+      </PageLayout>
+    </Box>
   );
 }
 
