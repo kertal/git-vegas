@@ -174,6 +174,7 @@ interface ResultsContextType {
   clipboardMessage: string | null;
   clearAllFilters: () => void;
   isCompactView: boolean;
+  setIsCompactView: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const ResultsContext = createContext<ResultsContextType | null>(null);
@@ -380,7 +381,8 @@ const ResultsList = memo(function ResultsList() {
     expanded,
     clipboardMessage,
     clearAllFilters,
-    isCompactView
+    isCompactView,
+    setIsCompactView
   } = useResultsContext();
 
   // Add state for filter collapse
@@ -868,6 +870,17 @@ const ResultsList = memo(function ResultsList() {
                 }}
               >
                 Export to Clipboard
+              </Button>
+
+              <Box sx={{ width: 1, borderRight: '1px solid', borderColor: 'border.muted' }} />
+
+              <Button
+                variant={isCompactView ? 'primary' : 'default'}
+                size="small"
+                onClick={() => setIsCompactView(!isCompactView)}
+                sx={buttonStyles}
+              >
+                {isCompactView ? 'Detailed View' : 'Compact View'}
               </Button>
             </Box>
           </Box>
@@ -1596,7 +1609,7 @@ function App() {
   const [descriptionVisible, setDescriptionVisible] = useState<{[id: number]: boolean}>({});
   const [expanded, setExpanded] = useState<{[id: number]: boolean}>({});
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
-  const isCompactView = false;
+  const [isCompactView, setIsCompactView] = useState(false);
 
   // Derived state
   const availableLabels = useMemo(() => {
@@ -1810,7 +1823,8 @@ function App() {
                   expanded,
                   clipboardMessage,
                   clearAllFilters,
-                  isCompactView
+                  isCompactView,
+                  setIsCompactView
                 }}>
                   <SearchForm />
                   <ResultsList />
