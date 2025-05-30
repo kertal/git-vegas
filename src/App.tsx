@@ -464,7 +464,7 @@ const ResultsList = memo(function ResultsList() {
           borderColor: 'border.default'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Heading as="h2" sx={{fontSize: 2, fontWeight: 'bold', color: 'fg.default', m: 0}}>
+            <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>
               Filters
             </Heading>
           </Box>
@@ -513,7 +513,7 @@ const ResultsList = memo(function ResultsList() {
           <Box sx={{ p: 3 }}>
             {/* Type Filter UI */}
             <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
+              <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'fg.muted', mb: 2 }}>
                 Type
               </Heading>
               <ButtonGroup>
@@ -538,7 +538,7 @@ const ResultsList = memo(function ResultsList() {
 
             {/* Status Filter UI */}
             <Stack sx={{ mb: 4 }}>
-              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'fg.muted', mb: 2 }}>
+              <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'fg.muted', mb: 2 }}>
                 Status
               </Heading>
               <ButtonGroup>
@@ -574,7 +574,7 @@ const ResultsList = memo(function ResultsList() {
               <>
                 {/* Inclusive Label Filter */}
                 <Stack sx={{ mb: 4 }}>
-                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'success.fg', mb: 2 }}>
+                  <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'success.fg', mb: 2 }}>
                     Label Filter (inclusive)
                     <Text as="span" sx={{ml: 2, fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
                       - show items with selected label
@@ -613,7 +613,7 @@ const ResultsList = memo(function ResultsList() {
 
                 {/* Exclusive Label Filter */}
                 <Stack sx={{ mb: 4 }}>
-                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', color: 'danger.fg', mb: 2 }}>
+                  <Heading as="h3" sx={{ fontSize: 2, fontWeight: 'semibold', color: 'danger.fg', mb: 2 }}>
                     Label Filter (exclusive)
                     <Text as="span" sx={{ml: 2, fontSize: 1, color: 'fg.muted', fontWeight: 'normal'}}>
                       - hide items with selected labels
@@ -684,7 +684,7 @@ const ResultsList = memo(function ResultsList() {
           borderColor: 'border.muted'
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Statistics</Heading>
+            <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>Statistics</Heading>
             <Text sx={{ fontSize: 1, color: 'fg.muted' }}>({stats.total} items)</Text>
           </Box>
           <Button
@@ -815,7 +815,7 @@ const ResultsList = memo(function ResultsList() {
               alignItems: 'center'
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Heading sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default'}}>Results</Heading>
+                <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>Results</Heading>
                 {clipboardMessage && (
                   <Flash variant="success" sx={{ py: 1, px: 2 }}>
                     {clipboardMessage}
@@ -1382,7 +1382,7 @@ function App() {
 
   // Update document title
   useEffect(() => {
-    document.title = 'PRIssues';
+    document.title = '🎰 Git Vegas';
   }, []);
 
   // Form state with URL params and local storage fallback
@@ -1753,8 +1753,8 @@ function App() {
                 height: '56px'
               }}>
                 <Box sx={{ pl: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <MarkGithubIcon size={24} />
-                  <Heading sx={{ fontSize: 3, m: 0 }}>PRIssues</Heading>
+                
+                  <Heading sx={{ fontSize: 3, m: 0 }}> 🎰 Git Vegas</Heading>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
                   <IconButton
