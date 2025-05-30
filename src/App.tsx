@@ -1427,6 +1427,34 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
   );
 });
 
+// Add validation function
+const validateGitHubUsernames = async (usernames: string[], token?: string): Promise<{ valid: string[]; invalid: string[] }> => {
+  const valid: string[] = [];
+  const invalid: string[] = [];
+  const headers: HeadersInit = {
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  
+  if (token) {
+    headers['Authorization'] = `token ${token}`;
+  }
+
+  await Promise.all(usernames.map(async (username) => {
+    try {
+      const response = await fetch(`https://api.github.com/users/${username}`, { headers });
+      if (response.ok) {
+        valid.push(username);
+      } else {
+        invalid.push(username);
+      }
+    } catch {
+      invalid.push(username);
+    }
+  }));
+
+  return { valid, invalid };
+};
+
 // Add the main App component
 function App() {
   // State for settings dialog
@@ -1564,7 +1592,7 @@ function App() {
     if (endDate) localStorage.setItem('github-end-date', endDate);
   }, [username, startDate, endDate]);
 
-  // Main search handler
+  // Update main search handler
   const handleSearch = useCallback(async () => {
     if (!username) {
       setError('Please enter a GitHub username');
@@ -1581,11 +1609,36 @@ function App() {
       return;
     }
 
+    const usernames = username.split(',')
+      .map(u => u.trim())
+      .filter(Boolean);
+
+    // Check username limit
+    if (usernames.length > 15) {
+      setError('Too many usernames. Please limit to 15 usernames at a time.');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
-    await fetchDataInBackground();
-    setLoading(false);
-  }, [username, startDate, endDate, fetchDataInBackground]);
+    setLoadingProgress('Validating usernames...');
+
+    try {
+      const { valid, invalid } = await validateGitHubUsernames(usernames, githubToken);
+
+      if (invalid.length > 0) {
+        setError(`Invalid GitHub username${invalid.length > 1 ? 's' : ''}: ${invalid.join(', ')}`);
+        setLoading(false);
+        return;
+      }
+
+      await fetchDataInBackground();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while validating usernames');
+    } finally {
+      setLoading(false);
+    }
+  }, [username, startDate, endDate, githubToken, fetchDataInBackground]);
 
   // Results state
   const [filter, setFilter] = useState<'all' | 'issue' | 'pr'>('all');
