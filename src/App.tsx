@@ -1211,6 +1211,16 @@ function App() {
   const [loadingProgress, setLoadingProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Add initial loading state
+  const [initialLoading, setInitialLoading] = useState(true);
+  useEffect(() => {
+    // Show initial loading animation for 2 seconds
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Results state with local storage
   const [results, setResults] = useState<GitHubItem[]>(() => {
     const storedResults = localStorage.getItem('github-results');
@@ -1576,7 +1586,7 @@ function App() {
                     .map(item => item.user.avatar_url)
                     .filter(Boolean)
                 }
-                isLoading={loading}
+                isLoading={loading || initialLoading}
               />
             </Box>
 

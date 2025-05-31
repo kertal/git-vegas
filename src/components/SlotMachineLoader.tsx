@@ -37,9 +37,9 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
       };
 
       // Stop each reel with increasing delays
-      timeoutIds.push(window.setTimeout(() => stopSpinning(0), 400));
-      timeoutIds.push(window.setTimeout(() => stopSpinning(1), 900));
-      timeoutIds.push(window.setTimeout(() => stopSpinning(2), 1400));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(0), 600));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(1), 1200));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(2), 1800));
     }
 
     // Cleanup timeouts
@@ -77,7 +77,18 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
         borderRadius: '4px',
         bg: 'canvas.subtle',
         overflow: 'hidden',
-        position: 'relative'
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,1) 0%, transparent 40%, transparent 60%, rgba(0,0,0,1) 100%)',
+          pointerEvents: 'none',
+          zIndex: 1
+        }
       }}>
         <Box 
           data-testid="reel"
@@ -88,7 +99,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
             height: '240px', // Height for 10 items
             transform: isSpinning ? 'translateY(0)' : `translateY(-${(itemSequence.length - 1) * 24}px)`,
             transition: isSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.4, 2, 0.5, 1)',
-            animation: isSpinning ? `spin${index} 1s infinite linear` : 'none'
+            animation: isSpinning ? `spin${index} 1.5s infinite linear` : 'none'
           }}
           sx={{
             '@keyframes spin0': {
@@ -112,11 +123,12 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
               width: '24px',
               height: '24px',
               flexShrink: 0,
-              opacity: i === visibleItemIndex ? 1 : isSpinning ? 0.3 : 0,
               transform: i === visibleItemIndex && !isSpinning ? 'scale(1.1)' : 'scale(1)',
               transition: 'all 0.5s ease',
               bg: i === visibleItemIndex && !isSpinning ? 'accent.subtle' : 'transparent',
-              borderRadius: '2px'
+              borderRadius: '2px',
+              position: 'relative',
+              zIndex: i === visibleItemIndex ? 2 : 0
             }}>
               {item && (
                 typeof item === 'string' && item.startsWith('http')
