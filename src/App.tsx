@@ -33,7 +33,6 @@ import type {
   GitHubItem,
   FormContextType,
   ResultsContextType,
-  SlotMachineLoaderProps,
   SettingsDialogProps
 } from './types';
 import {
@@ -44,6 +43,7 @@ import {
   updateUrlParams,
   validateGitHubUsernames
 } from './utils';
+import { SlotMachineLoader } from './components/SlotMachineLoader';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -1160,163 +1160,6 @@ const SettingsDialog = memo(function SettingsDialog({
   );
 });
 
-// Slot Machine Loader Component
-const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoading }: { avatarUrls: string[], isLoading: boolean }) {
-  // Default emojis as fallback
-  const defaultSymbols = ['🎰', '💎', '7️⃣', '🎲', '🎮', '🎪', '🎨', '🎭', '🎪'];
-  
-  // Ensure we always have items to display
-  const allItems = useMemo(() => 
-    avatarUrls.length > 0 ? avatarUrls : defaultSymbols
-  , [avatarUrls]);
-
-  const [positions, setPositions] = useState([0, 0, 0]);
-  const [spinning, setSpinning] = useState([false, false, false]);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Effect to handle spinning state
-  useEffect(() => {
-    if (!isInitialized) {
-      setIsInitialized(true);
-      return;
-    }
-
-    const intervals: NodeJS.Timeout[] = [];
-    const timeouts: NodeJS.Timeout[] = [];
-
-    if (isLoading) {
-      // Start spinning all reels
-      setSpinning([true, true, true]);
-
-      // Set up spinning intervals
-      for (let i = 0; i < 3; i++) {
-        const interval = setInterval(() => {
-          setPositions(prev => {
-            const next = [...prev];
-            next[i] = (next[i] + 1) % allItems.length;
-            return next;
-          });
-        }, 200 + (i * 50)); // Slightly different speeds for each reel
-        intervals.push(interval);
-      }
-    } else if (spinning.some(s => s)) { // Only run stop sequence if we were spinning
-      // Stop spinning sequence
-      for (let i = 0; i < 3; i++) {
-        const timeout = setTimeout(() => {
-          setSpinning(prev => {
-            const next = [...prev];
-            next[i] = false;
-            return next;
-          });
-          
-          // Set final position for this reel
-          setPositions(prev => {
-            const next = [...prev];
-            next[i] = Math.floor(Math.random() * allItems.length);
-            return next;
-          });
-        }, 400 + (i * 500));
-        timeouts.push(timeout);
-      }
-    }
-
-    // Cleanup
-    return () => {
-      intervals.forEach(interval => clearInterval(interval));
-      timeouts.forEach(timeout => clearTimeout(timeout));
-    };
-  }, [isLoading, allItems.length, isInitialized]);
-
-  const SlotReel = ({ position, isSpinning }: { position: number; isSpinning: boolean }) => {
-    const currentItem = allItems[position % allItems.length];
-    
-    return (
-      <Box sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '24px',
-        height: '24px',
-        border: '1px solid',
-        borderColor: 'border.default',
-        borderRadius: '4px',
-        bg: 'canvas.subtle',
-        overflow: 'hidden',
-        position: 'relative'
-      }}>
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          height: '72px',
-          transform: `translateY(-24px)`,
-          transition: isSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.4, 2, 0.5, 1)',
-          animation: isSpinning ? 'spin 0.4s infinite linear' : 'none',
-          '@keyframes spin': {
-            '0%': { transform: 'translateY(0px)' },
-            '100%': { transform: 'translateY(-24px)' }
-          }
-        }}>
-          {[currentItem, currentItem, currentItem].map((item, i) => (
-            <Box key={i} sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '24px',
-              height: '24px',
-              flexShrink: 0,
-              opacity: i === 1 ? 1 : 0,
-              transform: !isSpinning && i === 1 ? 'scale(1.1)' : 'scale(1)',
-              transition: 'all 0.5s ease',
-              bg: !isSpinning && i === 1 ? 'accent.subtle' : 'transparent',
-              borderRadius: '2px'
-            }}>
-              {item && (
-                typeof item === 'string' && item.startsWith('http')
-                  ? <Avatar src={item} size={20} /> 
-                  : <Text sx={{ fontSize: 2, lineHeight: 1 }}>{item}</Text>
-              )}
-            </Box>
-          ))}
-        </Box>
-      </Box>
-    );
-  };
-
-  // Check if all reels have stopped spinning
-  const allStopped = !spinning.some(s => s);
-
-  return (
-    <Box sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 1
-    }}>
-      <Box sx={{
-        display: 'flex',
-        gap: 1,
-        padding: '2px',
-        bg: 'canvas.default',
-        borderRadius: '6px',
-        border: '1px solid',
-        borderColor: allStopped ? 'accent.emphasis' : 'border.default',
-        boxShadow: allStopped ? 'shadow.medium' : 'shadow.small',
-        transition: 'all 0.5s ease'
-      }}>
-        {positions.map((position, index) => (
-          <SlotReel 
-            key={index}
-            position={position}
-            isSpinning={spinning[index]}
-          />
-        ))}
-      </Box>
-    </Box>
-  );
-});
-
 // Add the main App component
 function App() {
   // State for settings dialog
@@ -1388,13 +1231,19 @@ function App() {
   useEffect(() => {
     if (results.length > 0) {
       const newAvatars = [...new Set([
-        ...storedAvatars,
         ...results.map(item => item.user.avatar_url)
       ])].filter(Boolean);
-      setStoredAvatars(newAvatars);
-      localStorage.setItem('github-avatars', JSON.stringify(newAvatars));
+
+      // Only update if there are actual changes
+      const hasChanges = newAvatars.length !== storedAvatars.length || 
+        newAvatars.some((url, i) => url !== storedAvatars[i]);
+
+      if (hasChanges) {
+        setStoredAvatars(newAvatars);
+        localStorage.setItem('github-avatars', JSON.stringify(newAvatars));
+      }
     }
-  }, [results, storedAvatars]);
+  }, [results]);
 
   // Update main search handler
   const handleSearch = useCallback(async () => {
