@@ -41,10 +41,6 @@ describe('SlotMachineLoader', () => {
       jest.runOnlyPendingTimers();
     });
 
-    // Mock setInterval and setTimeout
-    const setIntervalSpy = jest.spyOn(window, 'setInterval');
-    const setTimeoutSpy = jest.spyOn(window, 'setTimeout');
-
     // Trigger loading
     rerender(<SlotMachineLoader avatarUrls={[]} isLoading={true} />);
     
@@ -53,19 +49,15 @@ describe('SlotMachineLoader', () => {
       jest.runOnlyPendingTimers();
     });
 
-    // Verify intervals are set up
-    expect(setIntervalSpy).toHaveBeenCalledTimes(3);
-    
     // Verify spinning state is applied
     const reels = container.querySelectorAll('[data-testid="reel"]');
     expect(reels.length).toBe(3);
     
-    // Check if any of the reels have a spinning animation style
-    const spinningElements = Array.from(reels).filter(reel => {
-      const style = (reel as HTMLElement).getAttribute('style') || '';
-      return style.includes('animation: spin');
+    // Check if all reels have spinning animation
+    reels.forEach(reel => {
+      const style = (reel as HTMLElement).style;
+      expect(style.animation).toMatch(/spin\d 1s infinite linear/);
     });
-    expect(spinningElements.length).toBe(3);
   });
 
   it('stops spinning when loading ends', () => {
@@ -78,10 +70,6 @@ describe('SlotMachineLoader', () => {
       jest.runOnlyPendingTimers();
     });
 
-    // Mock setInterval and setTimeout
-    const setIntervalSpy = jest.spyOn(window, 'setInterval');
-    const setTimeoutSpy = jest.spyOn(window, 'setTimeout');
-
     // Stop loading
     rerender(<SlotMachineLoader avatarUrls={[]} isLoading={false} />);
 
@@ -90,25 +78,16 @@ describe('SlotMachineLoader', () => {
       jest.advanceTimersByTime(2000); // Advance past all timeouts
     });
 
-    // Verify timeouts were called
-    expect(setTimeoutSpy).toHaveBeenCalledTimes(3);
-
     // Verify spinning has stopped
     const reels = container.querySelectorAll('[data-testid="reel"]');
-    const spinningElements = Array.from(reels).filter(reel => {
-      const style = (reel as HTMLElement).getAttribute('style') || '';
-      return style.includes('animation: spin');
+    reels.forEach(reel => {
+      const style = (reel as HTMLElement).style;
+      expect(style.animation).toBe('none');
     });
-    expect(spinningElements.length).toBe(0);
   });
 
-  it('cleans up intervals and timeouts on unmount', () => {
-    // Mock setInterval and setTimeout
-    const setIntervalSpy = jest.spyOn(window, 'setInterval');
-    const clearIntervalSpy = jest.spyOn(window, 'clearInterval');
-    const clearTimeoutSpy = jest.spyOn(window, 'clearTimeout');
-
-    const { unmount } = render(
+  it('cleans up timeouts on unmount', () => {
+    const { container, rerender, unmount } = render(
       <SlotMachineLoader avatarUrls={[]} isLoading={true} />
     );
 
@@ -117,14 +96,14 @@ describe('SlotMachineLoader', () => {
       jest.runOnlyPendingTimers();
     });
 
-    // Set up intervals
-    expect(setIntervalSpy).toHaveBeenCalledTimes(3);
+    // Stop loading to trigger timeouts
+    rerender(<SlotMachineLoader avatarUrls={[]} isLoading={false} />);
 
-    // Unmount should clean up
+    // Unmount before timeouts complete
     unmount();
 
-    // Verify cleanup
-    expect(clearIntervalSpy).toHaveBeenCalledTimes(3);
-    expect(clearTimeoutSpy).toHaveBeenCalledTimes(0); // No timeouts to clear during unmount while spinning
+    // Verify all timeouts were cleared
+    const pendingTimers = jest.getTimerCount();
+    expect(pendingTimers).toBe(0);
   });
 }); 

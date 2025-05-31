@@ -14,70 +14,56 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
 
   const [positions, setPositions] = useState([0, 0, 0]);
   const [spinning, setSpinning] = useState([false, false, false]);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Effect to handle initialization
-  useEffect(() => {
-    if (!isInitialized) {
-      setIsInitialized(true);
-    }
-  }, []);
 
   // Effect to handle spinning state
   useEffect(() => {
-    if (!isInitialized) {
-      return;
-    }
-
-    const intervals: number[] = [];
-    const timeouts: number[] = [];
+    const timeoutIds: number[] = [];
 
     if (isLoading && !spinning.some(s => s)) {
-      // Start spinning all reels
       setSpinning([true, true, true]);
-
-      // Set up spinning intervals
-      for (let i = 0; i < 3; i++) {
-        const interval = window.setInterval(() => {
-          setPositions(prev => {
-            const next = [...prev];
-            next[i] = (next[i] + 1) % allItems.length;
-            return next;
-          });
-        }, 200 + (i * 50)); // Slightly different speeds for each reel
-        intervals.push(interval);
-      }
     } else if (!isLoading && spinning.some(s => s)) {
-      // Stop spinning sequence
-      for (let i = 0; i < 3; i++) {
-        const timeout = window.setTimeout(() => {
-          setSpinning(prev => {
-            const next = [...prev];
-            next[i] = false;
-            return next;
-          });
-          
-          // Set final position for this reel
-          setPositions(prev => {
-            const next = [...prev];
-            next[i] = Math.floor(Math.random() * allItems.length);
-            return next;
-          });
-        }, 400 + (i * 500));
-        timeouts.push(timeout);
-      }
+      // Stop spinning sequence with delays
+      const stopSpinning = (index: number) => {
+        setSpinning(prev => {
+          const next = [...prev];
+          next[index] = false;
+          return next;
+        });
+        setPositions(prev => {
+          const next = [...prev];
+          next[index] = Math.floor(Math.random() * allItems.length);
+          return next;
+        });
+      };
+
+      // Stop each reel with increasing delays
+      timeoutIds.push(window.setTimeout(() => stopSpinning(0), 400));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(1), 900));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(2), 1400));
     }
 
-    // Cleanup
+    // Cleanup timeouts
     return () => {
-      intervals.forEach(interval => window.clearInterval(interval));
-      timeouts.forEach(timeout => window.clearTimeout(timeout));
+      timeoutIds.forEach(id => window.clearTimeout(id));
     };
-  }, [isLoading, isInitialized, allItems.length]);
+  }, [isLoading, allItems.length]);
 
-  const SlotReel = ({ position, isSpinning }: { position: number; isSpinning: boolean }) => {
-    const currentItem = allItems[position % allItems.length];
-    
+  const SlotReel = ({ position, isSpinning, index }: { position: number; isSpinning: boolean; index: number }) => {
+    // Create a sequence of items for the spinning effect
+    const itemSequence = useMemo(() => {
+      const sequence = [];
+      const totalItems = 10; // Show 10 items in the sequence
+      
+      for (let i = 0; i < totalItems; i++) {
+        sequence.push(allItems[(position + i) % allItems.length]);
+      }
+      
+      return sequence;
+    }, [position, allItems]);
+
+    // Get the current visible item (middle item when spinning, final item when stopped)
+    const visibleItemIndex = isSpinning ? Math.floor(itemSequence.length / 2) : itemSequence.length - 1;
+
     return (
       <Box sx={{
         display: 'flex',
@@ -99,18 +85,26 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            height: '72px',
-            transform: `translateY(-24px)`,
+            height: '240px', // Height for 10 items
+            transform: isSpinning ? 'translateY(0)' : `translateY(-${(itemSequence.length - 1) * 24}px)`,
             transition: isSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.4, 2, 0.5, 1)',
-            animation: isSpinning ? 'spin 0.4s infinite linear' : 'none'
+            animation: isSpinning ? `spin${index} 1s infinite linear` : 'none'
           }}
           sx={{
-            '@keyframes spin': {
+            '@keyframes spin0': {
               '0%': { transform: 'translateY(0px)' },
-              '100%': { transform: 'translateY(-24px)' }
+              '100%': { transform: 'translateY(-240px)' }
+            },
+            '@keyframes spin1': {
+              '0%': { transform: 'translateY(0px)' },
+              '100%': { transform: 'translateY(-240px)' }
+            },
+            '@keyframes spin2': {
+              '0%': { transform: 'translateY(0px)' },
+              '100%': { transform: 'translateY(-240px)' }
             }
           }}>
-          {[currentItem, currentItem, currentItem].map((item, i) => (
+          {itemSequence.map((item, i) => (
             <Box key={i} sx={{
               display: 'flex',
               alignItems: 'center',
@@ -118,10 +112,10 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
               width: '24px',
               height: '24px',
               flexShrink: 0,
-              opacity: i === 1 ? 1 : 0,
-              transform: !isSpinning && i === 1 ? 'scale(1.1)' : 'scale(1)',
+              opacity: i === visibleItemIndex ? 1 : isSpinning ? 0.3 : 0,
+              transform: i === visibleItemIndex && !isSpinning ? 'scale(1.1)' : 'scale(1)',
               transition: 'all 0.5s ease',
-              bg: !isSpinning && i === 1 ? 'accent.subtle' : 'transparent',
+              bg: i === visibleItemIndex && !isSpinning ? 'accent.subtle' : 'transparent',
               borderRadius: '2px'
             }}>
               {item && (
@@ -162,6 +156,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
             key={index}
             position={position}
             isSpinning={spinning[index]}
+            index={index}
           />
         ))}
       </Box>
