@@ -23,13 +23,19 @@ import {
 import {
   IssueOpenedIcon,
   GitPullRequestIcon,
-  CheckIcon,
   XIcon,
   GitMergeIcon,
   GearIcon
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type {
+  GitHubItem,
+  FormContextType,
+  ResultsContextType,
+  SlotMachineLoaderProps,
+  SettingsDialogProps
+} from './types';
 
 // Add a simple debounce function
 const debounce = (fn: Function, ms = 300) => {
@@ -84,48 +90,7 @@ const updateUrlParams = (params: Record<string, string | null>): void => {
   window.history.replaceState({}, '', url.toString());
 };
 
-interface GitHubItem {
-  id: number;
-  html_url: string;
-  title: string;
-  pull_request?: {
-    merged_at?: string;  // Zeitpunkt, an dem der PR gemerged wurde
-    url?: string;        // URL des PRs für weitere API-Anfragen
-  };
-  created_at: string;
-  updated_at: string;
-  state: string;
-  body?: string; // Added body field
-  labels?: { name: string; color?: string; description?: string }[];
-  repository_url?: string;
-  repository?: { full_name: string; html_url: string };
-  merged?: boolean;      // Ob der PR gemerged wurde
-  merged_at?: string;    // Zeitpunkt, an dem der PR gemerged wurde (auf oberster Ebene)
-  closed_at?: string;    // Zeitpunkt, an dem der Issue/PR geschlossen wurde
-  number?: number; // Added for PR number reference
-  user: {
-    login: string;
-    avatar_url: string;
-    html_url: string;
-  };
-}
-
 // Form Context to isolate form state changes
-interface FormContextType {
-  username: string;
-  startDate: string;
-  endDate: string;
-  githubToken: string;  // Add token
-  setUsername: (value: string) => void;
-  setStartDate: (value: string) => void;
-  setEndDate: (value: string) => void;
-  setGithubToken: (value: string) => void;  // Add token setter
-  handleSearch: () => void;
-  loading: boolean;
-  loadingProgress: string;
-  error: string | null;
-}
-
 const FormContext = createContext<FormContextType | null>(null);
 
 function useFormContext() {
@@ -137,33 +102,6 @@ function useFormContext() {
 }
 
 // Results Context to isolate results state changes
-interface ResultsContextType {
-  results: GitHubItem[];
-  filteredResults: GitHubItem[];
-  filter: 'all' | 'issue' | 'pr';
-  statusFilter: 'all' | 'open' | 'closed' | 'merged';
-  sortOrder: 'updated' | 'created';
-  labelFilter: string;
-  excludedLabels: string[];
-  searchText: string;
-  repoFilters: string[];
-  availableLabels: string[];
-  setFilter: (filter: 'all' | 'issue' | 'pr') => void;
-  setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
-  setSortOrder: (sort: 'updated' | 'created') => void;
-  setLabelFilter: (filter: string) => void;
-  setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
-  toggleDescriptionVisibility: (id: number) => void;
-  toggleExpand: (id: number) => void;
-  copyResultsToClipboard: (format?: 'markdown' | 'html') => void;
-  descriptionVisible: { [id: number]: boolean };
-  expanded: { [id: number]: boolean };
-  clipboardMessage: string | null;
-  clearAllFilters: () => void;
-  isCompactView: boolean;
-  setIsCompactView: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
 const ResultsContext = createContext<ResultsContextType | null>(null);
 
 function useResultsContext() {
@@ -172,11 +110,6 @@ function useResultsContext() {
     throw new Error('useResultsContext must be used within a ResultsContextProvider');
   }
   return context;
-}
-
-// Add type for code component props
-interface CodeComponentProps extends React.HTMLAttributes<HTMLElement> {
-  inline?: boolean;
 }
 
 // Update button styles to be consistent
@@ -1061,7 +994,7 @@ const ResultsList = memo(function ResultsList() {
                                 {...props}
                               />
                             ),
-                            code: ({inline, ...props}: CodeComponentProps) => (
+                            code: ({inline, ...props}: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) => (
                               inline
                                 ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
                                 : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
@@ -1869,20 +1802,6 @@ function App() {
                 }
                 isLoading={loading}
               />
-              {loading && loadingProgress && (
-                <Text sx={{ 
-                  fontSize: 0, 
-                  color: 'fg.muted',
-                  animation: 'fadeInOut 2s infinite',
-                  '@keyframes fadeInOut': {
-                    '0%': { opacity: 0.5 },
-                    '50%': { opacity: 1 },
-                    '100%': { opacity: 0.5 }
-                  }
-                }}>
-                  {loadingProgress}
-                </Text>
-              )}
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
