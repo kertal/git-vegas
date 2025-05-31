@@ -235,37 +235,37 @@ const SearchForm = memo(function SearchForm() {
           alignItems: 'flex-start'
         }}>
           <Box>
-            <FormControl>
+            <FormControl required>
+              <FormControl.Label>GitHub Username(s)</FormControl.Label>
               <TextInput
                 placeholder="Enter usernames (comma-separated for multiple)"
                 value={username}
                 onChange={handleUsernameChange}
                 aria-required="true"
                 block
-                required
               />
             </FormControl>
           </Box>
           
-          <FormControl>
+          <FormControl required>
+            <FormControl.Label>Start Date</FormControl.Label>
             <TextInput
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               aria-required="true"
               block
-              required
             />
           </FormControl>
           
-          <FormControl>
+          <FormControl required>
+            <FormControl.Label>End Date</FormControl.Label>
             <TextInput
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               aria-required="true"
               block
-              required
             />
           </FormControl>
 
@@ -1274,72 +1274,74 @@ const SettingsDialog = memo(function SettingsDialog({
 
 // Slot Machine Loader Component
 const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoading }: { avatarUrls: string[], isLoading: boolean }) {
-  const getRandomPositions = useCallback((itemCount: number) => {
-    return Array(3).fill(0).map(() => Math.floor(Math.random() * itemCount));
-  }, []);
-
   // Default emojis as fallback
   const defaultSymbols = ['🎰', '💎', '7️⃣', '🎲', '🎮', '🎪', '🎨', '🎭', '🎪'];
   
   // Ensure we always have items to display
-  const allItems = avatarUrls.length > 0 
-    ? avatarUrls 
-    : defaultSymbols;
+  const allItems = useMemo(() => 
+    avatarUrls.length > 0 ? avatarUrls : defaultSymbols
+  , [avatarUrls]);
 
-  const [positions, setPositions] = useState(() => getRandomPositions(allItems.length));
+  const [positions, setPositions] = useState([0, 0, 0]);
   const [spinning, setSpinning] = useState([false, false, false]);
-  
-  // Reset positions when items change
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Effect to handle spinning state
   useEffect(() => {
-    if (!isLoading && allItems.length > 0) {
-      setPositions(getRandomPositions(allItems.length));
+    if (!isInitialized) {
+      setIsInitialized(true);
+      return;
     }
-  }, [allItems.length, getRandomPositions, isLoading]);
-  
-  useEffect(() => {
+
+    const intervals: NodeJS.Timeout[] = [];
+    const timeouts: NodeJS.Timeout[] = [];
+
     if (isLoading) {
+      // Start spinning all reels
       setSpinning([true, true, true]);
-      const intervals = positions.map((_, index) => {
-        const randomSpeed = Math.floor(Math.random() * 50) + 50;
-        return setInterval(() => {
+
+      // Set up spinning intervals
+      for (let i = 0; i < 3; i++) {
+        const interval = setInterval(() => {
           setPositions(prev => {
-            const newPositions = [...prev];
-            const randomJump = Math.floor(Math.random() * 3) + 1;
-            newPositions[index] = (prev[index] + randomJump) % allItems.length;
-            return newPositions;
+            const next = [...prev];
+            next[i] = (next[i] + 1) % allItems.length;
+            return next;
           });
-        }, randomSpeed);
-      });
-
-      return () => intervals.forEach(interval => clearInterval(interval));
-    } else {
-      const stopTimeouts = spinning.map((_, index) => {
-        return setTimeout(() => {
+        }, 200 + (i * 50)); // Slightly different speeds for each reel
+        intervals.push(interval);
+      }
+    } else if (spinning.some(s => s)) { // Only run stop sequence if we were spinning
+      // Stop spinning sequence
+      for (let i = 0; i < 3; i++) {
+        const timeout = setTimeout(() => {
           setSpinning(prev => {
-            const newSpinning = [...prev];
-            newSpinning[index] = false;
-            return newSpinning;
+            const next = [...prev];
+            next[i] = false;
+            return next;
           });
-        }, 100 + (index * 150));
-      });
-
-      return () => stopTimeouts.forEach(timeout => clearTimeout(timeout));
+          
+          // Set final position for this reel
+          setPositions(prev => {
+            const next = [...prev];
+            next[i] = Math.floor(Math.random() * allItems.length);
+            return next;
+          });
+        }, 400 + (i * 500));
+        timeouts.push(timeout);
+      }
     }
-  }, [isLoading, allItems.length]);
 
-  const SlotReel = ({ position, isSpinning }: { position: number; isSpinning: boolean; index?: number }) => {
-    // Ensure we always have a valid position
-    const safePosition = position % allItems.length;
-    const currentItem = allItems[safePosition];
+    // Cleanup
+    return () => {
+      intervals.forEach(interval => clearInterval(interval));
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [isLoading, allItems.length, isInitialized]);
+
+  const SlotReel = ({ position, isSpinning }: { position: number; isSpinning: boolean }) => {
+    const currentItem = allItems[position % allItems.length];
     
-    // Create array of visible items for animation
-    const visibleItems = isSpinning 
-      ? [-1, 0, 1].map(offset => {
-          const pos = (safePosition + offset + allItems.length) % allItems.length;
-          return allItems[pos];
-        })
-      : [currentItem, currentItem, currentItem];
-
     return (
       <Box sx={{
         display: 'flex',
@@ -1361,14 +1363,14 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
           alignItems: 'center',
           height: '72px',
           transform: `translateY(-24px)`,
-          transition: isSpinning ? 'none' : 'transform 0.3s cubic-bezier(0.4, 2, 0.5, 1)',
-          animation: isSpinning ? 'spin 0.2s infinite linear' : 'none',
+          transition: isSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.4, 2, 0.5, 1)',
+          animation: isSpinning ? 'spin 0.4s infinite linear' : 'none',
           '@keyframes spin': {
             '0%': { transform: 'translateY(0px)' },
             '100%': { transform: 'translateY(-24px)' }
           }
         }}>
-          {visibleItems.map((item, i) => (
+          {[currentItem, currentItem, currentItem].map((item, i) => (
             <Box key={i} sx={{
               display: 'flex',
               alignItems: 'center',
@@ -1378,7 +1380,7 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
               flexShrink: 0,
               opacity: i === 1 ? 1 : 0,
               transform: !isSpinning && i === 1 ? 'scale(1.1)' : 'scale(1)',
-              transition: 'all 0.3s ease',
+              transition: 'all 0.5s ease',
               bg: !isSpinning && i === 1 ? 'accent.subtle' : 'transparent',
               borderRadius: '2px'
             }}>
@@ -1413,7 +1415,7 @@ const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoadin
         border: '1px solid',
         borderColor: allStopped ? 'accent.emphasis' : 'border.default',
         boxShadow: allStopped ? 'shadow.medium' : 'shadow.small',
-        transition: 'all 0.3s ease'
+        transition: 'all 0.5s ease'
       }}>
         {positions.map((position, index) => (
           <SlotReel 
@@ -1534,64 +1536,6 @@ function App() {
     }
   }, [results, storedAvatars]);
 
-  // Background refresh functionality
-  const fetchDataInBackground = useCallback(async () => {
-    if (!username) return;
-
-    setLoadingProgress('Refreshing data in background...');
-
-    try {
-      const usernames = username.split(',').map(u => u.trim());
-      const allResults: GitHubItem[] = [];
-
-      for (const user of usernames) {
-        setLoadingProgress(`Fetching data for ${user}...`);
-        
-        const headers: HeadersInit = {
-          'Accept': 'application/vnd.github.v3+json'
-        };
-        
-        if (githubToken) {
-          headers['Authorization'] = `token ${githubToken}`;
-        }
-        
-        const response = await fetch(
-          `https://api.github.com/search/issues?q=author:${user}+created:${startDate}..${endDate}&per_page=100`,
-          { headers }
-        );
-        
-        if (!response.ok) {
-          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        allResults.push(...data.items);
-      }
-
-      setResults(allResults);
-      setLoadingProgress('Data updated successfully!');
-      setTimeout(() => setLoadingProgress(''), 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
-      console.error('Background fetch error:', err);
-    }
-  }, [username, startDate, endDate, githubToken]);
-
-  // Remove automatic initial load and background refresh
-  useEffect(() => {
-    if (results.length > 0) {
-      localStorage.setItem('github-results', JSON.stringify(results));
-      localStorage.setItem('github-results-timestamp', Date.now().toString());
-    }
-  }, [results]);
-
-  // Remove duplicate localStorage updates
-  useEffect(() => {
-    if (username) localStorage.setItem('github-username', username);
-    if (startDate) localStorage.setItem('github-start-date', startDate);
-    if (endDate) localStorage.setItem('github-end-date', endDate);
-  }, [username, startDate, endDate]);
-
   // Update main search handler
   const handleSearch = useCallback(async () => {
     if (!username) {
@@ -1624,6 +1568,7 @@ function App() {
     setLoadingProgress('Validating usernames...');
 
     try {
+      // Validate usernames first
       const { valid, invalid } = await validateGitHubUsernames(usernames, githubToken);
 
       if (invalid.length > 0) {
@@ -1632,13 +1577,53 @@ function App() {
         return;
       }
 
-      await fetchDataInBackground();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while validating usernames');
-    } finally {
+      // Start fetching data
+      const allResults: GitHubItem[] = [];
+      
+      for (const user of usernames) {
+        setLoadingProgress(`Fetching data for ${user}...`);
+        
+        const headers: HeadersInit = {
+          'Accept': 'application/vnd.github.v3+json'
+        };
+        
+        if (githubToken) {
+          headers['Authorization'] = `token ${githubToken}`;
+        }
+        
+        const response = await fetch(
+          `https://api.github.com/search/issues?q=author:${user}+created:${startDate}..${endDate}&per_page=100`,
+          { headers }
+        );
+        
+        if (!response.ok) {
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        allResults.push(...data.items);
+
+        // Update progress
+        setLoadingProgress(`Found ${data.items.length} items for ${user}`);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for visual feedback
+      }
+
+      // Update results
+      setResults(allResults);
+      
+      // Show success message briefly
+      setLoadingProgress(`Successfully loaded ${allResults.length} items!`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Clear loading state
       setLoading(false);
+      setLoadingProgress('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
+      setLoading(false);
+      setLoadingProgress('');
     }
-  }, [username, startDate, endDate, githubToken, fetchDataInBackground]);
+  }, [username, startDate, endDate, githubToken]);
 
   // Results state
   const [filter, setFilter] = useState<'all' | 'issue' | 'pr'>('all');
@@ -1871,7 +1856,9 @@ function App() {
               left: '50%',
               transform: 'translateX(-50%)',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              flexDirection: 'column',
+              gap: 1
             }}>
               <SlotMachineLoader 
                 avatarUrls={storedAvatars.length > 0 
@@ -1882,6 +1869,20 @@ function App() {
                 }
                 isLoading={loading}
               />
+              {loading && loadingProgress && (
+                <Text sx={{ 
+                  fontSize: 0, 
+                  color: 'fg.muted',
+                  animation: 'fadeInOut 2s infinite',
+                  '@keyframes fadeInOut': {
+                    '0%': { opacity: 0.5 },
+                    '50%': { opacity: 1 },
+                    '100%': { opacity: 0.5 }
+                  }
+                }}>
+                  {loadingProgress}
+                </Text>
+              )}
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
