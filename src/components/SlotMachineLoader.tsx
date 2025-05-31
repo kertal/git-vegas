@@ -62,7 +62,9 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
     }, [position, allItems]);
 
     // Get the current visible item (middle item when spinning, final item when stopped)
-    const visibleItemIndex = isSpinning ? Math.floor(itemSequence.length / 2) : itemSequence.length - 1;
+    const visibleItemIndex = Math.floor(itemSequence.length / 2);
+    const itemHeight = 24; // Height of each item
+    const offset = (itemHeight * (visibleItemIndex - 0.5)); // Center the item by offsetting by half its height
 
     return (
       <Box sx={{
@@ -97,7 +99,9 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
             flexDirection: 'column',
             alignItems: 'center',
             height: '240px', // Height for 10 items
-            transform: isSpinning ? 'translateY(0)' : `translateY(-${(itemSequence.length - 1) * 24}px)`,
+            transform: isSpinning 
+              ? 'translateY(0)' 
+              : `translateY(-${offset}px)`,
             transition: isSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.4, 2, 0.5, 1)',
             animation: isSpinning ? `spin${index} 1.5s infinite linear` : 'none'
           }}
