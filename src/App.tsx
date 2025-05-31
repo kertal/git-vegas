@@ -36,7 +36,6 @@ import type {
   SettingsDialogProps
 } from './types';
 import {
-  debounce,
   getContrastColor,
   isValidDateString,
   getParamFromUrl,
@@ -44,6 +43,7 @@ import {
   validateGitHubUsernames
 } from './utils';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
+import debounce from 'lodash/debounce';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -1255,13 +1255,104 @@ function App() {
     }
   }, [results]);
 
-  // Update main search handler
+  // Debounced local storage save function
+  const debouncedSaveToLocalStorage = useCallback(
+    debounce((key: string, value: string) => {
+      localStorage.setItem(key, value);
+    }, 500),
+    []
+  );
+
+  // Add state for validated usernames
+  const [validatedUsernames, setValidatedUsernames] = useState<Set<string>>(new Set());
+  const [invalidUsernames, setInvalidUsernames] = useState<Set<string>>(new Set());
+  const [isValidating, setIsValidating] = useState(false);
+
+  // Username validation effect
+  useEffect(() => {
+    if (!username) {
+      setInvalidUsernames(new Set());
+      setValidatedUsernames(new Set());
+      setError(null);
+      return;
+    }
+
+    const usernames = username.split(',')
+      .map(u => u.trim())
+      .filter(Boolean);
+
+    // Check username limit
+    if (usernames.length > 15) {
+      setError('Too many usernames. Please limit to 15 usernames at a time.');
+      return;
+    }
+
+    // Filter out already validated usernames
+    const unvalidatedUsernames = usernames.filter(u => !validatedUsernames.has(u) && !invalidUsernames.has(u));
+    
+    if (unvalidatedUsernames.length === 0) {
+      // All usernames are already validated, check if any are invalid
+      const currentInvalid = usernames.filter(u => invalidUsernames.has(u));
+      if (currentInvalid.length > 0) {
+        setError(`Invalid GitHub username${currentInvalid.length > 1 ? 's' : ''}: ${currentInvalid.join(', ')}`);
+      } else {
+        setError(null);
+      }
+      return;
+    }
+
+    // Set validating state
+    setIsValidating(true);
+    setError('Validating usernames...');
+
+    const timeoutId = setTimeout(async () => {
+      try {
+        const { invalid } = await validateGitHubUsernames(unvalidatedUsernames, githubToken);
+        
+        // Update validated and invalid username sets
+        setValidatedUsernames(prev => {
+          const next = new Set(prev);
+          unvalidatedUsernames.forEach(u => {
+            if (!invalid.includes(u)) {
+              next.add(u);
+            }
+          });
+          return next;
+        });
+        
+        setInvalidUsernames(prev => {
+          const next = new Set(prev);
+          invalid.forEach(u => next.add(u));
+          return next;
+        });
+
+        // Check if any usernames are invalid
+        const allInvalid = usernames.filter(u => invalid.includes(u) || invalidUsernames.has(u));
+        if (allInvalid.length > 0) {
+          setError(`Invalid GitHub username${allInvalid.length > 1 ? 's' : ''}: ${allInvalid.join(', ')}`);
+        } else {
+          setError(null);
+        }
+      } catch (err) {
+        setError('Error validating usernames. Please try again.');
+      } finally {
+        setIsValidating(false);
+      }
+    }, 500);
+
+    return () => {
+      clearTimeout(timeoutId);
+      setIsValidating(false);
+    };
+  }, [username, githubToken]);
+
+  // Update handleSearch to use cached validation results
   const handleSearch = useCallback(async () => {
     if (!username) {
       setError('Please enter a GitHub username');
       return;
     }
-
+    
     if (!startDate || !endDate) {
       setError('Please select both start and end dates');
       return;
@@ -1281,21 +1372,25 @@ function App() {
       setError('Too many usernames. Please limit to 15 usernames at a time.');
       return;
     }
-    
+
+    // Check if any usernames are invalid using cached results
+    const invalidNames = usernames.filter(u => invalidUsernames.has(u));
+    if (invalidNames.length > 0) {
+      setError(`Invalid GitHub username${invalidNames.length > 1 ? 's' : ''}: ${invalidNames.join(', ')}`);
+      return;
+    }
+
+    // Check if validation is still in progress
+    if (isValidating) {
+      setError('Please wait for username validation to complete...');
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    setLoadingProgress('Validating usernames...');
+    setLoadingProgress('Starting search...');
 
     try {
-      // Validate usernames first
-      const { valid, invalid } = await validateGitHubUsernames(usernames, githubToken);
-
-      if (invalid.length > 0) {
-        setError(`Invalid GitHub username${invalid.length > 1 ? 's' : ''}: ${invalid.join(', ')}`);
-        setLoading(false);
-        return;
-      }
-
       // Start fetching data
       const allResults: GitHubItem[] = [];
       
@@ -1337,12 +1432,32 @@ function App() {
       // Clear loading state
       setLoading(false);
       setLoadingProgress('');
+
+      // Update URL params
+      updateUrlParams({
+        username,
+        startDate,
+        endDate
+      });
+
+      // Save to local storage
+      debouncedSaveToLocalStorage('github-username', username);
+      debouncedSaveToLocalStorage('github-start-date', startDate);
+      debouncedSaveToLocalStorage('github-end-date', endDate);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
       setLoading(false);
       setLoadingProgress('');
     }
-  }, [username, startDate, endDate, githubToken]);
+  }, [
+    username,
+    startDate,
+    endDate,
+    githubToken,
+    debouncedSaveToLocalStorage,
+    invalidUsernames,
+    isValidating
+  ]);
 
   // Results state
   const [filter, setFilter] = useState<'all' | 'issue' | 'pr'>('all');
