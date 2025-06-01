@@ -3,7 +3,11 @@ import { Box, Avatar, Text } from '@primer/react';
 import type { SlotMachineLoaderProps } from '../types';
 
 // Component for the slot machine loader animation
-export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, isLoading }: SlotMachineLoaderProps) {
+export const SlotMachineLoader = memo(function SlotMachineLoader({ 
+  avatarUrls, 
+  isLoading,
+  isManuallySpinning = false 
+}: SlotMachineLoaderProps) {
   // Default emojis as fallback
   const defaultSymbols = ['🎰', '💎', '7️⃣', '🎲', '🎮', '🎪', '🎨', '🎭', '🎪'];
   
@@ -19,9 +23,9 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
   useEffect(() => {
     const timeoutIds: number[] = [];
 
-    if (isLoading && !spinning.some(s => s)) {
+    if ((isLoading || isManuallySpinning) && !spinning.some(s => s)) {
       setSpinning([true, true, true]);
-    } else if (!isLoading && spinning.some(s => s)) {
+    } else if (!isLoading && !isManuallySpinning && spinning.some(s => s)) {
       // Stop spinning sequence with delays
       const stopSpinning = (index: number) => {
         setSpinning(prev => {
@@ -36,17 +40,20 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
         });
       };
 
+      // For manual spin, calculate delays for exactly 3 rotations
+      const baseDelay = isManuallySpinning ? 1000 : 600; // 1 second per rotation for manual
+      
       // Stop each reel with increasing delays
-      timeoutIds.push(window.setTimeout(() => stopSpinning(0), 600));
-      timeoutIds.push(window.setTimeout(() => stopSpinning(1), 1200));
-      timeoutIds.push(window.setTimeout(() => stopSpinning(2), 1800));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(0), baseDelay));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(1), baseDelay * 2));
+      timeoutIds.push(window.setTimeout(() => stopSpinning(2), baseDelay * 3));
     }
 
     // Cleanup timeouts
     return () => {
       timeoutIds.forEach(id => window.clearTimeout(id));
     };
-  }, [isLoading, allItems.length]);
+  }, [isLoading, isManuallySpinning, allItems.length]);
 
   const SlotReel = ({ position, isSpinning, index }: { position: number; isSpinning: boolean; index: number }) => {
     // Create a sequence of items for the spinning effect
@@ -74,12 +81,16 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
         justifyContent: 'center',
         width: '24px',
         height: '24px',
-        border: '1px solid',
+
         borderColor: 'border.default',
         borderRadius: '4px',
         bg: 'canvas.subtle',
         overflow: 'hidden',
         position: 'relative',
+        '&:focus': {
+          outline: 'none',
+          boxShadow: 'none'
+        },
         '&::before': {
           content: '""',
           position: 'absolute',
@@ -103,7 +114,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
               ? 'translateY(0)' 
               : `translateY(-${offset}px)`,
             transition: isSpinning ? 'none' : 'transform 0.5s cubic-bezier(0.4, 2, 0.5, 1)',
-            animation: isSpinning ? `spin${index} 1.5s infinite linear` : 'none'
+            animation: isSpinning ? `spin${index} ${isManuallySpinning ? '0.3' : '1.5'}s infinite linear` : 'none'
           }}
           sx={{
             '@keyframes spin0': {
@@ -161,10 +172,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({ avatarUrls, i
         gap: 1,
         padding: '2px',
         bg: 'canvas.default',
-        borderRadius: '6px',
-        border: '1px solid',
-        borderColor: allStopped ? 'accent.emphasis' : 'border.default',
-        boxShadow: allStopped ? 'shadow.medium' : 'shadow.small',
+       
         transition: 'all 0.5s ease'
       }}>
         {positions.map((position, index) => (

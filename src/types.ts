@@ -79,6 +79,7 @@ export interface ResultsContextType {
 export interface SlotMachineLoaderProps {
   avatarUrls: string[];
   isLoading: boolean;
+  isManuallySpinning?: boolean;
 }
 
 export interface SettingsDialogProps {

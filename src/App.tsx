@@ -1688,6 +1688,20 @@ function App() {
     setRepoFilters([]);
   }, []);
 
+  // Add state for manual slot machine trigger
+  const [isManuallySpinning, setIsManuallySpinning] = useState(false);
+
+  // Handle manual spin
+  const handleManualSpin = useCallback(() => {
+    if (!isManuallySpinning) {
+      setIsManuallySpinning(true);
+      // Reset after 3 spins (assuming each spin takes about 1 second)
+      setTimeout(() => {
+        setIsManuallySpinning(false);
+      }, 3000);
+    }
+  }, [isManuallySpinning]);
+
   return (
     <Box sx={{ 
       minHeight: '100vh',
@@ -1700,8 +1714,8 @@ function App() {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            borderBottom: '1px solid',
             borderColor: 'border.default',
+            borderBottom: '1px solid',
             height: '56px',
             position: 'relative'
           }}>
@@ -1719,15 +1733,47 @@ function App() {
               flexDirection: 'column',
               gap: 1
             }}>
-              <SlotMachineLoader 
-                avatarUrls={storedAvatars.length > 0 
-                  ? storedAvatars 
-                  : results
-                    .map(item => item.user.avatar_url)
-                    .filter(Boolean)
-                }
-                isLoading={loading || initialLoading}
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <SlotMachineLoader 
+                  avatarUrls={storedAvatars.length > 0 
+                    ? storedAvatars 
+                    : results
+                      .map(item => item.user.avatar_url)
+                      .filter(Boolean)
+                  }
+                  isLoading={loading || initialLoading}
+                  isManuallySpinning={isManuallySpinning}
+                />
+                <Button
+                  variant="invisible"
+                  onClick={handleManualSpin}
+                  disabled={isManuallySpinning || loading || initialLoading}
+                  sx={{
+                    p: 1,
+                    color: 'fg.default',
+                    opacity: (isManuallySpinning || loading || initialLoading) ? 0.5 : 1,
+                    '&:hover:not(:disabled)': { 
+                      color: 'accent.fg',
+                      transform: 'scale(1.1)',
+                      transition: 'transform 0.2s ease-in-out'
+                    },
+                    '&:disabled': {
+                      cursor: 'not-allowed'
+                    },
+                    '&:focus': {
+                      outline: 'none',
+                      boxShadow: 'none'
+                    },
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    lineHeight: 1,
+                    height: 'auto',
+                    minWidth: 'auto'
+                  }}
+                >
+                  🕹️
+                </Button>
+              </Box>
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
