@@ -1263,16 +1263,30 @@ function App() {
     []
   );
 
-  // Add state for validated usernames
-  const [validatedUsernames, setValidatedUsernames] = useState<Set<string>>(new Set());
-  const [invalidUsernames, setInvalidUsernames] = useState<Set<string>>(new Set());
+  // Add state for validated usernames with persistent storage
+  const [validatedUsernames, setValidatedUsernames] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('validated-github-usernames');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const [invalidUsernames, setInvalidUsernames] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('invalid-github-usernames');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
   const [isValidating, setIsValidating] = useState(false);
 
   // Username validation effect
   useEffect(() => {
     if (!username) {
-      setInvalidUsernames(new Set());
-      setValidatedUsernames(new Set());
       setError(null);
       return;
     }
@@ -1287,8 +1301,10 @@ function App() {
       return;
     }
 
-    // Filter out already validated usernames
-    const unvalidatedUsernames = usernames.filter(u => !validatedUsernames.has(u) && !invalidUsernames.has(u));
+    // Filter out already validated or invalid usernames
+    const unvalidatedUsernames = usernames.filter(u => 
+      !validatedUsernames.has(u) && !invalidUsernames.has(u)
+    );
     
     if (unvalidatedUsernames.length === 0) {
       // All usernames are already validated, check if any are invalid
@@ -1303,28 +1319,25 @@ function App() {
 
     // Set validating state
     setIsValidating(true);
-    setError('Validating usernames...');
+    setError('Validating new usernames...');
 
     const timeoutId = setTimeout(async () => {
       try {
-        const { invalid } = await validateGitHubUsernames(unvalidatedUsernames, githubToken);
+        const { valid, invalid } = await validateGitHubUsernames(unvalidatedUsernames, githubToken);
         
-        // Update validated and invalid username sets
-        setValidatedUsernames(prev => {
-          const next = new Set(prev);
-          unvalidatedUsernames.forEach(u => {
-            if (!invalid.includes(u)) {
-              next.add(u);
-            }
-          });
-          return next;
-        });
+        // Update validated usernames
+        if (valid.length > 0) {
+          const newValidated = new Set([...validatedUsernames, ...valid]);
+          setValidatedUsernames(newValidated);
+          localStorage.setItem('validated-github-usernames', JSON.stringify([...newValidated]));
+        }
         
-        setInvalidUsernames(prev => {
-          const next = new Set(prev);
-          invalid.forEach(u => next.add(u));
-          return next;
-        });
+        // Update invalid usernames
+        if (invalid.length > 0) {
+          const newInvalid = new Set([...invalidUsernames, ...invalid]);
+          setInvalidUsernames(newInvalid);
+          localStorage.setItem('invalid-github-usernames', JSON.stringify([...newInvalid]));
+        }
 
         // Check if any usernames are invalid
         const allInvalid = usernames.filter(u => invalid.includes(u) || invalidUsernames.has(u));
@@ -1391,7 +1404,6 @@ function App() {
     setLoadingProgress('Starting search...');
 
     try {
-      // Start fetching data
       const allResults: GitHubItem[] = [];
       
       for (const user of usernames) {
@@ -1411,6 +1423,18 @@ function App() {
         );
         
         if (!response.ok) {
+          // If a previously validated username now fails, remove it from cache
+          if (response.status === 404 && validatedUsernames.has(user)) {
+            const newValidated = new Set(validatedUsernames);
+            newValidated.delete(user);
+            setValidatedUsernames(newValidated);
+            localStorage.setItem('validated-github-usernames', JSON.stringify([...newValidated]));
+
+            const newInvalid = new Set(invalidUsernames);
+            newInvalid.add(user);
+            setInvalidUsernames(newInvalid);
+            localStorage.setItem('invalid-github-usernames', JSON.stringify([...newInvalid]));
+          }
           throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
         }
         
@@ -1456,7 +1480,8 @@ function App() {
     githubToken,
     debouncedSaveToLocalStorage,
     invalidUsernames,
-    isValidating
+    isValidating,
+    validatedUsernames
   ]);
 
   // Results state
