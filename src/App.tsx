@@ -44,6 +44,7 @@ import {
 } from './utils';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
 import debounce from 'lodash/debounce';
+import { useLocalStorage } from './hooks/useLocalStorage';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -83,7 +84,8 @@ const SearchForm = memo(function SearchForm() {
     username, setUsername, 
     startDate, setStartDate, 
     endDate, setEndDate,
-    handleSearch, 
+    handleSearch,
+    handleUsernameBlur,
     loading, 
     loadingProgress,
     error 
@@ -129,6 +131,7 @@ const SearchForm = memo(function SearchForm() {
                 placeholder="Enter usernames (comma-separated for multiple)"
                 value={username}
                 onChange={handleUsernameChange}
+                onBlur={handleUsernameBlur}
                 aria-required="true"
                 block
               />
@@ -1013,13 +1016,10 @@ const SettingsDialog = memo(function SettingsDialog({
   onDismiss: () => void;
 }) {
   const { githubToken, setGithubToken } = useFormContext();
-  const [tokenStorage, setTokenStorage] = useState(() => 
-    localStorage.getItem('github-token-storage') || 'session'
-  );
+  const [tokenStorage, setTokenStorage] = useLocalStorage('github-token-storage', 'session');
   
   const handleStorageChange = useCallback((newStorage: string) => {
     setTokenStorage(newStorage);
-    localStorage.setItem('github-token-storage', newStorage);
     
     // Move token to selected storage
     if (newStorage === 'local') {
@@ -1162,340 +1162,69 @@ const SettingsDialog = memo(function SettingsDialog({
 
 // Add the main App component
 function App() {
-  // State for settings dialog
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-
-  // Form state with URL params and local storage fallback
-  const [username, setUsername] = useState(() => {
-    const urlUsername = getParamFromUrl('username');
-    if (urlUsername) return urlUsername;
-    return localStorage.getItem('github-username') || '';
-  });
-  
-  const [startDate, setStartDate] = useState(() => {
-    const urlStartDate = getParamFromUrl('startDate');
-    if (urlStartDate && isValidDateString(urlStartDate)) return urlStartDate;
-    
-    const storedDate = localStorage.getItem('github-start-date');
-    if (storedDate && isValidDateString(storedDate)) return storedDate;
-    
+  // State declarations
+  const [validatedUsernames, setValidatedUsernames] = useLocalStorage<Set<string>>('validated-github-usernames', new Set());
+  const [invalidUsernames, setInvalidUsernames] = useLocalStorage<Set<string>>('invalid-github-usernames', new Set());
+  const [isValidating, setIsValidating] = useState(false);
+  const [username, setUsername] = useLocalStorage('github-username', '');
+  const [startDate, setStartDate] = useLocalStorage('github-start-date', (() => {
     const date = new Date();
     date.setDate(date.getDate() - 30); // Default to last 30 days
     return date.toISOString().split('T')[0];
-  });
-  
-  const [endDate, setEndDate] = useState(() => {
-    const urlEndDate = getParamFromUrl('endDate');
-    if (urlEndDate && isValidDateString(urlEndDate)) return urlEndDate;
-    
-    const storedDate = localStorage.getItem('github-end-date');
-    if (storedDate && isValidDateString(storedDate)) return storedDate;
-    
-    return new Date().toISOString().split('T')[0];
-  });
-
-  // Update URL and localStorage when values change
-  useEffect(() => {
-    updateUrlParams({
-      username,
-      startDate,
-      endDate
-    });
-  }, [username, startDate, endDate]);
-
-  // Form state with local storage
-  const [githubToken, setGithubToken] = useState(() => {
-    return sessionStorage.getItem('github-token') || localStorage.getItem('github-token') || '';
-  });
+  })());
+  const [endDate, setEndDate] = useLocalStorage('github-end-date', new Date().toISOString().split('T')[0]);
+  const [githubToken, setGithubToken] = useLocalStorage('github-token', '');
+  const [tokenStorage, setTokenStorage] = useLocalStorage('github-token-storage', 'session');
+  const [isCompactView, setIsCompactView] = useLocalStorage('github-compact-view', false);
+  const [storedAvatars, setStoredAvatars] = useLocalStorage('github-avatars', [] as string[]);
+  const [filter, setFilter] = useLocalStorage<'all' | 'issue' | 'pr'>('github-filter', 'all');
+  const [statusFilter, setStatusFilter] = useLocalStorage<'all' | 'open' | 'closed' | 'merged'>('github-status-filter', 'all');
+  const [sortOrder, setSortOrder] = useLocalStorage<'updated' | 'created'>('github-sort-order', 'updated');
+  const [labelFilter, setLabelFilter] = useLocalStorage('github-label-filter', '');
+  const [excludedLabels, setExcludedLabels] = useLocalStorage<string[]>('github-excluded-labels', []);
+  const [searchText, setSearchText] = useLocalStorage('github-search-text', '');
+  const [repoFilters, setRepoFilters] = useLocalStorage<string[]>('github-repo-filters', []);
+  const [descriptionVisible, setDescriptionVisible] = useLocalStorage<{[id: number]: boolean}>('github-description-visible', {});
+  const [expanded, setExpanded] = useLocalStorage<{[id: number]: boolean}>('github-expanded', {});
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  // Add initial loading state
   const [initialLoading, setInitialLoading] = useState(true);
-  useEffect(() => {
-    // Show initial loading animation for 2 seconds
-    const timer = setTimeout(() => {
-      setInitialLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Results state with local storage
-  const [results, setResults] = useState<GitHubItem[]>(() => {
-    const storedResults = localStorage.getItem('github-results');
-    return storedResults ? JSON.parse(storedResults) : [];
-  });
-
-  // Add state for stored avatars
-  const [storedAvatars, setStoredAvatars] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem('github-avatars');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Update stored avatars when results change
-  useEffect(() => {
-    if (results.length > 0) {
-      const newAvatars = [...new Set([
-        ...results.map(item => item.user.avatar_url)
-      ])].filter(Boolean);
-
-      // Only update if there are actual changes
-      const hasChanges = newAvatars.length !== storedAvatars.length || 
-        newAvatars.some((url, i) => url !== storedAvatars[i]);
-
-      if (hasChanges) {
-        setStoredAvatars(newAvatars);
-        localStorage.setItem('github-avatars', JSON.stringify(newAvatars));
-      }
-    }
-  }, [results]);
-
-  // Debounced local storage save function
-  const debouncedSaveToLocalStorage = useCallback(
-    debounce((key: string, value: string) => {
-      localStorage.setItem(key, value);
-    }, 500),
-    []
-  );
-
-  // Add state for validated usernames with persistent storage
-  const [validatedUsernames, setValidatedUsernames] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('validated-github-usernames');
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  const [invalidUsernames, setInvalidUsernames] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('invalid-github-usernames');
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
-
-  const [isValidating, setIsValidating] = useState(false);
-
-  // Username validation effect
-  useEffect(() => {
-    if (!username) {
-      setError(null);
-      return;
-    }
-
-    const usernames = username.split(',')
-      .map(u => u.trim())
-      .filter(Boolean);
-
-    // Check username limit
-    if (usernames.length > 15) {
-      setError('Too many usernames. Please limit to 15 usernames at a time.');
-      return;
-    }
-
-    // Filter out already validated or invalid usernames
-    const unvalidatedUsernames = usernames.filter(u => 
-      !validatedUsernames.has(u) && !invalidUsernames.has(u)
-    );
-    
-    if (unvalidatedUsernames.length === 0) {
-      // All usernames are already validated, check if any are invalid
-      const currentInvalid = usernames.filter(u => invalidUsernames.has(u));
-      if (currentInvalid.length > 0) {
-        setError(`Invalid GitHub username${currentInvalid.length > 1 ? 's' : ''}: ${currentInvalid.join(', ')}`);
-      } else {
-        setError(null);
-      }
-      return;
-    }
-
-    // Set validating state
-    setIsValidating(true);
-    setError('Validating new usernames...');
-
-    const timeoutId = setTimeout(async () => {
-      try {
-        const { valid, invalid } = await validateGitHubUsernames(unvalidatedUsernames, githubToken);
-        
-        // Update validated usernames
-        if (valid.length > 0) {
-          const newValidated = new Set([...validatedUsernames, ...valid]);
-          setValidatedUsernames(newValidated);
-          localStorage.setItem('validated-github-usernames', JSON.stringify([...newValidated]));
-        }
-        
-        // Update invalid usernames
-        if (invalid.length > 0) {
-          const newInvalid = new Set([...invalidUsernames, ...invalid]);
-          setInvalidUsernames(newInvalid);
-          localStorage.setItem('invalid-github-usernames', JSON.stringify([...newInvalid]));
-        }
-
-        // Check if any usernames are invalid
-        const allInvalid = usernames.filter(u => invalid.includes(u) || invalidUsernames.has(u));
-        if (allInvalid.length > 0) {
-          setError(`Invalid GitHub username${allInvalid.length > 1 ? 's' : ''}: ${allInvalid.join(', ')}`);
-        } else {
-          setError(null);
-        }
-      } catch (err) {
-        setError('Error validating usernames. Please try again.');
-      } finally {
-        setIsValidating(false);
-      }
-    }, 500);
-
-    return () => {
-      clearTimeout(timeoutId);
-      setIsValidating(false);
-    };
-  }, [username, githubToken]);
-
-  // Update handleSearch to use cached validation results
-  const handleSearch = useCallback(async () => {
-    if (!username) {
-      setError('Please enter a GitHub username');
-      return;
-    }
-    
-    if (!startDate || !endDate) {
-      setError('Please select both start and end dates');
-      return;
-    }
-
-    if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
-      setError('Invalid date format. Please use YYYY-MM-DD');
-      return;
-    }
-
-    const usernames = username.split(',')
-      .map(u => u.trim())
-      .filter(Boolean);
-
-    // Check username limit
-    if (usernames.length > 15) {
-      setError('Too many usernames. Please limit to 15 usernames at a time.');
-      return;
-    }
-
-    // Check if any usernames are invalid using cached results
-    const invalidNames = usernames.filter(u => invalidUsernames.has(u));
-    if (invalidNames.length > 0) {
-      setError(`Invalid GitHub username${invalidNames.length > 1 ? 's' : ''}: ${invalidNames.join(', ')}`);
-      return;
-    }
-
-    // Check if validation is still in progress
-    if (isValidating) {
-      setError('Please wait for username validation to complete...');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setLoadingProgress('Starting search...');
-
-    try {
-      const allResults: GitHubItem[] = [];
-      
-      for (const user of usernames) {
-        setLoadingProgress(`Fetching data for ${user}...`);
-        
-        const headers: HeadersInit = {
-          'Accept': 'application/vnd.github.v3+json'
-        };
-        
-        if (githubToken) {
-          headers['Authorization'] = `token ${githubToken}`;
-        }
-        
-        const response = await fetch(
-          `https://api.github.com/search/issues?q=author:${user}+created:${startDate}..${endDate}&per_page=100`,
-          { headers }
-        );
-        
-        if (!response.ok) {
-          // If a previously validated username now fails, remove it from cache
-          if (response.status === 404 && validatedUsernames.has(user)) {
-            const newValidated = new Set(validatedUsernames);
-            newValidated.delete(user);
-            setValidatedUsernames(newValidated);
-            localStorage.setItem('validated-github-usernames', JSON.stringify([...newValidated]));
-
-            const newInvalid = new Set(invalidUsernames);
-            newInvalid.add(user);
-            setInvalidUsernames(newInvalid);
-            localStorage.setItem('invalid-github-usernames', JSON.stringify([...newInvalid]));
-          }
-          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        allResults.push(...data.items);
-
-        // Update progress
-        setLoadingProgress(`Found ${data.items.length} items for ${user}`);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for visual feedback
-      }
-
-      // Update results
-      setResults(allResults);
-      
-      // Show success message briefly
-      setLoadingProgress(`Successfully loaded ${allResults.length} items!`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Clear loading state
-      setLoading(false);
-      setLoadingProgress('');
-
-      // Update URL params
-      updateUrlParams({
-        username,
-        startDate,
-        endDate
-      });
-
-      // Save to local storage
-      debouncedSaveToLocalStorage('github-username', username);
-      debouncedSaveToLocalStorage('github-start-date', startDate);
-      debouncedSaveToLocalStorage('github-end-date', endDate);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
-      setLoading(false);
-      setLoadingProgress('');
-    }
-  }, [
-    username,
-    startDate,
-    endDate,
-    githubToken,
-    debouncedSaveToLocalStorage,
-    invalidUsernames,
-    isValidating,
-    validatedUsernames
-  ]);
-
-  // Results state
-  const [filter, setFilter] = useState<'all' | 'issue' | 'pr'>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'merged'>('all');
-  const [sortOrder, setSortOrder] = useState<'updated' | 'created'>('updated');
-  const [labelFilter, setLabelFilter] = useState('');
-  const [excludedLabels, setExcludedLabels] = useState<string[]>([]);
-  const [searchText, setSearchText] = useState('');
-  const [repoFilters, setRepoFilters] = useState<string[]>([]);
-  const [descriptionVisible, setDescriptionVisible] = useState<{[id: number]: boolean}>({});
-  const [expanded, setExpanded] = useState<{[id: number]: boolean}>({});
+  const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
-  const [isCompactView, setIsCompactView] = useState(false);
+  const [results, setResults] = useLocalStorage<GitHubItem[]>('github-search-results', []);
+  const [lastSearchParams, setLastSearchParams] = useLocalStorage<{
+    username: string;
+    startDate: string;
+    endDate: string;
+    timestamp: number;
+  } | null>('github-last-search', null);
+
+  // Helper functions for Set operations
+  const addToValidated = useCallback((usernames: string[]) => {
+    setValidatedUsernames(prevSet => {
+      const newSet = new Set(prevSet);
+      usernames.forEach(u => newSet.add(u));
+      return newSet;
+    });
+  }, [setValidatedUsernames]);
+
+  const addToInvalid = useCallback((usernames: string[]) => {
+    setInvalidUsernames(prevSet => {
+      const newSet = new Set(prevSet);
+      usernames.forEach(u => newSet.add(u));
+      return newSet;
+    });
+  }, [setInvalidUsernames]);
+
+  const removeFromValidated = useCallback((username: string) => {
+    setValidatedUsernames(prevSet => {
+      const newSet = new Set(prevSet);
+      newSet.delete(username);
+      return newSet;
+    });
+  }, [setValidatedUsernames]);
 
   // Derived state
   const availableLabels = useMemo(() => {
@@ -1548,21 +1277,266 @@ function App() {
     });
   }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
 
-  // Event handlers
+  // Helper function to validate usernames
+  const validateNewUsernames = useCallback(async (usernames: string[]) => {
+    // Filter out already validated or invalid usernames
+    const unvalidatedUsernames = usernames.filter(u => 
+      !validatedUsernames.has(u) && !invalidUsernames.has(u)
+    );
+    
+    if (unvalidatedUsernames.length === 0) {
+      // Check if any usernames are invalid
+      const currentInvalid = usernames.filter(u => invalidUsernames.has(u));
+      if (currentInvalid.length > 0) {
+        setError(`Invalid GitHub username${currentInvalid.length > 1 ? 's' : ''}: ${currentInvalid.join(', ')}`);
+      } else {
+        setError(null);
+      }
+      return true; // All usernames are valid
+    }
+
+    setIsValidating(true);
+    setError('Validating new usernames...');
+
+    try {
+      const { valid, invalid } = await validateGitHubUsernames(unvalidatedUsernames, githubToken);
+      
+      // Update validated usernames
+      if (valid.length > 0) {
+        addToValidated(valid);
+      }
+      
+      // Update invalid usernames
+      if (invalid.length > 0) {
+        addToInvalid(invalid);
+      }
+
+      // Check if any usernames are invalid
+      const allInvalid = usernames.filter(u => invalid.includes(u) || invalidUsernames.has(u));
+      if (allInvalid.length > 0) {
+        setError(`Invalid GitHub username${allInvalid.length > 1 ? 's' : ''}: ${allInvalid.join(', ')}`);
+        return false;
+      } else {
+        setError(null);
+        return true;
+      }
+    } catch (err) {
+      setError('Error validating usernames. Please try again.');
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+  }, [githubToken, validatedUsernames, invalidUsernames, addToValidated, addToInvalid]);
+
+  // Handle username field blur
+  const handleUsernameBlur = useCallback(async () => {
+    if (!username) return;
+
+    const usernames = username.split(',')
+      .map(u => u.trim())
+      .filter(Boolean);
+
+    // Check username limit
+    if (usernames.length > 15) {
+      setError('Too many usernames. Please limit to 15 usernames at a time.');
+      return;
+    }
+
+    await validateNewUsernames(usernames);
+  }, [username, validateNewUsernames]);
+
+  // Update handleSearch to use validateNewUsernames
+  const handleSearch = useCallback(async () => {
+    if (!username) {
+      setError('Please enter a GitHub username');
+      return;
+    }
+    
+    if (!startDate || !endDate) {
+      setError('Please select both start and end dates');
+      return;
+    }
+
+    if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
+      setError('Invalid date format. Please use YYYY-MM-DD');
+      return;
+    }
+
+    const usernames = username.split(',')
+      .map(u => u.trim())
+      .filter(Boolean);
+
+    // Check username limit
+    if (usernames.length > 15) {
+      setError('Too many usernames. Please limit to 15 usernames at a time.');
+      return;
+    }
+
+    // Validate any new usernames before proceeding
+    const isValid = await validateNewUsernames(usernames);
+    if (!isValid) return;
+
+    // Check if we have cached results for the exact same search
+    const currentParams = {
+      username,
+      startDate,
+      endDate,
+      timestamp: Date.now()
+    };
+
+    // If the search parameters are exactly the same and less than 1 hour old,
+    // use the cached results
+    if (lastSearchParams && 
+        lastSearchParams.username === username &&
+        lastSearchParams.startDate === startDate &&
+        lastSearchParams.endDate === endDate &&
+        Date.now() - lastSearchParams.timestamp < 3600000) { // 1 hour in milliseconds
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setLoadingProgress('Starting search...');
+
+    try {
+      const allResults: GitHubItem[] = [];
+      
+      for (const user of usernames) {
+        setLoadingProgress(`Fetching data for ${user}...`);
+        
+        const headers: HeadersInit = {
+          'Accept': 'application/vnd.github.v3+json'
+        };
+        
+        if (githubToken) {
+          headers['Authorization'] = `token ${githubToken}`;
+        }
+        
+        const response = await fetch(
+          `https://api.github.com/search/issues?q=author:${user}+created:${startDate}..${endDate}&per_page=100`,
+          { headers }
+        );
+        
+        if (!response.ok) {
+          // If a previously validated username now fails, remove it from cache
+          if (response.status === 404 && validatedUsernames.has(user)) {
+            removeFromValidated(user);
+            addToInvalid([user]);
+          }
+          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        allResults.push(...data.items);
+
+        // Update progress
+        setLoadingProgress(`Found ${data.items.length} items for ${user}`);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for visual feedback
+      }
+
+      // Update results and search parameters
+      setResults(allResults);
+      setLastSearchParams(currentParams);
+      
+      // Show success message briefly
+      setLoadingProgress(`Successfully loaded ${allResults.length} items!`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Clear loading state
+      setLoading(false);
+      setLoadingProgress('');
+
+      // Update URL params
+      updateUrlParams({
+        username,
+        startDate,
+        endDate
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
+      setLoading(false);
+      setLoadingProgress('');
+    }
+  }, [
+    username,
+    startDate,
+    endDate,
+    githubToken,
+    validateNewUsernames,
+    removeFromValidated,
+    addToInvalid,
+    setResults,
+    setLastSearchParams,
+    lastSearchParams
+  ]);
+
+  // Effect to automatically search when URL parameters are present and we have no results
+  useEffect(() => {
+    const urlUsername = getParamFromUrl('username');
+    const urlStartDate = getParamFromUrl('startDate');
+    const urlEndDate = getParamFromUrl('endDate');
+
+    // If we have URL parameters and no results or different parameters, trigger a search
+    if (urlUsername && urlStartDate && urlEndDate && 
+        (!lastSearchParams || 
+         lastSearchParams.username !== urlUsername ||
+         lastSearchParams.startDate !== urlStartDate ||
+         lastSearchParams.endDate !== urlEndDate)) {
+      // Update form values with URL parameters
+      setUsername(urlUsername);
+      setStartDate(urlStartDate);
+      setEndDate(urlEndDate);
+      // Trigger search
+      handleSearch();
+    }
+  }, []); // Empty dependency array as this should only run once on mount
+
+  // Show initial loading animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handle manual spin
+  const handleManualSpin = useCallback(() => {
+    if (!isManuallySpinning) {
+      setIsManuallySpinning(true);
+      setTimeout(() => {
+        setIsManuallySpinning(false);
+      }, 3000);
+    }
+  }, [isManuallySpinning]);
+
+  // Toggle description visibility
   const toggleDescriptionVisibility = useCallback((id: number) => {
     setDescriptionVisible(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
-  }, []);
+  }, [setDescriptionVisible]);
 
+  // Toggle expanded state
   const toggleExpand = useCallback((id: number) => {
     setExpanded(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
-  }, []);
+  }, [setExpanded]);
 
+  // Clear all filters
+  const clearAllFilters = useCallback(() => {
+    setFilter('all');
+    setStatusFilter('all');
+    setSortOrder('updated');
+    setLabelFilter('');
+    setExcludedLabels([]);
+    setSearchText('');
+    setRepoFilters([]);
+  }, [setFilter, setStatusFilter, setSortOrder, setLabelFilter, setExcludedLabels, setSearchText, setRepoFilters]);
+
+  // Clipboard handler
   const copyResultsToClipboard = useCallback(() => {
     const formatDate = (dateString: string) => {
       return new Date(dateString).toLocaleDateString();
@@ -1602,7 +1576,7 @@ function App() {
   </ul>
 </div>`;
     } else {
-      // Detailed format (existing code)
+      // Detailed format
       plainText = '';
       htmlContent = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Helvetica, Arial, sans-serif;">\n';
 
@@ -1677,30 +1651,6 @@ function App() {
       });
     }
   }, [filteredResults, isCompactView]);
-
-  const clearAllFilters = useCallback(() => {
-    setFilter('all');
-    setStatusFilter('all');
-    setSortOrder('updated');
-    setLabelFilter('');
-    setExcludedLabels([]);
-    setSearchText('');
-    setRepoFilters([]);
-  }, []);
-
-  // Add state for manual slot machine trigger
-  const [isManuallySpinning, setIsManuallySpinning] = useState(false);
-
-  // Handle manual spin
-  const handleManualSpin = useCallback(() => {
-    if (!isManuallySpinning) {
-      setIsManuallySpinning(true);
-      // Reset after 3 spins (assuming each spin takes about 1 second)
-      setTimeout(() => {
-        setIsManuallySpinning(false);
-      }, 3000);
-    }
-  }, [isManuallySpinning]);
 
   return (
     <Box sx={{ 
@@ -1802,6 +1752,7 @@ function App() {
             setEndDate,
             setGithubToken,
             handleSearch,
+            handleUsernameBlur,
             loading,
             loadingProgress,
             error

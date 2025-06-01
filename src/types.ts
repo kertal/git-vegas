@@ -43,6 +43,7 @@ export interface FormContextType {
   setEndDate: (value: string) => void;
   setGithubToken: (value: string) => void;
   handleSearch: () => void;
+  handleUsernameBlur: () => Promise<void>;
   loading: boolean;
   loadingProgress: string;
   error: string | null;
