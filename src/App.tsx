@@ -1229,13 +1229,18 @@ function App() {
   // Derived state
   const availableLabels = useMemo(() => {
     const labels = new Set<string>();
-    results.forEach(item => {
-      item.labels?.forEach(label => labels.add(label.name));
-    });
+    if (Array.isArray(results)) {
+      results.forEach(item => {
+        item.labels?.forEach(label => labels.add(label.name));
+      });
+    }
     return Array.from(labels);
   }, [results]);
 
   const filteredResults = useMemo(() => {
+    if (!Array.isArray(results)) {
+      return [];
+    }
     return results.filter(item => {
       // Apply type filter
       if (filter === 'pr' && !item.pull_request) return false;
@@ -1470,26 +1475,19 @@ function App() {
     lastSearchParams
   ]);
 
-  // Effect to automatically search when URL parameters are present and we have no results
+  // Effect to populate form fields from URL parameters on mount (but don't auto-search)
   useEffect(() => {
     const urlUsername = getParamFromUrl('username');
     const urlStartDate = getParamFromUrl('startDate');
     const urlEndDate = getParamFromUrl('endDate');
 
-    // If we have URL parameters and no results or different parameters, trigger a search
-    if (urlUsername && urlStartDate && urlEndDate && 
-        (!lastSearchParams || 
-         lastSearchParams.username !== urlUsername ||
-         lastSearchParams.startDate !== urlStartDate ||
-         lastSearchParams.endDate !== urlEndDate)) {
-      // Update form values with URL parameters
+    // If we have URL parameters, populate form values
+    if (urlUsername && urlStartDate && urlEndDate) {
       setUsername(urlUsername);
       setStartDate(urlStartDate);
       setEndDate(urlEndDate);
-      // Trigger search
-      handleSearch();
     }
-  }, []); // Empty dependency array as this should only run once on mount
+  }, []); // Only run once on mount
 
   // Show initial loading animation
   useEffect(() => {
@@ -1687,7 +1685,7 @@ function App() {
                 <SlotMachineLoader 
                   avatarUrls={storedAvatars.length > 0 
                     ? storedAvatars 
-                    : results
+                    : (Array.isArray(results) ? results : [])
                       .map(item => item.user.avatar_url)
                       .filter(Boolean)
                   }
@@ -1797,6 +1795,4 @@ function App() {
   );
 }
 
-// Add default export
 export default App;
-

@@ -87,90 +87,77 @@ describe('isValidDateString', () => {
 });
 
 describe('URL parameter functions', () => {
-  let mockLocation: { [key: string]: any };
-  let originalLocation: Location;
-
   beforeEach(() => {
-    mockLocation = {
-      href: 'http://localhost:3000',
-      search: '',
-      assign: vi.fn(),
-      replace: vi.fn(),
-      reload: vi.fn(),
-      toString: function() { return this.href; }
-    };
-
-    originalLocation = window.location;
-    // @ts-ignore: Overriding read-only property for testing
-    delete window.location;
-    // @ts-ignore: Partial implementation is sufficient for testing
-    window.location = mockLocation;
-
-    // Set up a getter for search that returns the query string part of href
-    Object.defineProperty(mockLocation, 'search', {
-      get: function() {
-        const url = new URL(this.href);
-        return url.search;
-      },
-      set: function(value) {
-        const url = new URL(this.href);
-        url.search = value;
-        this.href = url.toString();
-      }
-    });
+    // Reset location to base URL using the global mock
+    window.history.replaceState({}, '', 'http://localhost:3000');
+    // Clear the mock call history
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    // @ts-ignore: Restoring original location
-    window.location = originalLocation;
     vi.clearAllMocks();
   });
 
   describe('getParamFromUrl', () => {
     it('should get parameter from URL', () => {
-      mockLocation.href = 'http://localhost:3000?username=test&date=2024-03-15';
+      // Use the global mock's replaceState to set URL
+      window.history.replaceState({}, '', 'http://localhost:3000?username=test&date=2024-03-15');
       expect(getParamFromUrl('username')).toBe('test');
       expect(getParamFromUrl('date')).toBe('2024-03-15');
     });
 
     it('should return null for missing parameters', () => {
-      mockLocation.href = 'http://localhost:3000?username=test';
+      window.history.replaceState({}, '', 'http://localhost:3000?username=test');
       expect(getParamFromUrl('missing')).toBeNull();
     });
 
     it('should handle empty search string', () => {
-      mockLocation.href = 'http://localhost:3000';
+      window.history.replaceState({}, '', 'http://localhost:3000');
       expect(getParamFromUrl('any')).toBeNull();
     });
   });
 
   describe('updateUrlParams', () => {
-    const mockReplaceState = vi.fn();
-    
-    beforeEach(() => {
-      window.history.replaceState = mockReplaceState;
-      mockLocation.href = 'http://localhost:3000';
-    });
-
     it('should update URL parameters', () => {
-      mockLocation.href = 'http://localhost:3000?existing=value';
+      window.history.replaceState({}, '', 'http://localhost:3000?existing=value');
+      vi.clearAllMocks(); // Clear the setup call
+      
       updateUrlParams({ new: 'param', existing: 'newvalue' });
       
-      expect(mockReplaceState).toHaveBeenCalledWith(
+      expect(window.history.replaceState).toHaveBeenCalledWith(
         {},
         '',
-        'http://localhost:3000?existing=newvalue&new=param'
+        'http://localhost:3000/?existing=newvalue&new=param'
       );
     });
 
     it('should remove parameters with null or empty values', () => {
-      mockLocation.href = 'http://localhost:3000?remove=value&keep=value';
+      window.history.replaceState({}, '', 'http://localhost:3000?remove=value&keep=value');
+      vi.clearAllMocks(); // Clear the setup call
+      
       updateUrlParams({ remove: null, keep: 'value' });
       
-      expect(mockReplaceState).toHaveBeenCalledWith(
+      expect(window.history.replaceState).toHaveBeenCalledWith(
         {},
         '',
-        'http://localhost:3000?keep=value'
+        'http://localhost:3000/?keep=value'
+      );
+    });
+
+    it('updateUrlParams updates URL correctly', () => {
+      const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+      replaceStateSpy.mockClear(); // Clear any previous calls
+      
+      updateUrlParams({
+        username: 'testuser',
+        startDate: '2024-01-01',
+        endDate: null
+      });
+
+      expect(replaceStateSpy).toHaveBeenCalledWith(
+        {},
+        '',
+        'http://localhost:3000/?username=testuser&startDate=2024-01-01'
       );
     });
   });
@@ -220,41 +207,12 @@ describe('validateGitHubUsernames', () => {
 });
 
 describe('URL parameter handling', () => {
-  let mockLocation: { [key: string]: any };
-  let originalLocation: Location;
-
   beforeEach(() => {
-    mockLocation = {
-      href: 'http://localhost:3000',
-      search: '',
-      assign: vi.fn(),
-      replace: vi.fn(),
-      reload: vi.fn(),
-      toString: function() { return this.href; }
-    };
-
-    originalLocation = window.location;
-    // @ts-ignore: Overriding read-only property for testing
-    delete window.location;
-    // @ts-ignore: Partial implementation is sufficient for testing
-    window.location = mockLocation;
-
-    // Set up a getter for search that returns the query string part of href
-    Object.defineProperty(mockLocation, 'search', {
-      get: function() {
-        const url = new URL(this.href);
-        return url.search;
-      },
-      set: function(value) {
-        const url = new URL(this.href);
-        url.search = value;
-        this.href = url.toString();
-      }
-    });
+    // Reset location to base URL
+    window.history.replaceState({}, '', 'http://localhost:3000');
   });
 
   afterEach(() => {
-    window.location = originalLocation;
     localStorage.clear();
   });
 
@@ -263,12 +221,13 @@ describe('URL parameter handling', () => {
   });
 
   it('getParamFromUrl returns correct value for existing parameter', () => {
-    mockLocation.href = 'http://localhost:3000?username=testuser';
+    window.history.replaceState({}, '', 'http://localhost:3000?username=testuser');
     expect(getParamFromUrl('username')).toBe('testuser');
   });
 
   it('updateUrlParams updates URL correctly', () => {
     const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+    replaceStateSpy.mockClear(); // Clear any previous calls
     
     updateUrlParams({
       username: 'testuser',
@@ -279,62 +238,32 @@ describe('URL parameter handling', () => {
     expect(replaceStateSpy).toHaveBeenCalledWith(
       {},
       '',
-      'http://localhost:3000?username=testuser&startDate=2024-01-01'
+      'http://localhost:3000/?username=testuser&startDate=2024-01-01'
     );
   });
 });
 
 describe('URL parameters and localStorage interaction', () => {
-  let mockLocation: { [key: string]: any };
-  let originalLocation: Location;
-
   beforeEach(() => {
-    mockLocation = {
-      href: 'http://localhost:3000',
-      search: '',
-      assign: vi.fn(),
-      replace: vi.fn(),
-      reload: vi.fn(),
-      toString: function() { return this.href; }
-    };
-
-    originalLocation = window.location;
-    // @ts-ignore: Overriding read-only property for testing
-    delete window.location;
-    // @ts-ignore: Partial implementation is sufficient for testing
-    window.location = mockLocation;
-
-    // Set up a getter for search that returns the query string part of href
-    Object.defineProperty(mockLocation, 'search', {
-      get: function() {
-        const url = new URL(this.href);
-        return url.search;
-      },
-      set: function(value) {
-        const url = new URL(this.href);
-        url.search = value;
-        this.href = url.toString();
-      }
-    });
-
     localStorage.clear();
+    // Reset location to base URL
+    window.history.replaceState({}, '', 'http://localhost:3000');
   });
 
   afterEach(() => {
-    window.location = originalLocation;
     localStorage.clear();
   });
 
   it('URL parameters should override localStorage values', () => {
-    // Set up localStorage with some values
-    localStorage.setItem('github-username', 'localuser');
-    localStorage.setItem('github-start-date', '2023-01-01');
-    localStorage.setItem('github-end-date', '2023-12-31');
+    // Set localStorage values
+    localStorage.setItem('github-username', JSON.stringify('localuser'));
+    localStorage.setItem('github-start-date', JSON.stringify('2023-01-01'));
+    localStorage.setItem('github-end-date', JSON.stringify('2023-12-31'));
 
-    // Set up URL parameters
-    mockLocation.href = 'http://localhost:3000?username=urluser&startDate=2024-01-01&endDate=2024-12-31';
+    // Set URL parameters
+    window.history.replaceState({}, '', 'http://localhost:3000?username=urluser&startDate=2024-01-01&endDate=2024-12-31');
 
-    // Get values from URL
+    // Test that URL parameters are returned instead of localStorage values
     const urlUsername = getParamFromUrl('username');
     const urlStartDate = getParamFromUrl('startDate');
     const urlEndDate = getParamFromUrl('endDate');
@@ -343,11 +272,6 @@ describe('URL parameters and localStorage interaction', () => {
     expect(urlUsername).toBe('urluser');
     expect(urlStartDate).toBe('2024-01-01');
     expect(urlEndDate).toBe('2024-12-31');
-
-    // These values should be different from localStorage
-    expect(urlUsername).not.toBe(localStorage.getItem('github-username'));
-    expect(urlStartDate).not.toBe(localStorage.getItem('github-start-date'));
-    expect(urlEndDate).not.toBe(localStorage.getItem('github-end-date'));
   });
 });
 

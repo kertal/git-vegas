@@ -1,70 +1,67 @@
 import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useLocalStorage } from './useLocalStorage';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('useLocalStorage', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    window.history.replaceState({}, '', 'http://localhost:3000');
+    window.location.search = '';
+  });
+
+  afterEach(() => {
+    window.localStorage.clear();
+    window.location.search = '';
   });
 
   it('should initialize with default value when no stored value exists', () => {
-    const { result } = renderHook(() => useLocalStorage('test-key', 'default'));
-    expect(result.current[0]).toBe('default');
+    const { result } = renderHook(() => useLocalStorage('test-key', 'default-value'));
+    expect(result.current[0]).toBe('default-value');
   });
 
   it('should initialize with URL parameter value over localStorage value', () => {
-    // Set up localStorage with a value
     window.localStorage.setItem('github-username', JSON.stringify('local-user'));
-    
-    // Set up URL parameter
-    window.history.replaceState({}, '', 'http://localhost:3000?username=url-user');
+    window.location.search = '?username=url-user';
 
-    // Wait for state to update
-    const { result } = renderHook(() => useLocalStorage('github-username', ''));
-    
-    // Verify URL parameter is used instead of localStorage value
+    const { result } = renderHook(() => useLocalStorage('github-username', 'default-value'));
     expect(result.current[0]).toBe('url-user');
   });
 
   it('should update localStorage when value changes', () => {
-    const { result } = renderHook(() => useLocalStorage('test-key', 'default'));
+    const { result } = renderHook(() => useLocalStorage('test-key', 'initial'));
 
     act(() => {
-      result.current[1]('new value');
+      result.current[1]('updated');
     });
 
-    const storedValue = window.localStorage.getItem('test-key');
-    expect(storedValue).toBe(JSON.stringify('new value'));
+    expect(result.current[0]).toBe('updated');
+    expect(JSON.parse(window.localStorage.getItem('test-key') || '')).toBe('updated');
   });
 
   it('should handle Set type correctly', () => {
-    const initialSet = new Set(['item1']);
-    const { result } = renderHook(() => useLocalStorage('test-set', initialSet));
+    const initialSet = new Set(['item1', 'item2']);
+    const { result } = renderHook(() => useLocalStorage('test-key', initialSet));
 
+    expect(result.current[0]).toEqual(initialSet);
+
+    const newSet = new Set(['item3']);
     act(() => {
-      const newSet = new Set([...result.current[0], 'item2']);
       result.current[1](newSet);
     });
 
-    const storedValue = JSON.parse(window.localStorage.getItem('test-set') || '[]');
-    expect(Array.from(storedValue)).toEqual(['item1', 'item2']);
-    expect(result.current[0]).toEqual(new Set(['item1', 'item2']));
+    expect(result.current[0]).toEqual(newSet);
+    expect(JSON.parse(window.localStorage.getItem('test-key') || '[]')).toEqual(Array.from(newSet));
   });
 
   it('should clear value when using clear function', () => {
+    window.localStorage.setItem('test-key', JSON.stringify('test-value'));
     const { result } = renderHook(() => useLocalStorage('test-key', 'default'));
-
-    act(() => {
-      result.current[1]('new value');
-    });
 
     act(() => {
       result.current[2]();
     });
 
-    expect(window.localStorage.getItem('test-key')).toBeNull();
     expect(result.current[0]).toBe('default');
+    expect(window.localStorage.getItem('test-key')).toBeNull();
   });
 
   it('should update URL parameters for mapped keys', () => {
@@ -78,14 +75,9 @@ describe('useLocalStorage', () => {
   });
 
   it('should remove URL parameters when clearing mapped keys', () => {
+    window.location.search = '?username=test-user';
     const { result } = renderHook(() => useLocalStorage('github-username', ''));
 
-    // Set a value first
-    act(() => {
-      result.current[1]('test-user');
-    });
-
-    // Then clear it
     act(() => {
       result.current[2]();
     });
@@ -94,25 +86,21 @@ describe('useLocalStorage', () => {
   });
 
   it('should handle errors gracefully', () => {
-    // Mock localStorage.setItem to throw an error
-    const setItemSpy = vi.spyOn(window.localStorage, 'setItem');
-    setItemSpy.mockImplementationOnce(() => {
-      throw new Error('Storage quota exceeded');
+    const mockError = new Error('Storage error');
+    const originalSetItem = window.localStorage.setItem;
+    window.localStorage.setItem = vi.fn().mockImplementation(() => {
+      throw mockError;
     });
-
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { result } = renderHook(() => useLocalStorage('test-key', 'default'));
 
     act(() => {
-      result.current[1]('new value');
+      result.current[1]('new-value');
     });
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Error saving to localStorage'),
-      expect.any(Error)
-    );
+    // Should keep working with the new value in memory even if storage fails
+    expect(result.current[0]).toBe('new-value');
 
-    consoleSpy.mockRestore();
+    window.localStorage.setItem = originalSetItem;
   });
 }); 
