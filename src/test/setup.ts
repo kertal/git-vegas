@@ -38,8 +38,7 @@ class IntersectionObserverMock implements IntersectionObserver {
   readonly thresholds: ReadonlyArray<number> = [0];
 
   constructor(
-    private callback: IntersectionObserverCallback,
-    private options: IntersectionObserverInit = {}
+    options: IntersectionObserverInit = {}
   ) {
     if (options.root instanceof Element) this.root = options.root;
     if (options.rootMargin) this.rootMargin = options.rootMargin;
@@ -60,6 +59,9 @@ Object.defineProperty(window, 'CSS', {
   value: {
     supports: (prop: string, value?: string) => {
       // Handle both method signatures
+      if(!prop) {
+        return false;
+      }
       if (value === undefined) {
         // Handle combined property-value string
         return true;
@@ -142,7 +144,7 @@ class MockURL {
   private _port: string = '3000';
   private _searchParams: URLSearchParams;
 
-  constructor(url: string, base?: string) {
+  constructor(url: string) {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       const [protocol, rest] = url.split('://');
       const [host, ...pathParts] = rest.split('/');

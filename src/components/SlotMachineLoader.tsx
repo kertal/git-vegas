@@ -157,9 +157,6 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
     );
   };
 
-  // Check if all reels have stopped spinning
-  const allStopped = !spinning.some(s => s);
-
   return (
     <Box sx={{
       display: 'flex',

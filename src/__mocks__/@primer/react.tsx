@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 // Mock Box component
 export const Box = ({ children, sx, ...props }: any) => (

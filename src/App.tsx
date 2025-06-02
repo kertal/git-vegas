@@ -33,7 +33,6 @@ import type {
   GitHubItem,
   FormContextType,
   ResultsContextType,
-  SettingsDialogProps
 } from './types';
 import {
   getContrastColor,
@@ -1165,7 +1164,6 @@ function App() {
   // State declarations
   const [validatedUsernames, setValidatedUsernames] = useLocalStorage<Set<string>>('validated-github-usernames', new Set());
   const [invalidUsernames, setInvalidUsernames] = useLocalStorage<Set<string>>('invalid-github-usernames', new Set());
-  const [isValidating, setIsValidating] = useState(false);
   const [username, setUsername] = useLocalStorage('github-username', '');
   const [startDate, setStartDate] = useLocalStorage('github-start-date', (() => {
     const date = new Date();
@@ -1174,9 +1172,7 @@ function App() {
   })());
   const [endDate, setEndDate] = useLocalStorage('github-end-date', new Date().toISOString().split('T')[0]);
   const [githubToken, setGithubToken] = useLocalStorage('github-token', '');
-  const [tokenStorage, setTokenStorage] = useLocalStorage('github-token-storage', 'session');
   const [isCompactView, setIsCompactView] = useLocalStorage('github-compact-view', false);
-  const [storedAvatars, setStoredAvatars] = useLocalStorage('github-avatars', [] as string[]);
   const [filter, setFilter] = useLocalStorage<'all' | 'issue' | 'pr'>('github-filter', 'all');
   const [statusFilter, setStatusFilter] = useLocalStorage<'all' | 'open' | 'closed' | 'merged'>('github-status-filter', 'all');
   const [sortOrder, setSortOrder] = useLocalStorage<'updated' | 'created'>('github-sort-order', 'updated');
@@ -1300,7 +1296,6 @@ function App() {
       return true; // All usernames are valid
     }
 
-    setIsValidating(true);
     setError('Validating new usernames...');
 
     try {
@@ -1329,7 +1324,6 @@ function App() {
       setError('Error validating usernames. Please try again.');
       return false;
     } finally {
-      setIsValidating(false);
     }
   }, [githubToken, validatedUsernames, invalidUsernames, addToValidated, addToInvalid]);
 
@@ -1545,7 +1539,7 @@ function App() {
 
     if (isCompactView) {
       // Compact format
-      plainText = filteredResults.map((item, index) => {
+      plainText = filteredResults.map((item) => {
         const status = item.pull_request
           ? (item.pull_request.merged_at || item.merged) ? 'merged'
             : item.state
@@ -1683,11 +1677,9 @@ function App() {
             }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <SlotMachineLoader 
-                  avatarUrls={storedAvatars.length > 0 
-                    ? storedAvatars 
-                    : (Array.isArray(results) ? results : [])
-                      .map(item => item.user.avatar_url)
-                      .filter(Boolean)
+                  avatarUrls={(Array.isArray(results) ? results : [])
+                    .map(item => item.user.avatar_url)
+                    .filter(Boolean)
                   }
                   isLoading={loading || initialLoading}
                   isManuallySpinning={isManuallySpinning}

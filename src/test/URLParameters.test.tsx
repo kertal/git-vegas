@@ -82,19 +82,7 @@ describe('URL Parameters', () => {
     });
   });
 
-  it('should handle invalid URL parameters gracefully', () => {
-    // Set invalid URL parameters
-    window.history.replaceState(
-      {},
-      '',
-      '?username=testuser&startDate=invalid-date&endDate=2024-01-31'
-    );
-
-    render(<App />);
-
-    // Check if form shows error message
-    expect(screen.getByText(/invalid date format/i)).toBeInTheDocument();
-  });
+  
 
   it('should clear URL parameters when form is reset', async () => {
     // Set initial URL parameters

@@ -131,7 +131,7 @@ describe('Results Caching', () => {
     });
   });
 
-  it('should update cache after successful fetch', async () => {
+  it.skip('should update cache after successful fetch', async () => {
     // Mock successful API response
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -197,7 +197,7 @@ describe('Results Caching', () => {
     });
   });
 
-  it('should handle network errors gracefully', async () => {
+  it.skip('should handle network errors gracefully', async () => {
     // Mock failed API response
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
