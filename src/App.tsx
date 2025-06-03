@@ -1,14 +1,15 @@
-import React, { useState, useCallback, useContext, createContext, memo, FormEvent, useEffect, useMemo } from 'react';
-import { Box, Button, FormControl, TextInput, Flash, Spinner, Text, Heading, Link, IconButton, ButtonGroup, Avatar, Stack, BranchName, Label, PageLayout } from '@primer/react';
+import React, { useState, useCallback, useContext, createContext, memo, useEffect, useMemo } from 'react';
+import { Box, Button, Flash, Text, Heading, Link, IconButton, ButtonGroup, Avatar, Stack, BranchName, Label, PageLayout } from '@primer/react';
 import { GearIcon, GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './App.css';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
+import SearchForm from './components/SearchForm';
 import SettingsDialog from './components/SettingsDialog';
 import { GitHubItem, FormContextType, ResultsContextType } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { validateGitHubUsernames, debounce, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, getContrastColor, type BatchValidationResult } from './utils';
+import { validateGitHubUsernames, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, getContrastColor, type BatchValidationResult } from './utils';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -41,126 +42,6 @@ const buttonStyles = {
   justifyContent: 'center',
   gap: 2
 };
-
-// Component for the search form, wrapped in memo to prevent unnecessary re-renders
-const SearchForm = memo(function SearchForm() {
-  const { 
-    username, setUsername, 
-    startDate, setStartDate, 
-    endDate, setEndDate,
-    handleSearch,
-    handleUsernameBlur,
-    validateUsernameFormat,
-    loading, 
-    loadingProgress,
-    error 
-  } = useFormContext();
-
-  const debouncedSaveToLocalStorage = useCallback(
-    debounce((key: string, value: string) => {
-      localStorage.setItem(key, value);
-    }, 500),
-    []
-  );
-
-  const handleUsernameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newUsername = e.target.value;
-    setUsername(newUsername);
-    debouncedSaveToLocalStorage('github-username', newUsername);
-    
-    // Add real-time format validation with debouncing
-    if (newUsername.trim()) {
-      const debouncedValidate = debounce(() => validateUsernameFormat(newUsername), 500);
-      debouncedValidate();
-    }
-  }, [debouncedSaveToLocalStorage, setUsername, validateUsernameFormat]);
-
-  return (
-    <Box sx={{maxWidth: '1200px', margin: '0 auto'}}>
-      <Box as="form" 
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3
-        }} 
-        onSubmit={(e: FormEvent<HTMLFormElement>) => { 
-          e.preventDefault(); 
-          handleSearch(); 
-        }}
-      >
-        {/* Main search fields in a horizontal layout */}
-        <Box sx={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(300px, 3fr) repeat(2, minmax(150px, 1fr)) auto',
-          gap: 3,
-          alignItems: 'flex-start'
-        }}>
-          <Box>
-            <FormControl required>
-              <FormControl.Label>GitHub Username(s)</FormControl.Label>
-              <TextInput
-                placeholder="Enter usernames (comma-separated for multiple)"
-                value={username}
-                onChange={handleUsernameChange}
-                onBlur={handleUsernameBlur}
-                aria-required="true"
-                block
-              />
-            </FormControl>
-          </Box>
-          
-          <FormControl required>
-            <FormControl.Label>Start Date</FormControl.Label>
-            <TextInput
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              aria-required="true"
-              block
-            />
-          </FormControl>
-          
-          <FormControl required>
-            <FormControl.Label>End Date</FormControl.Label>
-            <TextInput
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              aria-required="true"
-              block
-            />
-          </FormControl>
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}>
-            <Button 
-              variant="primary" 
-              type="submit" 
-              disabled={loading}
-              sx={{ 
-                minWidth: '120px',
-                height: '32px'
-              }}
-            >
-              {loading ? <Spinner size="small" /> : 'Search'}
-            </Button>
-          </Box>
-        </Box>
-      </Box>
-
-      {error && (
-        <Flash variant="danger" sx={{marginTop: 3}}>
-          {error}
-        </Flash>
-      )}
-
-      {loading && loadingProgress && (
-        <Flash variant="default" sx={{marginTop: 3}}>
-          {loadingProgress}
-        </Flash>
-      )}
-    </Box>
-  );
-});
 
 // Update countItemsMatchingFilter to remove dateRange parameter
 const countItemsMatchingFilter = (
