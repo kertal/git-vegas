@@ -9,6 +9,7 @@ import ResultsList from './components/ResultsList';
 import { GitHubItem, FormContextType, ResultsContextType } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { validateGitHubUsernames, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, getContrastColor, type BatchValidationResult } from './utils';
+import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -459,119 +460,20 @@ function App() {
   }, [setFilter, setStatusFilter, setSortOrder, setLabelFilter, setExcludedLabels, setSearchText, setRepoFilters]);
 
   // Clipboard handler
-  const copyResultsToClipboard = useCallback(() => {
-    const formatDate = (dateString: string) => {
-      return new Date(dateString).toLocaleDateString();
-    };
-
-    let plainText = '';
-    let htmlContent = '';
-
-    if (isCompactView) {
-      // Compact format
-      plainText = filteredResults.map((item) => {
-        const status = item.pull_request
-          ? (item.pull_request.merged_at || item.merged) ? 'merged'
-            : item.state
-          : item.state;
-        return `${item.title} (${status}) - ${item.html_url}`;
-      }).join('\n');
-
-      htmlContent = `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5;">
-  <ul style="list-style-type: none; padding: 0; margin: 0;">
-    ${filteredResults.map(item => {
-      const status = item.pull_request
-        ? (item.pull_request.merged_at || item.merged) ? 'merged'
-          : item.state
-        : item.state;
-      const statusColor = 
-        (item.pull_request?.merged_at || item.merged) ? '#8250df' :
-        item.state === 'closed' ? '#cf222e' : '#1a7f37';
-      
-      return `
-    <li style="margin: 4px 0;">
-      <a href="${item.html_url}" style="color: #0969da; text-decoration: none;">${item.title}</a>
-      <span style="color: ${statusColor}; margin-left: 8px;">(${status})</span>
-    </li>`;
-    }).join('')}
-  </ul>
-</div>`;
-    } else {
-      // Detailed format
-      plainText = '';
-      htmlContent = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Helvetica, Arial, sans-serif;">\n';
-
-      filteredResults.forEach((item, index) => {
-        // Plain text format
-        plainText += `${index + 1}. ${item.title}\n`;
-        plainText += `   Link: ${item.html_url}\n`;
-        plainText += `   Type: ${item.pull_request ? 'Pull Request' : 'Issue'}\n`;
-        plainText += `   Status: ${item.state}${item.merged ? ' (merged)' : ''}\n`;
-        plainText += `   Created: ${formatDate(item.created_at)}\n`;
-        plainText += `   Updated: ${formatDate(item.updated_at)}\n`;
-        if (item.labels?.length) {
-          plainText += `   Labels: ${item.labels.map(l => l.name).join(', ')}\n`;
-        }
-        plainText += '\n';
-
-        // HTML format with styling
-        htmlContent += `<div style="margin-bottom: 16px;">\n`;
-        htmlContent += `  <div style="font-size: 16px; margin-bottom: 8px;">\n`;
-        htmlContent += `    ${index + 1}. <a href="${item.html_url}" style="color: #0969da; text-decoration: none;">${item.title}</a>\n`;
-        htmlContent += `  </div>\n`;
-        htmlContent += `  <div style="color: #57606a; font-size: 14px; margin-left: 24px;">\n`;
-        htmlContent += `    <div>Type: ${item.pull_request ? 'Pull Request' : 'Issue'}</div>\n`;
-        htmlContent += `    <div>Status: <span style="color: ${
-          item.merged ? '#8250df' : 
-          item.state === 'closed' ? '#cf222e' : '#1a7f37'
-        };">${item.state}${item.merged ? ' (merged)' : ''}</span></div>\n`;
-        htmlContent += `    <div>Created: ${formatDate(item.created_at)}</div>\n`;
-        htmlContent += `    <div>Updated: ${formatDate(item.updated_at)}</div>\n`;
-        if (item.labels?.length) {
-          htmlContent += `    <div style="margin-top: 4px;">Labels: `;
-          htmlContent += item.labels.map(l => {
-            const bgColor = l.color ? `#${l.color}` : '#ededed';
-            const textColor = l.color ? getContrastColor(l.color) : '#000000';
-            return `<span style="
-              display: inline-block;
-              padding: 0 7px;
-              font-size: 12px;
-              font-weight: 500;
-              line-height: 18px;
-              border-radius: 2em;
-              background-color: ${bgColor};
-              color: ${textColor};
-              margin-right: 4px;
-            ">${l.name}</span>`;
-          }).join('');
-          htmlContent += `</div>\n`;
-        }
-        htmlContent += `  </div>\n`;
-        htmlContent += `</div>\n`;
-      });
-
-      htmlContent += '</div>';
-    }
-
-    // Use the Clipboard API to write both formats
-    try {
-      const clipboardItem = new ClipboardItem({
-        'text/plain': new Blob([plainText], { type: 'text/plain' }),
-        'text/html': new Blob([htmlContent], { type: 'text/html' })
-      });
-      
-      navigator.clipboard.write([clipboardItem]).then(() => {
-        setClipboardMessage('Results copied to clipboard with formatting!');
+  const copyResultsToClipboard = useCallback(async () => {
+    const result = await copyToClipboard(filteredResults, {
+      isCompactView,
+      onSuccess: (message: string) => {
+        setClipboardMessage(message);
         setTimeout(() => setClipboardMessage(null), 3000);
-      });
-    } catch (err) {
-      // Fallback to basic text clipboard if the advanced API is not available
-      navigator.clipboard.writeText(plainText).then(() => {
-        setClipboardMessage('Results copied to clipboard (plain text only)');
+      },
+      onError: (error: Error) => {
+        setClipboardMessage(`Error: ${error.message}`);
         setTimeout(() => setClipboardMessage(null), 3000);
-      });
-    }
+      }
+    });
+    
+    return result;
   }, [filteredResults, isCompactView]);
 
   return (
