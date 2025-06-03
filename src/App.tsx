@@ -11,6 +11,8 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { validateGitHubUsernames, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, type BatchValidationResult } from './utils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { countItemsMatchingFilter } from './utils/filterUtils';
+import { createAddToCache, createRemoveFromCache, categorizeUsernames, getInvalidUsernames } from './utils/usernameCache';
+import { extractAvailableLabels, applyFiltersAndSort, createDefaultFilter, ResultsFilter } from './utils/resultsUtils';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -82,86 +84,29 @@ function App() {
     timestamp: number;
   } | null>('github-last-search', null);
 
-  // Helper functions for Set operations
-  const addToValidated = useCallback((usernames: string[]) => {
-    setValidatedUsernames(prevSet => {
-      const newSet = new Set(prevSet);
-      usernames.forEach(u => newSet.add(u));
-      return newSet;
-    });
-  }, [setValidatedUsernames]);
+  // Helper functions for Set operations using the new utilities
+  const addToValidated = useCallback(createAddToCache(setValidatedUsernames), [setValidatedUsernames]);
+  const addToInvalid = useCallback(createAddToCache(setInvalidUsernames), [setInvalidUsernames]);
+  const removeFromValidated = useCallback(createRemoveFromCache(setValidatedUsernames), [setValidatedUsernames]);
 
-  const addToInvalid = useCallback((usernames: string[]) => {
-    setInvalidUsernames(prevSet => {
-      const newSet = new Set(prevSet);
-      usernames.forEach(u => newSet.add(u));
-      return newSet;
-    });
-  }, [setInvalidUsernames]);
-
-  const removeFromValidated = useCallback((username: string) => {
-    setValidatedUsernames(prevSet => {
-      const newSet = new Set(prevSet);
-      newSet.delete(username);
-      return newSet;
-    });
-  }, [setValidatedUsernames]);
-
-  // Derived state
+  // Derived state using new utilities
   const availableLabels = useMemo(() => {
-    const labels = new Set<string>();
-    if (Array.isArray(results)) {
-      results.forEach(item => {
-        item.labels?.forEach(label => labels.add(label.name));
-      });
-    }
-    return Array.from(labels);
+    return extractAvailableLabels(Array.isArray(results) ? results : []);
   }, [results]);
 
+  const currentFilters: ResultsFilter = useMemo(() => ({
+    filter,
+    statusFilter,
+    labelFilter,
+    excludedLabels,
+    repoFilters,
+    searchText,
+    sortOrder
+  }), [filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
+
   const filteredResults = useMemo(() => {
-    if (!Array.isArray(results)) {
-      return [];
-    }
-    return results.filter(item => {
-      // Apply type filter
-      if (filter === 'pr' && !item.pull_request) return false;
-      if (filter === 'issue' && item.pull_request) return false;
-
-      // Apply status filter
-      if (statusFilter === 'merged') {
-        if (!item.pull_request) return false;
-        return item.pull_request.merged_at || item.merged;
-      }
-      if (statusFilter !== 'all') {
-        if (item.pull_request && (item.pull_request.merged_at || item.merged)) return false;
-        return item.state === statusFilter;
-      }
-
-      // Apply label filters
-      if (labelFilter && !item.labels?.some(l => l.name === labelFilter)) return false;
-      if (excludedLabels.length > 0 && item.labels?.some(l => excludedLabels.includes(l.name))) return false;
-
-      // Apply repo filters
-      if (repoFilters.length > 0) {
-        const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
-        if (!itemRepo || !repoFilters.includes(itemRepo)) return false;
-      }
-
-      // Apply text search
-      if (searchText) {
-        const searchLower = searchText.toLowerCase();
-        const titleMatch = item.title.toLowerCase().includes(searchLower);
-        const bodyMatch = item.body?.toLowerCase().includes(searchLower);
-        if (!titleMatch && !bodyMatch) return false;
-      }
-
-      return true;
-    }).sort((a, b) => {
-      const dateA = new Date(sortOrder === 'updated' ? a.updated_at : a.created_at);
-      const dateB = new Date(sortOrder === 'updated' ? b.updated_at : b.created_at);
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
+    return applyFiltersAndSort(Array.isArray(results) ? results : [], currentFilters);
+  }, [results, currentFilters]);
 
   // Real-time username format validation
   const validateUsernameFormat = useCallback((usernameString: string) => {
@@ -221,15 +166,17 @@ function App() {
 
     const usernames = validation.usernames;
 
-    // Check if all usernames are already validated (skip API validation if so)
-    const needValidation = usernames.filter(u => !validatedUsernames.has(u) && !invalidUsernames.has(u));
-    const alreadyInvalid = usernames.filter(u => invalidUsernames.has(u));
-
+    // Use the new username cache utilities
+    const alreadyInvalidUsernames = getInvalidUsernames(usernames, invalidUsernames);
+    
     // If any usernames are known to be invalid, show error and don't proceed
-    if (alreadyInvalid.length > 0) {
-      setError(`Invalid GitHub username${alreadyInvalid.length > 1 ? 's' : ''}: ${alreadyInvalid.join(', ')}`);
+    if (alreadyInvalidUsernames.length > 0) {
+      setError(`Invalid GitHub username${alreadyInvalidUsernames.length > 1 ? 's' : ''}: ${alreadyInvalidUsernames.join(', ')}`);
       return;
     }
+
+    // Check which usernames need validation
+    const { needValidation } = categorizeUsernames(usernames, validatedUsernames, invalidUsernames);
 
     // Only validate usernames that haven't been validated yet
     if (needValidation.length > 0) {
@@ -407,15 +354,16 @@ function App() {
     }));
   }, [setExpanded]);
 
-  // Clear all filters
+  // Clear all filters using new utilities
   const clearAllFilters = useCallback(() => {
-    setFilter('all');
-    setStatusFilter('all');
-    setSortOrder('updated');
-    setLabelFilter('');
-    setExcludedLabels([]);
-    setSearchText('');
-    setRepoFilters([]);
+    const defaultFilter = createDefaultFilter();
+    setFilter(defaultFilter.filter);
+    setStatusFilter(defaultFilter.statusFilter);
+    setSortOrder(defaultFilter.sortOrder);
+    setLabelFilter(defaultFilter.labelFilter);
+    setExcludedLabels(defaultFilter.excludedLabels);
+    setSearchText(defaultFilter.searchText);
+    setRepoFilters(defaultFilter.repoFilters);
   }, [setFilter, setStatusFilter, setSortOrder, setLabelFilter, setExcludedLabels, setSearchText, setRepoFilters]);
 
   // Clipboard handler
