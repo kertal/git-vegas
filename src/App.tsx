@@ -13,7 +13,7 @@ import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { countItemsMatchingFilter } from './utils/filterUtils';
 import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import { extractAvailableLabels, applyFiltersAndSort, createDefaultFilter, ResultsFilter } from './utils/resultsUtils';
-import { performGitHubSearch, isCacheValid, createSearchCacheParams, GitHubSearchParams, UsernameCache } from './utils/githubSearch';
+import { performGitHubSearch, GitHubSearchParams, UsernameCache } from './utils/githubSearch';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -78,12 +78,6 @@ function App() {
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
   const [results, setResults] = useLocalStorage<GitHubItem[]>('github-search-results', []);
-  const [lastSearchParams, setLastSearchParams] = useLocalStorage<{
-    username: string;
-    startDate: string;
-    endDate: string;
-    timestamp: number;
-  } | null>('github-last-search', null);
 
   // Helper functions for Set operations using the new utilities
   const addToValidated = useCallback(createAddToCache(setValidatedUsernames), [setValidatedUsernames]);
@@ -140,7 +134,7 @@ function App() {
     }
   }, [username]);
 
-  // Update handleSearch to use the new GitHub search utility
+  // Update handleSearch to always trigger new requests (no caching on button click)
   const handleSearch = useCallback(async () => {
     // Create search parameters
     const searchParams: GitHubSearchParams = {
@@ -149,11 +143,6 @@ function App() {
       endDate,
       githubToken
     };
-
-    // Check if we have cached results for the exact same search
-    if (isCacheValid(searchParams, lastSearchParams)) {
-      return; // Use cached results
-    }
 
     // Create username cache object
     const cache: UsernameCache = {
@@ -186,7 +175,6 @@ function App() {
 
       // Update results and search parameters
       setResults(result.items);
-      setLastSearchParams(createSearchCacheParams(searchParams));
       
       // Show success message briefly
       setLoadingProgress(`Successfully loaded ${result.totalCount} items!`);
@@ -211,8 +199,6 @@ function App() {
     addToInvalid,
     removeFromValidated,
     setResults,
-    setLastSearchParams,
-    lastSearchParams,
     setLoading,
     setLoadingProgress,
     setError
