@@ -1,56 +1,19 @@
-import { useState, useEffect, useCallback, createContext, useContext, memo, useMemo } from 'react';
-import type { FormEvent } from 'react';
-import './App.css';
-import {
-  TextInput,
-  Button,
-  Box,
-  Text,
-  Link,
-  Label,
-  PageLayout,
-  Flash,
-  Spinner,
-  FormControl,
-  ButtonGroup,
-  Avatar,
-  BranchName,
-  Heading,
-  Stack,
-  Dialog,
-  IconButton
-} from '@primer/react';
-import {
-  IssueOpenedIcon,
-  GitPullRequestIcon,
-  XIcon,
-  GitMergeIcon,
-  GearIcon
-} from '@primer/octicons-react';
+import React, { useState, useCallback, useContext, createContext, memo, FormEvent, useEffect, useMemo } from 'react';
+import { Box, Button, FormControl, TextInput, Flash, Spinner, Text, Heading, Link, IconButton, ButtonGroup, Avatar, Stack, BranchName, Label, PageLayout } from '@primer/react';
+import { GearIcon, GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type {
-  GitHubItem,
-  FormContextType,
-  ResultsContextType,
-} from './types';
-import {
-  getContrastColor,
-  isValidDateString,
-  getParamFromUrl,
-  updateUrlParams,
-  validateGitHubUsernames,
-  validateUsernameList,
-  type BatchValidationResult
-} from './utils';
+import './App.css';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
-import debounce from 'lodash/debounce';
+import SettingsDialog from './components/SettingsDialog';
+import { GitHubItem, FormContextType, ResultsContextType } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { validateGitHubUsernames, debounce, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, getContrastColor, type BatchValidationResult } from './utils';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
 
-function useFormContext() {
+export function useFormContext() {
   const context = useContext(FormContext);
   if (!context) {
     throw new Error('useFormContext must be used within a FormContextProvider');
@@ -401,7 +364,7 @@ const ResultsList = memo(function ResultsList() {
               gap: 3
             }}>
               {/* Type Filter UI */}
-              <Stack sx={{ gap: 1 }}>
+              <Box sx={{ gap: 1 }}>
                 <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
                   Type
                 </Heading>
@@ -423,10 +386,10 @@ const ResultsList = memo(function ResultsList() {
                     PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
                   </Button>
                 </ButtonGroup>
-              </Stack>
+              </Box>
 
               {/* Status Filter UI */}
-              <Stack sx={{ gap: 1 }}>
+              <Box sx={{ gap: 1 }}>
                 <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
                   Status
                 </Heading>
@@ -456,14 +419,14 @@ const ResultsList = memo(function ResultsList() {
                     Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
                   </Button>
                 </ButtonGroup>
-              </Stack>
+              </Box>
             </Box>
 
             {/* Label Filters */}
             {availableLabels.length > 0 && (
               <Box sx={{ mt: 3 }}>
                 {/* Inclusive Label Filter */}
-                <Stack sx={{ gap: 2 }}>
+                <Box sx={{ gap: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
                     <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'success.fg' }}>
                       Labels (include)
@@ -504,10 +467,10 @@ const ResultsList = memo(function ResultsList() {
                         );
                       })}
                   </Box>
-                </Stack>
+                </Box>
 
                 {/* Exclusive Label Filter */}
-                <Stack sx={{ mt: 2, gap: 2 }}>
+                <Box sx={{ mt: 2, gap: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
                     <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'danger.fg' }}>
                       Labels (exclude)
@@ -556,7 +519,7 @@ const ResultsList = memo(function ResultsList() {
                         );
                       })}
                   </Box>
-                </Stack>
+                </Box>
               </Box>
             )}
           </Box>
@@ -1012,159 +975,6 @@ const ResultsList = memo(function ResultsList() {
         </Box>
       )}
     </Box>
-  );
-});
-
-// Add Settings Dialog Component
-const SettingsDialog = memo(function SettingsDialog({ 
-  isOpen, 
-  onDismiss 
-}: { 
-  isOpen: boolean; 
-  onDismiss: () => void;
-}) {
-  const { githubToken, setGithubToken } = useFormContext();
-  const [tokenStorage, setTokenStorage] = useLocalStorage('github-token-storage', 'session');
-  
-  const handleStorageChange = useCallback((newStorage: string) => {
-    setTokenStorage(newStorage);
-    
-    // Move token to selected storage
-    if (newStorage === 'local') {
-      const sessionToken = sessionStorage.getItem('github-token');
-      if (sessionToken) {
-        localStorage.setItem('github-token', sessionToken);
-        sessionStorage.removeItem('github-token');
-      }
-    } else {
-      const localToken = localStorage.getItem('github-token');
-      if (localToken) {
-        sessionStorage.setItem('github-token', localToken);
-        localStorage.removeItem('github-token');
-      }
-    }
-  }, []);
-
-  const handleTokenChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newToken = e.target.value;
-    setGithubToken(newToken);
-    
-    // Store in selected storage
-    if (tokenStorage === 'local') {
-      if (newToken) {
-        localStorage.setItem('github-token', newToken);
-      } else {
-        localStorage.removeItem('github-token');
-      }
-    } else {
-      if (newToken) {
-        sessionStorage.setItem('github-token', newToken);
-      } else {
-        sessionStorage.removeItem('github-token');
-      }
-    }
-  }, [setGithubToken, tokenStorage]);
-
-  if (!isOpen) return null;
-
-  return (
-    <Dialog
-      onClose={onDismiss}
-      sx={{
-        width: ['90%', '80%', '600px'],
-        maxWidth: '800px',
-        margin: '0 auto'
-      }}
-    >
-      <Dialog.Header>Settings</Dialog.Header>
-      
-      <Box sx={{ p: 3 }}>
-        <Box sx={{ 
-          mb: 3,
-          p: 3,
-          bg: 'accent.subtle',
-          border: '1px solid',
-          borderColor: 'accent.muted',
-          borderRadius: 2
-        }}>
-          <Heading as="h2" sx={{ fontSize: 2, mb: 2, color: 'accent.fg' }}>About GitHub Tokens</Heading>
-          <Text as="p" sx={{ fontSize: 1, mb: 2, color: 'fg.default' }}>
-            A GitHub token is optional but recommended for:
-          </Text>
-          <Text as="ul" sx={{ fontSize: 1, pl: 3, color: 'fg.default' }}>
-            <li>Accessing private repositories</li>
-            <li>Increased API rate limits (5,000/hour vs 60/hour)</li>
-            <li>Reduced likelihood of hitting request limits</li>
-          </Text>
-        </Box>
-
-        <FormControl sx={{ mb: 3 }}>
-          <FormControl.Label>Personal Access Token (Optional)</FormControl.Label>
-          <TextInput
-            type="password"
-            value={githubToken}
-            onChange={handleTokenChange}
-            placeholder="GitHub personal access token"
-            block
-            aria-describedby="token-help"
-            sx={{ bg: 'canvas.default', color: 'fg.default' }}
-          />
-          <FormControl.Caption id="token-help">
-            Use a fine-grained token with minimal permissions - read-only access to repositories is sufficient
-          </FormControl.Caption>
-        </FormControl>
-
-        <FormControl>
-          <FormControl.Label>Token Storage Location</FormControl.Label>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box as="label" sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.default' }}>
-              <input
-                type="radio"
-                name="storage"
-                value="session"
-                checked={tokenStorage === 'session'}
-                onChange={(e) => handleStorageChange(e.target.value)}
-              />
-              Browser Session (Recommended)
-            </Box>
-            <Text sx={{ ml: 4, mb: 2, fontSize: 0, color: 'fg.muted' }}>
-              Token is cleared when you close your browser. Most secure option.
-            </Text>
-            
-            <Box as="label" sx={{ display: 'flex', alignItems: 'center', gap: 2, color: 'fg.default' }}>
-              <input
-                type="radio"
-                name="storage"
-                value="local"
-                checked={tokenStorage === 'local'}
-                onChange={(e) => handleStorageChange(e.target.value)}
-              />
-              Local Storage
-            </Box>
-            <Text sx={{ ml: 4, fontSize: 0, color: 'fg.muted' }}>
-              Token persists after browser closes. Less secure but more convenient.
-            </Text>
-          </Box>
-        </FormControl>
-
-        <Box sx={{ 
-          mt: 3, 
-          p: 3, 
-          bg: 'canvas.subtle',
-          border: '1px solid',
-          borderColor: 'border.default',
-          borderRadius: 2
-        }}>
-          <Heading as="h3" sx={{ fontSize: 1, mb: 2, color: 'fg.muted' }}>Security Best Practices</Heading>
-          <Text as="ul" sx={{ fontSize: 0, color: 'fg.muted', pl: 3 }}>
-            <li>Use fine-grained tokens with minimal permissions when possible</li>
-            <li>Never share your token or commit it to version control</li>
-            <li>Set an expiration date on your token for better security</li>
-            <li>Review and revoke tokens regularly in your GitHub settings</li>
-          </Text>
-        </Box>
-      </Box>
-    </Dialog>
   );
 });
 
