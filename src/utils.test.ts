@@ -5,7 +5,9 @@ import {
   isValidDateString,
   getParamFromUrl,
   updateUrlParams,
-  validateGitHubUsernames
+  validateGitHubUsernames,
+  validateGitHubUsernameFormat,
+  validateUsernameList
 } from './utils';
 
 describe('debounce', () => {
@@ -174,11 +176,12 @@ describe('validateGitHubUsernames', () => {
   it('should validate usernames correctly', async () => {
     mockFetch
       .mockResolvedValueOnce({ ok: true }) // First username valid
-      .mockResolvedValueOnce({ ok: false }); // Second username invalid
+      .mockResolvedValueOnce({ ok: false, status: 404 }); // Second username invalid
 
     const result = await validateGitHubUsernames(['valid-user', 'invalid-user']);
     expect(result.valid).toEqual(['valid-user']);
     expect(result.invalid).toEqual(['invalid-user']);
+    expect(result.errors['invalid-user']).toBe('Username not found on GitHub');
   });
 
   it('should handle network errors', async () => {
@@ -187,6 +190,33 @@ describe('validateGitHubUsernames', () => {
     const result = await validateGitHubUsernames(['test-user']);
     expect(result.valid).toEqual([]);
     expect(result.invalid).toEqual(['test-user']);
+    expect(result.errors['test-user']).toBe('Network error while validating username');
+  });
+
+  it('should handle rate limiting', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 403 });
+
+    const result = await validateGitHubUsernames(['test-user']);
+    expect(result.valid).toEqual([]);
+    expect(result.invalid).toEqual(['test-user']);
+    expect(result.errors['test-user']).toBe('API rate limit exceeded. Please try again later or add a GitHub token.');
+  });
+
+  it('should handle unknown API errors', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+
+    const result = await validateGitHubUsernames(['test-user']);
+    expect(result.valid).toEqual([]);
+    expect(result.invalid).toEqual(['test-user']);
+    expect(result.errors['test-user']).toBe('GitHub API error: 500');
+  });
+
+  it('should validate format before making API call', async () => {
+    const result = await validateGitHubUsernames(['invalid--username']);
+    expect(result.valid).toEqual([]);
+    expect(result.invalid).toEqual(['invalid--username']);
+    expect(result.errors['invalid--username']).toBe('Username cannot contain consecutive hyphens');
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('should use auth token when provided', async () => {
@@ -203,6 +233,189 @@ describe('validateGitHubUsernames', () => {
         })
       })
     );
+  });
+});
+
+describe('validateGitHubUsernameFormat', () => {
+  it('should validate correct usernames', () => {
+    const validUsernames = [
+      'testuser',
+      'user123',
+      'test-user',
+      'a',
+      'a-b',
+      'user-123-test',
+      'CamelCase',
+      '123user',
+    ];
+
+    validUsernames.forEach(username => {
+      const result = validateGitHubUsernameFormat(username);
+      expect(result.isValid).toBe(true);
+      expect(result.error).toBeUndefined();
+    });
+  });
+
+  it('should reject empty or null usernames', () => {
+    const invalidInputs = ['', '   ', null, undefined];
+    
+    invalidInputs.forEach(input => {
+      const result = validateGitHubUsernameFormat(input as any);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+  });
+
+  it('should reject usernames that are too long', () => {
+    const longUsername = 'a'.repeat(40); // 40 characters, exceeds GitHub limit of 39
+    const result = validateGitHubUsernameFormat(longUsername);
+    expect(result.isValid).toBe(false);
+    expect(result.error).toBe('Username cannot be longer than 39 characters');
+  });
+
+  it('should reject usernames starting with hyphen', () => {
+    const result = validateGitHubUsernameFormat('-username');
+    expect(result.isValid).toBe(false);
+    expect(result.error).toBe('Username cannot begin with a hyphen');
+  });
+
+  it('should reject usernames ending with hyphen', () => {
+    const result = validateGitHubUsernameFormat('username-');
+    expect(result.isValid).toBe(false);
+    expect(result.error).toBe('Username cannot end with a hyphen');
+  });
+
+  it('should reject usernames with consecutive hyphens', () => {
+    const result = validateGitHubUsernameFormat('user--name');
+    expect(result.isValid).toBe(false);
+    expect(result.error).toBe('Username cannot contain consecutive hyphens');
+  });
+
+  it('should reject usernames with invalid characters', () => {
+    const invalidUsernames = [
+      'user@name',
+      'user.name',
+      'user name',
+      'user#name',
+      'user$name',
+      'user%name',
+      'user_name', // Underscores are not allowed in GitHub usernames
+    ];
+
+    invalidUsernames.forEach(username => {
+      const result = validateGitHubUsernameFormat(username);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain('may only contain');
+    });
+  });
+
+  it('should reject reserved usernames', () => {
+    const reservedUsernames = [
+      'admin',
+      'api',
+      'www',
+      'root',
+      'system',
+      'Admin', // Test case insensitive
+      'API',
+    ];
+
+    reservedUsernames.forEach(username => {
+      const result = validateGitHubUsernameFormat(username);
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('This username is reserved and cannot be used');
+    });
+  });
+
+  it('should accept maximum length username', () => {
+    const maxLengthUsername = 'a'.repeat(39); // Exactly 39 characters
+    const result = validateGitHubUsernameFormat(maxLengthUsername);
+    expect(result.isValid).toBe(true);
+  });
+
+  it('should handle single character usernames', () => {
+    const result = validateGitHubUsernameFormat('a');
+    expect(result.isValid).toBe(true);
+  });
+});
+
+describe('validateUsernameList', () => {
+  it('should parse single username correctly', () => {
+    const result = validateUsernameList('testuser');
+    expect(result.usernames).toEqual(['testuser']);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('should parse multiple usernames correctly', () => {
+    const result = validateUsernameList('user1, user2, user3');
+    expect(result.usernames).toEqual(['user1', 'user2', 'user3']);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('should handle usernames with various spacing', () => {
+    const result = validateUsernameList('user1,user2, user3 ,  user4  ');
+    expect(result.usernames).toEqual(['user1', 'user2', 'user3', 'user4']);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('should remove duplicates', () => {
+    const result = validateUsernameList('user1, user2, user1, user3');
+    expect(result.usernames).toEqual(['user1', 'user2', 'user3']);
+    expect(result.errors).toContain('Duplicate usernames found: user1');
+  });
+
+  it('should reject empty input', () => {
+    const result = validateUsernameList('');
+    expect(result.usernames).toEqual([]);
+    expect(result.errors).toContain('Please enter at least one username');
+  });
+
+  it('should reject null/undefined input', () => {
+    const result1 = validateUsernameList(null as any);
+    const result2 = validateUsernameList(undefined as any);
+    
+    expect(result1.usernames).toEqual([]);
+    expect(result1.errors).toContain('Please enter at least one username');
+    expect(result2.usernames).toEqual([]);
+    expect(result2.errors).toContain('Please enter at least one username');
+  });
+
+  it('should reject too many usernames', () => {
+    const manyUsernames = Array.from({ length: 20 }, (_, i) => `user${i}`).join(', ');
+    const result = validateUsernameList(manyUsernames);
+    
+    expect(result.usernames).toHaveLength(15); // Should be limited to first 15
+    expect(result.errors).toContain('Too many usernames. Please limit to 15 usernames at a time.');
+  });
+
+  it('should validate individual username formats', () => {
+    const result = validateUsernameList('validuser, invalid--user, -badstart, gooduser');
+    
+    expect(result.usernames).toEqual(['validuser', 'invalid--user', '-badstart', 'gooduser']);
+    expect(result.errors).toContain('"invalid--user": Username cannot contain consecutive hyphens');
+    expect(result.errors).toContain('"-badstart": Username cannot begin with a hyphen');
+  });
+
+  it('should handle multiple validation errors', () => {
+    const result = validateUsernameList('user1, user1, invalid--user, admin, user@invalid');
+    
+    expect(result.errors.length).toBeGreaterThan(1);
+    expect(result.errors.some(e => e.includes('Duplicate'))).toBe(true);
+    expect(result.errors.some(e => e.includes('consecutive hyphens'))).toBe(true);
+    expect(result.errors.some(e => e.includes('reserved'))).toBe(true);
+    expect(result.errors.some(e => e.includes('may only contain'))).toBe(true);
+  });
+
+  it('should filter out empty usernames after splitting', () => {
+    const result = validateUsernameList('user1, , user2,  , user3');
+    expect(result.usernames).toEqual(['user1', 'user2', 'user3']);
+    expect(result.errors).toEqual([]);
+  });
+
+  it('should handle edge case with only commas and spaces', () => {
+    const result = validateUsernameList(', , ,   ');
+    expect(result.usernames).toEqual([]);
+    expect(result.errors).toContain('Please enter at least one username');
   });
 });
 

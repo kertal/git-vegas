@@ -39,7 +39,9 @@ import {
   isValidDateString,
   getParamFromUrl,
   updateUrlParams,
-  validateGitHubUsernames
+  validateGitHubUsernames,
+  validateUsernameList,
+  type BatchValidationResult
 } from './utils';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
 import debounce from 'lodash/debounce';
@@ -85,6 +87,7 @@ const SearchForm = memo(function SearchForm() {
     endDate, setEndDate,
     handleSearch,
     handleUsernameBlur,
+    validateUsernameFormat,
     loading, 
     loadingProgress,
     error 
@@ -101,7 +104,13 @@ const SearchForm = memo(function SearchForm() {
     const newUsername = e.target.value;
     setUsername(newUsername);
     debouncedSaveToLocalStorage('github-username', newUsername);
-  }, [debouncedSaveToLocalStorage, setUsername]);
+    
+    // Add real-time format validation with debouncing
+    if (newUsername.trim()) {
+      const debouncedValidate = debounce(() => validateUsernameFormat(newUsername), 500);
+      debouncedValidate();
+    }
+  }, [debouncedSaveToLocalStorage, setUsername, validateUsernameFormat]);
 
   return (
     <Box sx={{maxWidth: '1200px', margin: '0 auto'}}>
@@ -1278,73 +1287,38 @@ function App() {
     });
   }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
 
-  // Helper function to validate usernames
-  const validateNewUsernames = useCallback(async (usernames: string[]) => {
-    // Filter out already validated or invalid usernames
-    const unvalidatedUsernames = usernames.filter(u => 
-      !validatedUsernames.has(u) && !invalidUsernames.has(u)
-    );
-    
-    if (unvalidatedUsernames.length === 0) {
-      // Check if any usernames are invalid
-      const currentInvalid = usernames.filter(u => invalidUsernames.has(u));
-      if (currentInvalid.length > 0) {
-        setError(`Invalid GitHub username${currentInvalid.length > 1 ? 's' : ''}: ${currentInvalid.join(', ')}`);
-      } else {
-        setError(null);
-      }
-      return true; // All usernames are valid
-    }
-
-    setError('Validating new usernames...');
-
-    try {
-      const { valid, invalid } = await validateGitHubUsernames(unvalidatedUsernames, githubToken);
-      
-      // Update validated usernames
-      if (valid.length > 0) {
-        addToValidated(valid);
-      }
-      
-      // Update invalid usernames
-      if (invalid.length > 0) {
-        addToInvalid(invalid);
-      }
-
-      // Check if any usernames are invalid
-      const allInvalid = usernames.filter(u => invalid.includes(u) || invalidUsernames.has(u));
-      if (allInvalid.length > 0) {
-        setError(`Invalid GitHub username${allInvalid.length > 1 ? 's' : ''}: ${allInvalid.join(', ')}`);
-        return false;
-      } else {
-        setError(null);
-        return true;
-      }
-    } catch (err) {
-      setError('Error validating usernames. Please try again.');
-      return false;
-    } finally {
-    }
-  }, [githubToken, validatedUsernames, invalidUsernames, addToValidated, addToInvalid]);
-
-  // Handle username field blur
-  const handleUsernameBlur = useCallback(async () => {
-    if (!username) return;
-
-    const usernames = username.split(',')
-      .map(u => u.trim())
-      .filter(Boolean);
-
-    // Check username limit
-    if (usernames.length > 15) {
-      setError('Too many usernames. Please limit to 15 usernames at a time.');
+  // Real-time username format validation
+  const validateUsernameFormat = useCallback((usernameString: string) => {
+    if (!usernameString.trim()) {
+      setError(null);
       return;
     }
 
-    await validateNewUsernames(usernames);
-  }, [username, validateNewUsernames]);
+    const validation = validateUsernameList(usernameString);
+    
+    if (validation.errors.length > 0) {
+      setError(validation.errors.join('\n'));
+    } else {
+      setError(null);
+    }
+  }, []);
 
-  // Update handleSearch to use validateNewUsernames
+  // Handle username field blur with basic format validation
+  const handleUsernameBlur = useCallback(async () => {
+    if (!username) return;
+
+    // Only do format validation on blur, not API validation
+    // API validation will happen during form submission
+    const validation = validateUsernameList(username);
+    
+    if (validation.errors.length > 0) {
+      setError(validation.errors.join('\n'));
+    } else {
+      setError(null);
+    }
+  }, [username]);
+
+  // Update handleSearch to validate before submission
   const handleSearch = useCallback(async () => {
     if (!username) {
       setError('Please enter a GitHub username');
@@ -1361,19 +1335,58 @@ function App() {
       return;
     }
 
-    const usernames = username.split(',')
-      .map(u => u.trim())
-      .filter(Boolean);
-
-    // Check username limit
-    if (usernames.length > 15) {
-      setError('Too many usernames. Please limit to 15 usernames at a time.');
+    // First, validate the username format and list
+    const validation = validateUsernameList(username);
+    
+    if (validation.errors.length > 0) {
+      setError(validation.errors.join('\n'));
       return;
     }
 
-    // Validate any new usernames before proceeding
-    const isValid = await validateNewUsernames(usernames);
-    if (!isValid) return;
+    const usernames = validation.usernames;
+
+    // Check if all usernames are already validated (skip API validation if so)
+    const needValidation = usernames.filter(u => !validatedUsernames.has(u) && !invalidUsernames.has(u));
+    const alreadyInvalid = usernames.filter(u => invalidUsernames.has(u));
+
+    // If any usernames are known to be invalid, show error and don't proceed
+    if (alreadyInvalid.length > 0) {
+      setError(`Invalid GitHub username${alreadyInvalid.length > 1 ? 's' : ''}: ${alreadyInvalid.join(', ')}`);
+      return;
+    }
+
+    // Only validate usernames that haven't been validated yet
+    if (needValidation.length > 0) {
+      setError('Validating usernames...');
+      
+      try {
+        const result: BatchValidationResult = await validateGitHubUsernames(needValidation, githubToken);
+        
+        // Update validated usernames
+        if (result.valid.length > 0) {
+          addToValidated(result.valid);
+        }
+        
+        // Update invalid usernames
+        if (result.invalid.length > 0) {
+          addToInvalid(result.invalid);
+          
+          // Show detailed error messages and don't proceed
+          const detailedErrors = result.invalid.map(username => {
+            const errorMsg = result.errors[username] || 'Invalid username';
+            return `${username}: ${errorMsg}`;
+          });
+          setError(`Validation failed:\n${detailedErrors.join('\n')}`);
+          return;
+        }
+      } catch (err) {
+        setError('Error validating usernames. Please try again.');
+        return;
+      }
+    }
+
+    // At this point, all usernames are valid, proceed with search
+    setError(null);
 
     // Check if we have cached results for the exact same search
     const currentParams = {
@@ -1394,7 +1407,6 @@ function App() {
     }
 
     setLoading(true);
-    setError(null);
     setLoadingProgress('Starting search...');
 
     try {
@@ -1461,9 +1473,11 @@ function App() {
     startDate,
     endDate,
     githubToken,
-    validateNewUsernames,
-    removeFromValidated,
+    validatedUsernames,
+    invalidUsernames,
+    addToValidated,
     addToInvalid,
+    removeFromValidated,
     setResults,
     setLastSearchParams,
     lastSearchParams
@@ -1743,6 +1757,7 @@ function App() {
             setGithubToken,
             handleSearch,
             handleUsernameBlur,
+            validateUsernameFormat,
             loading,
             loadingProgress,
             error

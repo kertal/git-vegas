@@ -44,6 +44,7 @@ export interface FormContextType {
   setGithubToken: (value: string) => void;
   handleSearch: () => void;
   handleUsernameBlur: () => Promise<void>;
+  validateUsernameFormat: (username: string) => void;
   loading: boolean;
   loadingProgress: string;
   error: string | null;

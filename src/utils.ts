@@ -51,10 +51,127 @@ export const updateUrlParams = (params: Record<string, string | null>): void => 
   window.history.replaceState({}, '', url.toString());
 };
 
+// GitHub username validation types
+export interface UsernameValidationResult {
+  isValid: boolean;
+  error?: string;
+  suggestion?: string;
+}
+
+export interface BatchValidationResult {
+  valid: string[];
+  invalid: string[];
+  errors: Record<string, string>;
+}
+
+// GitHub username format validation
+export const validateGitHubUsernameFormat = (username: string): UsernameValidationResult => {
+  if (!username || typeof username !== 'string') {
+    return { isValid: false, error: 'Username is required' };
+  }
+
+  const trimmed = username.trim();
+  
+  if (trimmed.length === 0) {
+    return { isValid: false, error: 'Username cannot be empty' };
+  }
+
+  if (trimmed.length < 1) {
+    return { isValid: false, error: 'Username must be at least 1 character long' };
+  }
+
+  if (trimmed.length > 39) {
+    return { isValid: false, error: 'Username cannot be longer than 39 characters' };
+  }
+
+  // Check specific GitHub username rules first
+  if (trimmed.startsWith('-')) {
+    return { isValid: false, error: 'Username cannot begin with a hyphen' };
+  }
+  
+  if (trimmed.endsWith('-')) {
+    return { isValid: false, error: 'Username cannot end with a hyphen' };
+  }
+  
+  if (trimmed.includes('--')) {
+    return { isValid: false, error: 'Username cannot contain consecutive hyphens' };
+  }
+
+  // Check for valid characters only (alphanumeric + single hyphens)
+  if (!/^[a-zA-Z0-9-]+$/.test(trimmed)) {
+    return { isValid: false, error: 'Username may only contain letters, numbers, and hyphens' };
+  }
+
+  // Check for reserved usernames
+  const reservedUsernames = [
+    'admin', 'api', 'www', 'ftp', 'mail', 'email', 'support', 'help',
+    'security', 'abuse', 'ghost', 'anonymous', 'null', 'undefined',
+    'root', 'system', 'user', 'users', 'app', 'application', 'applications'
+  ];
+  
+  if (reservedUsernames.includes(trimmed.toLowerCase())) {
+    return { isValid: false, error: 'This username is reserved and cannot be used' };
+  }
+
+  return { isValid: true };
+};
+
+// Validate multiple usernames with format checking
+export const validateUsernameList = (usernameString: string): { usernames: string[]; errors: string[] } => {
+  const errors: string[] = [];
+  
+  if (!usernameString || typeof usernameString !== 'string') {
+    return { usernames: [], errors: ['Please enter at least one username'] };
+  }
+
+  const usernames = usernameString
+    .split(',')
+    .map(u => u.trim())
+    .filter(Boolean);
+
+  if (usernames.length === 0) {
+    return { usernames: [], errors: ['Please enter at least one username'] };
+  }
+
+  if (usernames.length > 15) {
+    errors.push('Too many usernames. Please limit to 15 usernames at a time.');
+    return { usernames: usernames.slice(0, 15), errors };
+  }
+
+  // Check for duplicates
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  usernames.forEach(username => {
+    if (seen.has(username)) {
+      duplicates.add(username);
+    }
+    seen.add(username);
+  });
+
+  if (duplicates.size > 0) {
+    errors.push(`Duplicate usernames found: ${Array.from(duplicates).join(', ')}`);
+  }
+
+  // Validate each username format
+  usernames.forEach(username => {
+    const validation = validateGitHubUsernameFormat(username);
+    if (!validation.isValid) {
+      errors.push(`"${username}": ${validation.error}`);
+    }
+  });
+
+  // Remove duplicates from the final list
+  const uniqueUsernames = Array.from(new Set(usernames));
+
+  return { usernames: uniqueUsernames, errors };
+};
+
 // GitHub API validation function
-export const validateGitHubUsernames = async (usernames: string[], token?: string): Promise<{ valid: string[]; invalid: string[] }> => {
+export const validateGitHubUsernames = async (usernames: string[], token?: string): Promise<BatchValidationResult> => {
   const valid: string[] = [];
   const invalid: string[] = [];
+  const errors: Record<string, string> = {};
+  
   const headers: HeadersInit = {
     'Accept': 'application/vnd.github.v3+json'
   };
@@ -64,17 +181,33 @@ export const validateGitHubUsernames = async (usernames: string[], token?: strin
   }
 
   await Promise.all(usernames.map(async (username) => {
+    // First check format
+    const formatValidation = validateGitHubUsernameFormat(username);
+    if (!formatValidation.isValid) {
+      invalid.push(username);
+      errors[username] = formatValidation.error || 'Invalid username format';
+      return;
+    }
+
     try {
       const response = await fetch(`https://api.github.com/users/${username}`, { headers });
       if (response.ok) {
         valid.push(username);
+      } else if (response.status === 404) {
+        invalid.push(username);
+        errors[username] = 'Username not found on GitHub';
+      } else if (response.status === 403) {
+        invalid.push(username);
+        errors[username] = 'API rate limit exceeded. Please try again later or add a GitHub token.';
       } else {
         invalid.push(username);
+        errors[username] = `GitHub API error: ${response.status}`;
       }
-    } catch {
+    } catch (error) {
       invalid.push(username);
+      errors[username] = 'Network error while validating username';
     }
   }));
 
-  return { valid, invalid };
+  return { valid, invalid, errors };
 }; 
