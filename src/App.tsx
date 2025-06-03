@@ -8,11 +8,12 @@ import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
 import { GitHubItem, FormContextType, ResultsContextType } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { validateGitHubUsernames, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, type BatchValidationResult } from './utils';
+import { getParamFromUrl, validateUsernameList } from './utils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { countItemsMatchingFilter } from './utils/filterUtils';
-import { createAddToCache, createRemoveFromCache, categorizeUsernames, getInvalidUsernames } from './utils/usernameCache';
+import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import { extractAvailableLabels, applyFiltersAndSort, createDefaultFilter, ResultsFilter } from './utils/resultsUtils';
+import { performGitHubSearch, isCacheValid, createSearchCacheParams, GitHubSearchParams, UsernameCache } from './utils/githubSearch';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -139,153 +140,61 @@ function App() {
     }
   }, [username]);
 
-  // Update handleSearch to validate before submission
+  // Update handleSearch to use the new GitHub search utility
   const handleSearch = useCallback(async () => {
-    if (!username) {
-      setError('Please enter a GitHub username');
-      return;
-    }
-    
-    if (!startDate || !endDate) {
-      setError('Please select both start and end dates');
-      return;
-    }
-
-    if (!isValidDateString(startDate) || !isValidDateString(endDate)) {
-      setError('Invalid date format. Please use YYYY-MM-DD');
-      return;
-    }
-
-    // First, validate the username format and list
-    const validation = validateUsernameList(username);
-    
-    if (validation.errors.length > 0) {
-      setError(validation.errors.join('\n'));
-      return;
-    }
-
-    const usernames = validation.usernames;
-
-    // Use the new username cache utilities
-    const alreadyInvalidUsernames = getInvalidUsernames(usernames, invalidUsernames);
-    
-    // If any usernames are known to be invalid, show error and don't proceed
-    if (alreadyInvalidUsernames.length > 0) {
-      setError(`Invalid GitHub username${alreadyInvalidUsernames.length > 1 ? 's' : ''}: ${alreadyInvalidUsernames.join(', ')}`);
-      return;
-    }
-
-    // Check which usernames need validation
-    const { needValidation } = categorizeUsernames(usernames, validatedUsernames, invalidUsernames);
-
-    // Only validate usernames that haven't been validated yet
-    if (needValidation.length > 0) {
-      setError('Validating usernames...');
-      
-      try {
-        const result: BatchValidationResult = await validateGitHubUsernames(needValidation, githubToken);
-        
-        // Update validated usernames
-        if (result.valid.length > 0) {
-          addToValidated(result.valid);
-        }
-        
-        // Update invalid usernames
-        if (result.invalid.length > 0) {
-          addToInvalid(result.invalid);
-          
-          // Show detailed error messages and don't proceed
-          const detailedErrors = result.invalid.map(username => {
-            const errorMsg = result.errors[username] || 'Invalid username';
-            return `${username}: ${errorMsg}`;
-          });
-          setError(`Validation failed:\n${detailedErrors.join('\n')}`);
-          return;
-        }
-      } catch (err) {
-        setError('Error validating usernames. Please try again.');
-        return;
-      }
-    }
-
-    // At this point, all usernames are valid, proceed with search
-    setError(null);
-
-    // Check if we have cached results for the exact same search
-    const currentParams = {
+    // Create search parameters
+    const searchParams: GitHubSearchParams = {
       username,
       startDate,
       endDate,
-      timestamp: Date.now()
+      githubToken
     };
 
-    // If the search parameters are exactly the same and less than 1 hour old,
-    // use the cached results
-    if (lastSearchParams && 
-        lastSearchParams.username === username &&
-        lastSearchParams.startDate === startDate &&
-        lastSearchParams.endDate === endDate &&
-        Date.now() - lastSearchParams.timestamp < 3600000) { // 1 hour in milliseconds
-      return;
+    // Check if we have cached results for the exact same search
+    if (isCacheValid(searchParams, lastSearchParams)) {
+      return; // Use cached results
     }
 
+    // Create username cache object
+    const cache: UsernameCache = {
+      validatedUsernames,
+      invalidUsernames
+    };
+
+    // Create cache callbacks
+    const cacheCallbacks = {
+      addToValidated,
+      addToInvalid,
+      removeFromValidated
+    };
+
+    // Set up progress callback
+    const onProgress = (message: string) => {
+      setLoadingProgress(message);
+    };
+
     setLoading(true);
-    setLoadingProgress('Starting search...');
+    setError(null);
 
     try {
-      const allResults: GitHubItem[] = [];
-      
-      for (const user of usernames) {
-        setLoadingProgress(`Fetching data for ${user}...`);
-        
-        const headers: HeadersInit = {
-          'Accept': 'application/vnd.github.v3+json'
-        };
-        
-        if (githubToken) {
-          headers['Authorization'] = `token ${githubToken}`;
-        }
-        
-        const response = await fetch(
-          `https://api.github.com/search/issues?q=author:${user}+created:${startDate}..${endDate}&per_page=100`,
-          { headers }
-        );
-        
-        if (!response.ok) {
-          // If a previously validated username now fails, remove it from cache
-          if (response.status === 404 && validatedUsernames.has(user)) {
-            removeFromValidated(user);
-            addToInvalid([user]);
-          }
-          throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        allResults.push(...data.items);
-
-        // Update progress
-        setLoadingProgress(`Found ${data.items.length} items for ${user}`);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for visual feedback
-      }
+      const result = await performGitHubSearch(searchParams, cache, {
+        onProgress,
+        cacheCallbacks,
+        updateUrl: true,
+        requestDelay: 500
+      });
 
       // Update results and search parameters
-      setResults(allResults);
-      setLastSearchParams(currentParams);
+      setResults(result.items);
+      setLastSearchParams(createSearchCacheParams(searchParams));
       
       // Show success message briefly
-      setLoadingProgress(`Successfully loaded ${allResults.length} items!`);
+      setLoadingProgress(`Successfully loaded ${result.totalCount} items!`);
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Clear loading state
       setLoading(false);
       setLoadingProgress('');
-
-      // Update URL params
-      updateUrlParams({
-        username,
-        startDate,
-        endDate
-      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
       setLoading(false);
@@ -303,7 +212,10 @@ function App() {
     removeFromValidated,
     setResults,
     setLastSearchParams,
-    lastSearchParams
+    lastSearchParams,
+    setLoading,
+    setLoadingProgress,
+    setError
   ]);
 
   // Effect to populate form fields from URL parameters on mount (but don't auto-search)

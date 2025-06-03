@@ -111,7 +111,66 @@ Handles copying GitHub items to clipboard in both plain text and HTML formats wi
 
 ---
 
-### 5. [utils/index.ts](../utils.ts) - Core Utilities
+### 5. [githubSearch.ts](./githubSearch.ts) - GitHub API Search Operations
+
+Provides comprehensive GitHub search functionality with validation, caching, error handling, and progress tracking.
+
+#### Main Functions:
+- `validateSearchParams()` - Validates search parameters (dates, usernames)
+- `validateAndCacheUsernames()` - Validates usernames with cache management
+- `fetchUserItems()` - Fetches GitHub items for a single user
+- `performGitHubSearch()` - Main search function with full orchestration
+- `isCacheValid()` - Checks if cached results are still valid
+- `createSearchCacheParams()` - Creates cache parameters with timestamp
+
+#### Interfaces:
+- `GitHubSearchParams` - Search parameter configuration
+- `UsernameCache` - Username validation cache state
+- `GitHubSearchResult` - Search result with metadata
+- `CacheCallbacks` - Cache update callbacks
+- `GitHubSearchOptions` - Search options configuration
+
+#### Features:
+- **Input Validation:** Comprehensive parameter and date validation
+- **Username Validation:** Integrates with GitHub API for username verification
+- **Caching:** Smart caching with configurable expiry times
+- **Progress Tracking:** Real-time progress updates via callbacks
+- **Error Handling:** Detailed error messages with context
+- **Rate Limiting:** Configurable delays between API requests
+- **URL Management:** Optional URL parameter updates
+
+#### Usage:
+```typescript
+import { performGitHubSearch, GitHubSearchParams, UsernameCache } from './utils/githubSearch';
+
+const searchParams: GitHubSearchParams = {
+  username: 'octocat',
+  startDate: '2023-01-01',
+  endDate: '2023-12-31',
+  githubToken: 'your-token'
+};
+
+const cache: UsernameCache = {
+  validatedUsernames: new Set(['octocat']),
+  invalidUsernames: new Set()
+};
+
+const result = await performGitHubSearch(searchParams, cache, {
+  onProgress: (message) => console.log(message),
+  cacheCallbacks: { addToValidated, addToInvalid, removeFromValidated },
+  updateUrl: true,
+  requestDelay: 500
+});
+
+console.log(`Found ${result.totalCount} items`);
+```
+
+**Tests:** 35 test cases covering all functions, error scenarios, and edge cases  
+**Lines of Code:** ~310 lines
+
+---
+
+### 6. [utils/index.ts](../utils.ts) - Core Utilities
 
 Contains foundational utility functions used throughout the application.
 
@@ -132,31 +191,65 @@ Contains foundational utility functions used throughout the application.
 ### Before Refactoring:
 - **App.tsx size:** ~587 lines
 - **Inline helper functions:** ~100+ lines of helper logic
-- **Complex filtering logic:** ~50 lines of inline filtering
+- **Complex search logic:** ~150 lines of GitHub API handling
 - **Username cache operations:** ~30 lines of Set manipulation
-- **Limited testability** for helper functions
+- **Limited testability** for search functionality
 
 ### After Refactoring:
-- **App.tsx size:** ~535 lines (-52 lines, 9% reduction)
-- **Extracted utilities:** 5 modular utility files
-- **New test coverage:** 144 additional test cases
+- **App.tsx size:** ~485 lines (-102 lines, 17% reduction)
+- **Extracted utilities:** 6 modular utility files
+- **New test coverage:** 179 additional test cases
 - **Improved maintainability:** Separated concerns and cleaner code
 - **Enhanced reusability:** Utilities can be used across components
+
+### Major Migration: GitHub Search Logic
+
+The most significant improvement was migrating the complex `handleSearch` function (~150 lines) to a dedicated `githubSearch.ts` utility. This migration provides:
+
+#### Benefits:
+1. **Separation of Concerns:** GitHub API logic separated from UI state management
+2. **Comprehensive Testing:** 35 test cases covering all search scenarios
+3. **Error Handling:** Robust error handling with detailed context
+4. **Progress Tracking:** Clean callback-based progress updates
+5. **Caching Logic:** Extracted cache validation and management
+6. **Type Safety:** Full TypeScript interfaces for all parameters
+7. **Reusability:** Search logic can be used in other components
+
+#### Before (App.tsx handleSearch):
+```typescript
+// ~150 lines of inline search logic with:
+// - Parameter validation mixed with API calls
+// - Cache management mixed with UI updates
+// - Complex nested try-catch blocks
+// - Difficult to test in isolation
+```
+
+#### After (githubSearch.ts):
+```typescript
+// Clean, testable, modular functions:
+const result = await performGitHubSearch(params, cache, options);
+// - 35 comprehensive unit tests
+// - Separated validation, API calls, and caching
+// - Clear interfaces and error handling
+// - Easily testable and reusable
+```
 
 ### Code Quality Improvements:
 
 1. **Modularity:** Complex logic separated into focused utility modules
-2. **Testability:** 144 comprehensive unit tests covering edge cases
+2. **Testability:** 179 comprehensive unit tests covering edge cases
 3. **Type Safety:** Full TypeScript coverage with proper interfaces
 4. **Documentation:** Extensive JSDoc comments and usage examples
 5. **Error Handling:** Robust error handling in all utilities
-6. **Performance:** Optimized filtering and caching mechanisms
+6. **Performance:** Optimized filtering, caching, and API mechanisms
+7. **Maintainability:** Clean separation of concerns and single responsibility
 
 ### Maintained Functionality:
 - ✅ All existing features preserved
 - ✅ No breaking changes to user experience
 - ✅ Backward compatibility maintained
-- ✅ Performance improvements in filtering
+- ✅ Performance improvements in search and filtering
+- ✅ Enhanced error handling and user feedback
 
 ## Testing Summary
 
@@ -165,8 +258,17 @@ Total test coverage across all utility modules:
 - **usernameCache:** 21 tests  
 - **resultsUtils:** 52 tests
 - **clipboard:** 18 tests
+- **githubSearch:** 35 tests (NEW)
 - **utils:** 48 tests
-- **Total:** 170 new utility tests
+- **Total:** 205 utility tests
+
+### New GitHub Search Tests Include:
+- Parameter validation (6 tests)
+- Username validation and caching (7 tests)
+- GitHub API operations (7 tests)
+- Cache validation logic (5 tests)
+- Complete search orchestration (8 tests)
+- Utility functions (2 tests)
 
 All tests run in parallel and provide comprehensive coverage including:
 - Happy path scenarios
@@ -174,12 +276,14 @@ All tests run in parallel and provide comprehensive coverage including:
 - Type safety and input validation
 - Performance considerations
 - Browser compatibility
+- API error handling
+- Cache expiry scenarios
 
 ## Usage in Components
 
 These utilities are primarily used in:
-- **App.tsx:** Main application logic and state management
+- **App.tsx:** Main application logic, search orchestration, and state management
 - **ResultsList.tsx:** Results filtering and display
 - **SearchForm.tsx:** Username validation and form handling
 
-The refactoring maintains a clean separation of concerns while improving code organization and testability. 
+The refactoring maintains a clean separation of concerns while dramatically improving code organization, testability, and maintainability. The migration of the GitHub search logic represents a significant improvement in code quality and developer experience. 
