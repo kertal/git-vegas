@@ -162,12 +162,12 @@ describe('generateHtmlFormat', () => {
     const result = generateHtmlFormat(mockGitHubItems, true);
     
     // Should contain HTML structure
-    expect(result).toContain('<div style="font-family:');
-    expect(result).toContain('<ul style="list-style-type: none');
-    expect(result).toContain('<li style="margin: 4px 0;">');
+    expect(result).toContain('<div>');
+    expect(result).toContain('<ul>');
+    expect(result).toContain('<li>');
     
-    // Should contain links with proper styling
-    expect(result).toContain('<a href="https://github.com/user/repo/issues/1" style="color: #0969da; text-decoration: none;">Fix critical bug in authentication</a>');
+    // Should contain links
+    expect(result).toContain('<a href="https://github.com/user/repo/issues/1">Fix critical bug in authentication</a>');
     
     // Should contain status with proper colors
     expect(result).toContain('color: #1a7f37'); // Open status color
@@ -184,7 +184,7 @@ describe('generateHtmlFormat', () => {
     const result = generateHtmlFormat(mockGitHubItems, false);
     
     // Should contain HTML structure
-    expect(result).toContain('<div style="font-family:');
+    expect(result).toContain('<div>');
     expect(result).toContain('<div style="margin-bottom: 16px;">');
     
     // Should contain numbered items with links
@@ -211,13 +211,14 @@ describe('generateHtmlFormat', () => {
 
   it('should handle empty items array', () => {
     const result = generateHtmlFormat([], true);
-    expect(result).toContain('<div style="font-family:');
-    expect(result).toContain('<ul style="list-style-type: none');
+    expect(result).toContain('<div>');
+    expect(result).toContain('<ul>');
     expect(result).toContain('</ul>');
     expect(result).toContain('</div>');
     
     const detailedResult = generateHtmlFormat([], false);
-    expect(detailedResult).toBe('<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Helvetica, Arial, sans-serif;">\n</div>');
+    expect(detailedResult).toContain('<div>');
+    expect(detailedResult).toContain('</div>');
   });
 
   it('should handle items without labels', () => {

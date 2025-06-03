@@ -73,22 +73,22 @@ export const generateHtmlFormat = (
         item.state === 'closed' ? '#cf222e' : '#1a7f37';
       
       return `
-    <li style="margin: 4px 0;">
-      <a href="${item.html_url}" style="color: #0969da; text-decoration: none;">${item.title}</a>
-      <span style="color: ${statusColor}; margin-left: 8px;">(${status})</span>
+    <li>
+      <a href="${item.html_url}">${item.title}</a>
+      <span style="color: ${statusColor};">(${status})</span>
     </li>`;
     }).join('');
 
     return `
-<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5;">
-  <ul style="list-style-type: none; padding: 0; margin: 0;">
+<div>
+  <ul>
     ${listItems}
   </ul>
 </div>`;
   }
 
   // Detailed format
-  let htmlContent = '<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Helvetica, Arial, sans-serif;">\n';
+  let htmlContent = '<div>\n';
 
   items.forEach((item, index) => {
     htmlContent += `<div style="margin-bottom: 16px;">\n`;
