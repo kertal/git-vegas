@@ -8,8 +8,9 @@ import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
 import { GitHubItem, FormContextType, ResultsContextType } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { validateGitHubUsernames, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, getContrastColor, type BatchValidationResult } from './utils';
+import { validateGitHubUsernames, isValidDateString, getParamFromUrl, updateUrlParams, validateUsernameList, type BatchValidationResult } from './utils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
+import { countItemsMatchingFilter } from './utils/filterUtils';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -41,48 +42,6 @@ export const buttonStyles = {
   alignItems: 'center',
   justifyContent: 'center',
   gap: 2
-};
-
-// Update countItemsMatchingFilter to remove dateRange parameter
-export const countItemsMatchingFilter = (
-  items: GitHubItem[], 
-  filterType: string, 
-  filterValue: string, 
-  excludedLabels: string[]
-): number => {
-  switch (filterType) {
-    case 'type':
-      return items.filter(item => 
-        filterValue === 'all' ? true :
-        filterValue === 'pr' ? !!item.pull_request :
-        !item.pull_request
-      ).length;
-    case 'status':
-      if (filterValue === 'merged') {
-        return items.filter(item => 
-          item.pull_request && (item.pull_request.merged_at || item.merged)
-        ).length;
-      }
-      return items.filter(item => {
-        if (filterValue === 'all') return true;
-        if (item.pull_request) {
-          if (item.pull_request.merged_at || item.merged) return false;
-          return item.state === filterValue;
-        }
-        return item.state === filterValue;
-      }).length;
-    case 'label':
-      return items.filter(item => 
-        item.labels?.some(l => l.name === filterValue) &&
-        !item.labels?.some(l => excludedLabels.includes(l.name))
-      ).length;
-    case 'repo':
-      return items.filter(item => 
-        item.repository_url?.replace('https://api.github.com/repos/', '') === filterValue
-      ).length;
-    default:
-      return 0;
-  }
 };
 
 // Add the main App component

@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
+import { FilterType, FilterValue } from '../utils/filterUtils';
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -39,8 +40,8 @@ interface ResultsListProps {
   useResultsContext: () => UseResultsContextHookType;
   countItemsMatchingFilter: (
     items: GitHubItem[], 
-    filterType: string, 
-    filterValue: string, 
+    filterType: FilterType, 
+    filterValue: FilterValue, 
     excludedLabels: string[]
   ) => number;
   buttonStyles: any;
