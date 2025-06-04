@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo } from 'react';
+import React, { memo, useMemo } from 'react';
 import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox, ActionMenu, ActionList } from '@primer/react';
 import { GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
 import { FilterType, FilterValue } from '../utils/filterUtils';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -87,8 +88,8 @@ const ResultsList = memo(function ResultsList({
     toggleItemSelection
   } = useResultsContext();
 
-  // Add state for filter collapse
-  const [areFiltersCollapsed, setAreFiltersCollapsed] = useState(false);
+  // Add state for filter collapse with localStorage persistence
+  const [areFiltersCollapsed, setAreFiltersCollapsed] = useLocalStorage('github-filters-collapsed', false);
 
   // Helper to check if any filters are active
   const hasActiveFilters = filter !== 'all' || 

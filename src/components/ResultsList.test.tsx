@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThemeProvider } from '@primer/react';
 import ResultsList from './ResultsList';
 import { GitHubItem } from '../types';
@@ -356,5 +356,60 @@ describe('ResultsList Selection Tests', () => {
     expect(copyToClipboardSpy).toHaveBeenCalledWith('detailed');
 
     // The actual export in App.tsx will use filteredItems, which contains only the visible items
+  });
+});
+
+describe('ResultsList Filter Collapse Tests', () => {
+  beforeEach(() => {
+    // Mock localStorage
+    const localStorageMock = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+    };
+    Object.defineProperty(window, 'localStorage', {
+      value: localStorageMock,
+      writable: true
+    });
+  });
+
+  it('should persist filter collapse state in localStorage', () => {
+    // Initially no stored value
+    (window.localStorage.getItem as jest.Mock).mockReturnValue(null);
+
+    render(
+      <ResultsList
+        useResultsContext={mockUseResultsContext}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the hide/show button
+    const toggleButton = screen.getByText('Hide');
+    fireEvent.click(toggleButton);
+
+    // Verify localStorage was called with the correct key and value
+    expect(window.localStorage.setItem).toHaveBeenCalledWith(
+      'github-filters-collapsed',
+      'true'
+    );
+  });
+
+  it('should restore filter collapse state from localStorage', () => {
+    // Set initial stored value to collapsed
+    (window.localStorage.getItem as jest.Mock).mockReturnValue('true');
+
+    render(
+      <ResultsList
+        useResultsContext={mockUseResultsContext}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Should show "Show" button since filters are collapsed
+    expect(screen.getByText('Show')).toBeDefined();
   });
 }); 
