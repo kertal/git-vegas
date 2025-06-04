@@ -71,5 +71,5 @@ export default defineConfig({
       }
     })
   ],
-  // base: '/git-vegas/', // Commented out for local testing - uncomment for GitHub Pages deployment
+  base: '/git-vegas/', // Correct repository name for GitHub Pages deployment
 })
