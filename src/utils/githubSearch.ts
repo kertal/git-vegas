@@ -77,6 +77,13 @@ export interface GitHubSearchOptions {
 }
 
 /**
+ * Checks if the browser is online
+ */
+export const isOnline = (): boolean => {
+  return navigator.onLine;
+};
+
+/**
  * Validates search parameters
  * 
  * @param params - Search parameters to validate
@@ -103,6 +110,11 @@ export const validateSearchParams = (params: GitHubSearchParams): { valid: boole
 
   if (params.startDate && params.endDate && new Date(params.startDate) > new Date(params.endDate)) {
     errors.push('Start date must be before end date');
+  }
+
+  // Check if offline
+  if (!isOnline()) {
+    errors.push('You are currently offline. Please check your internet connection and try again.');
   }
 
   return {

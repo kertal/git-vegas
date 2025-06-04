@@ -6,6 +6,7 @@ import { SlotMachineLoader } from './components/SlotMachineLoader';
 import SearchForm from './components/SearchForm';
 import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
+import { OfflineBanner } from './components/OfflineBanner';
 import { GitHubItem, FormContextType, ResultsContextType } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { getParamFromUrl, validateUsernameList } from './utils';
@@ -287,6 +288,7 @@ function App() {
       bg: 'canvas.default',
       color: 'fg.default'
     }}>
+      <OfflineBanner />
       <PageLayout sx={{ '--spacing': '0 !important' }}>
         <PageLayout.Header sx={{ p: 0 }}>
           <Box sx={{

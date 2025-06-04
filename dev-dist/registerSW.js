@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/git-vegas/dev-sw.js?dev-sw', { scope: '/git-vegas/', type: 'classic' })
