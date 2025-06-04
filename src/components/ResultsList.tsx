@@ -1,6 +1,6 @@
-import React, { memo, useMemo } from 'react';
-import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox, ActionMenu, ActionList } from '@primer/react';
-import { GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon } from '@primer/octicons-react';
+import React, { memo, useMemo, useState } from 'react';
+import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox, ActionMenu, ActionList, Dialog, IconButton } from '@primer/react';
+import { GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getContrastColor } from '../utils';
@@ -52,6 +52,177 @@ interface ResultsListProps {
   buttonStyles: any;
 }
 
+// Add new interface for the description dialog
+interface DescriptionDialogProps {
+  item: GitHubItem | null;
+  onClose: () => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  hasPrevious: boolean;
+  hasNext: boolean;
+}
+
+const DescriptionDialog = memo(function DescriptionDialog({
+  item,
+  onClose,
+  onPrevious,
+  onNext,
+  hasPrevious,
+  hasNext
+}: DescriptionDialogProps) {
+  if (!item) return null;
+
+  // Add keyboard navigation
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && hasPrevious) {
+        onPrevious();
+      } else if (e.key === 'ArrowRight' && hasNext) {
+        onNext();
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onPrevious, onNext, onClose, hasPrevious, hasNext]);
+
+  return (
+    <Dialog
+      onClose={onClose}
+      sx={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        bottom: 0,
+        width: ['100%', '100%', '600px'],
+        maxWidth: '800px',
+        height: '100vh',
+        margin: 0,
+        borderRadius: 0,
+        borderLeft: '1px solid',
+        borderColor: 'border.default'
+      }}
+      role="dialog"
+    >
+      <Dialog.Header>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+          {item.pull_request ? (
+            item.pull_request.merged_at ? (
+              <Box sx={{ color: 'done.fg' }}><GitMergeIcon size={16} /></Box>
+            ) : item.state === 'closed' ? (
+              <Box sx={{ color: 'closed.fg' }}><GitPullRequestIcon size={16} /></Box>
+            ) : (
+              <Box sx={{ color: 'open.fg' }}><GitPullRequestIcon size={16} /></Box>
+            )
+          ) : (
+            <Box sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}>
+              <IssueOpenedIcon size={16} />
+            </Box>
+          )}
+          <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>{item.title}</Text>
+        </Box>
+      </Dialog.Header>
+
+      <Box sx={{ 
+        p: 3, 
+        height: 'calc(100vh - 120px)', 
+        overflow: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 3
+      }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', fontSize: 1, color: 'fg.muted' }}>
+          <Avatar src={item.user.avatar_url} size={20} />
+          <Link href={item.user.html_url} target="_blank" rel="noopener noreferrer">
+            {item.user.login}
+          </Link>
+          <Text>•</Text>
+          <Link href={item.html_url} target="_blank" rel="noopener noreferrer">
+            {new URL(item.html_url).pathname}
+          </Link>
+        </Box>
+
+        <Box sx={{ 
+          bg: 'canvas.default',
+          p: 3,
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'border.default',
+          fontSize: 1
+        }}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              a: ({node, ...props}) => (
+                <Link 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  sx={{color: 'accent.fg'}}
+                  {...props} 
+                />
+              ),
+              pre: ({node, ...props}) => (
+                <Box 
+                  as="pre"
+                  sx={{
+                    bg: 'canvas.subtle',
+                    p: 2,
+                    borderRadius: 1,
+                    overflowX: 'auto',
+                    fontSize: 0,
+                    border: '1px solid',
+                    borderColor: 'border.muted'
+                  }}
+                  {...props}
+                />
+              ),
+              code: ({inline, ...props}: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) => (
+                inline
+                  ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
+                  : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
+              ),
+              img: ({node, ...props}) => (
+                <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
+              )
+            }}
+          >
+            {item.body || '*No description provided*'}
+          </ReactMarkdown>
+        </Box>
+      </Box>
+
+      <Box sx={{
+        position: 'sticky',
+        bottom: 0,
+        p: 3,
+        borderTop: '1px solid',
+        borderColor: 'border.default',
+        bg: 'canvas.default',
+        display: 'flex',
+        gap: 2,
+        justifyContent: 'space-between'
+      }}>
+        <IconButton
+          icon={ChevronLeftIcon}
+          aria-label="Previous item"
+          onClick={onPrevious}
+          disabled={!hasPrevious}
+          sx={{ color: hasPrevious ? 'fg.default' : 'fg.muted' }}
+        />
+        <IconButton
+          icon={ChevronRightIcon}
+          aria-label="Next item"
+          onClick={onNext}
+          disabled={!hasNext}
+          sx={{ color: hasNext ? 'fg.default' : 'fg.muted' }}
+        />
+      </Box>
+    </Dialog>
+  );
+});
+
 const ResultsList = memo(function ResultsList({
   useResultsContext,
   countItemsMatchingFilter,
@@ -90,6 +261,9 @@ const ResultsList = memo(function ResultsList({
 
   // Add state for filter collapse with localStorage persistence
   const [areFiltersCollapsed, setAreFiltersCollapsed] = useLocalStorage('github-filters-collapsed', false);
+
+  // Add state for the description dialog
+  const [selectedItemForDialog, setSelectedItemForDialog] = useState<GitHubItem | null>(null);
 
   // Helper to check if any filters are active
   const hasActiveFilters = filter !== 'all' || 
@@ -140,6 +314,28 @@ const ResultsList = memo(function ResultsList({
       return labelMatch && excludeMatch && repoMatch;
     });
   }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
+
+  // Add navigation logic
+  const handlePreviousItem = () => {
+    if (!selectedItemForDialog) return;
+    const currentIndex = filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
+    if (currentIndex > 0) {
+      setSelectedItemForDialog(filteredResults[currentIndex - 1]);
+    }
+  };
+
+  const handleNextItem = () => {
+    if (!selectedItemForDialog) return;
+    const currentIndex = filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
+    if (currentIndex < filteredResults.length - 1) {
+      setSelectedItemForDialog(filteredResults[currentIndex + 1]);
+    }
+  };
+
+  const getCurrentItemIndex = () => {
+    if (!selectedItemForDialog) return -1;
+    return filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
+  };
 
   return (
     <Box>
@@ -520,10 +716,32 @@ const ResultsList = memo(function ResultsList({
                     gap: 2
                   }}
                 >
-                  <Checkbox
-                    checked={selectedItems.has(item.id)}
-                    onChange={() => toggleItemSelection(item.id)}
-                  />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Checkbox
+                      checked={selectedItems.has(item.id)}
+                      onChange={() => toggleItemSelection(item.id)}
+                    />
+                    {item.body && (
+                      <IconButton
+                        icon={EyeIcon}
+                        aria-label="Show description"
+                        onClick={() => setSelectedItemForDialog(item)}
+                        sx={{ 
+                          color: 'fg.subtle',
+                          opacity: 0.6,
+                          padding: '4px',
+                          ':hover': { 
+                            color: 'fg.default',
+                            opacity: 1,
+                            bg: 'transparent'
+                          },
+                          ':active': {
+                            bg: 'transparent'
+                          }
+                        }}
+                      />
+                    )}
+                  </Box>
                   <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={20} />
                   <Link
                     href={item.html_url}
@@ -622,10 +840,32 @@ const ResultsList = memo(function ResultsList({
                 }}>
                   {/* Project info section */}
                   <Stack direction="horizontal" alignItems="center" sx={{ mb: 2, gap: 2 }}>
-                    <Checkbox
-                      checked={selectedItems.has(item.id)}
-                      onChange={() => toggleItemSelection(item.id)}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Checkbox
+                        checked={selectedItems.has(item.id)}
+                        onChange={() => toggleItemSelection(item.id)}
+                      />
+                      {item.body && (
+                        <IconButton
+                          icon={EyeIcon}
+                          aria-label="Show description"
+                          onClick={() => setSelectedItemForDialog(item)}
+                          sx={{ 
+                            color: 'fg.subtle',
+                            opacity: 0.6,
+                            padding: '4px',
+                            ':hover': { 
+                              color: 'fg.default',
+                              opacity: 1,
+                              bg: 'transparent'
+                            },
+                            ':active': {
+                              bg: 'transparent'
+                            }
+                          }}
+                        />
+                      )}
+                    </Box>
                     <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={24} />
                     <Link
                       href={item.user.html_url}
@@ -744,116 +984,24 @@ const ResultsList = memo(function ResultsList({
                         </Text>
                       )}
                     </Stack>
-                    {item.body && (
-                      <Button 
-                        size="small" 
-                        variant={descriptionVisible[item.id] ? "primary" : "default"}
-                        onClick={() => toggleDescriptionVisibility(item.id)}
-                        sx={{ ml: 'auto', ...buttonStyles }}
-                      >
-                        {descriptionVisible[item.id] ? 'Hide description' : 'Show description'}
-                      </Button>
-                    )}
                   </Stack>
-                  
-                  {/* Description shown only on demand */}
-                  {item.body && descriptionVisible[item.id] && (
-                    <Box sx={{
-                      maxHeight: expanded[item.id] ? '500px' : '200px',
-                      overflow: 'auto',
-                      position: 'relative',
-                      mt: 2,
-                      bg: 'canvas.default',
-                      p: 2,
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'border.muted',
-                      fontSize: 1,
-                      color: 'fg.muted',
-                    }}>
-                      <Box sx={{
-                        position: 'relative',
-                        '& pre': {
-                          maxWidth: '100%',
-                          overflow: 'auto'
-                        }
-                      }}>
-                        <ReactMarkdown 
-                          remarkPlugins={[remarkGfm]}
-                          components={{
-                            a: ({node, ...props}) => (
-                              <Link 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                sx={{color: 'accent.fg'}}
-                                {...props} 
-                              />
-                            ),
-                            pre: ({node, ...props}) => (
-                              <Box 
-                                as="pre"
-                                sx={{
-                                  bg: 'canvas.subtle',
-                                  p: 2,
-                                  borderRadius: 1,
-                                  overflowX: 'auto',
-                                  fontSize: 0,
-                                  border: '1px solid',
-                                  borderColor: 'border.muted'
-                                }}
-                                {...props}
-                              />
-                            ),
-                            code: ({inline, ...props}: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) => (
-                              inline
-                                ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
-                                : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
-                            ),
-                            img: ({node, ...props}) => (
-                              <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
-                            )
-                          }}
-                        >
-                          {item.body}
-                        </ReactMarkdown>
-                      </Box>
-                      {!expanded[item.id] && item.body.length > 400 && (
-                        <Box sx={{
-                          position: 'sticky',
-                          bottom: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '3em',
-                          background: 'linear-gradient(to bottom, transparent, var(--color-canvas-default) 90%)',
-                          pointerEvents: 'none'
-                        }} />
-                      )}
-                      
-                      {item.body.length > 400 && (
-                        <Button 
-                          size="small"
-                          variant="invisible"
-                          onClick={() => toggleExpand(item.id)}
-                          sx={{ 
-                            mt: 1,
-                            position: 'sticky',
-                            bottom: 0,
-                            bg: 'canvas.default',
-                            width: '100%',
-                            textAlign: 'center',
-                            py: 2
-                          }}
-                        >
-                          {expanded[item.id] ? 'Show less' : 'Show more'}
-                        </Button>
-                      )}
-                    </Box>
-                  )}
                 </Box>
               ))}
             </Stack>
           )}
         </Box>
+      )}
+
+      {/* Description Dialog */}
+      {selectedItemForDialog && (
+        <DescriptionDialog
+          item={selectedItemForDialog}
+          onClose={() => setSelectedItemForDialog(null)}
+          onPrevious={handlePreviousItem}
+          onNext={handleNextItem}
+          hasPrevious={getCurrentItemIndex() > 0}
+          hasNext={getCurrentItemIndex() < filteredResults.length - 1}
+        />
       )}
     </Box>
   );
