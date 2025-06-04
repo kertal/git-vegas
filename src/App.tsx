@@ -258,12 +258,11 @@ function App() {
     const defaultFilter = createDefaultFilter();
     setFilter(defaultFilter.filter);
     setStatusFilter(defaultFilter.statusFilter);
-    setSortOrder(defaultFilter.sortOrder);
     setLabelFilter(defaultFilter.labelFilter);
     setExcludedLabels(defaultFilter.excludedLabels);
     setSearchText(defaultFilter.searchText);
     setRepoFilters(defaultFilter.repoFilters);
-  }, [setFilter, setStatusFilter, setSortOrder, setLabelFilter, setExcludedLabels, setSearchText, setRepoFilters]);
+  }, [setFilter, setStatusFilter, setLabelFilter, setExcludedLabels, setSearchText, setRepoFilters]);
 
   // Clipboard handler
   const copyResultsToClipboard = useCallback(async () => {

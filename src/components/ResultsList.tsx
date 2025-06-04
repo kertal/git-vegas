@@ -85,7 +85,6 @@ const ResultsList = memo(function ResultsList({
   // Helper to check if any filters are active
   const hasActiveFilters = filter !== 'all' || 
     statusFilter !== 'all' || 
-    sortOrder !== 'updated' || 
     labelFilter !== '' || 
     searchText !== '' || 
     repoFilters.length > 0 ||
