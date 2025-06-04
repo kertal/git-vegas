@@ -407,26 +407,49 @@ const ResultsList = memo(function ResultsList({
                 </Flash>
               )}
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
-              <ButtonGroup>
-                <Button
-                  size="small"
-                  variant={!isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(false)}
-                  sx={buttonStyles}
-                >
-                  Detailed
-                </Button>
-                <Button
-                  size="small"
-                  variant={isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(true)}
-                  sx={buttonStyles}
-                >
-                  Compact
-                </Button>
-              </ButtonGroup>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Sort by:</Text>
+                <ButtonGroup>
+                  <Button 
+                    variant={sortOrder === 'updated' ? 'primary' : 'default'} 
+                    onClick={() => setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    Last Updated
+                  </Button>
+                  <Button 
+                    variant={sortOrder === 'created' ? 'primary' : 'default'} 
+                    onClick={() => setSortOrder(sortOrder === 'created' ? 'updated' : 'created')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    Creation Date
+                  </Button>
+                </ButtonGroup>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
+                <ButtonGroup>
+                  <Button
+                    size="small"
+                    variant={!isCompactView ? 'primary' : 'default'}
+                    onClick={() => setIsCompactView(false)}
+                    sx={buttonStyles}
+                  >
+                    Detailed
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={isCompactView ? 'primary' : 'default'}
+                    onClick={() => setIsCompactView(true)}
+                    sx={buttonStyles}
+                  >
+                    Compact
+                  </Button>
+                </ButtonGroup>
+              </Box>
             </Box>
           </Box>
 
@@ -441,28 +464,6 @@ const ResultsList = memo(function ResultsList({
             border: '1px solid',
             borderColor: 'border.default'
           }}>
-            <Text sx={{ fontSize: 1, color: 'fg.muted', mr: 1 }}>Sort by:</Text>
-            <ButtonGroup>
-              <Button 
-                variant={sortOrder === 'updated' ? 'primary' : 'default'} 
-                onClick={() => setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')}
-                size="small"
-                sx={buttonStyles}
-              >
-                Last Updated
-              </Button>
-              <Button 
-                variant={sortOrder === 'created' ? 'primary' : 'default'} 
-                onClick={() => setSortOrder(sortOrder === 'created' ? 'updated' : 'created')}
-                size="small"
-                sx={buttonStyles}
-              >
-                Creation Date
-              </Button>
-            </ButtonGroup>
-
-            <Box sx={{ width: 1, borderRight: '1px solid', borderColor: 'border.muted' }} />
-
             <Button 
               onClick={() => copyResultsToClipboard()}
               variant="default"
