@@ -68,7 +68,7 @@ export interface ResultsContextType {
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
-  copyResultsToClipboard: (format?: 'markdown' | 'html') => void;
+  copyResultsToClipboard: (format: 'detailed' | 'compact') => void;
   descriptionVisible: { [id: number]: boolean };
   expanded: { [id: number]: boolean };
   clipboardMessage: string | null;

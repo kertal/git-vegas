@@ -1,5 +1,5 @@
 import React, { memo, useState, useMemo } from 'react';
-import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox } from '@primer/react';
+import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox, ActionMenu, ActionList } from '@primer/react';
 import { GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,17 +26,17 @@ interface UseResultsContextHookType {
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
-  copyResultsToClipboard: () => void;
+  copyResultsToClipboard: (format: 'detailed' | 'compact') => void;
   descriptionVisible: {[id: number]: boolean};
   expanded: {[id: number]: boolean};
   clipboardMessage: string | null;
   clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: (compact: boolean) => void;
-  selectedItems: Set<string>;
+  selectedItems: Set<number>;
   selectAllItems: () => void;
   clearSelection: () => void;
-  toggleItemSelection: (id: string) => void;
+  toggleItemSelection: (id: number) => void;
 }
 
 // Props interface
@@ -471,18 +471,36 @@ const ResultsList = memo(function ResultsList({
             border: '1px solid',
             borderColor: 'border.default'
           }}>
-            <Button 
-              onClick={() => copyResultsToClipboard()}
-              variant="default"
-              size="small"
-              sx={{ 
-                ...buttonStyles,
-                fontSize: 1,
-                borderColor: 'border.default'
-              }}
-            >
-              Export to Clipboard {selectedItems.size > 0 ? `(${selectedItems.size} selected)` : '(all)'}
-            </Button>
+            <ActionMenu>
+              <ActionMenu.Button 
+                variant="default"
+                sx={{ 
+                  ...buttonStyles,
+                  fontSize: 1,
+                  borderColor: 'border.default'
+                }}
+              >
+                Export to Clipboard {(() => {
+                  const visibleSelectedCount = filteredResults.filter(item => selectedItems.has(item.id)).length;
+                  return visibleSelectedCount > 0 ? `(${visibleSelectedCount} selected)` : '(all)';
+                })()}
+              </ActionMenu.Button>
+
+              <ActionMenu.Overlay>
+                <ActionList>
+                  <ActionList.Item 
+                    onSelect={() => copyResultsToClipboard('detailed')}
+                  >
+                    Detailed Format
+                  </ActionList.Item>
+                  <ActionList.Item 
+                    onSelect={() => copyResultsToClipboard('compact')}
+                  >
+                    Compact Format
+                  </ActionList.Item>
+                </ActionList>
+              </ActionMenu.Overlay>
+            </ActionMenu>
           </Box>
 
           {/* Results List */}
@@ -502,8 +520,8 @@ const ResultsList = memo(function ResultsList({
                   }}
                 >
                   <Checkbox
-                    checked={selectedItems.has(String(item.id))}
-                    onChange={() => toggleItemSelection(String(item.id))}
+                    checked={selectedItems.has(item.id)}
+                    onChange={() => toggleItemSelection(item.id)}
                   />
                   <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={20} />
                   <Link
@@ -604,8 +622,8 @@ const ResultsList = memo(function ResultsList({
                   {/* Project info section */}
                   <Stack direction="horizontal" alignItems="center" sx={{ mb: 2, gap: 2 }}>
                     <Checkbox
-                      checked={selectedItems.has(String(item.id))}
-                      onChange={() => toggleItemSelection(String(item.id))}
+                      checked={selectedItems.has(item.id)}
+                      onChange={() => toggleItemSelection(item.id)}
                     />
                     <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={24} />
                     <Link

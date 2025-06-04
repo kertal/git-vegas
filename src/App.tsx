@@ -266,13 +266,14 @@ function App() {
   }, [setFilter, setStatusFilter, setLabelFilter, setExcludedLabels, setSearchText, setRepoFilters]);
 
   // Clipboard handler
-  const copyResultsToClipboard = useCallback(async () => {
-    const itemsToCopy = selectedItems.size > 0 
+  const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
+    // Only consider items that are both selected and in the filtered results
+    const visibleSelectedItems = selectedItems.size > 0 
       ? filteredResults.filter(item => selectedItems.has(item.id))
       : filteredResults;
 
-    const result = await copyToClipboard(itemsToCopy, {
-      isCompactView,
+    const result = await copyToClipboard(visibleSelectedItems, {
+      isCompactView: format === 'compact',
       onSuccess: (message: string) => {
         setClipboardMessage(message);
         setTimeout(() => setClipboardMessage(null), 3000);
@@ -284,7 +285,7 @@ function App() {
     });
     
     return result;
-  }, [filteredResults, isCompactView, selectedItems]);
+  }, [filteredResults, selectedItems]);
 
   // Selection handlers
   const toggleItemSelection = useCallback((id: number) => {

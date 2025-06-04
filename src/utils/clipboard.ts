@@ -49,6 +49,9 @@ export const generatePlainTextFormat = (
     if (item.labels?.length) {
       plainText += `   Labels: ${item.labels.map(l => l.name).join(', ')}\n`;
     }
+    if (item.body) {
+      plainText += `   Description:\n${item.body.split('\n').map(line => `     ${line}`).join('\n')}\n`;
+    }
     plainText += '\n';
   });
 
@@ -122,6 +125,18 @@ export const generateHtmlFormat = (
         ">${l.name}</span>`;
       }).join('');
       htmlContent += `</div>\n`;
+    }
+
+    if (item.body) {
+      htmlContent += `    <div style="margin-top: 8px;">Description:</div>\n`;
+      htmlContent += `    <div style="
+        margin-left: 8px;
+        padding: 8px;
+        background-color: #f6f8fa;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        font-family: monospace;
+      ">${item.body}</div>\n`;
     }
     
     htmlContent += `  </div>\n`;

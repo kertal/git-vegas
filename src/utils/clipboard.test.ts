@@ -401,6 +401,33 @@ describe('copyResultsToClipboard', () => {
     expect(clipboardCall['text/html']).toBeDefined();
   });
 
+  it('should correctly format selected items', async () => {
+    mockClipboard.write.mockResolvedValue(undefined);
+    
+    // Create a subset of items to test selection
+    const selectedItems = [mockGitHubItems[0], mockGitHubItems[2]];
+    const options: ClipboardOptions = { isCompactView: false };
+    
+    await copyResultsToClipboard(selectedItems, options);
+    
+    const clipboardCall = MockClipboardItem.mock.calls[0][0];
+    const plainTextContent = clipboardCall['text/plain'].content[0];
+    const htmlContent = clipboardCall['text/html'].content[0];
+    
+    // Verify only selected items are included
+    expect(plainTextContent).toContain('Fix critical bug');
+    expect(plainTextContent).toContain('Update documentation');
+    expect(plainTextContent).not.toContain('Add new feature');
+    
+    expect(htmlContent).toContain('Fix critical bug');
+    expect(htmlContent).toContain('Update documentation');
+    expect(htmlContent).not.toContain('Add new feature');
+    
+    // Verify items are properly numbered
+    expect(plainTextContent).toMatch(/1\. Fix critical bug/);
+    expect(plainTextContent).toMatch(/2\. Update documentation/);
+  });
+
   it('should use correct format based on isCompactView setting', async () => {
     mockClipboard.write.mockResolvedValue(undefined);
     
