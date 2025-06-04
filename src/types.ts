@@ -75,6 +75,10 @@ export interface ResultsContextType {
   clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedItems: Set<number>;
+  toggleItemSelection: (id: number) => void;
+  selectAllItems: () => void;
+  clearSelection: () => void;
 }
 
 // Component Props Types

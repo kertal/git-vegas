@@ -71,6 +71,7 @@ function App() {
   const [repoFilters, setRepoFilters] = useLocalStorage<string[]>('github-repo-filters', []);
   const [descriptionVisible, setDescriptionVisible] = useLocalStorage<{[id: number]: boolean}>('github-description-visible', {});
   const [expanded, setExpanded] = useLocalStorage<{[id: number]: boolean}>('github-expanded', {});
+  const [selectedItems, setSelectedItems] = useLocalStorage<Set<number>>('github-selected-items', new Set());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState('');
@@ -266,7 +267,11 @@ function App() {
 
   // Clipboard handler
   const copyResultsToClipboard = useCallback(async () => {
-    const result = await copyToClipboard(filteredResults, {
+    const itemsToCopy = selectedItems.size > 0 
+      ? filteredResults.filter(item => selectedItems.has(item.id))
+      : filteredResults;
+
+    const result = await copyToClipboard(itemsToCopy, {
       isCompactView,
       onSuccess: (message: string) => {
         setClipboardMessage(message);
@@ -279,7 +284,28 @@ function App() {
     });
     
     return result;
-  }, [filteredResults, isCompactView]);
+  }, [filteredResults, isCompactView, selectedItems]);
+
+  // Selection handlers
+  const toggleItemSelection = useCallback((id: number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, [setSelectedItems]);
+
+  const selectAllItems = useCallback(() => {
+    setSelectedItems(new Set(filteredResults.map(item => item.id)));
+  }, [filteredResults, setSelectedItems]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems(new Set());
+  }, [setSelectedItems]);
 
   return (
     <Box sx={{ 
@@ -410,7 +436,11 @@ function App() {
               clipboardMessage,
               clearAllFilters,
               isCompactView,
-              setIsCompactView
+              setIsCompactView,
+              selectedItems,
+              toggleItemSelection,
+              selectAllItems,
+              clearSelection
             }}>
               <SearchForm />
               <ResultsList 

@@ -2,6 +2,13 @@ import '@testing-library/jest-dom';
 import { vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
+// Extend expect matchers
+declare module 'vitest' {
+  interface Assertion<T = any> extends jest.Matchers<void, T> {
+    toBeInTheDocument(): T;
+  }
+}
+
 // Storage Mock Class
 class StorageMock {
   private store: { [key: string]: string } = {};

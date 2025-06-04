@@ -1,5 +1,5 @@
 import React, { memo, useState, useMemo } from 'react';
-import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label } from '@primer/react';
+import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox } from '@primer/react';
 import { GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -33,6 +33,10 @@ interface UseResultsContextHookType {
   clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: (compact: boolean) => void;
+  selectedItems: Set<string>;
+  selectAllItems: () => void;
+  clearSelection: () => void;
+  toggleItemSelection: (id: string) => void;
 }
 
 // Props interface
@@ -76,7 +80,11 @@ const ResultsList = memo(function ResultsList({
     clipboardMessage,
     clearAllFilters,
     isCompactView,
-    setIsCompactView
+    setIsCompactView,
+    selectedItems,
+    selectAllItems,
+    clearSelection,
+    toggleItemSelection
   } = useResultsContext();
 
   // Add state for filter collapse
@@ -473,7 +481,7 @@ const ResultsList = memo(function ResultsList({
                 borderColor: 'border.default'
               }}
             >
-              Export to Clipboard
+              Export to Clipboard {selectedItems.size > 0 ? `(${selectedItems.size} selected)` : '(all)'}
             </Button>
           </Box>
 
@@ -493,6 +501,10 @@ const ResultsList = memo(function ResultsList({
                     gap: 2
                   }}
                 >
+                  <Checkbox
+                    checked={selectedItems.has(String(item.id))}
+                    onChange={() => toggleItemSelection(String(item.id))}
+                  />
                   <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={20} />
                   <Link
                     href={item.html_url}
@@ -591,6 +603,10 @@ const ResultsList = memo(function ResultsList({
                 }}>
                   {/* Project info section */}
                   <Stack direction="horizontal" alignItems="center" sx={{ mb: 2, gap: 2 }}>
+                    <Checkbox
+                      checked={selectedItems.has(String(item.id))}
+                      onChange={() => toggleItemSelection(String(item.id))}
+                    />
                     <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={24} />
                     <Link
                       href={item.user.html_url}
