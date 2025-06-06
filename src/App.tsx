@@ -441,7 +441,8 @@ function App() {
               selectedItems,
               toggleItemSelection,
               selectAllItems,
-              clearSelection
+              clearSelection,
+              setRepoFilters
             }}>
               <SearchForm />
               <ResultsList 

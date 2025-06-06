@@ -123,9 +123,13 @@ export const filterByLabels = (
 export const filterByRepository = (items: GitHubItem[], repoFilters: string[]): GitHubItem[] => {
   if (repoFilters.length === 0) return items;
   
+  console.log('Filtering by repositories:', repoFilters);
   return items.filter(item => {
     const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
-    return itemRepo && repoFilters.includes(itemRepo);
+    console.log('Item repository:', itemRepo);
+    const included = itemRepo && repoFilters.includes(itemRepo);
+    console.log('Is included:', included);
+    return included;
   });
 };
 

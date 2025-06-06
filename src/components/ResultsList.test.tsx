@@ -68,7 +68,8 @@ const mockUseResultsContext = () => ({
   selectedItems: new Set<number>(),
   selectAllItems: vi.fn(),
   clearSelection: vi.fn(),
-  toggleItemSelection: vi.fn()
+  toggleItemSelection: vi.fn(),
+  setRepoFilters: vi.fn()
 });
 
 // Mock countItemsMatchingFilter function
@@ -411,5 +412,262 @@ describe('ResultsList Filter Collapse Tests', () => {
 
     // Should show "Show" button since filters are collapsed
     expect(screen.getByText('Show')).toBeDefined();
+  });
+});
+
+describe('ResultsList Repository Filter Tests', () => {
+  const mockItemsWithDifferentRepos = [
+    {
+      ...mockItems[0],
+      repository_url: 'https://api.github.com/repos/test/repo1'
+    },
+    {
+      ...mockItems[1],
+      repository_url: 'https://api.github.com/repos/test/repo2'
+    }
+  ];
+
+  it('should render repository filter section', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithDifferentRepos,
+          filteredResults: mockItemsWithDifferentRepos
+        })}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    expect(screen.getByText('Repositories')).toBeInTheDocument();
+    expect(screen.getByText('test/repo1')).toBeInTheDocument();
+    expect(screen.getByText('test/repo2')).toBeInTheDocument();
+  });
+
+  it('should handle repository selection', () => {
+    const setRepoFiltersSpy = vi.fn();
+    const mockContext = {
+      ...mockUseResultsContext(),
+      results: mockItemsWithDifferentRepos,
+      filteredResults: mockItemsWithDifferentRepos,
+      repoFilters: [],
+      setRepoFilters: setRepoFiltersSpy
+    };
+
+    render(
+      <ResultsList
+        useResultsContext={() => mockContext}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Click the first repo filter button
+    const repoButton = screen.getByText('test/repo1');
+    fireEvent.click(repoButton);
+
+    // Verify setRepoFilters was called with the correct repo
+    expect(setRepoFiltersSpy).toHaveBeenCalledWith(['test/repo1']);
+  });
+
+  it('should handle repository deselection', () => {
+    const setRepoFiltersSpy = vi.fn();
+    const mockContext = {
+      ...mockUseResultsContext(),
+      results: mockItemsWithDifferentRepos,
+      filteredResults: mockItemsWithDifferentRepos,
+      repoFilters: ['test/repo1'],
+      setRepoFilters: setRepoFiltersSpy
+    };
+
+    render(
+      <ResultsList
+        useResultsContext={() => mockContext}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Click the selected repo filter button
+    const repoButton = screen.getByText('test/repo1');
+    fireEvent.click(repoButton);
+
+    // Verify setRepoFilters was called to remove the repo
+    expect(setRepoFiltersSpy).toHaveBeenCalledWith(expect.arrayContaining([]));
+  });
+
+  it('should show correct counts for repositories', () => {
+    const mockContext = {
+      ...mockUseResultsContext(),
+      results: mockItemsWithDifferentRepos,
+      filteredResults: [mockItemsWithDifferentRepos[0]], // Only first item in filtered results
+      repoFilters: []
+    };
+
+    render(
+      <ResultsList
+        useResultsContext={() => mockContext}
+        countItemsMatchingFilter={vi.fn().mockImplementation((items) => items.length)}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Should show "1 / 1" for repo1 and "0 / 1" for repo2
+    expect(screen.getByText('test/repo1 (1)')).toBeInTheDocument();
+    expect(screen.getByText('test/repo2 (0 / 1)')).toBeInTheDocument();
+  });
+
+  it('should disable repository buttons with no potential matches', () => {
+    const mockContext = {
+      ...mockUseResultsContext(),
+      results: mockItemsWithDifferentRepos,
+      filteredResults: [], // No matches in filtered results
+      repoFilters: []
+    };
+
+    render(
+      <ResultsList
+        useResultsContext={() => mockContext}
+        countItemsMatchingFilter={vi.fn().mockReturnValue(0)}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const repoButtons = screen.getAllByRole('button', { name: /test\/repo\d/i });
+    repoButtons.forEach(button => {
+      expect(button).toBeDisabled();
+    });
+  });
+});
+
+describe('ResultsList', () => {
+  describe('Repository Filter', () => {
+    it('should render repository filter buttons', () => {
+      const useResultsContext = () => ({
+        ...mockUseResultsContext(),
+        repoFilters: []
+      });
+
+      render(
+        <ResultsList
+          useResultsContext={useResultsContext}
+          countItemsMatchingFilter={mockCountItemsMatchingFilter}
+          buttonStyles={{}}
+        />
+      );
+
+      // Check if repo filter buttons are rendered
+      expect(screen.getByText(/user\/repo1/)).toBeInTheDocument();
+      expect(screen.getByText(/user\/repo2/)).toBeInTheDocument();
+    });
+
+    it('should handle repository filter selection', () => {
+      const setRepoFilters = vi.fn();
+      const useResultsContext = () => ({
+        ...mockUseResultsContext(),
+        repoFilters: [],
+        setRepoFilters
+      });
+
+      render(
+        <ResultsList
+          useResultsContext={useResultsContext}
+          countItemsMatchingFilter={mockCountItemsMatchingFilter}
+          buttonStyles={{}}
+        />
+      );
+
+      // Click repo1 filter button
+      fireEvent.click(screen.getByText(/user\/repo1/));
+      expect(setRepoFilters).toHaveBeenCalledWith(expect.any(Function));
+
+      // Simulate the state update
+      const updateFunction = setRepoFilters.mock.calls[0][0];
+      const newState = updateFunction([]);
+      expect(newState).toEqual(['user/repo1']);
+    });
+
+    it('should handle repository filter deselection', () => {
+      const setRepoFilters = vi.fn();
+      const useResultsContext = () => ({
+        ...mockUseResultsContext(),
+        repoFilters: ['user/repo1'],
+        setRepoFilters
+      });
+
+      render(
+        <ResultsList
+          useResultsContext={useResultsContext}
+          countItemsMatchingFilter={mockCountItemsMatchingFilter}
+          buttonStyles={{}}
+        />
+      );
+
+      // Click repo1 filter button again to deselect
+      fireEvent.click(screen.getByText(/user\/repo1/));
+      expect(setRepoFilters).toHaveBeenCalledWith(expect.any(Function));
+
+      // Simulate the state update
+      const updateFunction = setRepoFilters.mock.calls[0][0];
+      const newState = updateFunction(['user/repo1']);
+      expect(newState).toEqual([]);
+    });
+
+    it('should handle multiple repository filter selection', () => {
+      const setRepoFilters = vi.fn();
+      const useResultsContext = () => ({
+        ...mockUseResultsContext(),
+        repoFilters: ['user/repo1'],
+        setRepoFilters
+      });
+
+      render(
+        <ResultsList
+          useResultsContext={useResultsContext}
+          countItemsMatchingFilter={mockCountItemsMatchingFilter}
+          buttonStyles={{}}
+        />
+      );
+
+      // Click repo2 filter button to add another repo
+      fireEvent.click(screen.getByText(/user\/repo2/));
+      expect(setRepoFilters).toHaveBeenCalledWith(expect.any(Function));
+
+      // Simulate the state update
+      const updateFunction = setRepoFilters.mock.calls[0][0];
+      const newState = updateFunction(['user/repo1']);
+      expect(newState).toEqual(['user/repo1', 'user/repo2']);
+    });
+
+    it('should show correct counts for repository filters', () => {
+      const useResultsContext = () => ({
+        ...mockUseResultsContext(),
+        repoFilters: []
+      });
+
+      mockCountItemsMatchingFilter
+        .mockImplementation((items, type, value) => {
+          if (value === 'user/repo1') return 1;
+          if (value === 'user/repo2') return 2;
+          return 0;
+        });
+
+      render(
+        <ResultsList
+          useResultsContext={useResultsContext}
+          countItemsMatchingFilter={mockCountItemsMatchingFilter}
+          buttonStyles={{}}
+        />
+      );
+
+      expect(screen.getByText(/user\/repo1 \(1\)/)).toBeInTheDocument();
+      expect(screen.getByText(/user\/repo2 \(2\)/)).toBeInTheDocument();
+    });
   });
 }); 

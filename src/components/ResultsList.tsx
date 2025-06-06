@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from 'react';
+import React, { memo, useMemo, useState, useCallback } from 'react';
 import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox, ActionMenu, ActionList, Dialog, IconButton } from '@primer/react';
 import { GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
@@ -38,6 +38,7 @@ interface UseResultsContextHookType {
   selectAllItems: () => void;
   clearSelection: () => void;
   toggleItemSelection: (id: number) => void;
+  setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 // Props interface
@@ -256,7 +257,8 @@ const ResultsList = memo(function ResultsList({
     selectedItems,
     selectAllItems,
     clearSelection,
-    toggleItemSelection
+    toggleItemSelection,
+    setRepoFilters
   } = useResultsContext();
 
   // Add state for filter collapse with localStorage persistence
@@ -264,6 +266,22 @@ const ResultsList = memo(function ResultsList({
 
   // Add state for the description dialog
   const [selectedItemForDialog, setSelectedItemForDialog] = useState<GitHubItem | null>(null);
+
+  // Handle repository filter changes
+  const handleRepoFilterChange = useCallback((repo: string) => {
+    if (!setRepoFilters) {
+      console.error('setRepoFilters is not available');
+      return;
+    }
+    
+    setRepoFilters(prev => {
+      if (prev.includes(repo)) {
+        return prev.filter(r => r !== repo);
+      } else {
+        return [...prev, repo];
+      }
+    });
+  }, [setRepoFilters]);
 
   // Helper to check if any filters are active
   const hasActiveFilters = filter !== 'all' || 
@@ -314,6 +332,22 @@ const ResultsList = memo(function ResultsList({
       return labelMatch && excludeMatch && repoMatch;
     });
   }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
+
+  // Add helper to get unique repositories
+  const getUniqueRepositories = useMemo(() => {
+    const repos = Array.from(new Set(
+      results
+        .map(item => {
+          const repo = item.repository_url?.replace('https://api.github.com/repos/', '');
+          console.log('Repository URL:', item.repository_url);
+          console.log('Extracted repo:', repo);
+          return repo;
+        })
+        .filter((repo): repo is string => Boolean(repo))
+    )).sort((a, b) => (a || '').toLowerCase().localeCompare((b || '').toLowerCase()));
+    console.log('Unique repositories:', repos);
+    return repos;
+  }, [results]);
 
   // Add navigation logic
   const handlePreviousItem = () => {
@@ -479,7 +513,7 @@ const ResultsList = memo(function ResultsList({
                 <Box sx={{ gap: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
                     <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'success.fg' }}>
-                      Labels (include)
+                      Include Labels
                     </Heading>
                     <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
                       show items with selected label
@@ -523,7 +557,7 @@ const ResultsList = memo(function ResultsList({
                 <Box sx={{ mt: 2, gap: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
                     <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'danger.fg' }}>
-                      Labels (exclude)
+                      Exclude Labels
                     </Heading>
                     <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
                       hide items with selected labels
@@ -569,6 +603,53 @@ const ResultsList = memo(function ResultsList({
                         );
                       })}
                   </Box>
+                </Box>
+              </Box>
+            )}
+
+            {/* Repository Filter - Moved to end */}
+            {getUniqueRepositories.length > 0 && (
+              <Box sx={{ mt: 3, gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
+                    Repositories
+                  </Heading>
+                  <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
+                    filter by repository
+                  </Text>
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                  {getUniqueRepositories.map(repo => {
+                    const currentCount = countItemsMatchingFilter(baseResults, 'repo', repo, excludedLabels);
+                    const potentialCount = countItemsMatchingFilter(results, 'repo', repo, excludedLabels);
+                    const hasMatches = currentCount > 0;
+                    const hasPotentialMatches = potentialCount > 0;
+
+                    return (
+                      <Button
+                        key={repo}
+                        size="small"
+                        variant={repoFilters.includes(repo) ? 'primary' : 'default'}
+                        onClick={() => handleRepoFilterChange(repo)}
+                        sx={{
+                          color: hasMatches ? 'fg.default' : 'fg.muted',
+                          opacity: !hasMatches ? 0.5 : 1,
+                          cursor: !hasPotentialMatches ? 'not-allowed' : 'pointer',
+                          textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
+                          fontSize: 0,
+                          py: 0,
+                          height: '24px',
+                          ':hover:not([disabled])': {
+                            bg: repoFilters.includes(repo) ? 'btn.primary.hoverBg' : 'btn.hoverBg'
+                          }
+                        }}
+                        disabled={!hasPotentialMatches}
+                        title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
+                      >
+                        {repo} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
+                      </Button>
+                    );
+                  })}
                 </Box>
               </Box>
             )}
@@ -850,19 +931,8 @@ const ResultsList = memo(function ResultsList({
                           icon={EyeIcon}
                           aria-label="Show description"
                           onClick={() => setSelectedItemForDialog(item)}
-                          sx={{ 
-                            color: 'fg.subtle',
-                            opacity: 0.6,
-                            padding: '4px',
-                            ':hover': { 
-                              color: 'fg.default',
-                              opacity: 1,
-                              bg: 'transparent'
-                            },
-                            ':active': {
-                              bg: 'transparent'
-                            }
-                          }}
+                          size="small"
+                          
                         />
                       )}
                     </Box>

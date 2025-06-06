@@ -79,6 +79,7 @@ export interface ResultsContextType {
   toggleItemSelection: (id: number) => void;
   selectAllItems: () => void;
   clearSelection: () => void;
+  setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 // Component Props Types
