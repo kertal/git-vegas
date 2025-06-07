@@ -1,10 +1,10 @@
 import React, { useState, useCallback } from 'react';
 import { IconButton, Tooltip } from '@primer/react';
 import { LinkIcon, CheckIcon } from '@primer/octicons-react';
-import { 
-  extractShareableState, 
-  generateShareableUrl, 
-  copyToClipboard as copyTextToClipboard 
+import {
+  extractShareableState,
+  generateShareableUrl,
+  copyToClipboard as copyTextToClipboard,
 } from '../utils/urlState';
 import { FormSettings, UISettings } from '../types';
 import { ResultsFilter } from '../utils/resultsUtils';
@@ -26,7 +26,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
   searchText = '',
   size = 'medium',
   variant = 'invisible',
-  className
+  className,
 }) => {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
   const handleShare = useCallback(async () => {
     try {
       setError(null);
-      
+
       // Extract current app state
       const shareableState = extractShareableState(
         formSettings,
@@ -42,13 +42,13 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
         currentFilters,
         searchText
       );
-      
+
       // Generate shareable URL
       const shareableUrl = generateShareableUrl(shareableState);
-      
+
       // Copy to clipboard
       const success = await copyTextToClipboard(shareableUrl);
-      
+
       if (success) {
         setCopied(true);
         // Reset the copied state after 2 seconds
@@ -64,10 +64,10 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
     }
   }, [formSettings, uiSettings, currentFilters, searchText]);
 
-  const tooltipText = error 
-    ? error 
-    : copied 
-      ? 'Link copied to clipboard!' 
+  const tooltipText = error
+    ? error
+    : copied
+      ? 'Link copied to clipboard!'
       : 'Share current state via link';
 
   return (
@@ -81,14 +81,18 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
         className={className}
         sx={{
           color: error ? 'danger.fg' : copied ? 'success.fg' : 'fg.muted',
-          ':hover': { 
-            color: error ? 'danger.emphasis' : copied ? 'success.emphasis' : 'fg.default'
+          ':hover': {
+            color: error
+              ? 'danger.emphasis'
+              : copied
+                ? 'success.emphasis'
+                : 'fg.default',
           },
-          transition: 'color 0.2s ease-in-out'
+          transition: 'color 0.2s ease-in-out',
         }}
       />
     </Tooltip>
   );
 };
 
-export default ShareButton; 
+export default ShareButton;

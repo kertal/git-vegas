@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, act } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
 import { SlotMachineLoader } from './SlotMachineLoader';
 
 describe('SlotMachineLoader', () => {
@@ -20,7 +21,10 @@ describe('SlotMachineLoader', () => {
   });
 
   it('renders with provided avatar URLs', () => {
-    const avatars = ['https://example.com/avatar1.png', 'https://example.com/avatar2.png'];
+    const avatars = [
+      'https://example.com/avatar1.png',
+      'https://example.com/avatar2.png',
+    ];
     render(<SlotMachineLoader isLoading={true} avatarUrls={avatars} />);
     const images = screen.getAllByRole('presentation');
     expect(images.length).toBeGreaterThan(0);
@@ -30,17 +34,19 @@ describe('SlotMachineLoader', () => {
   it('starts spinning when loading starts', () => {
     render(<SlotMachineLoader isLoading={true} avatarUrls={[]} />);
     const reels = screen.getAllByTestId('reel');
-    reels.forEach(reel => {
+    reels.forEach((reel: HTMLElement) => {
       expect(reel.style.animation).toMatch(/spin\d+ 1\.5s infinite linear/);
     });
   });
 
   it('stops spinning when loading ends', async () => {
-    const { rerender } = render(<SlotMachineLoader isLoading={true} avatarUrls={[]} />);
+    const { rerender } = render(
+      <SlotMachineLoader isLoading={true} avatarUrls={[]} />
+    );
     const reels = screen.getAllByTestId('reel');
-    
+
     // First verify they're spinning
-    reels.forEach(reel => {
+    reels.forEach((reel: HTMLElement) => {
       expect(reel.style.animation).toMatch(/spin\d+ 1\.5s infinite linear/);
     });
 
@@ -56,27 +62,29 @@ describe('SlotMachineLoader', () => {
 
     // Get fresh references to reels after state changes
     const updatedReels = screen.getAllByTestId('reel');
-    updatedReels.forEach(reel => {
+    updatedReels.forEach((reel: HTMLElement) => {
       expect(reel.style.animation).toBe('none');
     });
   });
 
   it('cleans up timeouts on unmount', () => {
     const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
-    const { unmount, rerender } = render(<SlotMachineLoader isLoading={true} avatarUrls={[]} />);
-    
+    const { unmount, rerender } = render(
+      <SlotMachineLoader isLoading={true} avatarUrls={[]} />
+    );
+
     // Trigger the timeout creation by stopping loading
     act(() => {
       rerender(<SlotMachineLoader isLoading={false} avatarUrls={[]} />);
     });
-    
+
     // Then unmount to trigger cleanup
     act(() => {
       unmount();
     });
-    
+
     // Since we have 3 reels and each has a timeout
     expect(clearTimeoutSpy).toHaveBeenCalled();
     clearTimeoutSpy.mockRestore();
   });
-}); 
+});

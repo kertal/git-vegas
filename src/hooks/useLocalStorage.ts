@@ -3,11 +3,11 @@ import { getParamFromUrl } from '../utils';
 import { FormSettings } from '../types';
 
 // Helper function to check if a value is a Set
-const isSet = (value: any): value is Set<any> => value instanceof Set;
+// const isSet = (value: any): value is Set<any> => value instanceof Set;
 
 // Enhanced serialization for complex objects containing Sets
 const serializeValue = (value: any): string => {
-  const replacer = (key: string, val: any) => {
+  const replacer = (_key: string, val: any) => {
     if (val instanceof Set) {
       return { __type: 'Set', __value: Array.from(val) };
     }
@@ -18,7 +18,7 @@ const serializeValue = (value: any): string => {
 
 // Enhanced deserialization for complex objects containing Sets
 const deserializeValue = (jsonString: string): any => {
-  const reviver = (key: string, val: any) => {
+  const reviver = (_key: string, val: any) => {
     if (val && typeof val === 'object' && val.__type === 'Set') {
       return new Set(val.__value);
     }
@@ -27,15 +27,13 @@ const deserializeValue = (jsonString: string): any => {
   return JSON.parse(jsonString, reviver);
 };
 
-
-
 // Specialized hook for form settings that handles URL parameter mapping
 export function useFormSettings(key: string, initialValue: FormSettings) {
   // Get initial value from URL parameters first, then localStorage, then initialValue
   const [value, setValue] = useState<FormSettings>(() => {
     try {
       let result = { ...initialValue };
-      
+
       // First try to get from localStorage
       const item = window.localStorage.getItem(key);
       if (item !== null) {
@@ -46,16 +44,16 @@ export function useFormSettings(key: string, initialValue: FormSettings) {
           // If deserialization fails, use initial value
         }
       }
-      
+
       // Then override with URL parameters if they exist
       const urlUsername = getParamFromUrl('username');
       const urlStartDate = getParamFromUrl('startDate');
       const urlEndDate = getParamFromUrl('endDate');
-      
+
       if (urlUsername !== null) result.username = urlUsername;
       if (urlStartDate !== null) result.startDate = urlStartDate;
       if (urlEndDate !== null) result.endDate = urlEndDate;
-      
+
       return result;
     } catch (error) {
       console.error(`Error reading from localStorage key "${key}":`, error);
@@ -83,7 +81,7 @@ export function useFormSettings(key: string, initialValue: FormSettings) {
   const clear = useCallback(() => {
     try {
       window.localStorage.removeItem(key);
-      
+
       // Set value to initialValue after clearing localStorage to avoid re-storing
       setValue(initialValue);
     } catch (error) {
@@ -142,4 +140,4 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   }, [key, initialValue]);
 
   return [value, setValue, clear] as const;
-} 
+}

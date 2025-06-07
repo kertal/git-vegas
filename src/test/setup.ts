@@ -44,12 +44,13 @@ class IntersectionObserverMock implements IntersectionObserver {
   readonly rootMargin: string = '0px';
   readonly thresholds: ReadonlyArray<number> = [0];
 
-  constructor(
-    options: IntersectionObserverInit = {}
-  ) {
+  constructor(options: IntersectionObserverInit = {}) {
     if (options.root instanceof Element) this.root = options.root;
     if (options.rootMargin) this.rootMargin = options.rootMargin;
-    if (options.threshold) this.thresholds = Array.isArray(options.threshold) ? options.threshold : [options.threshold];
+    if (options.threshold)
+      this.thresholds = Array.isArray(options.threshold)
+        ? options.threshold
+        : [options.threshold];
   }
 
   observe = vi.fn();
@@ -66,7 +67,7 @@ Object.defineProperty(window, 'CSS', {
   value: {
     supports: (prop: string, value?: string) => {
       // Handle both method signatures
-      if(!prop) {
+      if (!prop) {
         return false;
       }
       if (value === undefined) {
@@ -75,8 +76,8 @@ Object.defineProperty(window, 'CSS', {
       }
       // Handle separate property and value
       return true;
-    }
-  }
+    },
+  },
 });
 
 // Mock matchMedia
@@ -108,20 +109,24 @@ window.IntersectionObserver = IntersectionObserverMock;
 // Mock URL handling
 const BASE_URL = 'http://localhost:3000';
 
-function parseUrl(url: string): { pathname: string; search: string; hash: string } {
+function parseUrl(url: string): {
+  pathname: string;
+  search: string;
+  hash: string;
+} {
   let pathname = '/';
   let search = '';
   let hash = '';
-  
+
   if (!url) return { pathname, search, hash };
-  
+
   // Handle hash first
   const hashIndex = url.indexOf('#');
   if (hashIndex !== -1) {
     hash = url.substring(hashIndex);
     url = url.substring(0, hashIndex);
   }
-  
+
   // Handle search parameters
   const searchIndex = url.indexOf('?');
   if (searchIndex !== -1) {
@@ -130,12 +135,12 @@ function parseUrl(url: string): { pathname: string; search: string; hash: string
   } else {
     pathname = url || '/';
   }
-  
+
   // Ensure pathname starts with /
   if (!pathname.startsWith('/')) {
     pathname = '/' + pathname;
   }
-  
+
   return { pathname, search, hash };
 }
 
@@ -171,24 +176,28 @@ class MockURL {
       this._search = parsed.search;
       this._hash = parsed.hash;
     }
-    
+
     // Initialize searchParams
-    this._searchParams = new URLSearchParams(this._search.startsWith('?') ? this._search.slice(1) : this._search);
+    this._searchParams = new URLSearchParams(
+      this._search.startsWith('?') ? this._search.slice(1) : this._search
+    );
   }
 
-  get href() { 
+  get href() {
     return `${this._origin}${this._pathname}${this._search}${this._hash}`;
   }
-  
-  get search() { 
-    return this._search; 
+
+  get search() {
+    return this._search;
   }
-  
+
   set search(value: string) {
-    this._search = value.startsWith('?') ? value : (value ? `?${value}` : '');
-    this._searchParams = new URLSearchParams(this._search.startsWith('?') ? this._search.slice(1) : this._search);
+    this._search = value.startsWith('?') ? value : value ? `?${value}` : '';
+    this._searchParams = new URLSearchParams(
+      this._search.startsWith('?') ? this._search.slice(1) : this._search
+    );
   }
-  
+
   get searchParams() {
     // Return a proxy that updates the internal search when modified
     const self = this;
@@ -196,7 +205,7 @@ class MockURL {
       get(target, prop) {
         const value = target[prop as keyof URLSearchParams];
         if (typeof value === 'function') {
-          return function(this: URLSearchParams, ...args: any[]) {
+          return function (this: URLSearchParams, ...args: any[]) {
             const result = (value as Function).apply(target, args);
             // Update the internal search string after any modification
             const searchString = target.toString();
@@ -205,19 +214,35 @@ class MockURL {
           };
         }
         return value;
-      }
+      },
     });
   }
-  
-  get pathname() { return this._pathname; }
-  get hash() { return this._hash; }
-  get host() { return this._host; }
-  get hostname() { return this._hostname; }
-  get origin() { return this._origin; }
-  get port() { return this._port; }
-  get protocol() { return this._protocol; }
 
-  toString() { return this.href; }
+  get pathname() {
+    return this._pathname;
+  }
+  get hash() {
+    return this._hash;
+  }
+  get host() {
+    return this._host;
+  }
+  get hostname() {
+    return this._hostname;
+  }
+  get origin() {
+    return this._origin;
+  }
+  get port() {
+    return this._port;
+  }
+  get protocol() {
+    return this._protocol;
+  }
+
+  toString() {
+    return this.href;
+  }
 }
 
 // Mock location
@@ -226,73 +251,73 @@ const locationMock = {
   _search: '',
   _hash: '',
   _origin: BASE_URL,
-  get href() { 
+  get href() {
     return `${this._origin}${this._pathname}${this._search}${this._hash}`;
   },
   set href(value: string) {
     if (value.startsWith('http://') || value.startsWith('https://')) {
-      const [protocol, rest] = value.split('://')
-      const [host, ...pathParts] = rest.split('/')
-      this._origin = `${protocol}://${host}`
-      const pathAndQuery = pathParts.join('/')
-      const parsed = parseUrl(pathAndQuery)
-      this._pathname = parsed.pathname
-      this._search = parsed.search
-      this._hash = parsed.hash
+      const [protocol, rest] = value.split('://');
+      const [host, ...pathParts] = rest.split('/');
+      this._origin = `${protocol}://${host}`;
+      const pathAndQuery = pathParts.join('/');
+      const parsed = parseUrl(pathAndQuery);
+      this._pathname = parsed.pathname;
+      this._search = parsed.search;
+      this._hash = parsed.hash;
     } else {
-      const parsed = parseUrl(value)
-      this._pathname = parsed.pathname
-      this._search = parsed.search
-      this._hash = parsed.hash
+      const parsed = parseUrl(value);
+      this._pathname = parsed.pathname;
+      this._search = parsed.search;
+      this._hash = parsed.hash;
     }
   },
-  get search() { 
+  get search() {
     return this._search;
   },
   set search(value: string) {
     this._search = value;
   },
-  get pathname() { 
+  get pathname() {
     return this._pathname;
   },
   set pathname(value: string) {
     this._pathname = value;
   },
-  get hash() { 
+  get hash() {
     return this._hash;
   },
   set hash(value: string) {
     this._hash = value;
   },
-  get origin() { 
+  get origin() {
     return this._origin;
   },
-  get host() { 
+  get host() {
     return this._origin.replace(/^https?:\/\//, '');
   },
-  get hostname() { 
+  get hostname() {
     return this.host.split(':')[0];
   },
-  get port() { 
+  get port() {
     const parts = this.host.split(':');
     return parts.length > 1 ? parts[1] : '';
   },
-  get protocol() { 
+  get protocol() {
     return this._origin.startsWith('https') ? 'https:' : 'http:';
   },
   assign: vi.fn(),
   replace: vi.fn(),
   reload: vi.fn(),
-  toString() { 
+  toString() {
     return this.href;
-  }
+  },
 };
 
 // Override window.location
 Object.defineProperty(window, 'location', {
   value: locationMock,
   writable: true,
-  configurable: true
+  configurable: true,
 });
 
 // Mock history with proper location updates
@@ -302,7 +327,7 @@ window.history.replaceState = vi.fn((state, title, url) => {
     // Update the location mock when replaceState is called
     if (typeof url === 'string') {
       let fullUrl: string;
-      
+
       if (url.startsWith('http://') || url.startsWith('https://')) {
         fullUrl = url;
       } else if (url.startsWith('/')) {
@@ -312,10 +337,12 @@ window.history.replaceState = vi.fn((state, title, url) => {
       } else {
         fullUrl = `${BASE_URL}/${url}`;
       }
-      
+
       // Parse the URL manually to extract components
-      const urlMatch = fullUrl.match(/^(https?:\/\/[^\/\?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/);
-      
+      const urlMatch = fullUrl.match(
+        /^(https?:\/\/[^\/\?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/
+      );
+
       if (urlMatch) {
         const [, origin, pathname = '/', search = '', hash = ''] = urlMatch;
         locationMock._origin = origin;
@@ -334,7 +361,9 @@ window.history.replaceState = vi.fn((state, title, url) => {
 beforeAll(() => {
   // Setup localStorage mock
   Object.defineProperty(window, 'localStorage', { value: localStorageMock });
-  Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock });
+  Object.defineProperty(window, 'sessionStorage', {
+    value: sessionStorageMock,
+  });
   // Setup URL mock
   Object.defineProperty(window, 'URL', { value: MockURL });
 });
@@ -353,4 +382,4 @@ afterEach(() => {
 
 afterAll(() => {
   vi.resetAllMocks();
-}); 
+});

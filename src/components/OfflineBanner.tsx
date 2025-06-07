@@ -12,18 +12,20 @@ export const OfflineBanner: React.FC = () => {
   }
 
   return (
-    <Box sx={{ 
-      position: 'fixed', 
-      bottom: 16, 
-      right: 16, 
-      zIndex: 1000,
-      fontSize: 24,
-      opacity: 0.7,
-      '&:hover': {
-        opacity: 1
-      }
-    }}>
+    <Box
+      sx={{
+        position: 'fixed',
+        bottom: 16,
+        right: 16,
+        zIndex: 1000,
+        fontSize: 24,
+        opacity: 0.7,
+        '&:hover': {
+          opacity: 1,
+        },
+      }}
+    >
       📡❌
     </Box>
   );
-}; 
+};

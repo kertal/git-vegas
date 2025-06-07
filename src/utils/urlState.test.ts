@@ -9,7 +9,7 @@ import {
   copyToClipboard,
   extractShareableState,
   applyUrlOverrides,
-  ShareableState
+  ShareableState,
 } from './urlState';
 import { FormSettings, UISettings } from '../types';
 import { createDefaultFilter, ResultsFilter } from './resultsUtils';
@@ -19,31 +19,31 @@ const mockLocation = {
   href: 'http://localhost:3000/',
   origin: 'http://localhost:3000',
   pathname: '/',
-  search: ''
+  search: '',
 };
 
 const mockHistory = {
-  replaceState: vi.fn()
+  replaceState: vi.fn(),
 };
 
 Object.defineProperty(window, 'location', {
   value: mockLocation,
-  writable: true
+  writable: true,
 });
 
 Object.defineProperty(window, 'history', {
   value: mockHistory,
-  writable: true
+  writable: true,
 });
 
 // Mock clipboard API
 const mockClipboard = {
-  writeText: vi.fn()
+  writeText: vi.fn(),
 };
 
 Object.defineProperty(navigator, 'clipboard', {
   value: mockClipboard,
-  writable: true
+  writable: true,
 });
 
 // Mock document.execCommand for fallback
@@ -86,7 +86,7 @@ describe('urlState utilities', () => {
       expect(validateUrlParam('apiMode', 'search')).toBe(true);
       expect(validateUrlParam('apiMode', 'events')).toBe(true);
       expect(validateUrlParam('apiMode', 'invalid')).toBe(false);
-      
+
       expect(validateUrlParam('filter', 'all')).toBe(true);
       expect(validateUrlParam('filter', 'issue')).toBe(true);
       expect(validateUrlParam('filter', 'invalid')).toBe(false);
@@ -121,44 +121,46 @@ describe('urlState utilities', () => {
 
   describe('parseUrlParams', () => {
     it('should parse valid URL parameters', () => {
-      mockLocation.search = '?username=testuser&apiMode=events&isCompactView=true&excludedLabels=bug,feature';
-      
+      mockLocation.search =
+        '?username=testuser&apiMode=events&isCompactView=true&excludedLabels=bug,feature';
+
       const result = parseUrlParams();
-      
+
       expect(result).toEqual({
         username: 'testuser',
         apiMode: 'events',
         isCompactView: true,
-        excludedLabels: ['bug', 'feature']
+        excludedLabels: ['bug', 'feature'],
       });
     });
 
     it('should ignore invalid parameters', () => {
-      mockLocation.search = '?username=testuser&apiMode=invalid&startDate=bad-date';
-      
+      mockLocation.search =
+        '?username=testuser&apiMode=invalid&startDate=bad-date';
+
       const result = parseUrlParams();
-      
+
       expect(result).toEqual({
-        username: 'testuser'
+        username: 'testuser',
       });
     });
 
     it('should handle empty search params', () => {
       mockLocation.search = '';
-      
+
       const result = parseUrlParams();
-      
+
       expect(result).toEqual({});
     });
 
     it('should handle URL encoding', () => {
       mockLocation.search = '?username=test%20user&labelFilter=bug%2Bfeature';
-      
+
       const result = parseUrlParams();
-      
+
       expect(result).toEqual({
         username: 'test user',
-        labelFilter: 'bug+feature'
+        labelFilter: 'bug+feature',
       });
     });
   });
@@ -180,7 +182,7 @@ describe('urlState utilities', () => {
       labelFilter: '',
       excludedLabels: [],
       repoFilters: [],
-      searchText: ''
+      searchText: '',
     };
 
     it('should only include non-default values', () => {
@@ -188,11 +190,11 @@ describe('urlState utilities', () => {
         ...defaultState,
         username: 'testuser',
         apiMode: 'events',
-        isCompactView: true
+        isCompactView: true,
       };
-      
+
       const params = generateUrlParams(state);
-      
+
       expect(params.get('username')).toBe('testuser');
       expect(params.get('apiMode')).toBe('events');
       expect(params.get('isCompactView')).toBe('true');
@@ -204,11 +206,11 @@ describe('urlState utilities', () => {
       const state: ShareableState = {
         ...defaultState,
         excludedLabels: ['bug', 'feature'],
-        repoFilters: ['repo1', 'repo2']
+        repoFilters: ['repo1', 'repo2'],
       };
-      
+
       const params = generateUrlParams(state);
-      
+
       expect(params.get('excludedLabels')).toBe('bug,feature');
       expect(params.get('repoFilters')).toBe('repo1,repo2');
     });
@@ -217,11 +219,11 @@ describe('urlState utilities', () => {
       const state: ShareableState = {
         ...defaultState,
         excludedLabels: [],
-        repoFilters: []
+        repoFilters: [],
       };
-      
+
       const params = generateUrlParams(state);
-      
+
       expect(params.get('excludedLabels')).toBeNull();
       expect(params.get('repoFilters')).toBeNull();
     });
@@ -244,24 +246,26 @@ describe('urlState utilities', () => {
       labelFilter: '',
       excludedLabels: [],
       repoFilters: [],
-      searchText: ''
+      searchText: '',
     };
 
     it('should generate URL with parameters', () => {
       const state: ShareableState = {
         ...defaultState,
         username: 'testuser',
-        apiMode: 'events'
+        apiMode: 'events',
       };
-      
+
       const url = generateShareableUrl(state);
-      
-      expect(url).toBe('http://localhost:3000/?username=testuser&apiMode=events');
+
+      expect(url).toBe(
+        'http://localhost:3000/?username=testuser&apiMode=events'
+      );
     });
 
     it('should generate clean URL when no parameters', () => {
       const url = generateShareableUrl(defaultState);
-      
+
       expect(url).toBe('http://localhost:3000/');
     });
 
@@ -269,11 +273,11 @@ describe('urlState utilities', () => {
       const state: ShareableState = {
         ...defaultState,
         username: 'test user',
-        labelFilter: 'bug+feature'
+        labelFilter: 'bug+feature',
       };
-      
+
       const url = generateShareableUrl(state);
-      
+
       // URLSearchParams encodes spaces as + instead of %20
       expect(url).toContain('username=test+user');
       expect(url).toContain('labelFilter=bug%2Bfeature');
@@ -284,9 +288,9 @@ describe('urlState utilities', () => {
     it('should remove search parameters', () => {
       mockLocation.search = '?username=test&apiMode=events';
       mockLocation.href = 'http://localhost:3000/?username=test&apiMode=events';
-      
+
       cleanupUrlParams();
-      
+
       expect(mockHistory.replaceState).toHaveBeenCalledWith(
         {},
         '',
@@ -296,9 +300,9 @@ describe('urlState utilities', () => {
 
     it('should not call replaceState if no parameters', () => {
       mockLocation.search = '';
-      
+
       cleanupUrlParams();
-      
+
       expect(mockHistory.replaceState).not.toHaveBeenCalled();
     });
   });
@@ -306,16 +310,16 @@ describe('urlState utilities', () => {
   describe('copyToClipboard', () => {
     it('should use clipboard API when available', async () => {
       const result = await copyToClipboard('test text');
-      
+
       expect(mockClipboard.writeText).toHaveBeenCalledWith('test text');
       expect(result).toBe(true);
     });
 
     it('should handle clipboard API errors', async () => {
       mockClipboard.writeText.mockRejectedValue(new Error('Clipboard error'));
-      
+
       const result = await copyToClipboard('test text');
-      
+
       expect(result).toBe(false);
     });
 
@@ -323,30 +327,36 @@ describe('urlState utilities', () => {
       // Remove clipboard API
       Object.defineProperty(navigator, 'clipboard', {
         value: undefined,
-        writable: true
+        writable: true,
       });
-      
+
       // Mock DOM methods
       const mockTextArea = {
         value: '',
         style: {},
         focus: vi.fn(),
-        select: vi.fn()
+        select: vi.fn(),
       };
-      
-      const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockTextArea as any);
-      const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockTextArea as any);
-      const removeChildSpy = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockTextArea as any);
-      
+
+      const createElementSpy = vi
+        .spyOn(document, 'createElement')
+        .mockReturnValue(mockTextArea as any);
+      const appendChildSpy = vi
+        .spyOn(document.body, 'appendChild')
+        .mockImplementation(() => mockTextArea as any);
+      const removeChildSpy = vi
+        .spyOn(document.body, 'removeChild')
+        .mockImplementation(() => mockTextArea as any);
+
       const result = await copyToClipboard('test text');
-      
+
       expect(createElementSpy).toHaveBeenCalledWith('textarea');
       expect(mockTextArea.value).toBe('test text');
-              expect(mockTextArea.focus).toHaveBeenCalled();
-        expect(mockTextArea.select).toHaveBeenCalled();
+      expect(mockTextArea.focus).toHaveBeenCalled();
+      expect(mockTextArea.select).toHaveBeenCalled();
       expect(document.execCommand).toHaveBeenCalledWith('copy');
       expect(result).toBe(true);
-      
+
       createElementSpy.mockRestore();
       appendChildSpy.mockRestore();
       removeChildSpy.mockRestore();
@@ -360,25 +370,30 @@ describe('urlState utilities', () => {
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         githubToken: 'secret',
-        apiMode: 'events'
+        apiMode: 'events',
       };
-      
+
       const uiSettings: UISettings = {
         isCompactView: true,
-        sortOrder: 'created'
+        sortOrder: 'created',
       };
-      
+
       const currentFilters: ResultsFilter = {
         filter: 'issue',
         statusFilter: 'open',
         labelFilter: 'bug',
         excludedLabels: ['wontfix'],
         repoFilters: ['repo1'],
-        searchText: 'search term'
+        searchText: 'search term',
       };
-      
-      const result = extractShareableState(formSettings, uiSettings, currentFilters, 'custom search');
-      
+
+      const result = extractShareableState(
+        formSettings,
+        uiSettings,
+        currentFilters,
+        'custom search'
+      );
+
       expect(result).toEqual({
         username: 'testuser',
         startDate: '2024-01-01',
@@ -391,7 +406,7 @@ describe('urlState utilities', () => {
         labelFilter: 'bug',
         excludedLabels: ['wontfix'],
         repoFilters: ['repo1'],
-        searchText: 'custom search'
+        searchText: 'custom search',
       });
     });
   });
@@ -403,33 +418,38 @@ describe('urlState utilities', () => {
         apiMode: 'events',
         isCompactView: true,
         filter: 'pr',
-        excludedLabels: ['bug']
+        excludedLabels: ['bug'],
       };
-      
+
       const formSettings: FormSettings = {
         username: 'localuser',
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         githubToken: 'token',
-        apiMode: 'search'
+        apiMode: 'search',
       };
-      
+
       const uiSettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated'
+        sortOrder: 'updated',
       };
-      
+
       const currentFilters = createDefaultFilter();
-      
-      const result = applyUrlOverrides(urlState, formSettings, uiSettings, currentFilters);
-      
+
+      const result = applyUrlOverrides(
+        urlState,
+        formSettings,
+        uiSettings,
+        currentFilters
+      );
+
       expect(result.formSettings.username).toBe('urluser');
       expect(result.formSettings.apiMode).toBe('events');
       expect(result.formSettings.startDate).toBe('2024-01-01'); // unchanged
-      
+
       expect(result.uiSettings.isCompactView).toBe(true);
       expect(result.uiSettings.sortOrder).toBe('updated'); // unchanged
-      
+
       expect(result.currentFilters.filter).toBe('pr');
       expect(result.currentFilters.excludedLabels).toEqual(['bug']);
       expect(result.currentFilters.statusFilter).toBe('all'); // unchanged
@@ -437,31 +457,36 @@ describe('urlState utilities', () => {
 
     it('should not override undefined values', () => {
       const urlState: Partial<ShareableState> = {
-        username: 'urluser'
+        username: 'urluser',
         // other fields undefined
       };
-      
+
       const formSettings: FormSettings = {
         username: 'localuser',
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         githubToken: 'token',
-        apiMode: 'search'
+        apiMode: 'search',
       };
-      
+
       const uiSettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated'
+        sortOrder: 'updated',
       };
-      
+
       const currentFilters = createDefaultFilter();
-      
-      const result = applyUrlOverrides(urlState, formSettings, uiSettings, currentFilters);
-      
+
+      const result = applyUrlOverrides(
+        urlState,
+        formSettings,
+        uiSettings,
+        currentFilters
+      );
+
       expect(result.formSettings.username).toBe('urluser');
       expect(result.formSettings.apiMode).toBe('search'); // unchanged
       expect(result.uiSettings.isCompactView).toBe(false); // unchanged
       expect(result.currentFilters.filter).toBe('all'); // unchanged
     });
   });
-}); 
+});

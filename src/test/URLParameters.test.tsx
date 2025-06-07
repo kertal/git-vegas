@@ -1,4 +1,5 @@
-import { screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { act } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/dom';
 import { render } from './test-utils';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import App from '../App';
@@ -25,8 +26,12 @@ describe('URL Parameters', () => {
     render(<App />);
 
     // Check if form fields are populated with URL parameters
-    const usernameInput = screen.getByLabelText(/github username/i) as HTMLInputElement;
-    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const usernameInput = screen.getByLabelText(
+      /github username/i
+    ) as HTMLInputElement;
+    const startDateInput = screen.getByLabelText(
+      /start date/i
+    ) as HTMLInputElement;
     const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
 
     expect(usernameInput.value).toBe('testuser');
@@ -50,8 +55,12 @@ describe('URL Parameters', () => {
     render(<App />);
 
     // Check if form fields are populated with URL parameters instead of localStorage values
-    const usernameInput = screen.getByLabelText(/github username/i) as HTMLInputElement;
-    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const usernameInput = screen.getByLabelText(
+      /github username/i
+    ) as HTMLInputElement;
+    const startDateInput = screen.getByLabelText(
+      /start date/i
+    ) as HTMLInputElement;
     const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
 
     expect(usernameInput.value).toBe('urluser');
@@ -63,8 +72,12 @@ describe('URL Parameters', () => {
     render(<App />);
 
     // Get form inputs
-    const usernameInput = screen.getByLabelText(/github username/i) as HTMLInputElement;
-    const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
+    const usernameInput = screen.getByLabelText(
+      /github username/i
+    ) as HTMLInputElement;
+    const startDateInput = screen.getByLabelText(
+      /start date/i
+    ) as HTMLInputElement;
     const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
 
     // Change form values using fireEvent to properly trigger React handlers
@@ -77,14 +90,14 @@ describe('URL Parameters', () => {
     // URL parameters are no longer automatically updated
     // Instead, verify that the form values are updated in localStorage
     await waitFor(() => {
-      const formSettings = JSON.parse(localStorage.getItem('github-form-settings') || '{}');
+      const formSettings = JSON.parse(
+        localStorage.getItem('github-form-settings') || '{}'
+      );
       expect(formSettings.username).toBe('newuser');
       expect(formSettings.startDate).toBe('2024-02-01');
       expect(formSettings.endDate).toBe('2024-02-28');
     });
   });
-
-  
 
   it('should clear URL parameters when form is reset', async () => {
     // Set initial URL parameters
@@ -98,7 +111,9 @@ describe('URL Parameters', () => {
 
     // First, we need to set some filters to make the Clear All button appear
     // Click on a filter button to activate it
-    const issuesButton = screen.getByRole('button', { name: /issues \(\d+\)/i });
+    const issuesButton = screen.getByRole('button', {
+      name: /issues \(\d+\)/i,
+    });
     await act(async () => {
       fireEvent.click(issuesButton);
     });
@@ -111,7 +126,9 @@ describe('URL Parameters', () => {
 
     // Check if URL parameters are cleared (the form values should reset to defaults)
     await waitFor(() => {
-      const usernameInput = screen.getByLabelText(/github username/i) as HTMLInputElement;
+      const usernameInput = screen.getByLabelText(
+        /github username/i
+      ) as HTMLInputElement;
       expect(usernameInput.value).toBe('testuser'); // Username should remain from URL
       // But filters should be cleared, which is what the Clear All button does
     });
@@ -121,7 +138,7 @@ describe('URL Parameters', () => {
     // Mock successful API response but expect it NOT to be called automatically
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ items: [] })
+      json: () => Promise.resolve({ items: [] }),
     });
 
     // Set URL parameters
@@ -154,4 +171,4 @@ describe('URL Parameters', () => {
       expect(mockFetch).toHaveBeenCalled();
     });
   });
-}); 
+});

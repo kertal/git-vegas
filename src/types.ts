@@ -11,15 +11,15 @@ export interface GitHubItem {
   updated_at: string;
   state: string;
   body?: string;
-  labels?: { 
-    name: string; 
-    color?: string; 
-    description?: string 
+  labels?: {
+    name: string;
+    color?: string;
+    description?: string;
   }[];
   repository_url?: string;
-  repository?: { 
-    full_name: string; 
-    html_url: string 
+  repository?: {
+    full_name: string;
+    html_url: string;
   };
   merged?: boolean;
   merged_at?: string;
@@ -117,8 +117,8 @@ export interface UISettings {
 
 // Item-specific UI state (visibility, expansion, selection)
 export interface ItemUIState {
-  descriptionVisible: {[id: number]: boolean};
-  expanded: {[id: number]: boolean};
+  descriptionVisible: { [id: number]: boolean };
+  expanded: { [id: number]: boolean };
   selectedItems: Set<number>;
 }
 
@@ -126,4 +126,4 @@ export interface ItemUIState {
 export interface UsernameCache {
   validatedUsernames: Set<string>;
   invalidUsernames: Set<string>;
-} 
+}

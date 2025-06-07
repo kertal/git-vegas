@@ -1,9 +1,10 @@
-import { screen, waitFor, act } from '@testing-library/react';
+import { act } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/dom';
 import { render } from './test-utils';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import App from '../App';
 import { GitHubItem } from '../types';
-import { fireEvent } from '@testing-library/react';
+import { fireEvent } from '@testing-library/dom';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -21,9 +22,9 @@ describe('Results Caching', () => {
       user: {
         login: 'testuser',
         avatar_url: 'https://github.com/testuser.png',
-        html_url: 'https://github.com/testuser'
-      }
-    }
+        html_url: 'https://github.com/testuser',
+      },
+    },
   ];
 
   beforeEach(() => {
@@ -35,18 +36,21 @@ describe('Results Caching', () => {
   it('should load cached results on mount if available and not expired', () => {
     // Set up cached results - useLocalStorage stores the array directly
     localStorage.setItem('github-search-results', JSON.stringify(mockResults));
-    
+
     // Also set the last search params to match
     const lastSearchParams = {
       username: 'testuser',
       startDate: '2024-01-01',
       endDate: '2024-01-31',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    localStorage.setItem('github-last-search', JSON.stringify(lastSearchParams));
+    localStorage.setItem(
+      'github-last-search',
+      JSON.stringify(lastSearchParams)
+    );
 
     render(<App />);
-    
+
     expect(screen.getByText('Test Issue')).toBeInTheDocument();
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -59,7 +63,7 @@ describe('Results Caching', () => {
     // Mock successful API response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ items: mockResults })
+      json: () => Promise.resolve({ items: mockResults }),
     });
 
     // Set URL parameters to populate form fields
@@ -90,15 +94,18 @@ describe('Results Caching', () => {
   it('should fetch new results if URL parameters differ from cache', async () => {
     // Set up cached results
     localStorage.setItem('github-search-results', JSON.stringify(mockResults));
-    
+
     // Set last search params with different values
     const lastSearchParams = {
       username: 'olduser',
       startDate: '2024-01-01',
       endDate: '2024-01-31',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    localStorage.setItem('github-last-search', JSON.stringify(lastSearchParams));
+    localStorage.setItem(
+      'github-last-search',
+      JSON.stringify(lastSearchParams)
+    );
 
     // Set different URL parameters
     window.history.replaceState(
@@ -110,7 +117,7 @@ describe('Results Caching', () => {
     // Mock successful API response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ items: mockResults })
+      json: () => Promise.resolve({ items: mockResults }),
     });
 
     render(<App />);
@@ -135,7 +142,7 @@ describe('Results Caching', () => {
     // Mock successful API response
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: () => Promise.resolve({ items: mockResults })
+      json: () => Promise.resolve({ items: mockResults }),
     });
 
     render(<App />);
@@ -163,11 +170,14 @@ describe('Results Caching', () => {
     });
 
     // Wait for the state to update and localStorage to be written
-    await waitFor(() => {
-      const cachedData = localStorage.getItem('github-search-results');
-      expect(cachedData).not.toBeNull();
-      expect(JSON.parse(cachedData || '[]')).toEqual(mockResults);
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const cachedData = localStorage.getItem('github-search-results');
+        expect(cachedData).not.toBeNull();
+        expect(JSON.parse(cachedData || '[]')).toEqual(mockResults);
+      },
+      { timeout: 5000 }
+    );
   });
 
   it('should handle cache clearing', async () => {
@@ -177,7 +187,9 @@ describe('Results Caching', () => {
     render(<App />);
 
     // First, we need to set some filters to make the Clear All button appear
-    const issuesButton = screen.getByRole('button', { name: /issues \(\d+\)/i });
+    const issuesButton = screen.getByRole('button', {
+      name: /issues \(\d+\)/i,
+    });
     await act(async () => {
       fireEvent.click(issuesButton);
     });
@@ -192,7 +204,9 @@ describe('Results Caching', () => {
     // The Clear All button clears filters, not the entire cache
     await waitFor(() => {
       // Verify that the filter state has been reset
-      const issuesButtonAfter = screen.getByRole('button', { name: /issues \(\d+\)/i });
+      const issuesButtonAfter = screen.getByRole('button', {
+        name: /issues \(\d+\)/i,
+      });
       expect(issuesButtonAfter).toHaveAttribute('data-variant', 'default');
     });
   });
@@ -221,8 +235,13 @@ describe('Results Caching', () => {
     });
 
     // Wait for error to appear
-    await waitFor(() => {
-      expect(screen.getByText(/an error occurred while fetching data/i)).toBeInTheDocument();
-    }, { timeout: 10000 });
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText(/an error occurred while fetching data/i)
+        ).toBeInTheDocument();
+      },
+      { timeout: 10000 }
+    );
   });
-}); 
+});

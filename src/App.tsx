@@ -1,4 +1,11 @@
-import { useState, useCallback, useContext, createContext, useEffect, useMemo } from 'react';
+import {
+  useState,
+  useCallback,
+  useContext,
+  createContext,
+  useEffect,
+  useMemo,
+} from 'react';
 import { Box, Button, Heading, IconButton, PageLayout } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 import './App.css';
@@ -9,16 +16,32 @@ import ResultsList from './components/ResultsList';
 import TimelineView from './components/TimelineView';
 import FilterControls from './components/FilterControls';
 import { OfflineBanner } from './components/OfflineBanner';
-import { GitHubItem, FormContextType, ResultsContextType, UISettings, ItemUIState, UsernameCache } from './types';
+import {
+  GitHubItem,
+  FormContextType,
+  ResultsContextType,
+  UISettings,
+  ItemUIState,
+  UsernameCache,
+} from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFormSettings } from './hooks/useLocalStorage';
 import { validateUsernameList } from './utils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { countItemsMatchingFilter } from './utils/filterUtils';
 import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
-import { extractAvailableLabels, applyFiltersAndSort, createDefaultFilter, ResultsFilter } from './utils/resultsUtils';
+import {
+  extractAvailableLabels,
+  applyFiltersAndSort,
+  createDefaultFilter,
+  ResultsFilter,
+} from './utils/resultsUtils';
 import { performGitHubSearch, GitHubSearchParams } from './utils/githubSearch';
-import { parseUrlParams, applyUrlOverrides, cleanupUrlParams } from './utils/urlState';
+import {
+  parseUrlParams,
+  applyUrlOverrides,
+  cleanupUrlParams,
+} from './utils/urlState';
 import ShareButton from './components/ShareButton';
 
 // Form Context to isolate form state changes
@@ -38,7 +61,9 @@ const ResultsContext = createContext<ResultsContextType | null>(null);
 export function useResultsContext() {
   const context = useContext(ResultsContext);
   if (!context) {
-    throw new Error('useResultsContext must be used within a ResultsContextProvider');
+    throw new Error(
+      'useResultsContext must be used within a ResultsContextProvider'
+    );
   }
   return context;
 }
@@ -50,55 +75,89 @@ export const buttonStyles = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: 2
+  gap: 2,
 };
 
 // Add the main App component
 function App() {
   // Consolidated settings - reducing from 11 useLocalStorage calls to 5
-  const [formSettings, setFormSettings] = useFormSettings('github-form-settings', {
-    username: '',
-    startDate: (() => {
-      const date = new Date();
-      date.setDate(date.getDate() - 30); // Default to last 30 days
-      return date.toISOString().split('T')[0];
-    })(),
-    endDate: new Date().toISOString().split('T')[0],
-    githubToken: '',
-    apiMode: 'search'
-  });
-  
-  const [uiSettings, setUISettings] = useLocalStorage<UISettings>('github-ui-settings', {
-    isCompactView: false,
-    sortOrder: 'updated'
-  });
-  
-  const [itemUIState, setItemUIState] = useLocalStorage<ItemUIState>('github-item-ui-state', {
-    descriptionVisible: {},
-    expanded: {},
-    selectedItems: new Set()
-  });
-  
-  const [usernameCache, setUsernameCache] = useLocalStorage<UsernameCache>('github-username-cache', {
-    validatedUsernames: new Set(),
-    invalidUsernames: new Set()
-  });
-  
-  const [currentFilters, setCurrentFilters] = useLocalStorage<ResultsFilter>('github-current-filters', createDefaultFilter());
-  const [searchResults, setSearchResults] = useLocalStorage<GitHubItem[]>('github-search-results', []);
-  const [eventsResults, setEventsResults] = useLocalStorage<GitHubItem[]>('github-events-results', []);
-  const [lastSearchParams, setLastSearchParams] = useLocalStorage<{username: string; startDate: string; endDate: string; apiMode: string; timestamp: number} | null>('github-last-search-params', null);
+  const [formSettings, setFormSettings] = useFormSettings(
+    'github-form-settings',
+    {
+      username: '',
+      startDate: (() => {
+        const date = new Date();
+        date.setDate(date.getDate() - 30); // Default to last 30 days
+        return date.toISOString().split('T')[0];
+      })(),
+      endDate: new Date().toISOString().split('T')[0],
+      githubToken: '',
+      apiMode: 'search',
+    }
+  );
+
+  const [uiSettings, setUISettings] = useLocalStorage<UISettings>(
+    'github-ui-settings',
+    {
+      isCompactView: false,
+      sortOrder: 'updated',
+    }
+  );
+
+  const [itemUIState, setItemUIState] = useLocalStorage<ItemUIState>(
+    'github-item-ui-state',
+    {
+      descriptionVisible: {},
+      expanded: {},
+      selectedItems: new Set(),
+    }
+  );
+
+  const [usernameCache, setUsernameCache] = useLocalStorage<UsernameCache>(
+    'github-username-cache',
+    {
+      validatedUsernames: new Set(),
+      invalidUsernames: new Set(),
+    }
+  );
+
+  const [currentFilters, setCurrentFilters] = useLocalStorage<ResultsFilter>(
+    'github-current-filters',
+    createDefaultFilter()
+  );
+  const [searchResults, setSearchResults] = useLocalStorage<GitHubItem[]>(
+    'github-search-results',
+    []
+  );
+  const [eventsResults, setEventsResults] = useLocalStorage<GitHubItem[]>(
+    'github-events-results',
+    []
+  );
+  const [lastSearchParams, setLastSearchParams] = useLocalStorage<{
+    username: string;
+    startDate: string;
+    endDate: string;
+    apiMode: string;
+    timestamp: number;
+  } | null>('github-last-search-params', null);
 
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
-  
+
   // Get the appropriate results based on current API mode
   const results = useMemo(() => {
     return apiMode === 'events' ? eventsResults : searchResults;
   }, [apiMode, eventsResults, searchResults]);
   const { isCompactView, sortOrder } = uiSettings;
-  const { descriptionVisible, expanded, selectedItems: rawSelectedItems } = itemUIState;
-  const { validatedUsernames: rawValidatedUsernames, invalidUsernames: rawInvalidUsernames } = usernameCache;
+  const {
+    descriptionVisible,
+    expanded,
+    selectedItems: rawSelectedItems,
+  } = itemUIState;
+  const {
+    validatedUsernames: rawValidatedUsernames,
+    invalidUsernames: rawInvalidUsernames,
+  } = usernameCache;
 
   // Ensure selectedItems is always a Set instance (defensive programming)
   const selectedItems = useMemo(() => {
@@ -106,7 +165,10 @@ function App() {
       return rawSelectedItems;
     }
     // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
-    console.warn('selectedItems is not a Set instance, creating new empty Set:', rawSelectedItems);
+    console.warn(
+      'selectedItems is not a Set instance, creating new empty Set:',
+      rawSelectedItems
+    );
     return new Set<number>();
   }, [rawSelectedItems]);
 
@@ -116,7 +178,10 @@ function App() {
       return rawValidatedUsernames;
     }
     // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
-    console.warn('validatedUsernames is not a Set instance, creating new empty Set:', rawValidatedUsernames);
+    console.warn(
+      'validatedUsernames is not a Set instance, creating new empty Set:',
+      rawValidatedUsernames
+    );
     return new Set<string>();
   }, [rawValidatedUsernames]);
 
@@ -126,7 +191,10 @@ function App() {
       return rawInvalidUsernames;
     }
     // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
-    console.warn('invalidUsernames is not a Set instance, creating new empty Set:', rawInvalidUsernames);
+    console.warn(
+      'invalidUsernames is not a Set instance, creating new empty Set:',
+      rawInvalidUsernames
+    );
     return new Set<string>();
   }, [rawInvalidUsernames]);
 
@@ -142,7 +210,7 @@ function App() {
   // URL state initialization - apply URL overrides on mount if present
   useEffect(() => {
     const urlState = parseUrlParams();
-    
+
     if (Object.keys(urlState).length > 0) {
       // Apply URL overrides to current state
       const overrides = applyUrlOverrides(
@@ -151,142 +219,253 @@ function App() {
         uiSettings,
         currentFilters
       );
-      
+
       // Update state with URL overrides
-      if (JSON.stringify(overrides.formSettings) !== JSON.stringify(formSettings)) {
+      if (
+        JSON.stringify(overrides.formSettings) !== JSON.stringify(formSettings)
+      ) {
         setFormSettings(overrides.formSettings);
       }
       if (JSON.stringify(overrides.uiSettings) !== JSON.stringify(uiSettings)) {
         setUISettings(overrides.uiSettings);
       }
-      if (JSON.stringify(overrides.currentFilters) !== JSON.stringify(currentFilters)) {
+      if (
+        JSON.stringify(overrides.currentFilters) !==
+        JSON.stringify(currentFilters)
+      ) {
         setCurrentFilters(overrides.currentFilters);
       }
-      
+
       // Clean up URL after applying overrides (only when URL params were actually used)
       cleanupUrlParams();
     }
   }, []); // Only run on mount
 
   // Individual setters for form settings
-  const setUsername = useCallback((username: string) => {
-    setFormSettings(prev => ({ ...prev, username }));
-  }, [setFormSettings]);
-  
-  const setStartDate = useCallback((startDate: string) => {
-    setFormSettings(prev => ({ ...prev, startDate }));
-  }, [setFormSettings]);
-  
-  const setEndDate = useCallback((endDate: string) => {
-    setFormSettings(prev => ({ ...prev, endDate }));
-  }, [setFormSettings]);
-  
-  const setGithubToken = useCallback((githubToken: string) => {
-    setFormSettings(prev => ({ ...prev, githubToken }));
-  }, [setFormSettings]);
+  const setUsername = useCallback(
+    (username: string) => {
+      setFormSettings(prev => ({ ...prev, username }));
+    },
+    [setFormSettings]
+  );
 
-  const setApiMode = useCallback((apiMode: 'search' | 'events') => {
-    setFormSettings(prev => ({ ...prev, apiMode }));
-  }, [setFormSettings]);
+  const setStartDate = useCallback(
+    (startDate: string) => {
+      setFormSettings(prev => ({ ...prev, startDate }));
+    },
+    [setFormSettings]
+  );
+
+  const setEndDate = useCallback(
+    (endDate: string) => {
+      setFormSettings(prev => ({ ...prev, endDate }));
+    },
+    [setFormSettings]
+  );
+
+  const setGithubToken = useCallback(
+    (githubToken: string) => {
+      setFormSettings(prev => ({ ...prev, githubToken }));
+    },
+    [setFormSettings]
+  );
+
+  const setApiMode = useCallback(
+    (apiMode: 'search' | 'events') => {
+      setFormSettings(prev => ({ ...prev, apiMode }));
+    },
+    [setFormSettings]
+  );
 
   // Individual setters for UI settings
-  const setIsCompactView = useCallback((isCompactView: boolean | ((prev: boolean) => boolean)) => {
-    setUISettings(prev => ({ 
-      ...prev, 
-      isCompactView: typeof isCompactView === 'function' ? isCompactView(prev.isCompactView) : isCompactView 
-    }));
-  }, [setUISettings]);
-  
-  const setSortOrder = useCallback((sortOrder: 'updated' | 'created') => {
-    setUISettings(prev => ({ ...prev, sortOrder }));
-  }, [setUISettings]);
+  const setIsCompactView = useCallback(
+    (isCompactView: boolean | ((prev: boolean) => boolean)) => {
+      setUISettings(prev => ({
+        ...prev,
+        isCompactView:
+          typeof isCompactView === 'function'
+            ? isCompactView(prev.isCompactView)
+            : isCompactView,
+      }));
+    },
+    [setUISettings]
+  );
+
+  const setSortOrder = useCallback(
+    (sortOrder: 'updated' | 'created') => {
+      setUISettings(prev => ({ ...prev, sortOrder }));
+    },
+    [setUISettings]
+  );
 
   // Individual setters for item UI state
-  const setDescriptionVisible = useCallback((descriptionVisible: {[id: number]: boolean} | ((prev: {[id: number]: boolean}) => {[id: number]: boolean})) => {
-    setItemUIState(prev => ({ 
-      ...prev, 
-      descriptionVisible: typeof descriptionVisible === 'function' ? descriptionVisible(prev.descriptionVisible) : descriptionVisible 
-    }));
-  }, [setItemUIState]);
-  
-  const setExpanded = useCallback((expanded: {[id: number]: boolean} | ((prev: {[id: number]: boolean}) => {[id: number]: boolean})) => {
-    setItemUIState(prev => ({ 
-      ...prev, 
-      expanded: typeof expanded === 'function' ? expanded(prev.expanded) : expanded 
-    }));
-  }, [setItemUIState]);
-  
-  const setSelectedItems = useCallback((selectedItems: Set<number> | ((prev: Set<number>) => Set<number>)) => {
-    setItemUIState(prev => {
-      // Ensure prev.selectedItems is always a Set
-      const currentSelectedItems = prev.selectedItems instanceof Set ? prev.selectedItems : new Set<number>();
-      
-      return {
-        ...prev, 
-        selectedItems: typeof selectedItems === 'function' ? selectedItems(currentSelectedItems) : selectedItems 
-      };
-    });
-  }, [setItemUIState]);
+  const setDescriptionVisible = useCallback(
+    (
+      descriptionVisible:
+        | { [id: number]: boolean }
+        | ((prev: { [id: number]: boolean }) => { [id: number]: boolean })
+    ) => {
+      setItemUIState(prev => ({
+        ...prev,
+        descriptionVisible:
+          typeof descriptionVisible === 'function'
+            ? descriptionVisible(prev.descriptionVisible)
+            : descriptionVisible,
+      }));
+    },
+    [setItemUIState]
+  );
+
+  const setExpanded = useCallback(
+    (
+      expanded:
+        | { [id: number]: boolean }
+        | ((prev: { [id: number]: boolean }) => { [id: number]: boolean })
+    ) => {
+      setItemUIState(prev => ({
+        ...prev,
+        expanded:
+          typeof expanded === 'function' ? expanded(prev.expanded) : expanded,
+      }));
+    },
+    [setItemUIState]
+  );
+
+  const setSelectedItems = useCallback(
+    (selectedItems: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+      setItemUIState(prev => {
+        // Ensure prev.selectedItems is always a Set
+        const currentSelectedItems =
+          prev.selectedItems instanceof Set
+            ? prev.selectedItems
+            : new Set<number>();
+
+        return {
+          ...prev,
+          selectedItems:
+            typeof selectedItems === 'function'
+              ? selectedItems(currentSelectedItems)
+              : selectedItems,
+        };
+      });
+    },
+    [setItemUIState]
+  );
 
   // Individual setters for username cache
-  const setValidatedUsernames = useCallback((validatedUsernames: Set<string> | ((prev: Set<string>) => Set<string>)) => {
-    setUsernameCache(prev => {
-      // Ensure prev.validatedUsernames is always a Set
-      const currentValidatedUsernames = prev.validatedUsernames instanceof Set ? prev.validatedUsernames : new Set<string>();
-      
-      return {
-        ...prev, 
-        validatedUsernames: typeof validatedUsernames === 'function' ? validatedUsernames(currentValidatedUsernames) : validatedUsernames 
-      };
-    });
-  }, [setUsernameCache]);
-  
-  const setInvalidUsernames = useCallback((invalidUsernames: Set<string> | ((prev: Set<string>) => Set<string>)) => {
-    setUsernameCache(prev => {
-      // Ensure prev.invalidUsernames is always a Set
-      const currentInvalidUsernames = prev.invalidUsernames instanceof Set ? prev.invalidUsernames : new Set<string>();
-      
-      return {
-        ...prev, 
-        invalidUsernames: typeof invalidUsernames === 'function' ? invalidUsernames(currentInvalidUsernames) : invalidUsernames 
-      };
-    });
-  }, [setUsernameCache]);
+  const setValidatedUsernames = useCallback(
+    (
+      validatedUsernames: Set<string> | ((prev: Set<string>) => Set<string>)
+    ) => {
+      setUsernameCache(prev => {
+        // Ensure prev.validatedUsernames is always a Set
+        const currentValidatedUsernames =
+          prev.validatedUsernames instanceof Set
+            ? prev.validatedUsernames
+            : new Set<string>();
+
+        return {
+          ...prev,
+          validatedUsernames:
+            typeof validatedUsernames === 'function'
+              ? validatedUsernames(currentValidatedUsernames)
+              : validatedUsernames,
+        };
+      });
+    },
+    [setUsernameCache]
+  );
+
+  const setInvalidUsernames = useCallback(
+    (invalidUsernames: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      setUsernameCache(prev => {
+        // Ensure prev.invalidUsernames is always a Set
+        const currentInvalidUsernames =
+          prev.invalidUsernames instanceof Set
+            ? prev.invalidUsernames
+            : new Set<string>();
+
+        return {
+          ...prev,
+          invalidUsernames:
+            typeof invalidUsernames === 'function'
+              ? invalidUsernames(currentInvalidUsernames)
+              : invalidUsernames,
+        };
+      });
+    },
+    [setUsernameCache]
+  );
 
   // Individual filter setters for convenience
-  const setFilter = useCallback((filter: 'all' | 'issue' | 'pr' | 'comment') => {
-    setCurrentFilters(prev => ({ ...prev, filter }));
-  }, [setCurrentFilters]);
-  
-  const setStatusFilter = useCallback((statusFilter: 'all' | 'open' | 'closed' | 'merged') => {
-    setCurrentFilters(prev => ({ ...prev, statusFilter }));
-  }, [setCurrentFilters]);
-  
-  const setLabelFilter = useCallback((labelFilter: string) => {
-    setCurrentFilters(prev => ({ ...prev, labelFilter }));
-  }, [setCurrentFilters]);
-  
-  const setExcludedLabels = useCallback((excludedLabels: string[] | ((prev: string[]) => string[])) => {
-    setCurrentFilters(prev => ({ 
-      ...prev, 
-      excludedLabels: typeof excludedLabels === 'function' ? excludedLabels(prev.excludedLabels) : excludedLabels 
-    }));
-  }, [setCurrentFilters]);
-  
-  const setRepoFilters = useCallback((repoFilters: string[] | ((prev: string[]) => string[])) => {
-    setCurrentFilters(prev => ({ 
-      ...prev, 
-      repoFilters: typeof repoFilters === 'function' ? repoFilters(prev.repoFilters) : repoFilters 
-    }));
-  }, [setCurrentFilters]);
-  
+  const setFilter = useCallback(
+    (filter: 'all' | 'issue' | 'pr' | 'comment') => {
+      setCurrentFilters(prev => ({ ...prev, filter }));
+    },
+    [setCurrentFilters]
+  );
+
+  const setStatusFilter = useCallback(
+    (statusFilter: 'all' | 'open' | 'closed' | 'merged') => {
+      setCurrentFilters(prev => ({ ...prev, statusFilter }));
+    },
+    [setCurrentFilters]
+  );
+
+  const setLabelFilter = useCallback(
+    (labelFilter: string) => {
+      setCurrentFilters(prev => ({ ...prev, labelFilter }));
+    },
+    [setCurrentFilters]
+  );
+
+  const setExcludedLabels = useCallback(
+    (excludedLabels: string[] | ((prev: string[]) => string[])) => {
+      setCurrentFilters(prev => ({
+        ...prev,
+        excludedLabels:
+          typeof excludedLabels === 'function'
+            ? excludedLabels(prev.excludedLabels)
+            : excludedLabels,
+      }));
+    },
+    [setCurrentFilters]
+  );
+
+  const setRepoFilters = useCallback(
+    (repoFilters: string[] | ((prev: string[]) => string[])) => {
+      setCurrentFilters(prev => ({
+        ...prev,
+        repoFilters:
+          typeof repoFilters === 'function'
+            ? repoFilters(prev.repoFilters)
+            : repoFilters,
+      }));
+    },
+    [setCurrentFilters]
+  );
+
   // Extract individual filter values for convenience
-  const { filter, statusFilter, labelFilter, excludedLabels, searchText, repoFilters } = currentFilters;
-  
+  const {
+    filter,
+    statusFilter,
+    labelFilter,
+    excludedLabels,
+    searchText,
+    repoFilters,
+  } = currentFilters;
+
   // Helper functions for Set operations using the new utilities
-  const addToValidated = useCallback(createAddToCache(setValidatedUsernames), [setValidatedUsernames]);
-  const addToInvalid = useCallback(createAddToCache(setInvalidUsernames), [setInvalidUsernames]);
-  const removeFromValidated = useCallback(createRemoveFromCache(setValidatedUsernames), [setValidatedUsernames]);
+  const addToValidated = useCallback(createAddToCache(setValidatedUsernames), [
+    setValidatedUsernames,
+  ]);
+  const addToInvalid = useCallback(createAddToCache(setInvalidUsernames), [
+    setInvalidUsernames,
+  ]);
+  const removeFromValidated = useCallback(
+    createRemoveFromCache(setValidatedUsernames),
+    [setValidatedUsernames]
+  );
 
   // Derived state using new utilities
   const availableLabels = useMemo(() => {
@@ -294,7 +473,11 @@ function App() {
   }, [results]);
 
   const filteredResults = useMemo(() => {
-    return applyFiltersAndSort(Array.isArray(results) ? results : [], currentFilters, sortOrder);
+    return applyFiltersAndSort(
+      Array.isArray(results) ? results : [],
+      currentFilters,
+      sortOrder
+    );
   }, [results, currentFilters, sortOrder]);
 
   // Real-time username format validation
@@ -305,7 +488,7 @@ function App() {
     }
 
     const validation = validateUsernameList(usernameString);
-    
+
     if (validation.errors.length > 0) {
       setError(validation.errors.join('\n'));
     } else {
@@ -320,7 +503,7 @@ function App() {
     // Only do format validation on blur, not API validation
     // API validation will happen during form submission
     const validation = validateUsernameList(username);
-    
+
     if (validation.errors.length > 0) {
       setError(validation.errors.join('\n'));
     } else {
@@ -329,26 +512,32 @@ function App() {
   }, [username]);
 
   // Helper function to check if cached results are valid
-  const isCacheValid = useCallback((cacheExpiryMs: number = 3600000) => {
-    if (!lastSearchParams) return false;
-    
-    return (
-      lastSearchParams.username === username &&
-      lastSearchParams.startDate === startDate &&
-      lastSearchParams.endDate === endDate &&
-      lastSearchParams.apiMode === apiMode &&
-      Date.now() - lastSearchParams.timestamp < cacheExpiryMs
-    );
-  }, [lastSearchParams, username, startDate, endDate, apiMode]);
+  const isCacheValid = useCallback(
+    (cacheExpiryMs: number = 3600000) => {
+      if (!lastSearchParams) return false;
+
+      return (
+        lastSearchParams.username === username &&
+        lastSearchParams.startDate === startDate &&
+        lastSearchParams.endDate === endDate &&
+        lastSearchParams.apiMode === apiMode &&
+        Date.now() - lastSearchParams.timestamp < cacheExpiryMs
+      );
+    },
+    [lastSearchParams, username, startDate, endDate, apiMode]
+  );
 
   // Helper function to set the appropriate results based on API mode
-  const setCurrentResults = useCallback((items: GitHubItem[]) => {
-    if (apiMode === 'events') {
-      setEventsResults(items);
-    } else {
-      setSearchResults(items);
-    }
-  }, [apiMode, setEventsResults, setSearchResults]);
+  const setCurrentResults = useCallback(
+    (items: GitHubItem[]) => {
+      if (apiMode === 'events') {
+        setEventsResults(items);
+      } else {
+        setSearchResults(items);
+      }
+    },
+    [apiMode, setEventsResults, setSearchResults]
+  );
 
   // Update handleSearch to check cache first
   const handleSearch = useCallback(async () => {
@@ -366,20 +555,20 @@ function App() {
       startDate,
       endDate,
       githubToken,
-      apiMode
+      apiMode,
     };
 
     // Create username cache object
     const cache: UsernameCache = {
       validatedUsernames,
-      invalidUsernames
+      invalidUsernames,
     };
 
     // Create cache callbacks
     const cacheCallbacks = {
       addToValidated,
       addToInvalid,
-      removeFromValidated
+      removeFromValidated,
     };
 
     // Set up progress callback
@@ -394,7 +583,7 @@ function App() {
       const result = await performGitHubSearch(searchParams, cache, {
         onProgress,
         cacheCallbacks,
-        requestDelay: 500
+        requestDelay: 500,
       });
 
       // Update results and search parameters
@@ -404,18 +593,22 @@ function App() {
         startDate,
         endDate,
         apiMode,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
-      
+
       // Show success message briefly
       setLoadingProgress(`Successfully loaded ${result.totalCount} items!`);
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Clear loading state
       setLoading(false);
       setLoadingProgress('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'An error occurred while fetching data'
+      );
       setLoading(false);
       setLoadingProgress('');
     }
@@ -436,7 +629,7 @@ function App() {
     setLoadingProgress,
     setError,
     isCacheValid,
-    results.length
+    results.length,
   ]);
 
   // Show initial loading animation
@@ -450,15 +643,23 @@ function App() {
   // Auto-load cached results when switching API modes (if cache is valid)
   useEffect(() => {
     if (isCacheValid() && results.length === 0) {
-      // If we have cached results but current results array is empty, 
+      // If we have cached results but current results array is empty,
       // it means we switched API modes and should show the cached data immediately
-      const cachedResults = apiMode === 'events' ? eventsResults : searchResults;
+      const cachedResults =
+        apiMode === 'events' ? eventsResults : searchResults;
       if (cachedResults.length > 0) {
         setLoadingProgress(`Loaded ${cachedResults.length} cached items`);
         setTimeout(() => setLoadingProgress(''), 1000);
       }
     }
-  }, [apiMode, isCacheValid, results.length, eventsResults, searchResults, setLoadingProgress]);
+  }, [
+    apiMode,
+    isCacheValid,
+    results.length,
+    eventsResults,
+    searchResults,
+    setLoadingProgress,
+  ]);
 
   // Handle manual spin
   const handleManualSpin = useCallback(() => {
@@ -471,20 +672,26 @@ function App() {
   }, [isManuallySpinning]);
 
   // Toggle description visibility
-  const toggleDescriptionVisibility = useCallback((id: number) => {
-    setDescriptionVisible(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  }, [setDescriptionVisible]);
+  const toggleDescriptionVisibility = useCallback(
+    (id: number) => {
+      setDescriptionVisible(prev => ({
+        ...prev,
+        [id]: !prev[id],
+      }));
+    },
+    [setDescriptionVisible]
+  );
 
   // Toggle expanded state
-  const toggleExpand = useCallback((id: number) => {
-    setExpanded(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  }, [setExpanded]);
+  const toggleExpand = useCallback(
+    (id: number) => {
+      setExpanded(prev => ({
+        ...prev,
+        [id]: !prev[id],
+      }));
+    },
+    [setExpanded]
+  );
 
   // Clear all filters using new utilities
   const clearAllFilters = useCallback(() => {
@@ -492,39 +699,46 @@ function App() {
   }, [setCurrentFilters]);
 
   // Clipboard handler
-  const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    // Only consider items that are both selected and in the filtered results
-    const visibleSelectedItems = selectedItems.size > 0 
-      ? filteredResults.filter(item => selectedItems.has(item.id))
-      : filteredResults;
+  const copyResultsToClipboard = useCallback(
+    async (format: 'detailed' | 'compact') => {
+      // Only consider items that are both selected and in the filtered results
+      const visibleSelectedItems =
+        selectedItems.size > 0
+          ? filteredResults.filter(item => selectedItems.has(item.id))
+          : filteredResults;
 
-    const result = await copyToClipboard(visibleSelectedItems, {
-      isCompactView: format === 'compact',
-      onSuccess: (message: string) => {
-        setClipboardMessage(message);
-        setTimeout(() => setClipboardMessage(null), 3000);
-      },
-      onError: (error: Error) => {
-        setClipboardMessage(`Error: ${error.message}`);
-        setTimeout(() => setClipboardMessage(null), 3000);
-      }
-    });
-    
-    return result;
-  }, [filteredResults, selectedItems]);
+      const result = await copyToClipboard(visibleSelectedItems, {
+        isCompactView: format === 'compact',
+        onSuccess: (message: string) => {
+          setClipboardMessage(message);
+          setTimeout(() => setClipboardMessage(null), 3000);
+        },
+        onError: (error: Error) => {
+          setClipboardMessage(`Error: ${error.message}`);
+          setTimeout(() => setClipboardMessage(null), 3000);
+        },
+      });
+
+      return result;
+    },
+    [filteredResults, selectedItems]
+  );
 
   // Selection handlers
-  const toggleItemSelection = useCallback((id: number) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  }, [setSelectedItems]);
+  const toggleItemSelection = useCallback(
+    (id: number) => {
+      setSelectedItems(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+          newSet.delete(id);
+        } else {
+          newSet.add(id);
+        }
+        return newSet;
+      });
+    },
+    [setSelectedItems]
+  );
 
   const selectAllItems = useCallback(() => {
     setSelectedItems(new Set(filteredResults.map(item => item.id)));
@@ -535,43 +749,48 @@ function App() {
   }, [setSelectedItems]);
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh',
-      bg: 'canvas.default',
-      color: 'fg.default'
-    }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bg: 'canvas.default',
+        color: 'fg.default',
+      }}
+    >
       <OfflineBanner />
       <PageLayout sx={{ '--spacing': '0 !important' }}>
         <PageLayout.Header sx={{ p: 0 }}>
-          <Box sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderColor: 'border.default',
-            borderBottom: '1px solid',
-            height: '56px',
-            position: 'relative'
-          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderColor: 'border.default',
+              borderBottom: '1px solid',
+              height: '56px',
+              position: 'relative',
+            }}
+          >
             <Box sx={{ pl: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
               <Heading sx={{ fontSize: 3, m: 0 }}>🎰 Git Vegas</Heading>
             </Box>
-            
+
             {/* Center slot machine */}
-            <Box sx={{
-              position: 'absolute',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              alignItems: 'center',
-              flexDirection: 'column',
-              gap: 1
-            }}>
+            <Box
+              sx={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                alignItems: 'center',
+                flexDirection: 'column',
+                gap: 1,
+              }}
+            >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <SlotMachineLoader 
+                <SlotMachineLoader
                   avatarUrls={(Array.isArray(results) ? results : [])
                     .map(item => item.user.avatar_url)
-                    .filter(Boolean)
-                  }
+                    .filter(Boolean)}
                   isLoading={loading || initialLoading}
                   isManuallySpinning={isManuallySpinning}
                 />
@@ -582,24 +801,25 @@ function App() {
                   sx={{
                     p: 1,
                     color: 'fg.default',
-                    opacity: (isManuallySpinning || loading || initialLoading) ? 0.5 : 1,
-                    '&:hover:not(:disabled)': { 
+                    opacity:
+                      isManuallySpinning || loading || initialLoading ? 0.5 : 1,
+                    '&:hover:not(:disabled)': {
                       color: 'accent.fg',
                       transform: 'scale(1.1)',
-                      transition: 'transform 0.2s ease-in-out'
+                      transition: 'transform 0.2s ease-in-out',
                     },
                     '&:disabled': {
-                      cursor: 'not-allowed'
+                      cursor: 'not-allowed',
                     },
                     '&:focus': {
                       outline: 'none',
-                      boxShadow: 'none'
+                      boxShadow: 'none',
                     },
                     cursor: 'pointer',
                     fontSize: '12px',
                     lineHeight: 1,
                     height: 'auto',
-                    minWidth: 'auto'
+                    minWidth: 'auto',
                   }}
                 >
                   🕹️
@@ -623,7 +843,7 @@ function App() {
                 variant="invisible"
                 sx={{
                   color: 'fg.default',
-                  '&:hover': { color: 'accent.fg' }
+                  '&:hover': { color: 'accent.fg' },
                 }}
               />
             </Box>
@@ -631,59 +851,63 @@ function App() {
         </PageLayout.Header>
 
         <PageLayout.Content sx={{ px: 3, py: 4 }}>
-                  <FormContext.Provider value={{
-          username,
-          startDate,
-          endDate,
-          githubToken,
-          apiMode,
-          setUsername,
-          setStartDate,
-          setEndDate,
-          setGithubToken,
-          setApiMode,
-          handleSearch,
-          handleUsernameBlur,
-          validateUsernameFormat,
-          loading,
-          loadingProgress,
-          error
-        }}>
-            <ResultsContext.Provider value={{
-              results,
-              filteredResults,
-              filter,
-              statusFilter,
-              sortOrder,
-              labelFilter,
-              excludedLabels,
-              searchText,
-              repoFilters,
-              availableLabels,
-              setFilter,
-              setStatusFilter,
-              setSortOrder,
-              setLabelFilter,
-              setExcludedLabels,
-              toggleDescriptionVisibility,
-              toggleExpand,
-              copyResultsToClipboard,
-              descriptionVisible,
-              expanded,
-              clipboardMessage,
-              clearAllFilters,
-              isCompactView,
-              setIsCompactView,
-              selectedItems,
-              toggleItemSelection,
-              selectAllItems,
-              clearSelection,
-              setRepoFilters
-            }}>
+          <FormContext.Provider
+            value={{
+              username,
+              startDate,
+              endDate,
+              githubToken,
+              apiMode,
+              setUsername,
+              setStartDate,
+              setEndDate,
+              setGithubToken,
+              setApiMode,
+              handleSearch,
+              handleUsernameBlur,
+              validateUsernameFormat,
+              loading,
+              loadingProgress,
+              error,
+            }}
+          >
+            <ResultsContext.Provider
+              value={{
+                results,
+                filteredResults,
+                filter,
+                statusFilter,
+                sortOrder,
+                labelFilter,
+                excludedLabels,
+                searchText,
+                repoFilters,
+                availableLabels,
+                setFilter,
+                setStatusFilter,
+                setSortOrder,
+                setLabelFilter,
+                setExcludedLabels,
+                toggleDescriptionVisibility,
+                toggleExpand,
+                copyResultsToClipboard,
+                descriptionVisible,
+                expanded,
+                clipboardMessage,
+                clearAllFilters,
+                isCompactView,
+                setIsCompactView,
+                selectedItems,
+                toggleItemSelection,
+                selectAllItems,
+                clearSelection,
+                setRepoFilters,
+              }}
+            >
               <SearchForm />
               {apiMode === 'events' ? (
                 <>
-                  <FilterControls 
+                  <FilterControls
                     useResultsContext={useResultsContext}
                     countItemsMatchingFilter={countItemsMatchingFilter}
                     buttonStyles={buttonStyles}
@@ -691,13 +915,13 @@ function App() {
                   <TimelineView items={filteredResults} />
                 </>
               ) : (
-                <ResultsList 
+                <ResultsList
                   useResultsContext={useResultsContext}
                   countItemsMatchingFilter={countItemsMatchingFilter}
                   buttonStyles={buttonStyles}
                 />
               )}
-              <SettingsDialog 
+              <SettingsDialog
                 isOpen={isSettingsOpen}
                 onDismiss={() => setIsSettingsOpen(false)}
               />

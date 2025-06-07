@@ -1,6 +1,31 @@
 import React, { memo, useMemo, useState, useCallback } from 'react';
-import { Box, Button, Flash, Text, Heading, Link, ButtonGroup, Avatar, Stack, BranchName, Label, Checkbox, ActionMenu, ActionList, Dialog, IconButton } from '@primer/react';
-import { GitPullRequestIcon, IssueOpenedIcon, XIcon, GitMergeIcon, ChevronLeftIcon, ChevronRightIcon, EyeIcon } from '@primer/octicons-react';
+import {
+  Box,
+  Button,
+  Flash,
+  Text,
+  Heading,
+  Link,
+  ButtonGroup,
+  Avatar,
+  Stack,
+  BranchName,
+  Label,
+  Checkbox,
+  ActionMenu,
+  ActionList,
+  Dialog,
+  IconButton,
+} from '@primer/react';
+import {
+  GitPullRequestIcon,
+  IssueOpenedIcon,
+  XIcon,
+  GitMergeIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  EyeIcon,
+} from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getContrastColor } from '../utils';
@@ -13,7 +38,7 @@ interface UseResultsContextHookType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr' | 'comment';
-  statusFilter: 'all' | 'open' | 'closed' | 'merged';  
+  statusFilter: 'all' | 'open' | 'closed' | 'merged';
   sortOrder: 'updated' | 'created';
   labelFilter: string;
   excludedLabels: string[];
@@ -28,8 +53,8 @@ interface UseResultsContextHookType {
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
   copyResultsToClipboard: (format: 'detailed' | 'compact') => void;
-  descriptionVisible: {[id: number]: boolean};
-  expanded: {[id: number]: boolean};
+  descriptionVisible: { [id: number]: boolean };
+  expanded: { [id: number]: boolean };
   clipboardMessage: string | null;
   clearAllFilters: () => void;
   isCompactView: boolean;
@@ -45,9 +70,9 @@ interface UseResultsContextHookType {
 interface ResultsListProps {
   useResultsContext: () => UseResultsContextHookType;
   countItemsMatchingFilter: (
-    items: GitHubItem[], 
-    filterType: FilterType, 
-    filterValue: FilterValue, 
+    items: GitHubItem[],
+    filterType: FilterType,
+    filterValue: FilterValue,
     excludedLabels: string[]
   ) => number;
   buttonStyles: any;
@@ -69,7 +94,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
   onPrevious,
   onNext,
   hasPrevious,
-  hasNext
+  hasNext,
 }: DescriptionDialogProps) {
   if (!item) return null;
 
@@ -103,40 +128,66 @@ const DescriptionDialog = memo(function DescriptionDialog({
         margin: 0,
         borderRadius: 0,
         borderLeft: '1px solid',
-        borderColor: 'border.default'
+        borderColor: 'border.default',
       }}
       role="dialog"
     >
       <Dialog.Header>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}
+        >
           {item.pull_request ? (
             item.pull_request.merged_at ? (
-              <Box sx={{ color: 'done.fg' }}><GitMergeIcon size={16} /></Box>
+              <Box sx={{ color: 'done.fg' }}>
+                <GitMergeIcon size={16} />
+              </Box>
             ) : item.state === 'closed' ? (
-              <Box sx={{ color: 'closed.fg' }}><GitPullRequestIcon size={16} /></Box>
+              <Box sx={{ color: 'closed.fg' }}>
+                <GitPullRequestIcon size={16} />
+              </Box>
             ) : (
-              <Box sx={{ color: 'open.fg' }}><GitPullRequestIcon size={16} /></Box>
+              <Box sx={{ color: 'open.fg' }}>
+                <GitPullRequestIcon size={16} />
+              </Box>
             )
           ) : (
-            <Box sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}>
+            <Box
+              sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}
+            >
               <IssueOpenedIcon size={16} />
             </Box>
           )}
-          <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>{item.title}</Text>
+          <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>
+            {item.title}
+          </Text>
         </Box>
       </Dialog.Header>
 
-      <Box sx={{ 
-        p: 3, 
-        height: 'calc(100vh - 120px)', 
-        overflow: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 3
-      }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', fontSize: 1, color: 'fg.muted' }}>
+      <Box
+        sx={{
+          p: 3,
+          height: 'calc(100vh - 120px)',
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            gap: 2,
+            alignItems: 'center',
+            fontSize: 1,
+            color: 'fg.muted',
+          }}
+        >
           <Avatar src={item.user.avatar_url} size={20} />
-          <Link href={item.user.html_url} target="_blank" rel="noopener noreferrer">
+          <Link
+            href={item.user.html_url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {item.user.login}
           </Link>
           <Text>•</Text>
@@ -145,27 +196,29 @@ const DescriptionDialog = memo(function DescriptionDialog({
           </Link>
         </Box>
 
-        <Box sx={{ 
-          bg: 'canvas.default',
-          p: 3,
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'border.default',
-          fontSize: 1
-        }}>
+        <Box
+          sx={{
+            bg: 'canvas.default',
+            p: 3,
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'border.default',
+            fontSize: 1,
+          }}
+        >
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              a: ({node, ...props}) => (
-                <Link 
-                  target="_blank" 
+              a: ({ node, ...props }) => (
+                <Link
+                  target="_blank"
                   rel="noopener noreferrer"
-                  sx={{color: 'accent.fg'}}
-                  {...props} 
+                  sx={{ color: 'accent.fg' }}
+                  {...props}
                 />
               ),
-              pre: ({node, ...props}) => (
-                <Box 
+              pre: ({ node, ...props }) => (
+                <Box
                   as="pre"
                   sx={{
                     bg: 'canvas.subtle',
@@ -174,19 +227,40 @@ const DescriptionDialog = memo(function DescriptionDialog({
                     overflowX: 'auto',
                     fontSize: 0,
                     border: '1px solid',
-                    borderColor: 'border.muted'
+                    borderColor: 'border.muted',
                   }}
                   {...props}
                 />
               ),
-              code: ({inline, ...props}: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) => (
-                inline
-                  ? <Box as="code" sx={{bg: 'canvas.subtle', p: '2px 4px', borderRadius: 1, fontSize: 0}} {...props} />
-                  : <Box as="code" sx={{display: 'block', fontSize: 0}} {...props} />
+              code: ({
+                inline,
+                ...props
+              }: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) =>
+                inline ? (
+                  <Box
+                    as="code"
+                    sx={{
+                      bg: 'canvas.subtle',
+                      p: '2px 4px',
+                      borderRadius: 1,
+                      fontSize: 0,
+                    }}
+                    {...props}
+                  />
+                ) : (
+                  <Box
+                    as="code"
+                    sx={{ display: 'block', fontSize: 0 }}
+                    {...props}
+                  />
+                ),
+              img: ({ node, ...props }) => (
+                <Box
+                  as="img"
+                  sx={{ maxWidth: '100%', height: 'auto' }}
+                  {...props}
+                />
               ),
-              img: ({node, ...props}) => (
-                <Box as="img" sx={{maxWidth: '100%', height: 'auto'}} {...props} />
-              )
             }}
           >
             {item.body || '*No description provided*'}
@@ -194,17 +268,19 @@ const DescriptionDialog = memo(function DescriptionDialog({
         </Box>
       </Box>
 
-      <Box sx={{
-        position: 'sticky',
-        bottom: 0,
-        p: 3,
-        borderTop: '1px solid',
-        borderColor: 'border.default',
-        bg: 'canvas.default',
-        display: 'flex',
-        gap: 2,
-        justifyContent: 'space-between'
-      }}>
+      <Box
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          p: 3,
+          borderTop: '1px solid',
+          borderColor: 'border.default',
+          bg: 'canvas.default',
+          display: 'flex',
+          gap: 2,
+          justifyContent: 'space-between',
+        }}
+      >
         <IconButton
           icon={ChevronLeftIcon}
           aria-label="Previous item"
@@ -227,7 +303,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
 const ResultsList = memo(function ResultsList({
   useResultsContext,
   countItemsMatchingFilter,
-  buttonStyles
+  buttonStyles,
 }: ResultsListProps) {
   const {
     results,
@@ -245,49 +321,51 @@ const ResultsList = memo(function ResultsList({
     setSortOrder,
     setLabelFilter,
     setExcludedLabels,
-    toggleDescriptionVisibility,
-    toggleExpand,
     copyResultsToClipboard,
-    descriptionVisible,
-    expanded,
     clipboardMessage,
     clearAllFilters,
     isCompactView,
     setIsCompactView,
     selectedItems,
-    selectAllItems,
-    clearSelection,
     toggleItemSelection,
-    setRepoFilters
+    setRepoFilters,
   } = useResultsContext();
 
   // Add state for filter collapse with localStorage persistence
-  const [areFiltersCollapsed, setAreFiltersCollapsed] = useLocalStorage('github-filters-collapsed', false);
+  const [areFiltersCollapsed, setAreFiltersCollapsed] = useLocalStorage(
+    'github-filters-collapsed',
+    false
+  );
 
   // Add state for the description dialog
-  const [selectedItemForDialog, setSelectedItemForDialog] = useState<GitHubItem | null>(null);
+  const [selectedItemForDialog, setSelectedItemForDialog] =
+    useState<GitHubItem | null>(null);
 
   // Handle repository filter changes
-  const handleRepoFilterChange = useCallback((repo: string) => {
-    if (!setRepoFilters) {
-      console.error('setRepoFilters is not available');
-      return;
-    }
-    
-    setRepoFilters(prev => {
-      if (prev.includes(repo)) {
-        return prev.filter(r => r !== repo);
-      } else {
-        return [...prev, repo];
+  const handleRepoFilterChange = useCallback(
+    (repo: string) => {
+      if (!setRepoFilters) {
+        console.error('setRepoFilters is not available');
+        return;
       }
-    });
-  }, [setRepoFilters]);
+
+      setRepoFilters(prev => {
+        if (prev.includes(repo)) {
+          return prev.filter(r => r !== repo);
+        } else {
+          return [...prev, repo];
+        }
+      });
+    },
+    [setRepoFilters]
+  );
 
   // Helper to check if any filters are active
-  const hasActiveFilters = filter !== 'all' || 
-    statusFilter !== 'all' || 
-    labelFilter !== '' || 
-    searchText !== '' || 
+  const hasActiveFilters =
+    filter !== 'all' ||
+    statusFilter !== 'all' ||
+    labelFilter !== '' ||
+    searchText !== '' ||
     repoFilters.length > 0 ||
     excludedLabels.length > 0;
 
@@ -321,30 +399,43 @@ const ResultsList = memo(function ResultsList({
   const baseResults = useMemo(() => {
     return filteredResults.filter(item => {
       // Apply only the other active filters, not the current one being counted
-      const labelMatch = labelFilter ? item.labels?.some((l: any) => l.name === labelFilter) : true;
-      const excludeMatch = excludedLabels.length === 0 ? true : 
-        !item.labels?.some((l: any) => excludedLabels.includes(l.name));
-      const repoMatch = repoFilters.length === 0 ? true : (
-        item.repository_url && repoFilters.includes(
-          item.repository_url.replace('https://api.github.com/repos/', '')
-        )
-      );
+      const labelMatch = labelFilter
+        ? item.labels?.some((l: any) => l.name === labelFilter)
+        : true;
+      const excludeMatch =
+        excludedLabels.length === 0
+          ? true
+          : !item.labels?.some((l: any) => excludedLabels.includes(l.name));
+      const repoMatch =
+        repoFilters.length === 0
+          ? true
+          : item.repository_url &&
+            repoFilters.includes(
+              item.repository_url.replace('https://api.github.com/repos/', '')
+            );
       return labelMatch && excludeMatch && repoMatch;
     });
   }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
 
   // Add helper to get unique repositories
   const getUniqueRepositories = useMemo(() => {
-    const repos = Array.from(new Set(
-      results
-        .map(item => {
-          const repo = item.repository_url?.replace('https://api.github.com/repos/', '');
-          console.log('Repository URL:', item.repository_url);
-          console.log('Extracted repo:', repo);
-          return repo;
-        })
-        .filter((repo): repo is string => Boolean(repo))
-    )).sort((a, b) => (a || '').toLowerCase().localeCompare((b || '').toLowerCase()));
+    const repos = Array.from(
+      new Set(
+        results
+          .map(item => {
+            const repo = item.repository_url?.replace(
+              'https://api.github.com/repos/',
+              ''
+            );
+            console.log('Repository URL:', item.repository_url);
+            console.log('Extracted repo:', repo);
+            return repo;
+          })
+          .filter((repo): repo is string => Boolean(repo))
+      )
+    ).sort((a, b) =>
+      (a || '').toLowerCase().localeCompare((b || '').toLowerCase())
+    );
     console.log('Unique repositories:', repos);
     return repos;
   }, [results]);
@@ -352,7 +443,9 @@ const ResultsList = memo(function ResultsList({
   // Add navigation logic
   const handlePreviousItem = () => {
     if (!selectedItemForDialog) return;
-    const currentIndex = filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
+    const currentIndex = filteredResults.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
     if (currentIndex > 0) {
       setSelectedItemForDialog(filteredResults[currentIndex - 1]);
     }
@@ -360,7 +453,9 @@ const ResultsList = memo(function ResultsList({
 
   const handleNextItem = () => {
     if (!selectedItemForDialog) return;
-    const currentIndex = filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
+    const currentIndex = filteredResults.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
     if (currentIndex < filteredResults.length - 1) {
       setSelectedItemForDialog(filteredResults[currentIndex + 1]);
     }
@@ -368,34 +463,48 @@ const ResultsList = memo(function ResultsList({
 
   const getCurrentItemIndex = () => {
     if (!selectedItemForDialog) return -1;
-    return filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
+    return filteredResults.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
   };
 
   return (
     <Box>
       {/* Filters Section */}
-      <Box sx={{
-        maxWidth: '1200px',
-        margin: '16px auto',
-        bg: 'canvas.subtle',
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'border.default',
-        overflow: 'hidden'
-      }}>
+      <Box
+        sx={{
+          maxWidth: '1200px',
+          margin: '16px auto',
+          bg: 'canvas.subtle',
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'border.default',
+          overflow: 'hidden',
+        }}
+      >
         {/* Filters header */}
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 2,
-          p: 2,
-          bg: 'canvas.default',
-          borderBottom: '1px solid',
-          borderColor: 'border.default'
-        }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 2,
+            p: 2,
+            bg: 'canvas.default',
+            borderBottom: '1px solid',
+            borderColor: 'border.default',
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Heading as="h2" sx={{fontSize: 2, fontWeight: 'semibold', color: 'fg.default', m: 0}}>
+            <Heading
+              as="h2"
+              sx={{
+                fontSize: 2,
+                fontWeight: 'semibold',
+                color: 'fg.default',
+                m: 0,
+              }}
+            >
               Filters
             </Heading>
           </Box>
@@ -414,10 +523,10 @@ const ResultsList = memo(function ResultsList({
               variant="invisible"
               size="small"
               onClick={() => setAreFiltersCollapsed(!areFiltersCollapsed)}
-              sx={{ 
+              sx={{
                 ...buttonStyles,
-                color: 'fg.muted', 
-                ':hover': { color: 'fg.default' }
+                color: 'fg.muted',
+                ':hover': { color: 'fg.default' },
               }}
             >
               {areFiltersCollapsed ? 'Show' : 'Hide'}
@@ -427,12 +536,14 @@ const ResultsList = memo(function ResultsList({
 
         {/* Filter Summary when collapsed */}
         {areFiltersCollapsed && hasActiveFilters && (
-          <Box sx={{
-            p: 2,
-            bg: 'canvas.subtle',
-            borderBottom: '1px solid',
-            borderColor: 'border.default'
-          }}>
+          <Box
+            sx={{
+              p: 2,
+              bg: 'canvas.subtle',
+              borderBottom: '1px solid',
+              borderColor: 'border.default',
+            }}
+          >
             <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
               {getFilterSummary()}
             </Text>
@@ -442,73 +553,145 @@ const ResultsList = memo(function ResultsList({
         {/* Filter UI */}
         {!areFiltersCollapsed && (
           <Box sx={{ p: 2 }}>
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: 3
-            }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: 3,
+              }}
+            >
               {/* Type Filter UI */}
               <Box sx={{ gap: 1 }}>
-                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
+                <Heading
+                  as="h3"
+                  sx={{
+                    fontSize: 1,
+                    fontWeight: 'semibold',
+                    color: 'fg.muted',
+                  }}
+                >
                   Type
                 </Heading>
                 <ButtonGroup>
                   <Button
-                    variant={filter === 'issue' ? 'primary' : 'default'} 
-                    onClick={() => setFilter(filter === 'issue' ? 'all' : 'issue')}
+                    variant={filter === 'issue' ? 'primary' : 'default'}
+                    onClick={() =>
+                      setFilter(filter === 'issue' ? 'all' : 'issue')
+                    }
                     size="small"
                     sx={buttonStyles}
                   >
-                    Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels)})
+                    Issues (
+                    {countItemsMatchingFilter(
+                      baseResults,
+                      'type',
+                      'issue',
+                      excludedLabels
+                    )}
+                    )
                   </Button>
                   <Button
-                    variant={filter === 'pr' ? 'primary' : 'default'} 
+                    variant={filter === 'pr' ? 'primary' : 'default'}
                     onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
                     size="small"
                     sx={buttonStyles}
                   >
-                    PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
+                    PRs (
+                    {countItemsMatchingFilter(
+                      baseResults,
+                      'type',
+                      'pr',
+                      excludedLabels
+                    )}
+                    )
                   </Button>
                   <Button
-                    variant={filter === 'comment' ? 'primary' : 'default'} 
-                    onClick={() => setFilter(filter === 'comment' ? 'all' : 'comment')}
+                    variant={filter === 'comment' ? 'primary' : 'default'}
+                    onClick={() =>
+                      setFilter(filter === 'comment' ? 'all' : 'comment')
+                    }
                     size="small"
                     sx={buttonStyles}
                   >
-                    Comments ({countItemsMatchingFilter(baseResults, 'type', 'comment', excludedLabels)})
+                    Comments (
+                    {countItemsMatchingFilter(
+                      baseResults,
+                      'type',
+                      'comment',
+                      excludedLabels
+                    )}
+                    )
                   </Button>
                 </ButtonGroup>
               </Box>
 
               {/* Status Filter UI */}
               <Box sx={{ gap: 1 }}>
-                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
+                <Heading
+                  as="h3"
+                  sx={{
+                    fontSize: 1,
+                    fontWeight: 'semibold',
+                    color: 'fg.muted',
+                  }}
+                >
                   Status
                 </Heading>
                 <ButtonGroup>
-                  <Button 
-                    variant={statusFilter === 'open' ? 'primary' : 'default'} 
-                    onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
+                  <Button
+                    variant={statusFilter === 'open' ? 'primary' : 'default'}
+                    onClick={() =>
+                      setStatusFilter(statusFilter === 'open' ? 'all' : 'open')
+                    }
                     size="small"
                     sx={buttonStyles}
                   >
-                    Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels)})
+                    Open (
+                    {countItemsMatchingFilter(
+                      baseResults,
+                      'status',
+                      'open',
+                      excludedLabels
+                    )}
+                    )
                   </Button>
-                  <Button 
-                    variant={statusFilter === 'closed' ? 'primary' : 'default'} 
-                    onClick={() => setStatusFilter(statusFilter === 'closed' ? 'all' : 'closed')}
+                  <Button
+                    variant={statusFilter === 'closed' ? 'primary' : 'default'}
+                    onClick={() =>
+                      setStatusFilter(
+                        statusFilter === 'closed' ? 'all' : 'closed'
+                      )
+                    }
                     size="small"
                     sx={buttonStyles}
                   >
-                    Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels)})
+                    Closed (
+                    {countItemsMatchingFilter(
+                      baseResults,
+                      'status',
+                      'closed',
+                      excludedLabels
+                    )}
+                    )
                   </Button>
-                  <Button 
-                    variant={statusFilter === 'merged' ? 'primary' : 'default'} 
-                    onClick={() => setStatusFilter(statusFilter === 'merged' ? 'all' : 'merged')}
+                  <Button
+                    variant={statusFilter === 'merged' ? 'primary' : 'default'}
+                    onClick={() =>
+                      setStatusFilter(
+                        statusFilter === 'merged' ? 'all' : 'merged'
+                      )
+                    }
                     size="small"
                     sx={buttonStyles}
                   >
-                    Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
+                    Merged (
+                    {countItemsMatchingFilter(
+                      baseResults,
+                      'status',
+                      'merged',
+                      excludedLabels
+                    )}
+                    )
                   </Button>
                 </ButtonGroup>
               </Box>
@@ -520,41 +703,99 @@ const ResultsList = memo(function ResultsList({
                 {/* Inclusive Label Filter */}
                 <Box sx={{ gap: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'success.fg' }}>
+                    <Heading
+                      as="h3"
+                      sx={{
+                        fontSize: 1,
+                        fontWeight: 'semibold',
+                        color: 'success.fg',
+                      }}
+                    >
                       Include Labels
                     </Heading>
-                    <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
+                    <Text
+                      as="span"
+                      sx={{
+                        fontSize: 0,
+                        color: 'fg.muted',
+                        fontWeight: 'normal',
+                      }}
+                    >
                       show items with selected label
                     </Text>
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
                     {availableLabels
-                      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+                      .sort((a, b) =>
+                        a.toLowerCase().localeCompare(b.toLowerCase())
+                      )
                       .map(label => {
-                        const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
-                        const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels);
+                        const currentCount = countItemsMatchingFilter(
+                          baseResults,
+                          'label',
+                          label,
+                          excludedLabels
+                        );
+                        const potentialCount = countItemsMatchingFilter(
+                          results,
+                          'label',
+                          label,
+                          excludedLabels
+                        );
                         const hasMatches = currentCount > 0;
                         const hasPotentialMatches = potentialCount > 0;
-                        
+
                         return (
                           <Button
                             key={label}
                             size="small"
-                            variant={labelFilter === label ? 'primary' : 'default'}
-                            onClick={() => setLabelFilter(labelFilter === label ? '' : label)}
+                            variant={
+                              labelFilter === label ? 'primary' : 'default'
+                            }
+                            onClick={() =>
+                              setLabelFilter(labelFilter === label ? '' : label)
+                            }
                             sx={{
                               color: hasMatches ? 'fg.default' : 'fg.muted',
-                              opacity: (!hasMatches || excludedLabels.includes(label)) ? 0.5 : 1,
-                              cursor: (!hasPotentialMatches || excludedLabels.includes(label)) ? 'not-allowed' : 'pointer',
-                              textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
+                              opacity:
+                                !hasMatches || excludedLabels.includes(label)
+                                  ? 0.5
+                                  : 1,
+                              cursor:
+                                !hasPotentialMatches ||
+                                excludedLabels.includes(label)
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              textDecoration:
+                                !hasMatches && hasPotentialMatches
+                                  ? 'line-through'
+                                  : 'none',
                               fontSize: 0,
                               py: 0,
-                              height: '24px'
+                              height: '24px',
                             }}
-                            disabled={!hasPotentialMatches || excludedLabels.includes(label)}
-                            title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
+                            disabled={
+                              !hasPotentialMatches ||
+                              excludedLabels.includes(label)
+                            }
+                            title={
+                              !hasMatches && hasPotentialMatches
+                                ? 'No matches with current filters'
+                                : ''
+                            }
                           >
-                            {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
+                            {label} ({currentCount}
+                            {currentCount !== potentialCount
+                              ? ` / ${potentialCount}`
+                              : ''}
+                            )
                           </Button>
                         );
                       })}
@@ -564,19 +805,52 @@ const ResultsList = memo(function ResultsList({
                 {/* Exclusive Label Filter */}
                 <Box sx={{ mt: 2, gap: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'danger.fg' }}>
+                    <Heading
+                      as="h3"
+                      sx={{
+                        fontSize: 1,
+                        fontWeight: 'semibold',
+                        color: 'danger.fg',
+                      }}
+                    >
                       Exclude Labels
                     </Heading>
-                    <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
+                    <Text
+                      as="span"
+                      sx={{
+                        fontSize: 0,
+                        color: 'fg.muted',
+                        fontWeight: 'normal',
+                      }}
+                    >
                       hide items with selected labels
                     </Text>
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
                     {availableLabels
-                      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+                      .sort((a, b) =>
+                        a.toLowerCase().localeCompare(b.toLowerCase())
+                      )
                       .map(label => {
-                        const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
-                        const potentialCount = countItemsMatchingFilter(results, 'label', label, []);
+                        const currentCount = countItemsMatchingFilter(
+                          baseResults,
+                          'label',
+                          label,
+                          excludedLabels
+                        );
+                        const potentialCount = countItemsMatchingFilter(
+                          results,
+                          'label',
+                          label,
+                          []
+                        );
                         const hasMatches = currentCount > 0;
                         const hasPotentialMatches = potentialCount > 0;
 
@@ -584,10 +858,16 @@ const ResultsList = memo(function ResultsList({
                           <Button
                             key={label}
                             size="small"
-                            variant={excludedLabels.includes(label) ? 'danger' : 'default'}
+                            variant={
+                              excludedLabels.includes(label)
+                                ? 'danger'
+                                : 'default'
+                            }
                             onClick={() => {
                               if (excludedLabels.includes(label)) {
-                                setExcludedLabels(prev => prev.filter(l => l !== label));
+                                setExcludedLabels(prev =>
+                                  prev.filter(l => l !== label)
+                                );
                               } else {
                                 setExcludedLabels(prev => [...prev, label]);
                                 if (labelFilter === label) {
@@ -596,17 +876,34 @@ const ResultsList = memo(function ResultsList({
                               }
                             }}
                             sx={{
-                              opacity: (!hasMatches || labelFilter === label) ? 0.5 : 1,
-                              cursor: (!hasPotentialMatches || labelFilter === label) ? 'not-allowed' : 'pointer',
-                              textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
+                              opacity:
+                                !hasMatches || labelFilter === label ? 0.5 : 1,
+                              cursor:
+                                !hasPotentialMatches || labelFilter === label
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              textDecoration:
+                                !hasMatches && hasPotentialMatches
+                                  ? 'line-through'
+                                  : 'none',
                               fontSize: 0,
                               py: 0,
-                              height: '24px'
+                              height: '24px',
                             }}
-                            disabled={!hasPotentialMatches || labelFilter === label}
-                            title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
+                            disabled={
+                              !hasPotentialMatches || labelFilter === label
+                            }
+                            title={
+                              !hasMatches && hasPotentialMatches
+                                ? 'No matches with current filters'
+                                : ''
+                            }
                           >
-                            {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
+                            {label} ({currentCount}
+                            {currentCount !== potentialCount
+                              ? ` / ${potentialCount}`
+                              : ''}
+                            )
                           </Button>
                         );
                       })}
@@ -619,17 +916,41 @@ const ResultsList = memo(function ResultsList({
             {getUniqueRepositories.length > 0 && (
               <Box sx={{ mt: 3, gap: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
+                  <Heading
+                    as="h3"
+                    sx={{
+                      fontSize: 1,
+                      fontWeight: 'semibold',
+                      color: 'fg.muted',
+                    }}
+                  >
                     Repositories
                   </Heading>
-                  <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
+                  <Text
+                    as="span"
+                    sx={{
+                      fontSize: 0,
+                      color: 'fg.muted',
+                      fontWeight: 'normal',
+                    }}
+                  >
                     filter by repository
                   </Text>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {getUniqueRepositories.map(repo => {
-                    const currentCount = countItemsMatchingFilter(baseResults, 'repo', repo, excludedLabels);
-                    const potentialCount = countItemsMatchingFilter(results, 'repo', repo, excludedLabels);
+                    const currentCount = countItemsMatchingFilter(
+                      baseResults,
+                      'repo',
+                      repo,
+                      excludedLabels
+                    );
+                    const potentialCount = countItemsMatchingFilter(
+                      results,
+                      'repo',
+                      repo,
+                      excludedLabels
+                    );
                     const hasMatches = currentCount > 0;
                     const hasPotentialMatches = potentialCount > 0;
 
@@ -637,24 +958,41 @@ const ResultsList = memo(function ResultsList({
                       <Button
                         key={repo}
                         size="small"
-                        variant={repoFilters.includes(repo) ? 'primary' : 'default'}
+                        variant={
+                          repoFilters.includes(repo) ? 'primary' : 'default'
+                        }
                         onClick={() => handleRepoFilterChange(repo)}
                         sx={{
                           color: hasMatches ? 'fg.default' : 'fg.muted',
                           opacity: !hasMatches ? 0.5 : 1,
-                          cursor: !hasPotentialMatches ? 'not-allowed' : 'pointer',
-                          textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
+                          cursor: !hasPotentialMatches
+                            ? 'not-allowed'
+                            : 'pointer',
+                          textDecoration:
+                            !hasMatches && hasPotentialMatches
+                              ? 'line-through'
+                              : 'none',
                           fontSize: 0,
                           py: 0,
                           height: '24px',
                           ':hover:not([disabled])': {
-                            bg: repoFilters.includes(repo) ? 'btn.primary.hoverBg' : 'btn.hoverBg'
-                          }
+                            bg: repoFilters.includes(repo)
+                              ? 'btn.primary.hoverBg'
+                              : 'btn.hoverBg',
+                          },
                         }}
                         disabled={!hasPotentialMatches}
-                        title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
+                        title={
+                          !hasMatches && hasPotentialMatches
+                            ? 'No matches with current filters'
+                            : ''
+                        }
                       >
-                        {repo} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
+                        {repo} ({currentCount}
+                        {currentCount !== potentialCount
+                          ? ` / ${potentialCount}`
+                          : ''}
+                        )
                       </Button>
                     );
                   })}
@@ -667,32 +1005,45 @@ const ResultsList = memo(function ResultsList({
 
       {/* Results Section */}
       {filteredResults.length > 0 && (
-        <Box sx={{
-          maxWidth: '1200px',
-          margin: '24px auto',
-          bg: 'canvas.default',
-          borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'border.default',
-          p: 3
-        }}>
+        <Box
+          sx={{
+            maxWidth: '1200px',
+            margin: '24px auto',
+            bg: 'canvas.default',
+            borderRadius: 2,
+            border: '1px solid',
+            borderColor: 'border.default',
+            p: 3,
+          }}
+        >
           {/* Results header */}
-          <Box sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            mb: 3,
-            pb: 3,
-            borderBottom: '1px solid',
-            borderColor: 'border.muted'
-          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 3,
+              pb: 3,
+              borderBottom: '1px solid',
+              borderColor: 'border.muted',
+            }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Heading as="h2" sx={{fontSize: 3, fontWeight: 'semibold', color: 'fg.default', m: 0}}>Results</Heading>
+              <Heading
+                as="h2"
+                sx={{
+                  fontSize: 3,
+                  fontWeight: 'semibold',
+                  color: 'fg.default',
+                  m: 0,
+                }}
+              >
+                Results
+              </Heading>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-                {hasActiveFilters 
+                {hasActiveFilters
                   ? `${filteredResults.length} filtered / ${results.length} total`
-                  : `${results.length} items`
-                }
+                  : `${results.length} items`}
               </Text>
               {clipboardMessage && (
                 <Flash variant="success" sx={{ py: 1, px: 2 }}>
@@ -704,17 +1055,25 @@ const ResultsList = memo(function ResultsList({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Sort by:</Text>
                 <ButtonGroup>
-                  <Button 
-                    variant={sortOrder === 'updated' ? 'primary' : 'default'} 
-                    onClick={() => setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')}
+                  <Button
+                    variant={sortOrder === 'updated' ? 'primary' : 'default'}
+                    onClick={() =>
+                      setSortOrder(
+                        sortOrder === 'updated' ? 'created' : 'updated'
+                      )
+                    }
                     size="small"
                     sx={buttonStyles}
                   >
                     Last Updated
                   </Button>
-                  <Button 
-                    variant={sortOrder === 'created' ? 'primary' : 'default'} 
-                    onClick={() => setSortOrder(sortOrder === 'created' ? 'updated' : 'created')}
+                  <Button
+                    variant={sortOrder === 'created' ? 'primary' : 'default'}
+                    onClick={() =>
+                      setSortOrder(
+                        sortOrder === 'created' ? 'updated' : 'created'
+                      )
+                    }
                     size="small"
                     sx={buttonStyles}
                   >
@@ -747,39 +1106,47 @@ const ResultsList = memo(function ResultsList({
           </Box>
 
           {/* Actions toolbar */}
-          <Box sx={{
-            display: 'flex',
-            gap: 2,
-            alignItems: 'center',
-            bg: 'canvas.subtle',
-            p: 2,
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'border.default'
-          }}>
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              alignItems: 'center',
+              bg: 'canvas.subtle',
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid',
+              borderColor: 'border.default',
+            }}
+          >
             <ActionMenu>
-              <ActionMenu.Button 
+              <ActionMenu.Button
                 variant="default"
-                sx={{ 
+                sx={{
                   ...buttonStyles,
                   fontSize: 1,
-                  borderColor: 'border.default'
+                  borderColor: 'border.default',
                 }}
               >
-                Export to Clipboard {(() => {
-                  const visibleSelectedCount = filteredResults.filter(item => selectedItems instanceof Set && selectedItems.has(item.id)).length;
-                  return visibleSelectedCount > 0 ? `(${visibleSelectedCount} selected)` : '(all)';
+                Export to Clipboard{' '}
+                {(() => {
+                  const visibleSelectedCount = filteredResults.filter(
+                    item =>
+                      selectedItems instanceof Set && selectedItems.has(item.id)
+                  ).length;
+                  return visibleSelectedCount > 0
+                    ? `(${visibleSelectedCount} selected)`
+                    : '(all)';
                 })()}
               </ActionMenu.Button>
 
               <ActionMenu.Overlay>
                 <ActionList>
-                  <ActionList.Item 
+                  <ActionList.Item
                     onSelect={() => copyResultsToClipboard('detailed')}
                   >
                     Detailed Format
                   </ActionList.Item>
-                  <ActionList.Item 
+                  <ActionList.Item
                     onSelect={() => copyResultsToClipboard('compact')}
                   >
                     Compact Format
@@ -792,22 +1159,25 @@ const ResultsList = memo(function ResultsList({
           {/* Results List */}
           {isCompactView ? (
             <Box as="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
-              {filteredResults.map((item) => (
-                <Box 
-                  as="li" 
-                  key={item.id} 
-                  sx={{ 
+              {filteredResults.map(item => (
+                <Box
+                  as="li"
+                  key={item.id}
+                  sx={{
                     borderBottom: '1px solid',
                     borderColor: 'border.muted',
                     py: 2,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 2
+                    gap: 2,
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Checkbox
-                      checked={selectedItems instanceof Set && selectedItems.has(item.id)}
+                      checked={
+                        selectedItems instanceof Set &&
+                        selectedItems.has(item.id)
+                      }
                       onChange={() => toggleItemSelection(item.id)}
                     />
                     {item.body && (
@@ -815,23 +1185,27 @@ const ResultsList = memo(function ResultsList({
                         icon={EyeIcon}
                         aria-label="Show description"
                         onClick={() => setSelectedItemForDialog(item)}
-                        sx={{ 
+                        sx={{
                           color: 'fg.subtle',
                           opacity: 0.6,
                           padding: '4px',
-                          ':hover': { 
+                          ':hover': {
                             color: 'fg.default',
                             opacity: 1,
-                            bg: 'transparent'
+                            bg: 'transparent',
                           },
                           ':active': {
-                            bg: 'transparent'
-                          }
+                            bg: 'transparent',
+                          },
                         }}
                       />
                     )}
                   </Box>
-                  <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={20} />
+                  <Avatar
+                    src={item.user.avatar_url}
+                    alt={`${item.user.login}'s avatar`}
+                    size={20}
+                  />
                   <Link
                     href={item.html_url}
                     target="_blank"
@@ -840,45 +1214,45 @@ const ResultsList = memo(function ResultsList({
                       color: 'accent.fg',
                       textDecoration: 'none',
                       ':hover': { textDecoration: 'underline' },
-                      flex: 1
+                      flex: 1,
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       {item.pull_request ? (
-                        (item.pull_request.merged_at || item.merged) ? (
-                          <Box 
+                        item.pull_request.merged_at || item.merged ? (
+                          <Box
                             as="span"
                             aria-label="Merged Pull Request"
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: 'done.fg'
+                              color: 'done.fg',
                             }}
                           >
                             <GitMergeIcon size={16} />
                             <Text sx={{ ml: 1 }}>Merged</Text>
                           </Box>
                         ) : item.state === 'closed' ? (
-                          <Box 
+                          <Box
                             as="span"
                             aria-label="Closed Pull Request"
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: 'closed.fg'
+                              color: 'closed.fg',
                             }}
                           >
                             <GitPullRequestIcon size={16} />
                             <Text sx={{ ml: 1 }}>Closed</Text>
                           </Box>
                         ) : (
-                          <Box 
+                          <Box
                             as="span"
                             aria-label="Open Pull Request"
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: 'open.fg'
+                              color: 'open.fg',
                             }}
                           >
                             <GitPullRequestIcon size={16} />
@@ -886,13 +1260,14 @@ const ResultsList = memo(function ResultsList({
                           </Box>
                         )
                       ) : (
-                        <Box 
+                        <Box
                           as="span"
                           aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
                           sx={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            color: item.state === 'closed' ? 'closed.fg' : 'open.fg'
+                            color:
+                              item.state === 'closed' ? 'closed.fg' : 'open.fg',
                           }}
                         >
                           <IssueOpenedIcon size={16} />
@@ -901,37 +1276,65 @@ const ResultsList = memo(function ResultsList({
                               <XIcon size={12} />
                             </Box>
                           )}
-                          <Text sx={{ ml: 1 }}>{item.state === 'closed' ? 'Closed' : 'Open'}</Text>
+                          <Text sx={{ ml: 1 }}>
+                            {item.state === 'closed' ? 'Closed' : 'Open'}
+                          </Text>
                         </Box>
                       )}
-                      <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
+                      <Text
+                        sx={{
+                          fontWeight: 'semibold',
+                          fontSize: 2,
+                          color: 'accent.fg',
+                        }}
+                      >
+                        {item.title}
+                      </Text>
                     </Box>
                   </Link>
-                  <Stack direction="horizontal" alignItems="center" sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}>
+                  <Stack
+                    direction="horizontal"
+                    alignItems="center"
+                    sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}
+                  >
                     <Text>•</Text>
-                    <BranchName>{item.repository_url?.split('/').slice(-2).join('/')}</BranchName>
+                    <BranchName>
+                      {item.repository_url?.split('/').slice(-2).join('/')}
+                    </BranchName>
                     <Text>•</Text>
-                    <Text>{new Date(item.updated_at).toLocaleDateString()}</Text>
+                    <Text>
+                      {new Date(item.updated_at).toLocaleDateString()}
+                    </Text>
                   </Stack>
                 </Box>
               ))}
             </Box>
           ) : (
             <Stack sx={{ gap: 3 }}>
-              {filteredResults.map((item) => (
-                <Box key={item.id} sx={{ 
-                  border: '1px solid',
-                  borderColor: 'border.default',
-                  borderRadius: 2,
-                  p: 3,
-                  bg: 'canvas.subtle',
-                  ':last-child': { mb: 0 }
-                }}>
+              {filteredResults.map(item => (
+                <Box
+                  key={item.id}
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'border.default',
+                    borderRadius: 2,
+                    p: 3,
+                    bg: 'canvas.subtle',
+                    ':last-child': { mb: 0 },
+                  }}
+                >
                   {/* Project info section */}
-                  <Stack direction="horizontal" alignItems="center" sx={{ mb: 2, gap: 2 }}>
+                  <Stack
+                    direction="horizontal"
+                    alignItems="center"
+                    sx={{ mb: 2, gap: 2 }}
+                  >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Checkbox
-                        checked={selectedItems instanceof Set && selectedItems.has(item.id)}
+                        checked={
+                          selectedItems instanceof Set &&
+                          selectedItems.has(item.id)
+                        }
                         onChange={() => toggleItemSelection(item.id)}
                       />
                       {item.body && (
@@ -940,81 +1343,99 @@ const ResultsList = memo(function ResultsList({
                           aria-label="Show description"
                           onClick={() => setSelectedItemForDialog(item)}
                           size="small"
-                          
                         />
                       )}
                     </Box>
-                    <Avatar src={item.user.avatar_url} alt={`${item.user.login}'s avatar`} size={24} />
+                    <Avatar
+                      src={item.user.avatar_url}
+                      alt={`${item.user.login}'s avatar`}
+                      size={24}
+                    />
                     <Link
                       href={item.user.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      sx={{fontSize: 1, color: 'fg.muted', textDecoration: 'none', ':hover': { textDecoration: 'underline' }}}
+                      sx={{
+                        fontSize: 1,
+                        color: 'fg.muted',
+                        textDecoration: 'none',
+                        ':hover': { textDecoration: 'underline' },
+                      }}
                     >
                       {item.user.login}
                     </Link>
                     {item.repository_url && (
                       <>
-                        <Text sx={{color: 'fg.muted'}}>/</Text>
+                        <Text sx={{ color: 'fg.muted' }}>/</Text>
                         <Link
                           href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          sx={{fontSize: 1, color: 'accent.fg'}}
+                          sx={{ fontSize: 1, color: 'accent.fg' }}
                         >
-                          {item.repository_url.replace('https://api.github.com/repos/', '').split('/')[1]}
+                          {
+                            item.repository_url
+                              .replace('https://api.github.com/repos/', '')
+                              .split('/')[1]
+                          }
                         </Link>
                       </>
                     )}
                   </Stack>
-                  <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{display: 'block', mb: 1}}>
+                  <Link
+                    href={item.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{ display: 'block', mb: 1 }}
+                  >
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       {item.pull_request ? (
-                        (item.pull_request.merged_at || item.merged) ? (
-                          <Box 
+                        item.pull_request.merged_at || item.merged ? (
+                          <Box
                             as="span"
                             aria-label="Merged Pull Request"
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: 'done.fg'
+                              color: 'done.fg',
                             }}
                           >
                             <GitMergeIcon size={16} />
                           </Box>
                         ) : item.state === 'closed' ? (
-                          <Box 
+                          <Box
                             as="span"
                             aria-label="Closed Pull Request"
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: 'closed.fg'
+                              color: 'closed.fg',
                             }}
                           >
                             <GitPullRequestIcon size={16} />
                           </Box>
                         ) : (
-                          <Box 
+                          <Box
                             as="span"
                             aria-label="Open Pull Request"
                             sx={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: 'open.fg'
+                              color: 'open.fg',
                             }}
                           >
                             <GitPullRequestIcon size={16} />
                           </Box>
                         )
                       ) : (
-                        <Box 
+                        <Box
                           as="span"
                           aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
                           sx={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            color: item.state === 'closed' ? 'closed.fg' : 'open.fg'
+                            color:
+                              item.state === 'closed' ? 'closed.fg' : 'open.fg',
                           }}
                         >
                           <IssueOpenedIcon size={16} />
@@ -1025,42 +1446,83 @@ const ResultsList = memo(function ResultsList({
                           )}
                         </Box>
                       )}
-                      <Text sx={{fontWeight: 'semibold', fontSize: 2, color: 'accent.fg'}}>{item.title}</Text>
+                      <Text
+                        sx={{
+                          fontWeight: 'semibold',
+                          fontSize: 2,
+                          color: 'accent.fg',
+                        }}
+                      >
+                        {item.title}
+                      </Text>
                     </Box>
                   </Link>
-                  <Stack direction="horizontal" alignItems="center" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                  <Stack
+                    direction="horizontal"
+                    alignItems="center"
+                    sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}
+                  >
                     {/* Display labels */}
-                    {item.labels && item.labels.map((l: any) => (
-                      <Label
-                        key={l.name}
-                        sx={{
-                          backgroundColor: l.color ? `#${l.color}` : undefined,
-                          color: l.color ? getContrastColor(l.color) : undefined,
-                          fontWeight: 'bold',
-                          fontSize: 0,
-                          cursor: 'pointer',
-                        }}
-                        title={l.description || l.name}
-                        onClick={() => setLabelFilter(l.name)}
-                      >
-                        {l.name}
-                      </Label>
-                    ))}
+                    {item.labels &&
+                      item.labels.map((l: any) => (
+                        <Label
+                          key={l.name}
+                          sx={{
+                            backgroundColor: l.color
+                              ? `#${l.color}`
+                              : undefined,
+                            color: l.color
+                              ? getContrastColor(l.color)
+                              : undefined,
+                            fontWeight: 'bold',
+                            fontSize: 0,
+                            cursor: 'pointer',
+                          }}
+                          title={l.description || l.name}
+                          onClick={() => setLabelFilter(l.name)}
+                        >
+                          {l.name}
+                        </Label>
+                      ))}
                   </Stack>
-                  <Stack direction="horizontal" alignItems="center" sx={{ fontSize: 0, color: 'fg.muted', mt: 2, flexWrap: 'wrap', gap: 3 }}>
-                    <Stack direction="horizontal" sx={{ flexWrap: 'wrap', gap: 2 }}>
-                      <Text>Created: {new Date(item.created_at).toLocaleDateString()}</Text>
-                      <Text>Updated: {new Date(item.updated_at).toLocaleDateString()}</Text>
+                  <Stack
+                    direction="horizontal"
+                    alignItems="center"
+                    sx={{
+                      fontSize: 0,
+                      color: 'fg.muted',
+                      mt: 2,
+                      flexWrap: 'wrap',
+                      gap: 3,
+                    }}
+                  >
+                    <Stack
+                      direction="horizontal"
+                      sx={{ flexWrap: 'wrap', gap: 2 }}
+                    >
+                      <Text>
+                        Created:{' '}
+                        {new Date(item.created_at).toLocaleDateString()}
+                      </Text>
+                      <Text>
+                        Updated:{' '}
+                        {new Date(item.updated_at).toLocaleDateString()}
+                      </Text>
                       {item.pull_request?.merged_at && (
                         <Text sx={{ color: 'done.fg', fontWeight: 'bold' }}>
-                          Merged: {new Date(item.pull_request.merged_at).toLocaleDateString()}
+                          Merged:{' '}
+                          {new Date(
+                            item.pull_request.merged_at
+                          ).toLocaleDateString()}
                         </Text>
                       )}
-                      {item.state === 'closed' && !item.pull_request?.merged_at && (
-                        <Text sx={{ color: 'danger.fg' }}>
-                          Closed: {new Date(item.closed_at!).toLocaleDateString()}
-                        </Text>
-                      )}
+                      {item.state === 'closed' &&
+                        !item.pull_request?.merged_at && (
+                          <Text sx={{ color: 'danger.fg' }}>
+                            Closed:{' '}
+                            {new Date(item.closed_at!).toLocaleDateString()}
+                          </Text>
+                        )}
                     </Stack>
                   </Stack>
                 </Box>
@@ -1085,4 +1547,4 @@ const ResultsList = memo(function ResultsList({
   );
 });
 
-export default ResultsList; 
+export default ResultsList;

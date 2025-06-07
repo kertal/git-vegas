@@ -1,5 +1,6 @@
-import { screen, render, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, act } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/dom';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { ThemeProvider } from '@primer/react';
 import App from '../App';
@@ -8,9 +9,7 @@ import { FormSettings, UISettings, ItemUIState, UsernameCache } from '../types';
 
 // Helper to render with theme
 const renderWithTheme = (component: React.ReactElement) => {
-  return render(
-    <ThemeProvider>{component}</ThemeProvider>
-  );
+  return render(<ThemeProvider>{component}</ThemeProvider>);
 };
 
 describe('Consolidated Settings', () => {
@@ -27,10 +26,10 @@ describe('Consolidated Settings', () => {
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         githubToken: '',
-        apiMode: 'search'
+        apiMode: 'search',
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useFormSettings('github-form-settings', defaultFormSettings)
       );
 
@@ -40,7 +39,7 @@ describe('Consolidated Settings', () => {
           startDate: '2024-02-01',
           endDate: '2024-02-28',
           githubToken: 'token123',
-          apiMode: 'search'
+          apiMode: 'search',
         });
       });
 
@@ -53,7 +52,7 @@ describe('Consolidated Settings', () => {
         startDate: '2024-02-01',
         endDate: '2024-02-28',
         githubToken: 'token123',
-        apiMode: 'search'
+        apiMode: 'search',
       });
 
       // URL parameters are no longer automatically updated
@@ -64,18 +63,21 @@ describe('Consolidated Settings', () => {
 
     it('should prioritize URL parameters over localStorage for form settings', () => {
       // Set localStorage first
-      localStorage.setItem('github-form-settings', JSON.stringify({
-        username: 'localuser',
-        startDate: '2023-01-01',
-        endDate: '2023-12-31',
-        githubToken: 'localtoken',
-        apiMode: 'search'
-      }));
+      localStorage.setItem(
+        'github-form-settings',
+        JSON.stringify({
+          username: 'localuser',
+          startDate: '2023-01-01',
+          endDate: '2023-12-31',
+          githubToken: 'localtoken',
+          apiMode: 'search',
+        })
+      );
 
       // Set URL parameters
       window.history.replaceState(
-        {}, 
-        '', 
+        {},
+        '',
         '?username=urluser&startDate=2024-01-01&endDate=2024-01-31'
       );
 
@@ -84,10 +86,10 @@ describe('Consolidated Settings', () => {
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         githubToken: '',
-        apiMode: 'search'
+        apiMode: 'search',
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useFormSettings('github-form-settings', defaultFormSettings)
       );
 
@@ -97,14 +99,14 @@ describe('Consolidated Settings', () => {
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         githubToken: 'localtoken', // GitHub token comes from localStorage since not in URL
-        apiMode: 'search' // Default apiMode value
+        apiMode: 'search', // Default apiMode value
       });
     });
 
     it('should clear form settings and URL parameters', () => {
       window.history.replaceState(
-        {}, 
-        '', 
+        {},
+        '',
         '?username=testuser&startDate=2024-01-01&endDate=2024-01-31'
       );
 
@@ -113,10 +115,10 @@ describe('Consolidated Settings', () => {
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         githubToken: '',
-        apiMode: 'search'
+        apiMode: 'search',
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useFormSettings('github-form-settings', defaultFormSettings)
       );
 
@@ -127,7 +129,7 @@ describe('Consolidated Settings', () => {
           startDate: '2024-02-01',
           endDate: '2024-02-28',
           githubToken: 'token123',
-          apiMode: 'search'
+          apiMode: 'search',
         });
       });
 
@@ -156,17 +158,17 @@ describe('Consolidated Settings', () => {
     it('should consolidate UI settings into single localStorage key', () => {
       const defaultUISettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated'
+        sortOrder: 'updated',
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useLocalStorage('github-ui-settings', defaultUISettings)
       );
 
       act(() => {
         result.current[1]({
           isCompactView: true,
-          sortOrder: 'created'
+          sortOrder: 'created',
         });
       });
 
@@ -176,7 +178,7 @@ describe('Consolidated Settings', () => {
       const parsed = JSON.parse(stored!);
       expect(parsed).toEqual({
         isCompactView: true,
-        sortOrder: 'created'
+        sortOrder: 'created',
       });
     });
 
@@ -187,10 +189,10 @@ describe('Consolidated Settings', () => {
       // For now, we'll test the internal functionality
       const defaultUISettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated'
+        sortOrder: 'updated',
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useLocalStorage('github-ui-settings', defaultUISettings)
       );
 
@@ -198,13 +200,13 @@ describe('Consolidated Settings', () => {
       act(() => {
         result.current[1]((prev: UISettings) => ({
           ...prev,
-          isCompactView: true
+          isCompactView: true,
         }));
       });
 
       expect(result.current[0]).toEqual({
         isCompactView: true,
-        sortOrder: 'updated'
+        sortOrder: 'updated',
       });
     });
   });
@@ -214,10 +216,10 @@ describe('Consolidated Settings', () => {
       const defaultItemUIState: ItemUIState = {
         descriptionVisible: {},
         expanded: {},
-        selectedItems: new Set()
+        selectedItems: new Set(),
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useLocalStorage('github-item-ui-state', defaultItemUIState)
       );
 
@@ -225,7 +227,7 @@ describe('Consolidated Settings', () => {
         result.current[1]({
           descriptionVisible: { 1: true, 2: false },
           expanded: { 1: false, 2: true },
-          selectedItems: new Set([1, 3, 5])
+          selectedItems: new Set([1, 3, 5]),
         });
       });
 
@@ -236,7 +238,7 @@ describe('Consolidated Settings', () => {
       expect(parsed).toEqual({
         descriptionVisible: { 1: true, 2: false },
         expanded: { 1: false, 2: true },
-        selectedItems: { __type: 'Set', __value: [1, 3, 5] } // Enhanced serialization format
+        selectedItems: { __type: 'Set', __value: [1, 3, 5] }, // Enhanced serialization format
       });
 
       // Should retrieve Set correctly
@@ -247,10 +249,10 @@ describe('Consolidated Settings', () => {
       const defaultItemUIState: ItemUIState = {
         descriptionVisible: {},
         expanded: {},
-        selectedItems: new Set()
+        selectedItems: new Set(),
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useLocalStorage('github-item-ui-state', defaultItemUIState)
       );
 
@@ -258,7 +260,7 @@ describe('Consolidated Settings', () => {
       act(() => {
         result.current[1]((prev: ItemUIState) => ({
           ...prev,
-          selectedItems: new Set([...prev.selectedItems, 1, 2, 3])
+          selectedItems: new Set([...prev.selectedItems, 1, 2, 3]),
         }));
       });
 
@@ -271,7 +273,7 @@ describe('Consolidated Settings', () => {
           newSelected.delete(2);
           return {
             ...prev,
-            selectedItems: newSelected
+            selectedItems: newSelected,
           };
         });
       });
@@ -284,17 +286,17 @@ describe('Consolidated Settings', () => {
     it('should consolidate username cache into single localStorage key', () => {
       const defaultUsernameCache: UsernameCache = {
         validatedUsernames: new Set(),
-        invalidUsernames: new Set()
+        invalidUsernames: new Set(),
       };
 
-      const { result } = renderHook(() => 
+      const { result } = renderHook(() =>
         useLocalStorage('github-username-cache', defaultUsernameCache)
       );
 
       act(() => {
         result.current[1]({
           validatedUsernames: new Set(['user1', 'user2']),
-          invalidUsernames: new Set(['baduser'])
+          invalidUsernames: new Set(['baduser']),
         });
       });
 
@@ -304,11 +306,13 @@ describe('Consolidated Settings', () => {
       const parsed = JSON.parse(stored!);
       expect(parsed).toEqual({
         validatedUsernames: { __type: 'Set', __value: ['user1', 'user2'] },
-        invalidUsernames: { __type: 'Set', __value: ['baduser'] }
+        invalidUsernames: { __type: 'Set', __value: ['baduser'] },
       });
 
       // Should retrieve Sets correctly
-      expect(result.current[0].validatedUsernames).toEqual(new Set(['user1', 'user2']));
+      expect(result.current[0].validatedUsernames).toEqual(
+        new Set(['user1', 'user2'])
+      );
       expect(result.current[0].invalidUsernames).toEqual(new Set(['baduser']));
     });
   });
@@ -319,12 +323,14 @@ describe('Consolidated Settings', () => {
 
       // Wait for initial render
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: /git vegas/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { name: /git vegas/i })
+        ).toBeInTheDocument();
       });
 
       // Check that only consolidated keys exist (after some interaction)
       const allKeys = Object.keys(localStorage);
-      
+
       // Should not have old individual keys
       expect(allKeys).not.toContain('github-username');
       expect(allKeys).not.toContain('github-start-date');
@@ -340,14 +346,14 @@ describe('Consolidated Settings', () => {
 
       // Should have new consolidated keys (when they get set during app usage)
       // Note: Some keys might not be set immediately, that's expected behavior
-      const expectedKeys = [
-        'github-form-settings',
-        'github-ui-settings', 
-        'github-item-ui-state',
-        'github-username-cache',
-        'github-current-filters',
-        'github-search-results'
-      ];
+      // const expectedKeys = [
+      //   'github-form-settings',
+      //   'github-ui-settings',
+      //   'github-item-ui-state',
+      //   'github-username-cache',
+      //   'github-current-filters',
+      //   'github-search-results',
+      // ];
 
       // We'll trigger some actions to ensure localStorage gets populated
       const usernameInput = screen.getByLabelText(/github username/i);
@@ -362,9 +368,15 @@ describe('Consolidated Settings', () => {
     it('should maintain backwards compatibility for individual setters', async () => {
       renderWithTheme(<App />);
 
-      const usernameInput = screen.getByLabelText(/github username/i) as HTMLInputElement;
-      const startDateInput = screen.getByLabelText(/start date/i) as HTMLInputElement;
-      const endDateInput = screen.getByLabelText(/end date/i) as HTMLInputElement;
+      const usernameInput = screen.getByLabelText(
+        /github username/i
+      ) as HTMLInputElement;
+      const startDateInput = screen.getByLabelText(
+        /start date/i
+      ) as HTMLInputElement;
+      const endDateInput = screen.getByLabelText(
+        /end date/i
+      ) as HTMLInputElement;
 
       // Test individual field updates
       await act(async () => {
@@ -400,11 +412,11 @@ describe('Consolidated Settings', () => {
     it('should reduce the number of localStorage operations', async () => {
       // This test verifies that we've reduced localStorage usage from 11+ individual keys to 5 consolidated keys
       // The other tests in this suite already prove that the consolidation is working correctly
-      
+
       // Before consolidation, we had these individual keys:
       const oldIndividualKeys = [
         'github-username',
-        'github-start-date', 
+        'github-start-date',
         'github-end-date',
         'github-token',
         'github-compact-view',
@@ -413,35 +425,38 @@ describe('Consolidated Settings', () => {
         'github-expanded',
         'github-selected-items',
         'github-validated-usernames',
-        'github-invalid-usernames'
+        'github-invalid-usernames',
       ];
-      
+
       // After consolidation, we have these consolidated keys:
       const newConsolidatedKeys = [
-        'github-form-settings',      // username, startDate, endDate, githubToken
-        'github-ui-settings',        // isCompactView, sortOrder  
-        'github-item-ui-state',      // descriptionVisible, expanded, selectedItems
-        'github-username-cache',     // validatedUsernames, invalidUsernames
-        'github-current-filters',    // filter, statusFilter, labelFilter, etc.
-        'github-search-results'      // results array
+        'github-form-settings', // username, startDate, endDate, githubToken
+        'github-ui-settings', // isCompactView, sortOrder
+        'github-item-ui-state', // descriptionVisible, expanded, selectedItems
+        'github-username-cache', // validatedUsernames, invalidUsernames
+        'github-current-filters', // filter, statusFilter, labelFilter, etc.
+        'github-search-results', // results array
       ];
-      
+
       // Verify we reduced from 11+ keys to 6 keys
       expect(newConsolidatedKeys.length).toBeLessThan(oldIndividualKeys.length);
       expect(newConsolidatedKeys.length).toBe(6);
       expect(oldIndividualKeys.length).toBe(11);
-      
+
       // The reduction is: 11 individual keys -> 6 consolidated keys = 45% reduction
-      const reductionPercentage = ((oldIndividualKeys.length - newConsolidatedKeys.length) / oldIndividualKeys.length) * 100;
+      const reductionPercentage =
+        ((oldIndividualKeys.length - newConsolidatedKeys.length) /
+          oldIndividualKeys.length) *
+        100;
       expect(reductionPercentage).toBeGreaterThan(40); // At least 40% reduction
-      
+
       // The other tests in this suite verify that:
       // 1. Form settings are consolidated correctly
-      // 2. UI settings are consolidated correctly  
+      // 2. UI settings are consolidated correctly
       // 3. Item UI state is consolidated correctly
       // 4. Username cache is consolidated correctly
       // 5. The App component uses consolidated keys
       // 6. Individual setters still work for backwards compatibility
     });
   });
-}); 
+});

@@ -1,7 +1,7 @@
 // Debounce function for rate limiting
 export const debounce = (fn: Function, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return function(this: any, ...args: any[]) {
+  return function (this: any, ...args: any[]) {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => fn.apply(this, args), ms);
   };
@@ -13,10 +13,10 @@ export const getContrastColor = (hexColor: string): string => {
   const r = parseInt(hexColor.substring(0, 2), 16);
   const g = parseInt(hexColor.substring(2, 4), 16);
   const b = parseInt(hexColor.substring(4, 6), 16);
-  
+
   // YIQ formula to calculate brightness (standard for accessibility)
-  const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-  
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+
   // Return black or white based on brightness
   return yiq >= 128 ? '#000' : '#fff';
 };
@@ -27,7 +27,7 @@ export const isValidDateString = (dateStr: string): boolean => {
   // Check for YYYY-MM-DD format
   const dateFormatRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateFormatRegex.test(dateStr)) return false;
-  
+
   // Check if it's a valid date
   const date = new Date(dateStr);
   return !isNaN(date.getTime());
@@ -39,7 +39,9 @@ export const getParamFromUrl = (param: string): string | null => {
   return urlParams.get(param);
 };
 
-export const updateUrlParams = (params: Record<string, string | null>): void => {
+export const updateUrlParams = (
+  params: Record<string, string | null>
+): void => {
   const url = new URL(window.location.href);
   Object.entries(params).forEach(([key, value]) => {
     if (value === null || value === '') {
@@ -65,61 +67,98 @@ export interface BatchValidationResult {
 }
 
 // GitHub username format validation
-export const validateGitHubUsernameFormat = (username: string): UsernameValidationResult => {
+export const validateGitHubUsernameFormat = (
+  username: string
+): UsernameValidationResult => {
   if (!username || typeof username !== 'string') {
     return { isValid: false, error: 'Username is required' };
   }
 
   const trimmed = username.trim();
-  
+
   if (trimmed.length === 0) {
     return { isValid: false, error: 'Username cannot be empty' };
   }
 
   if (trimmed.length < 1) {
-    return { isValid: false, error: 'Username must be at least 1 character long' };
+    return {
+      isValid: false,
+      error: 'Username must be at least 1 character long',
+    };
   }
 
   if (trimmed.length > 39) {
-    return { isValid: false, error: 'Username cannot be longer than 39 characters' };
+    return {
+      isValid: false,
+      error: 'Username cannot be longer than 39 characters',
+    };
   }
 
   // Check specific GitHub username rules first
   if (trimmed.startsWith('-')) {
     return { isValid: false, error: 'Username cannot begin with a hyphen' };
   }
-  
+
   if (trimmed.endsWith('-')) {
     return { isValid: false, error: 'Username cannot end with a hyphen' };
   }
-  
+
   if (trimmed.includes('--')) {
-    return { isValid: false, error: 'Username cannot contain consecutive hyphens' };
+    return {
+      isValid: false,
+      error: 'Username cannot contain consecutive hyphens',
+    };
   }
 
   // Check for valid characters only (alphanumeric + single hyphens)
   if (!/^[a-zA-Z0-9-]+$/.test(trimmed)) {
-    return { isValid: false, error: 'Username may only contain letters, numbers, and hyphens' };
+    return {
+      isValid: false,
+      error: 'Username may only contain letters, numbers, and hyphens',
+    };
   }
 
   // Check for reserved usernames
   const reservedUsernames = [
-    'admin', 'api', 'www', 'ftp', 'mail', 'email', 'support', 'help',
-    'security', 'abuse', 'ghost', 'anonymous', 'null', 'undefined',
-    'root', 'system', 'user', 'users', 'app', 'application', 'applications'
+    'admin',
+    'api',
+    'www',
+    'ftp',
+    'mail',
+    'email',
+    'support',
+    'help',
+    'security',
+    'abuse',
+    'ghost',
+    'anonymous',
+    'null',
+    'undefined',
+    'root',
+    'system',
+    'user',
+    'users',
+    'app',
+    'application',
+    'applications',
   ];
-  
+
   if (reservedUsernames.includes(trimmed.toLowerCase())) {
-    return { isValid: false, error: 'This username is reserved and cannot be used' };
+    return {
+      isValid: false,
+      error: 'This username is reserved and cannot be used',
+    };
   }
 
   return { isValid: true };
 };
 
 // Validate multiple usernames with format checking
-export const validateUsernameList = (usernameString: string): { usernames: string[]; errors: string[] } => {
+export const validateUsernameList = (
+  usernameString: string
+): { usernames: string[]; errors: string[] } => {
   const errors: string[] = [];
-  
+
   if (!usernameString || typeof usernameString !== 'string') {
     return { usernames: [], errors: ['Please enter at least one username'] };
   }
@@ -149,7 +188,9 @@ export const validateUsernameList = (usernameString: string): { usernames: strin
   });
 
   if (duplicates.size > 0) {
-    errors.push(`Duplicate usernames found: ${Array.from(duplicates).join(', ')}`);
+    errors.push(
+      `Duplicate usernames found: ${Array.from(duplicates).join(', ')}`
+    );
   }
 
   // Validate each username format
@@ -167,47 +208,56 @@ export const validateUsernameList = (usernameString: string): { usernames: strin
 };
 
 // GitHub API validation function
-export const validateGitHubUsernames = async (usernames: string[], token?: string): Promise<BatchValidationResult> => {
+export const validateGitHubUsernames = async (
+  usernames: string[],
+  token?: string
+): Promise<BatchValidationResult> => {
   const valid: string[] = [];
   const invalid: string[] = [];
   const errors: Record<string, string> = {};
-  
+
   const headers: HeadersInit = {
-    'Accept': 'application/vnd.github.v3+json'
+    Accept: 'application/vnd.github.v3+json',
   };
-  
+
   if (token) {
     headers['Authorization'] = `token ${token}`;
   }
 
-  await Promise.all(usernames.map(async (username) => {
-    // First check format
-    const formatValidation = validateGitHubUsernameFormat(username);
-    if (!formatValidation.isValid) {
-      invalid.push(username);
-      errors[username] = formatValidation.error || 'Invalid username format';
-      return;
-    }
-
-    try {
-      const response = await fetch(`https://api.github.com/users/${username}`, { headers });
-      if (response.ok) {
-        valid.push(username);
-      } else if (response.status === 404) {
+  await Promise.all(
+    usernames.map(async username => {
+      // First check format
+      const formatValidation = validateGitHubUsernameFormat(username);
+      if (!formatValidation.isValid) {
         invalid.push(username);
-        errors[username] = 'Username not found on GitHub';
-      } else if (response.status === 403) {
-        invalid.push(username);
-        errors[username] = 'API rate limit exceeded. Please try again later or add a GitHub token.';
-      } else {
-        invalid.push(username);
-        errors[username] = `GitHub API error: ${response.status}`;
+        errors[username] = formatValidation.error || 'Invalid username format';
+        return;
       }
-    } catch (error) {
-      invalid.push(username);
-      errors[username] = 'Network error while validating username';
-    }
-  }));
+
+      try {
+        const response = await fetch(
+          `https://api.github.com/users/${username}`,
+          { headers }
+        );
+        if (response.ok) {
+          valid.push(username);
+        } else if (response.status === 404) {
+          invalid.push(username);
+          errors[username] = 'Username not found on GitHub';
+        } else if (response.status === 403) {
+          invalid.push(username);
+          errors[username] =
+            'API rate limit exceeded. Please try again later or add a GitHub token.';
+        } else {
+          invalid.push(username);
+          errors[username] = `GitHub API error: ${response.status}`;
+        }
+      } catch (error) {
+        invalid.push(username);
+        errors[username] = 'Network error while validating username';
+      }
+    })
+  );
 
   return { valid, invalid, errors };
-}; 
+};

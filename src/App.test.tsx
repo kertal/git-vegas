@@ -1,7 +1,8 @@
-import { renderHook, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { renderHook, render } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { useMemo } from 'react';
-import App, { useFormContext, useResultsContext } from './App';
+import App from './App';
 import { ThemeProvider } from '@primer/react';
 
 interface GitHubLabel {
@@ -48,13 +49,13 @@ const mockItems: GitHubItem[] = [
     user: {
       login: 'user1',
       avatar_url: 'https://github.com/user1.png',
-      html_url: 'https://github.com/user1'
+      html_url: 'https://github.com/user1',
     },
     labels: [
       { name: 'bug', color: 'ff0000' },
-      { name: 'high-priority', color: 'ff00ff' }
+      { name: 'high-priority', color: 'ff00ff' },
     ],
-    repository_url: 'https://api.github.com/repos/test/repo'
+    repository_url: 'https://api.github.com/repos/test/repo',
   },
   {
     id: 2,
@@ -67,12 +68,10 @@ const mockItems: GitHubItem[] = [
     user: {
       login: 'user2',
       avatar_url: 'https://github.com/user2.png',
-      html_url: 'https://github.com/user2'
+      html_url: 'https://github.com/user2',
     },
-    labels: [
-      { name: 'enhancement', color: '00ff00' }
-    ],
-    repository_url: 'https://api.github.com/repos/test/repo'
+    labels: [{ name: 'enhancement', color: '00ff00' }],
+    repository_url: 'https://api.github.com/repos/test/repo',
   },
   {
     id: 3,
@@ -82,19 +81,19 @@ const mockItems: GitHubItem[] = [
     updated_at: '2024-01-06T00:00:00Z',
     state: 'closed',
     pull_request: {
-      merged_at: '2024-01-06T00:00:00Z'
+      merged_at: '2024-01-06T00:00:00Z',
     },
     merged: true,
     user: {
       login: 'user3',
       avatar_url: 'https://github.com/user3.png',
-      html_url: 'https://github.com/user3'
+      html_url: 'https://github.com/user3',
     },
     labels: [
       { name: 'dependencies', color: '0000ff' },
-      { name: 'maintenance', color: 'cccccc' }
+      { name: 'maintenance', color: 'cccccc' },
     ],
-    repository_url: 'https://api.github.com/repos/test/repo'
+    repository_url: 'https://api.github.com/repos/test/repo',
   },
   {
     id: 4,
@@ -106,28 +105,26 @@ const mockItems: GitHubItem[] = [
     user: {
       login: 'user4',
       avatar_url: 'https://github.com/user4.png',
-      html_url: 'https://github.com/user4'
+      html_url: 'https://github.com/user4',
     },
-    labels: [
-      { name: 'documentation', color: 'yellow' }
-    ],
-    repository_url: 'https://api.github.com/repos/test/other-repo'
-  }
+    labels: [{ name: 'documentation', color: 'yellow' }],
+    repository_url: 'https://api.github.com/repos/test/other-repo',
+  },
 ];
 
 // Mock localStorage
 const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
-  clear: vi.fn()
+  clear: vi.fn(),
 };
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // Mock clipboard API
 Object.assign(navigator, {
   clipboard: {
-    writeText: vi.fn()
-  }
+    writeText: vi.fn(),
+  },
 });
 
 // Mock window.location
@@ -143,7 +140,7 @@ const mockLocation = {
   pathname: '/',
   port: '',
   protocol: 'http:',
-  search: ''
+  search: '',
 };
 
 // Mock the GitHub API fetch function
@@ -151,9 +148,7 @@ global.fetch = vi.fn();
 
 // Test wrapper component
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider>
-    {children}
-  </ThemeProvider>
+  <ThemeProvider>{children}</ThemeProvider>
 );
 
 describe('App Component', () => {
@@ -186,26 +181,32 @@ describe('App Component', () => {
       render(<App />, { wrapper: TestWrapper });
 
       const usernameInput = screen.getByLabelText(/GitHub username/i);
-      fireEvent.change(usernameInput, { target: { value: 'invalid@username' } });
+      fireEvent.change(usernameInput, {
+        target: { value: 'invalid@username' },
+      });
       fireEvent.blur(usernameInput);
 
       await waitFor(() => {
         // Look for the specific error message that validateUsernameList would return
-        expect(screen.getByText(/"invalid@username": Username may only contain letters, numbers, and hyphens/)).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            /"invalid@username": Username may only contain letters, numbers, and hyphens/
+          )
+        ).toBeInTheDocument();
       });
     });
 
     it('enables search button when form is valid', () => {
       render(<App />, { wrapper: TestWrapper });
-      
+
       const usernameInput = screen.getByLabelText(/GitHub username/i);
       const startDateInput = screen.getByLabelText(/Start date/i);
       const endDateInput = screen.getByLabelText(/End date/i);
-      
+
       fireEvent.change(usernameInput, { target: { value: 'validuser' } });
       fireEvent.change(startDateInput, { target: { value: '2024-01-01' } });
       fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
-      
+
       expect(screen.getByRole('button', { name: /Search/i })).toBeEnabled();
     });
   });
@@ -213,12 +214,14 @@ describe('App Component', () => {
   describe('Settings Dialog', () => {
     it('opens settings dialog when clicking settings button', async () => {
       render(<App />, { wrapper: TestWrapper });
-      
+
       fireEvent.click(screen.getByLabelText('Settings'));
-      
+
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByLabelText('Personal Access Token (Optional)')).toBeInTheDocument();
+        expect(
+          screen.getByLabelText('Personal Access Token (Optional)')
+        ).toBeInTheDocument();
       });
     });
 
@@ -227,20 +230,27 @@ describe('App Component', () => {
       const sessionStorageMock = {
         getItem: vi.fn(),
         setItem: vi.fn(),
-        removeItem: vi.fn()
+        removeItem: vi.fn(),
       };
-      Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock });
+      Object.defineProperty(window, 'sessionStorage', {
+        value: sessionStorageMock,
+      });
 
       render(<App />, { wrapper: TestWrapper });
-      
+
       fireEvent.click(screen.getByLabelText('Settings'));
-      
+
       await waitFor(() => {
-        const tokenInput = screen.getByLabelText('Personal Access Token (Optional)');
+        const tokenInput = screen.getByLabelText(
+          'Personal Access Token (Optional)'
+        );
         fireEvent.change(tokenInput, { target: { value: 'test-token' } });
-        
+
         // Token is saved to sessionStorage by default (not localStorage)
-        expect(sessionStorageMock.setItem).toHaveBeenCalledWith('github-token', 'test-token');
+        expect(sessionStorageMock.setItem).toHaveBeenCalledWith(
+          'github-token',
+          'test-token'
+        );
       });
     });
   });
@@ -251,13 +261,13 @@ describe('App Component', () => {
       Object.defineProperty(window, 'location', {
         value: {
           ...mockLocation,
-          search: '?username=testuser&startDate=2024-01-01&endDate=2024-01-31'
+          search: '?username=testuser&startDate=2024-01-01&endDate=2024-01-31',
         },
-        writable: true
+        writable: true,
       });
-      
+
       render(<App />, { wrapper: TestWrapper });
-      
+
       expect(screen.getByLabelText(/GitHub username/i)).toHaveValue('testuser');
       expect(screen.getByLabelText(/Start date/i)).toHaveValue('2024-01-01');
       expect(screen.getByLabelText(/End date/i)).toHaveValue('2024-01-31');
@@ -274,21 +284,23 @@ describe('App Component', () => {
         expect(screen.getByText('🎰 Git Vegas')).toBeInTheDocument();
       });
 
-      // Since we can't reliably mock localStorage loading, we'll just test that 
+      // Since we can't reliably mock localStorage loading, we'll just test that
       // the clipboard function is available and can be called
       const clipboardFunction = navigator.clipboard.writeText;
       expect(clipboardFunction).toBeDefined();
-      
+
       // Test that the function can be called (it's already mocked)
       await clipboardFunction('test content');
-      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test content');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+        'test content'
+      );
     });
   });
 
   describe('Context Providers', () => {
     it('provides form and results contexts', async () => {
       // Mock localStorage.getItem to return empty results
-      localStorageMock.getItem.mockImplementation((key) => {
+      localStorageMock.getItem.mockImplementation(key => {
         if (key === 'github-search-results') return JSON.stringify([]);
         return null;
       });
@@ -311,27 +323,57 @@ describe('App Component', () => {
       const corruptedItemUIState = {
         descriptionVisible: {},
         expanded: {},
-        selectedItems: [1, 2, 3] // Array instead of Set - this would cause .has() error
+        selectedItems: [1, 2, 3], // Array instead of Set - this would cause .has() error
       };
-      
-      window.localStorage.setItem('github-item-ui-state', JSON.stringify(corruptedItemUIState));
-      
+
+      window.localStorage.setItem(
+        'github-item-ui-state',
+        JSON.stringify(corruptedItemUIState)
+      );
+
       // Mock some results to work with
       const mockResults = [
-        { id: 1, title: 'Test Issue 1', number: 1, pull_request: undefined, state: 'open', html_url: 'https://github.com/test/repo/issues/1', repository_url: 'https://api.github.com/repos/test/repo', user: { login: 'testuser', avatar_url: 'https://avatar.url' }, labels: [], created_at: '2023-01-01T00:00:00Z', updated_at: '2023-01-01T00:00:00Z' },
-        { id: 2, title: 'Test Issue 2', number: 2, pull_request: undefined, state: 'open', html_url: 'https://github.com/test/repo/issues/2', repository_url: 'https://api.github.com/repos/test/repo', user: { login: 'testuser', avatar_url: 'https://avatar.url' }, labels: [], created_at: '2023-01-01T00:00:00Z', updated_at: '2023-01-01T00:00:00Z' }
+        {
+          id: 1,
+          title: 'Test Issue 1',
+          number: 1,
+          pull_request: undefined,
+          state: 'open',
+          html_url: 'https://github.com/test/repo/issues/1',
+          repository_url: 'https://api.github.com/repos/test/repo',
+          user: { login: 'testuser', avatar_url: 'https://avatar.url' },
+          labels: [],
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+        },
+        {
+          id: 2,
+          title: 'Test Issue 2',
+          number: 2,
+          pull_request: undefined,
+          state: 'open',
+          html_url: 'https://github.com/test/repo/issues/2',
+          repository_url: 'https://api.github.com/repos/test/repo',
+          user: { login: 'testuser', avatar_url: 'https://avatar.url' },
+          labels: [],
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+        },
       ];
-      
-      window.localStorage.setItem('github-search-results', JSON.stringify(mockResults));
-      
+
+      window.localStorage.setItem(
+        'github-search-results',
+        JSON.stringify(mockResults)
+      );
+
       const { getByText } = render(<App />);
-      
+
       // App should render without crashing
       expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
-      
+
       // Should not throw "selectedItems.has is not a function" error
       // The defensive code should create a new Set automatically
-      
+
       // Verify that the console.warn was called for corrupted data
       expect(console.warn).toHaveBeenCalledWith(
         'selectedItems is not a Set instance, creating new empty Set:',
@@ -344,25 +386,43 @@ describe('App Component', () => {
       const corruptedItemUIState = {
         descriptionVisible: {},
         expanded: {},
-        selectedItems: { some: 'invalid', data: 'structure' } // Invalid object
+        selectedItems: { some: 'invalid', data: 'structure' }, // Invalid object
       };
-      
-      window.localStorage.setItem('github-item-ui-state', JSON.stringify(corruptedItemUIState));
-      
+
+      window.localStorage.setItem(
+        'github-item-ui-state',
+        JSON.stringify(corruptedItemUIState)
+      );
+
       const mockResults = [
-        { id: 1, title: 'Test Issue 1', number: 1, pull_request: undefined, state: 'open', html_url: 'https://github.com/test/repo/issues/1', repository_url: 'https://api.github.com/repos/test/repo', user: { login: 'testuser', avatar_url: 'https://avatar.url' }, labels: [], created_at: '2023-01-01T00:00:00Z', updated_at: '2023-01-01T00:00:00Z' }
+        {
+          id: 1,
+          title: 'Test Issue 1',
+          number: 1,
+          pull_request: undefined,
+          state: 'open',
+          html_url: 'https://github.com/test/repo/issues/1',
+          repository_url: 'https://api.github.com/repos/test/repo',
+          user: { login: 'testuser', avatar_url: 'https://avatar.url' },
+          labels: [],
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+        },
       ];
-      
-      window.localStorage.setItem('github-search-results', JSON.stringify(mockResults));
-      
+
+      window.localStorage.setItem(
+        'github-search-results',
+        JSON.stringify(mockResults)
+      );
+
       const { container } = render(<App />);
-      
+
       // Find copy button and try to click it - this would trigger the selectedItems.has() call
       const copyButton = container.querySelector('[aria-label*="Copy"]');
       if (copyButton) {
         fireEvent.click(copyButton);
       }
-      
+
       // Should not throw an error - the app should handle it gracefully
       expect(container).toBeInTheDocument();
     });
@@ -373,16 +433,19 @@ describe('App Component', () => {
       // Simulate corrupted username cache data in localStorage
       const corruptedUsernameCache = {
         validatedUsernames: new Set(['validuser']),
-        invalidUsernames: ['invaliduser1', 'invaliduser2'] // Array instead of Set - this would cause .has() error
+        invalidUsernames: ['invaliduser1', 'invaliduser2'], // Array instead of Set - this would cause .has() error
       };
-      
-      window.localStorage.setItem('github-username-cache', JSON.stringify(corruptedUsernameCache));
-      
+
+      window.localStorage.setItem(
+        'github-username-cache',
+        JSON.stringify(corruptedUsernameCache)
+      );
+
       const { getByText } = render(<App />);
-      
+
       // App should render without crashing
       expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
-      
+
       // Verify that the console.warn was called for corrupted data
       expect(console.warn).toHaveBeenCalledWith(
         'invalidUsernames is not a Set instance, creating new empty Set:',
@@ -394,16 +457,19 @@ describe('App Component', () => {
       // Simulate corrupted username cache data
       const corruptedUsernameCache = {
         validatedUsernames: { user1: true, user2: true }, // Object instead of Set
-        invalidUsernames: new Set(['invaliduser'])
+        invalidUsernames: new Set(['invaliduser']),
       };
-      
-      window.localStorage.setItem('github-username-cache', JSON.stringify(corruptedUsernameCache));
-      
+
+      window.localStorage.setItem(
+        'github-username-cache',
+        JSON.stringify(corruptedUsernameCache)
+      );
+
       const { getByText } = render(<App />);
-      
+
       // App should render without crashing
       expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
-      
+
       // Verify that the console.warn was called for corrupted data
       expect(console.warn).toHaveBeenCalledWith(
         'validatedUsernames is not a Set instance, creating new empty Set:',
@@ -415,16 +481,19 @@ describe('App Component', () => {
       // Simulate both caches being corrupted
       const corruptedUsernameCache = {
         validatedUsernames: 'not-a-set',
-        invalidUsernames: null
+        invalidUsernames: null,
       };
-      
-      window.localStorage.setItem('github-username-cache', JSON.stringify(corruptedUsernameCache));
-      
+
+      window.localStorage.setItem(
+        'github-username-cache',
+        JSON.stringify(corruptedUsernameCache)
+      );
+
       const { getByText } = render(<App />);
-      
+
       // App should render without crashing
       expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
-      
+
       // Verify that console.warn was called for both corrupted caches
       expect(console.warn).toHaveBeenCalledWith(
         'validatedUsernames is not a Set instance, creating new empty Set:',
@@ -440,11 +509,14 @@ describe('App Component', () => {
   describe('API Mode Selection', () => {
     it('should show Timeline view when Events API is selected', async () => {
       render(<App />);
-      
+
       // Wait for initial loading to complete
-      await waitFor(() => {
-        expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
-      }, { timeout: 3000 });
+      await waitFor(
+        () => {
+          expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
 
       // Select Events API mode
       const eventsRadio = screen.getByDisplayValue('events');
@@ -452,23 +524,30 @@ describe('App Component', () => {
 
       // Check if the warning message appears
       expect(screen.getByText(/Events API Limitations/)).toBeInTheDocument();
-      expect(screen.getByText(/Only returns data from the last 30 days/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Only returns data from the last 30 days/)
+      ).toBeInTheDocument();
     });
 
     it('should show ResultsList view when Search API is selected (default)', async () => {
       render(<App />);
-      
+
       // Wait for initial loading to complete
-      await waitFor(() => {
-        expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
-      }, { timeout: 3000 });
+      await waitFor(
+        () => {
+          expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
 
       // Search API should be selected by default
       const searchRadio = screen.getByDisplayValue('search');
       expect(searchRadio).toBeChecked();
 
       // Should not show Events API warning
-      expect(screen.queryByText(/Events API Limitations/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Events API Limitations/)
+      ).not.toBeInTheDocument();
     });
   });
 });
@@ -483,7 +562,7 @@ const useFilteredResults = (
     excludedLabels,
     repoFilters,
     searchText,
-    sortOrder
+    sortOrder,
   }: {
     filter: 'all' | 'issue' | 'pr';
     statusFilter: 'all' | 'open' | 'closed' | 'merged';
@@ -495,46 +574,75 @@ const useFilteredResults = (
   }
 ) => {
   return useMemo(() => {
-    return results.filter(item => {
-      // Apply type filter
-      if (filter === 'pr' && !item.pull_request) return false;
-      if (filter === 'issue' && item.pull_request) return false;
+    return results
+      .filter(item => {
+        // Apply type filter
+        if (filter === 'pr' && !item.pull_request) return false;
+        if (filter === 'issue' && item.pull_request) return false;
 
-      // Apply status filter
-      if (statusFilter === 'merged') {
-        if (!item.pull_request) return false;
-        return item.pull_request.merged_at || item.merged;
-      }
-      if (statusFilter !== 'all') {
-        if (item.pull_request && (item.pull_request.merged_at || item.merged)) return false;
-        return item.state === statusFilter;
-      }
+        // Apply status filter
+        if (statusFilter === 'merged') {
+          if (!item.pull_request) return false;
+          return item.pull_request.merged_at || item.merged;
+        }
+        if (statusFilter !== 'all') {
+          if (item.pull_request && (item.pull_request.merged_at || item.merged))
+            return false;
+          return item.state === statusFilter;
+        }
 
-      // Apply label filters
-      if (labelFilter && !item.labels?.some((label: GitHubLabel) => label.name === labelFilter)) return false;
-      if (excludedLabels.length > 0 && item.labels?.some((label: GitHubLabel) => excludedLabels.includes(label.name))) return false;
+        // Apply label filters
+        if (
+          labelFilter &&
+          !item.labels?.some((label: GitHubLabel) => label.name === labelFilter)
+        )
+          return false;
+        if (
+          excludedLabels.length > 0 &&
+          item.labels?.some((label: GitHubLabel) =>
+            excludedLabels.includes(label.name)
+          )
+        )
+          return false;
 
-      // Apply repo filters
-      if (repoFilters.length > 0) {
-        const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
-        if (!itemRepo || !repoFilters.includes(itemRepo)) return false;
-      }
+        // Apply repo filters
+        if (repoFilters.length > 0) {
+          const itemRepo = item.repository_url?.replace(
+            'https://api.github.com/repos/',
+            ''
+          );
+          if (!itemRepo || !repoFilters.includes(itemRepo)) return false;
+        }
 
-      // Apply text search
-      if (searchText) {
-        const searchLower = searchText.toLowerCase();
-        const titleMatch = item.title.toLowerCase().includes(searchLower);
-        const bodyMatch = item.body?.toLowerCase().includes(searchLower);
-        if (!titleMatch && !bodyMatch) return false;
-      }
+        // Apply text search
+        if (searchText) {
+          const searchLower = searchText.toLowerCase();
+          const titleMatch = item.title.toLowerCase().includes(searchLower);
+          const bodyMatch = item.body?.toLowerCase().includes(searchLower);
+          if (!titleMatch && !bodyMatch) return false;
+        }
 
-      return true;
-    }).sort((a, b) => {
-      const dateA = new Date(sortOrder === 'updated' ? a.updated_at : a.created_at);
-      const dateB = new Date(sortOrder === 'updated' ? b.updated_at : b.created_at);
-      return dateB.getTime() - dateA.getTime();
-    });
-  }, [results, filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = new Date(
+          sortOrder === 'updated' ? a.updated_at : a.created_at
+        );
+        const dateB = new Date(
+          sortOrder === 'updated' ? b.updated_at : b.created_at
+        );
+        return dateB.getTime() - dateA.getTime();
+      });
+  }, [
+    results,
+    filter,
+    statusFilter,
+    labelFilter,
+    excludedLabels,
+    repoFilters,
+    searchText,
+    sortOrder,
+  ]);
 };
 
 describe('Filtering Functionality', () => {
@@ -548,12 +656,14 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(2);
-      expect(result.current.every((item: GitHubItem) => !item.pull_request)).toBe(true);
+      expect(
+        result.current.every((item: GitHubItem) => !item.pull_request)
+      ).toBe(true);
     });
 
     it('should filter pull requests correctly', () => {
@@ -565,12 +675,14 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(2);
-      expect(result.current.every((item: GitHubItem) => !!item.pull_request)).toBe(true);
+      expect(
+        result.current.every((item: GitHubItem) => !!item.pull_request)
+      ).toBe(true);
     });
   });
 
@@ -584,12 +696,14 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(2);
-      expect(result.current.every((item: GitHubItem) => item.state === 'open')).toBe(true);
+      expect(
+        result.current.every((item: GitHubItem) => item.state === 'open')
+      ).toBe(true);
     });
 
     it('should filter merged pull requests correctly', () => {
@@ -601,10 +715,10 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(1);
       expect(result.current[0].merged).toBe(true);
     });
@@ -620,12 +734,16 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(1);
-      expect(result.current[0].labels?.some((label: GitHubLabel) => label.name === 'bug')).toBe(true);
+      expect(
+        result.current[0].labels?.some(
+          (label: GitHubLabel) => label.name === 'bug'
+        )
+      ).toBe(true);
     });
 
     it('should filter by excluded labels correctly', () => {
@@ -637,14 +755,19 @@ describe('Filtering Functionality', () => {
           excludedLabels: ['bug', 'enhancement'],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(2);
-      expect(result.current.every((item: GitHubItem) => 
-        !item.labels?.some((label: GitHubLabel) => ['bug', 'enhancement'].includes(label.name))
-      )).toBe(true);
+      expect(
+        result.current.every(
+          (item: GitHubItem) =>
+            !item.labels?.some((label: GitHubLabel) =>
+              ['bug', 'enhancement'].includes(label.name)
+            )
+        )
+      ).toBe(true);
     });
 
     it('should handle combination of included and excluded labels', () => {
@@ -656,13 +779,21 @@ describe('Filtering Functionality', () => {
           excludedLabels: ['bug', 'enhancement'],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(1);
-      expect(result.current[0].labels?.some((label: GitHubLabel) => label.name === 'maintenance')).toBe(true);
-      expect(result.current[0].labels?.some((label: GitHubLabel) => ['bug', 'enhancement'].includes(label.name))).toBe(false);
+      expect(
+        result.current[0].labels?.some(
+          (label: GitHubLabel) => label.name === 'maintenance'
+        )
+      ).toBe(true);
+      expect(
+        result.current[0].labels?.some((label: GitHubLabel) =>
+          ['bug', 'enhancement'].includes(label.name)
+        )
+      ).toBe(false);
     });
   });
 
@@ -676,14 +807,16 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: ['test/repo'],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(3);
-      expect(result.current.every((item: GitHubItem) => 
-        item.repository_url?.includes('test/repo')
-      )).toBe(true);
+      expect(
+        result.current.every((item: GitHubItem) =>
+          item.repository_url?.includes('test/repo')
+        )
+      ).toBe(true);
     });
   });
 
@@ -697,10 +830,10 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: 'Feature',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(1);
       expect(result.current[0].title.includes('Feature')).toBe(true);
     });
@@ -716,11 +849,13 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
-      const dates = result.current.map(item => new Date(item.updated_at).getTime());
+
+      const dates = result.current.map(item =>
+        new Date(item.updated_at).getTime()
+      );
       expect(dates).toEqual([...dates].sort((a, b) => b - a));
     });
 
@@ -733,11 +868,13 @@ describe('Filtering Functionality', () => {
           excludedLabels: [],
           repoFilters: [],
           searchText: '',
-          sortOrder: 'created'
+          sortOrder: 'created',
         })
       );
-      
-      const dates = result.current.map(item => new Date(item.created_at).getTime());
+
+      const dates = result.current.map(item =>
+        new Date(item.created_at).getTime()
+      );
       expect(dates).toEqual([...dates].sort((a, b) => b - a));
     });
   });
@@ -752,18 +889,22 @@ describe('Filtering Functionality', () => {
           excludedLabels: ['enhancement'],
           repoFilters: ['test/repo'],
           searchText: 'Fix',
-          sortOrder: 'updated'
+          sortOrder: 'updated',
         })
       );
-      
+
       expect(result.current.length).toBe(1);
       const item = result.current[0];
       expect(item.pull_request).toBeTruthy();
       expect(item.merged).toBe(true);
-      expect(item.labels?.some((label: GitHubLabel) => label.name === 'dependencies')).toBe(true);
-      expect(item.labels?.some((label: GitHubLabel) => label.name === 'enhancement')).toBe(false);
+      expect(
+        item.labels?.some((label: GitHubLabel) => label.name === 'dependencies')
+      ).toBe(true);
+      expect(
+        item.labels?.some((label: GitHubLabel) => label.name === 'enhancement')
+      ).toBe(false);
       expect(item.repository_url?.includes('test/repo')).toBe(true);
       expect(item.title.includes('Fix')).toBe(true);
     });
   });
-}); 
+});

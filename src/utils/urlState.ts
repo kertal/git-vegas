@@ -8,11 +8,11 @@ export interface ShareableState {
   startDate: string;
   endDate: string;
   apiMode: 'search' | 'events';
-  
+
   // UI settings
   isCompactView: boolean;
   sortOrder: 'updated' | 'created';
-  
+
   // Filter settings
   filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
@@ -23,7 +23,10 @@ export interface ShareableState {
 }
 
 // Map URL parameter names to their types for validation
-const urlParamTypes: Record<keyof ShareableState, 'string' | 'boolean' | 'string[]'> = {
+const urlParamTypes: Record<
+  keyof ShareableState,
+  'string' | 'boolean' | 'string[]'
+> = {
   username: 'string',
   startDate: 'string',
   endDate: 'string',
@@ -49,16 +52,24 @@ const validValues: Partial<Record<keyof ShareableState, string[]>> = {
 /**
  * Safely parse a URL parameter value based on its expected type
  */
-export function parseUrlParam(value: string | null, type: 'string' | 'boolean' | 'string[]'): any {
+export function parseUrlParam(
+  value: string | null,
+  type: 'string' | 'boolean' | 'string[]'
+): any {
   if (value === null) return null;
-  
+
   switch (type) {
     case 'string':
       return value;
     case 'boolean':
       return value === 'true';
     case 'string[]':
-      return value ? value.split(',').map(s => s.trim()).filter(Boolean) : [];
+      return value
+        ? value
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean)
+        : [];
     default:
       return null;
   }
@@ -67,15 +78,18 @@ export function parseUrlParam(value: string | null, type: 'string' | 'boolean' |
 /**
  * Validate a URL parameter value against its expected constraints
  */
-export function validateUrlParam(key: keyof ShareableState, value: any): boolean {
+export function validateUrlParam(
+  key: keyof ShareableState,
+  value: any
+): boolean {
   if (value === null || value === undefined) return true;
-  
+
   // Check against valid values if they exist
   const validValuesList = validValues[key];
   if (validValuesList && !validValuesList.includes(value)) {
     return false;
   }
-  
+
   // Additional validation
   switch (key) {
     case 'startDate':
@@ -84,10 +98,14 @@ export function validateUrlParam(key: keyof ShareableState, value: any): boolean
       return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value));
     case 'username':
       // Basic username validation (more detailed validation happens elsewhere)
-      return typeof value === 'string' && value.length > 0 && value.length <= 100;
+      return (
+        typeof value === 'string' && value.length > 0 && value.length <= 100
+      );
     case 'excludedLabels':
     case 'repoFilters':
-      return Array.isArray(value) && value.every(item => typeof item === 'string');
+      return (
+        Array.isArray(value) && value.every(item => typeof item === 'string')
+      );
     default:
       return true;
   }
@@ -100,14 +118,14 @@ export function validateUrlParam(key: keyof ShareableState, value: any): boolean
 export function parseUrlParams(): Partial<ShareableState> {
   const urlParams = new URLSearchParams(window.location.search);
   const result: Partial<ShareableState> = {};
-  
+
   for (const [key, type] of Object.entries(urlParamTypes)) {
     const paramKey = key as keyof ShareableState;
     const rawValue = urlParams.get(key);
-    
+
     if (rawValue !== null) {
       const parsedValue = parseUrlParam(rawValue, type);
-      
+
       if (validateUrlParam(paramKey, parsedValue)) {
         result[paramKey] = parsedValue;
       } else {
@@ -115,7 +133,7 @@ export function parseUrlParams(): Partial<ShareableState> {
       }
     }
   }
-  
+
   return result;
 }
 
@@ -142,13 +160,13 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
     repoFilters: [],
     searchText: '',
   };
-  
+
   const params = new URLSearchParams();
-  
+
   for (const [key, value] of Object.entries(state)) {
     const paramKey = key as keyof ShareableState;
     const defaultValue = defaultState[paramKey];
-    
+
     // Only add parameter if it differs from default
     if (JSON.stringify(value) !== JSON.stringify(defaultValue)) {
       if (Array.isArray(value)) {
@@ -160,7 +178,7 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
       }
     }
   }
-  
+
   return params;
 }
 
@@ -170,12 +188,12 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
 export function generateShareableUrl(state: ShareableState): string {
   const params = generateUrlParams(state);
   const url = new URL(window.location.origin + window.location.pathname);
-  
+
   // Only add search params if there are any
   if (params.toString()) {
     url.search = params.toString();
   }
-  
+
   return url.toString();
 }
 
@@ -185,7 +203,7 @@ export function generateShareableUrl(state: ShareableState): string {
  */
 export function cleanupUrlParams(): void {
   const url = new URL(window.location.href);
-  
+
   // Only cleanup if there are actually parameters to clean
   if (url.search) {
     url.search = '';
@@ -211,7 +229,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-      
+
       const result = document.execCommand('copy');
       document.body.removeChild(textArea);
       return result;
@@ -269,26 +287,36 @@ export function applyUrlOverrides(
     ...(urlState.endDate !== undefined && { endDate: urlState.endDate }),
     ...(urlState.apiMode !== undefined && { apiMode: urlState.apiMode }),
   };
-  
+
   const newUISettings: UISettings = {
     ...uiSettings,
-    ...(urlState.isCompactView !== undefined && { isCompactView: urlState.isCompactView }),
+    ...(urlState.isCompactView !== undefined && {
+      isCompactView: urlState.isCompactView,
+    }),
     ...(urlState.sortOrder !== undefined && { sortOrder: urlState.sortOrder }),
   };
-  
+
   const newCurrentFilters: ResultsFilter = {
     ...currentFilters,
     ...(urlState.filter !== undefined && { filter: urlState.filter }),
-    ...(urlState.statusFilter !== undefined && { statusFilter: urlState.statusFilter }),
-    ...(urlState.labelFilter !== undefined && { labelFilter: urlState.labelFilter }),
-    ...(urlState.excludedLabels !== undefined && { excludedLabels: urlState.excludedLabels }),
-    ...(urlState.repoFilters !== undefined && { repoFilters: urlState.repoFilters }),
+    ...(urlState.statusFilter !== undefined && {
+      statusFilter: urlState.statusFilter,
+    }),
+    ...(urlState.labelFilter !== undefined && {
+      labelFilter: urlState.labelFilter,
+    }),
+    ...(urlState.excludedLabels !== undefined && {
+      excludedLabels: urlState.excludedLabels,
+    }),
+    ...(urlState.repoFilters !== undefined && {
+      repoFilters: urlState.repoFilters,
+    }),
   };
-  
+
   return {
     formSettings: newFormSettings,
     uiSettings: newUISettings,
     currentFilters: newCurrentFilters,
     searchText: urlState.searchText || '',
   };
-} 
+}

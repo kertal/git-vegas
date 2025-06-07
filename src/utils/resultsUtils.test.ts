@@ -14,7 +14,7 @@ import {
   createDefaultFilter,
   getFilterSummary,
   getItemType,
-  ResultsFilter
+  ResultsFilter,
 } from './resultsUtils';
 import type { GitHubItem } from '../types';
 
@@ -33,15 +33,15 @@ const mockGitHubItems: GitHubItem[] = [
     user: {
       login: 'testuser',
       avatar_url: 'https://github.com/testuser.png',
-      html_url: 'https://github.com/testuser'
+      html_url: 'https://github.com/testuser',
     },
     repository_url: 'https://api.github.com/repos/user/repo1',
     labels: [
       { name: 'bug', color: 'ff0000', description: 'Something is broken' },
-      { name: 'priority-high', color: 'ff9900', description: 'High priority' }
+      { name: 'priority-high', color: 'ff9900', description: 'High priority' },
     ],
     pull_request: undefined,
-    merged: false
+    merged: false,
   },
   // Closed Issue
   {
@@ -56,15 +56,19 @@ const mockGitHubItems: GitHubItem[] = [
     user: {
       login: 'docwriter',
       avatar_url: 'https://github.com/docwriter.png',
-      html_url: 'https://github.com/docwriter'
+      html_url: 'https://github.com/docwriter',
     },
     repository_url: 'https://api.github.com/repos/user/repo1',
     labels: [
       { name: 'documentation', color: '0075ca', description: 'Documentation' },
-      { name: 'good-first-issue', color: '7057ff', description: 'Good for newcomers' }
+      {
+        name: 'good-first-issue',
+        color: '7057ff',
+        description: 'Good for newcomers',
+      },
     ],
     pull_request: undefined,
-    merged: false
+    merged: false,
   },
   // Open Pull Request
   {
@@ -79,18 +83,18 @@ const mockGitHubItems: GitHubItem[] = [
     user: {
       login: 'developer',
       avatar_url: 'https://github.com/developer.png',
-      html_url: 'https://github.com/developer'
+      html_url: 'https://github.com/developer',
     },
     repository_url: 'https://api.github.com/repos/user/repo2',
     labels: [
       { name: 'feature', color: '00ff00', description: 'New feature' },
-      { name: 'backend', color: 'c2e0c6', description: 'Backend related' }
+      { name: 'backend', color: 'c2e0c6', description: 'Backend related' },
     ],
     pull_request: {
       merged_at: undefined,
-      url: 'https://api.github.com/repos/user/repo2/pulls/3'
+      url: 'https://api.github.com/repos/user/repo2/pulls/3',
     },
-    merged: false
+    merged: false,
   },
   // Merged Pull Request
   {
@@ -105,26 +109,30 @@ const mockGitHubItems: GitHubItem[] = [
     user: {
       login: 'optimizer',
       avatar_url: 'https://github.com/optimizer.png',
-      html_url: 'https://github.com/optimizer'
+      html_url: 'https://github.com/optimizer',
     },
     repository_url: 'https://api.github.com/repos/user/repo2',
     labels: [
-      { name: 'performance', color: 'fbca04', description: 'Performance improvement' },
-      { name: 'bug', color: 'ff0000', description: 'Something is broken' }
+      {
+        name: 'performance',
+        color: 'fbca04',
+        description: 'Performance improvement',
+      },
+      { name: 'bug', color: 'ff0000', description: 'Something is broken' },
     ],
     pull_request: {
       merged_at: '2023-11-26T10:30:00Z',
-      url: 'https://api.github.com/repos/user/repo2/pulls/4'
+      url: 'https://api.github.com/repos/user/repo2/pulls/4',
     },
-    merged: true
-  }
+    merged: true,
+  },
 ];
 
 describe('resultsUtils', () => {
   describe('extractAvailableLabels', () => {
     it('should extract unique labels from GitHub items', () => {
       const labels = extractAvailableLabels(mockGitHubItems);
-      
+
       expect(labels).toEqual([
         'backend',
         'bug',
@@ -132,7 +140,7 @@ describe('resultsUtils', () => {
         'feature',
         'good-first-issue',
         'performance',
-        'priority-high'
+        'priority-high',
       ]);
     });
 
@@ -149,9 +157,9 @@ describe('resultsUtils', () => {
     it('should handle items without labels', () => {
       const itemsWithoutLabels = [
         { ...mockGitHubItems[0], labels: [] },
-        { ...mockGitHubItems[1], labels: undefined }
+        { ...mockGitHubItems[1], labels: undefined },
       ] as GitHubItem[];
-      
+
       const labels = extractAvailableLabels(itemsWithoutLabels);
       expect(labels).toEqual([]);
     });
@@ -163,11 +171,11 @@ describe('resultsUtils', () => {
           labels: [
             { name: 'Zebra', color: '000000', description: 'Z label' },
             { name: 'apple', color: '000000', description: 'A label' },
-            { name: 'Bug', color: '000000', description: 'B label' }
-          ]
-        }
+            { name: 'Bug', color: '000000', description: 'B label' },
+          ],
+        },
       ] as GitHubItem[];
-      
+
       const labels = extractAvailableLabels(itemsWithMixedCase);
       expect(labels).toEqual(['apple', 'Bug', 'Zebra']);
     });
@@ -195,12 +203,12 @@ describe('resultsUtils', () => {
       const commentItem = {
         ...mockGitHubItems[0],
         title: 'Comment on: Test Issue',
-        pull_request: undefined
+        pull_request: undefined,
       };
-      
+
       const itemsWithComment = [...mockGitHubItems, commentItem];
       const result = filterByType(itemsWithComment, 'comment');
-      
+
       expect(result).toHaveLength(1);
       expect(result[0].title).toBe('Comment on: Test Issue');
     });
@@ -210,8 +218,12 @@ describe('resultsUtils', () => {
     it('should identify item types correctly', () => {
       const issueItem = { ...mockGitHubItems[0], pull_request: undefined };
       const prItem = { ...mockGitHubItems[2] }; // Use item 2 which has pull_request
-      const commentItem = { ...mockGitHubItems[0], title: 'Comment on: Test Issue', pull_request: undefined };
-      
+      const commentItem = {
+        ...mockGitHubItems[0],
+        title: 'Comment on: Test Issue',
+        pull_request: undefined,
+      };
+
       expect(getItemType(issueItem)).toBe('issue');
       expect(getItemType(prItem)).toBe('pr');
       expect(getItemType(commentItem)).toBe('comment');
@@ -253,13 +265,17 @@ describe('resultsUtils', () => {
     it('should filter by inclusive label', () => {
       const result = filterByLabels(mockGitHubItems, 'bug', []);
       expect(result).toHaveLength(2);
-      expect(result.every(item => item.labels?.some(l => l.name === 'bug'))).toBe(true);
+      expect(
+        result.every(item => item.labels?.some(l => l.name === 'bug'))
+      ).toBe(true);
     });
 
     it('should filter by excluded labels', () => {
       const result = filterByLabels(mockGitHubItems, '', ['bug']);
       expect(result).toHaveLength(2);
-      expect(result.every(item => !item.labels?.some(l => l.name === 'bug'))).toBe(true);
+      expect(
+        result.every(item => !item.labels?.some(l => l.name === 'bug'))
+      ).toBe(true);
     });
 
     it('should apply both inclusive and exclusive filters', () => {
@@ -275,9 +291,9 @@ describe('resultsUtils', () => {
 
     it('should handle items without labels', () => {
       const itemsWithoutLabels = [
-        { ...mockGitHubItems[0], labels: undefined }
+        { ...mockGitHubItems[0], labels: undefined },
       ] as GitHubItem[];
-      
+
       const result = filterByLabels(itemsWithoutLabels, 'bug', []);
       expect(result).toHaveLength(0);
     });
@@ -292,13 +308,16 @@ describe('resultsUtils', () => {
     it('should filter by single repository', () => {
       const result = filterByRepository(mockGitHubItems, ['user/repo1']);
       expect(result).toHaveLength(2);
-      expect(result.every(item => 
-        item.repository_url?.includes('user/repo1')
-      )).toBe(true);
+      expect(
+        result.every(item => item.repository_url?.includes('user/repo1'))
+      ).toBe(true);
     });
 
     it('should filter by multiple repositories', () => {
-      const result = filterByRepository(mockGitHubItems, ['user/repo1', 'user/repo2']);
+      const result = filterByRepository(mockGitHubItems, [
+        'user/repo1',
+        'user/repo2',
+      ]);
       expect(result).toHaveLength(4);
     });
 
@@ -309,9 +328,9 @@ describe('resultsUtils', () => {
 
     it('should handle items without repository_url', () => {
       const itemsWithoutRepo = [
-        { ...mockGitHubItems[0], repository_url: undefined }
+        { ...mockGitHubItems[0], repository_url: undefined },
       ] as GitHubItem[];
-      
+
       const result = filterByRepository(itemsWithoutRepo, ['user/repo1']);
       expect(result).toHaveLength(0);
     });
@@ -348,9 +367,9 @@ describe('resultsUtils', () => {
 
     it('should handle items without body', () => {
       const itemsWithoutBody = [
-        { ...mockGitHubItems[0], body: undefined }
+        { ...mockGitHubItems[0], body: undefined },
       ] as GitHubItem[];
-      
+
       const result = filterByText(itemsWithoutBody, 'critical');
       expect(result).toHaveLength(1); // Should still match title
     });
@@ -359,7 +378,7 @@ describe('resultsUtils', () => {
   describe('sortItems', () => {
     it('should sort by updated date (newest first)', () => {
       const result = sortItems(mockGitHubItems, 'updated');
-      
+
       // Item 3 has the most recent updated_at
       expect(result[0].id).toBe(3);
       expect(result[1].id).toBe(1);
@@ -369,7 +388,7 @@ describe('resultsUtils', () => {
 
     it('should sort by created date (newest first)', () => {
       const result = sortItems(mockGitHubItems, 'created');
-      
+
       // Item 1 has the most recent created_at
       expect(result[0].id).toBe(1);
       expect(result[1].id).toBe(3);
@@ -380,7 +399,7 @@ describe('resultsUtils', () => {
     it('should not modify original array', () => {
       const original = [...mockGitHubItems];
       const result = sortItems(mockGitHubItems, 'updated');
-      
+
       expect(result).not.toBe(mockGitHubItems);
       expect(mockGitHubItems).toEqual(original);
     });
@@ -394,11 +413,11 @@ describe('resultsUtils', () => {
         labelFilter: '',
         excludedLabels: [],
         repoFilters: [],
-        searchText: ''
+        searchText: '',
       };
-      
+
       const result = applyFiltersAndSort(mockGitHubItems, filters, 'created');
-      
+
       expect(result).toHaveLength(4);
       // Should be sorted by created date (newest first)
       expect(new Date(result[0].created_at).getTime()).toBeGreaterThanOrEqual(
@@ -413,11 +432,11 @@ describe('resultsUtils', () => {
         labelFilter: '',
         excludedLabels: [],
         repoFilters: [],
-        searchText: ''
+        searchText: '',
       };
-      
+
       const result = applyFiltersAndSort(mockGitHubItems, filters, 'updated');
-      
+
       expect(result).toHaveLength(2);
       expect(result.every(item => !!item.pull_request)).toBe(true);
     });
@@ -429,11 +448,11 @@ describe('resultsUtils', () => {
         labelFilter: 'bug',
         excludedLabels: ['performance'],
         repoFilters: ['user/repo1'],
-        searchText: 'critical'
+        searchText: 'critical',
       };
 
       const result = applyFiltersAndSort(mockGitHubItems, filters, 'updated');
-      
+
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(1);
     });
@@ -469,7 +488,10 @@ describe('resultsUtils', () => {
     });
 
     it('should return undefined for missing repository_url', () => {
-      const itemWithoutRepo = { ...mockGitHubItems[0], repository_url: undefined };
+      const itemWithoutRepo = {
+        ...mockGitHubItems[0],
+        repository_url: undefined,
+      };
       const result = getRepositoryName(itemWithoutRepo);
       expect(result).toBeUndefined();
     });
@@ -484,7 +506,7 @@ describe('resultsUtils', () => {
     it('should return true when filter is not default', () => {
       const filters: ResultsFilter = {
         ...createDefaultFilter(),
-        filter: 'pr'
+        filter: 'pr',
       };
       expect(hasActiveFilters(filters)).toBe(true);
     });
@@ -495,7 +517,10 @@ describe('resultsUtils', () => {
     });
 
     it('should return true when status filter is active', () => {
-      const filters = { ...createDefaultFilter(), statusFilter: 'open' as const };
+      const filters = {
+        ...createDefaultFilter(),
+        statusFilter: 'open' as const,
+      };
       expect(hasActiveFilters(filters)).toBe(true);
     });
 
@@ -529,7 +554,7 @@ describe('resultsUtils', () => {
         labelFilter: '',
         excludedLabels: [],
         repoFilters: [],
-        searchText: ''
+        searchText: '',
       });
     });
   });
@@ -548,18 +573,18 @@ describe('resultsUtils', () => {
         labelFilter: 'bug',
         excludedLabels: ['wontfix'],
         repoFilters: ['user/repo1'],
-        searchText: 'test query'
+        searchText: 'test query',
       };
 
       const summary = getFilterSummary(filters);
-      
+
       expect(summary).toEqual([
         'Type: PRs',
         'Status: open',
         'Label: bug',
         'Excluded labels: wontfix',
         'Search: "test query"',
-        'Repos: user/repo1'
+        'Repos: user/repo1',
       ]);
     });
 
@@ -567,14 +592,14 @@ describe('resultsUtils', () => {
       const filters: ResultsFilter = {
         ...createDefaultFilter(),
         excludedLabels: ['wontfix', 'duplicate'],
-        repoFilters: ['user/repo1', 'user/repo2']
+        repoFilters: ['user/repo1', 'user/repo2'],
       };
 
       const summary = getFilterSummary(filters);
-      
+
       expect(summary).toEqual([
         'Excluded labels: wontfix, duplicate',
-        'Repos: user/repo1, user/repo2'
+        'Repos: user/repo1, user/repo2',
       ]);
     });
   });
@@ -587,16 +612,20 @@ describe('resultsUtils', () => {
         labelFilter: 'bug',
         excludedLabels: ['wontfix'],
         repoFilters: [],
-        searchText: ''
+        searchText: '',
       };
 
       const result = applyFiltersAndSort(mockGitHubItems, filters, 'updated');
-      
+
       // Should return open PRs with bug label but without wontfix label
       expect(result.every(item => !!item.pull_request)).toBe(true);
       expect(result.every(item => item.state === 'open')).toBe(true);
-      expect(result.every(item => item.labels?.some(l => l.name === 'bug'))).toBe(true);
-      expect(result.every(item => !item.labels?.some(l => l.name === 'wontfix'))).toBe(true);
+      expect(
+        result.every(item => item.labels?.some(l => l.name === 'bug'))
+      ).toBe(true);
+      expect(
+        result.every(item => !item.labels?.some(l => l.name === 'wontfix'))
+      ).toBe(true);
     });
 
     it('should handle multiple repository filters', () => {
@@ -606,16 +635,24 @@ describe('resultsUtils', () => {
         labelFilter: '',
         excludedLabels: [],
         repoFilters: ['octocat/Hello-World', 'octocat/Spoon-Knife'],
-        searchText: ''
+        searchText: '',
       };
 
       const result = applyFiltersAndSort(mockGitHubItems, filters, 'created');
-      
+
       // Should only return items from specified repositories
-      expect(result.every(item => {
-        const repo = item.repository_url?.replace('https://api.github.com/repos/', '');
-        return repo && ['octocat/Hello-World', 'octocat/Spoon-Knife'].includes(repo);
-      })).toBe(true);
+      expect(
+        result.every(item => {
+          const repo = item.repository_url?.replace(
+            'https://api.github.com/repos/',
+            ''
+          );
+          return (
+            repo &&
+            ['octocat/Hello-World', 'octocat/Spoon-Knife'].includes(repo)
+          );
+        })
+      ).toBe(true);
     });
   });
-}); 
+});

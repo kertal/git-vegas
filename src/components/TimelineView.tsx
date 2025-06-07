@@ -1,15 +1,13 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { Box, Text, Avatar, Link, Label, Timeline } from '@primer/react';
-import { 
-  IssueOpenedIcon, 
-  IssueClosedIcon, 
-  GitPullRequestIcon, 
+import {
+  IssueOpenedIcon,
+  IssueClosedIcon,
+  GitPullRequestIcon,
   GitMergeIcon,
   GitPullRequestClosedIcon,
   CommentIcon,
-  GitCommitIcon,
   RepoIcon,
-  TagIcon
 } from '@primer/octicons-react';
 import { GitHubItem } from '../types';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -20,11 +18,14 @@ interface TimelineViewProps {
 
 const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
   // Sort items by created date (newest first)
-  const sortedItems = [...items].sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  const sortedItems = [...items].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  const getEventType = (item: GitHubItem): 'issue' | 'pull_request' | 'comment' => {
+  const getEventType = (
+    item: GitHubItem
+  ): 'issue' | 'pull_request' | 'comment' => {
     // Check if this is a comment event (title starts with "Comment on:")
     if (item.title.startsWith('Comment on:')) {
       return 'comment';
@@ -38,10 +39,15 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
       return <CommentIcon size={16} />;
     } else if (type === 'pull_request') {
       if (item.merged_at) return <GitMergeIcon size={16} />;
-      if (item.state === 'closed') return <GitPullRequestClosedIcon size={16} />;
+      if (item.state === 'closed')
+        return <GitPullRequestClosedIcon size={16} />;
       return <GitPullRequestIcon size={16} />;
     } else {
-      return item.state === 'closed' ? <IssueClosedIcon size={16} /> : <IssueOpenedIcon size={16} />;
+      return item.state === 'closed' ? (
+        <IssueClosedIcon size={16} />
+      ) : (
+        <IssueOpenedIcon size={16} />
+      );
     }
   };
 
@@ -71,7 +77,9 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
   if (sortedItems.length === 0) {
     return (
       <Box sx={{ textAlign: 'center', py: 6 }}>
-        <Text color="fg.muted">No events found for the selected time period.</Text>
+        <Text color="fg.muted">
+          No events found for the selected time period.
+        </Text>
       </Box>
     );
   }
@@ -92,23 +100,28 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
           const eventType = getEventType(item);
           const repoName = formatRepoName(item.repository_url);
           const eventDescription = getEventDescription(item);
-          
+
           return (
             <Timeline.Item key={`${item.id}-${index}`}>
-              <Timeline.Badge>
-                {getEventIcon(item)}
-              </Timeline.Badge>
-              
+              <Timeline.Badge>{getEventIcon(item)}</Timeline.Badge>
+
               <Timeline.Body>
                 <Box sx={{ mb: 3 }}>
                   {/* Header with user action and timestamp */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <Avatar 
-                      src={item.user.avatar_url} 
-                      size={20} 
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      mb: 2,
+                    }}
+                  >
+                    <Avatar
+                      src={item.user.avatar_url}
+                      size={20}
                       alt={item.user.login}
                     />
-                    <Link 
+                    <Link
                       href={item.user.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -119,12 +132,14 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
                     <Text color="fg.muted" sx={{ fontSize: 1 }}>
                       {eventDescription}
                     </Text>
-                    <Label 
+                    <Label
                       size="small"
                       variant={
-                        eventType === 'pull_request' ? 'accent' : 
-                        eventType === 'comment' ? 'secondary' :
-                        'attention'
+                        eventType === 'pull_request'
+                          ? 'accent'
+                          : eventType === 'comment'
+                            ? 'secondary'
+                            : 'attention'
                       }
                     >
                       #{item.number}
@@ -134,7 +149,7 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
                     </Text>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <RepoIcon size={12} />
-                      <Link 
+                      <Link
                         href={`https://github.com/${repoName}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -148,17 +163,20 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
                   {/* Timestamp */}
                   <Box sx={{ mb: 2 }}>
                     <Text color="fg.muted" sx={{ fontSize: 0 }}>
-                      {format(new Date(item.created_at), 'PPP p')} • {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                      {format(new Date(item.created_at), 'PPP p')} •{' '}
+                      {formatDistanceToNow(new Date(item.created_at), {
+                        addSuffix: true,
+                      })}
                     </Text>
                   </Box>
-                  
+
                   {/* Title and link */}
                   <Box sx={{ mb: 3 }}>
-                    <Link 
+                    <Link
                       href={item.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      sx={{ 
+                      sx={{
                         fontSize: 2,
                         fontWeight: 'semibold',
                         color: 'fg.default',
@@ -166,59 +184,87 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
                         display: 'block',
                         lineHeight: 1.3,
                         '&:hover': {
-                          textDecoration: 'underline'
-                        }
+                          textDecoration: 'underline',
+                        },
                       }}
                     >
                       {item.title}
                     </Link>
                   </Box>
-                  
+
                   {/* Labels */}
                   {item.labels && item.labels.length > 0 && (
-                    <Box sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Box
+                      sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}
+                    >
                       {item.labels.slice(0, 6).map((label, labelIndex) => (
-                        <Label 
+                        <Label
                           key={labelIndex}
                           size="small"
                           sx={{
-                            backgroundColor: label.color ? `#${label.color}` : undefined,
-                            color: label.color ? getContrastColor(label.color) : undefined
+                            backgroundColor: label.color
+                              ? `#${label.color}`
+                              : undefined,
+                            color: label.color
+                              ? getContrastColor(label.color)
+                              : undefined,
                           }}
                         >
                           {label.name}
                         </Label>
                       ))}
                       {item.labels.length > 6 && (
-                        <Text color="fg.muted" sx={{ fontSize: 0, alignSelf: 'center' }}>
+                        <Text
+                          color="fg.muted"
+                          sx={{ fontSize: 0, alignSelf: 'center' }}
+                        >
                           +{item.labels.length - 6} more
                         </Text>
                       )}
                     </Box>
                   )}
-                  
+
                   {/* Status information */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                    <Label 
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Label
                       size="small"
                       variant={
-                        item.merged_at ? 'done' :
-                        item.state === 'open' ? 'success' : 
-                        'secondary'
+                        item.merged_at
+                          ? 'done'
+                          : item.state === 'open'
+                            ? 'success'
+                            : 'secondary'
                       }
                     >
-                      {item.merged_at ? 'Merged' : item.state === 'open' ? 'Open' : 'Closed'}
+                      {item.merged_at
+                        ? 'Merged'
+                        : item.state === 'open'
+                          ? 'Open'
+                          : 'Closed'}
                     </Label>
-                    
+
                     {item.merged_at && (
                       <Text color="fg.muted" sx={{ fontSize: 0 }}>
-                        Merged {formatDistanceToNow(new Date(item.merged_at), { addSuffix: true })}
+                        Merged{' '}
+                        {formatDistanceToNow(new Date(item.merged_at), {
+                          addSuffix: true,
+                        })}
                       </Text>
                     )}
-                    
+
                     {item.closed_at && !item.merged_at && (
                       <Text color="fg.muted" sx={{ fontSize: 0 }}>
-                        Closed {formatDistanceToNow(new Date(item.closed_at), { addSuffix: true })}
+                        Closed{' '}
+                        {formatDistanceToNow(new Date(item.closed_at), {
+                          addSuffix: true,
+                        })}
                       </Text>
                     )}
                   </Box>
@@ -238,11 +284,11 @@ const getContrastColor = (hexColor: string): string => {
   const r = parseInt(hexColor.slice(0, 2), 16);
   const g = parseInt(hexColor.slice(2, 4), 16);
   const b = parseInt(hexColor.slice(4, 6), 16);
-  
+
   // Calculate luminance
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  
+
   return luminance > 0.5 ? '#000000' : '#ffffff';
 };
 
-export default TimelineView; 
+export default TimelineView;

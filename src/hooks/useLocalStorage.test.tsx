@@ -14,15 +14,22 @@ describe('useLocalStorage', () => {
   });
 
   it('should initialize with default value when no stored value exists', () => {
-    const { result } = renderHook(() => useLocalStorage('test-key', 'default-value'));
+    const { result } = renderHook(() =>
+      useLocalStorage('test-key', 'default-value')
+    );
     expect(result.current[0]).toBe('default-value');
   });
 
   it('should initialize with localStorage value (URL parameters no longer override)', () => {
-    window.localStorage.setItem('github-username', JSON.stringify('local-user'));
+    window.localStorage.setItem(
+      'github-username',
+      JSON.stringify('local-user')
+    );
     window.location.search = '?username=url-user';
 
-    const { result } = renderHook(() => useLocalStorage('github-username', 'default-value'));
+    const { result } = renderHook(() =>
+      useLocalStorage('github-username', 'default-value')
+    );
     // URL parameters no longer automatically override localStorage
     expect(result.current[0]).toBe('local-user');
   });
@@ -35,12 +42,16 @@ describe('useLocalStorage', () => {
     });
 
     expect(result.current[0]).toBe('updated');
-    expect(JSON.parse(window.localStorage.getItem('test-key') || '')).toBe('updated');
+    expect(JSON.parse(window.localStorage.getItem('test-key') || '')).toBe(
+      'updated'
+    );
   });
 
   it('should handle Set type correctly', () => {
     const initialSet = new Set(['item1', 'item2']);
-    const { result } = renderHook(() => useLocalStorage('test-key', initialSet));
+    const { result } = renderHook(() =>
+      useLocalStorage('test-key', initialSet)
+    );
 
     expect(result.current[0]).toEqual(initialSet);
 
@@ -50,7 +61,9 @@ describe('useLocalStorage', () => {
     });
 
     expect(result.current[0]).toEqual(newSet);
-    expect(JSON.parse(window.localStorage.getItem('test-key') || '{}')).toEqual({ __type: 'Set', __value: Array.from(newSet) });
+    expect(JSON.parse(window.localStorage.getItem('test-key') || '{}')).toEqual(
+      { __type: 'Set', __value: Array.from(newSet) }
+    );
   });
 
   it('should clear value when using clear function', () => {
@@ -116,12 +129,14 @@ describe('useLocalStorage', () => {
     const setData = { __type: 'Set', __value: [1, 2, 3] };
     window.localStorage.setItem('test-set-key', JSON.stringify(setData));
 
-    const { result } = renderHook(() => useLocalStorage('test-set-key', new Set<number>()));
+    const { result } = renderHook(() =>
+      useLocalStorage('test-set-key', new Set<number>())
+    );
 
     // The value should be deserialized back to a proper Set
     expect(result.current[0]).toBeInstanceOf(Set);
     expect(result.current[0]).toEqual(new Set([1, 2, 3]));
-    
+
     // Should have .has method available
     expect(typeof result.current[0].has).toBe('function');
     expect(result.current[0].has(1)).toBe(true);
@@ -131,13 +146,18 @@ describe('useLocalStorage', () => {
   it('should handle corrupted Set data in localStorage gracefully', () => {
     // Simulate corrupted Set data (missing __type or __value)
     const corruptedData = { __value: [1, 2, 3] }; // Missing __type
-    window.localStorage.setItem('test-corrupted-key', JSON.stringify(corruptedData));
+    window.localStorage.setItem(
+      'test-corrupted-key',
+      JSON.stringify(corruptedData)
+    );
 
     const defaultSet = new Set([5, 6]);
-    const { result } = renderHook(() => useLocalStorage('test-corrupted-key', defaultSet));
+    const { result } = renderHook(() =>
+      useLocalStorage('test-corrupted-key', defaultSet)
+    );
 
     // Should fall back to the corrupted data as-is or the initial value
     // Since deserialization should handle this gracefully
     expect(result.current[0]).toBeDefined();
   });
-}); 
+});

@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThemeProvider } from '@primer/react';
 import ResultsList from './ResultsList';
@@ -17,10 +18,10 @@ const mockItems: GitHubItem[] = [
     user: {
       login: 'testuser',
       avatar_url: 'https://github.com/testuser.png',
-      html_url: 'https://github.com/testuser'
+      html_url: 'https://github.com/testuser',
     },
     repository_url: 'https://api.github.com/repos/test/repo',
-    labels: []
+    labels: [],
   },
   {
     id: 2,
@@ -32,11 +33,11 @@ const mockItems: GitHubItem[] = [
     user: {
       login: 'testuser',
       avatar_url: 'https://github.com/testuser.png',
-      html_url: 'https://github.com/testuser'
+      html_url: 'https://github.com/testuser',
     },
     repository_url: 'https://api.github.com/repos/test/repo',
-    labels: []
-  }
+    labels: [],
+  },
 ];
 
 // Mock context hook
@@ -69,7 +70,7 @@ const mockUseResultsContext = () => ({
   selectAllItems: vi.fn(),
   clearSelection: vi.fn(),
   toggleItemSelection: vi.fn(),
-  setRepoFilters: vi.fn()
+  setRepoFilters: vi.fn(),
 });
 
 // Mock countItemsMatchingFilter function
@@ -80,9 +81,7 @@ const mockButtonStyles = {};
 
 // Wrapper component for tests
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider>
-    {children}
-  </ThemeProvider>
+  <ThemeProvider>{children}</ThemeProvider>
 );
 
 describe('ResultsList Selection Tests', () => {
@@ -110,7 +109,7 @@ describe('ResultsList Selection Tests', () => {
       <ResultsList
         useResultsContext={() => ({
           ...mockContext,
-          selectedItems: new Set([1]) // Using number ID
+          selectedItems: new Set([1]), // Using number ID
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -138,7 +137,7 @@ describe('ResultsList Selection Tests', () => {
       <ResultsList
         useResultsContext={() => ({
           ...mockContext,
-          selectedItems: new Set([1, 2])
+          selectedItems: new Set([1, 2]),
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -147,11 +146,15 @@ describe('ResultsList Selection Tests', () => {
     );
 
     // Find and click the export button
-    const exportButton = screen.getByRole('button', { name: /Export to Clipboard/ });
+    const exportButton = screen.getByRole('button', {
+      name: /Export to Clipboard/,
+    });
     fireEvent.click(exportButton);
 
     // Test detailed format
-    const detailedOption = screen.getByRole('menuitem', { name: 'Detailed Format' });
+    const detailedOption = screen.getByRole('menuitem', {
+      name: 'Detailed Format',
+    });
     fireEvent.click(detailedOption);
     expect(copyToClipboardSpy).toHaveBeenCalledWith('detailed');
 
@@ -159,7 +162,9 @@ describe('ResultsList Selection Tests', () => {
     fireEvent.click(exportButton);
 
     // Test compact format
-    const compactOption = screen.getByRole('menuitem', { name: 'Compact Format' });
+    const compactOption = screen.getByRole('menuitem', {
+      name: 'Compact Format',
+    });
     fireEvent.click(compactOption);
     expect(copyToClipboardSpy).toHaveBeenCalledWith('compact');
 
@@ -172,7 +177,7 @@ describe('ResultsList Selection Tests', () => {
       <ResultsList
         useResultsContext={() => ({
           ...mockUseResultsContext(),
-          selectedItems: new Set([1, 2])
+          selectedItems: new Set([1, 2]),
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -194,7 +199,7 @@ describe('ResultsList Selection Tests', () => {
       <ResultsList
         useResultsContext={() => ({
           ...mockContext,
-          selectedItems: new Set([1])
+          selectedItems: new Set([1]),
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -203,11 +208,15 @@ describe('ResultsList Selection Tests', () => {
     );
 
     // Find and click the export button
-    const exportButton = screen.getByRole('button', { name: /Export to Clipboard \(1 selected\)/ });
+    const exportButton = screen.getByRole('button', {
+      name: /Export to Clipboard \(1 selected\)/,
+    });
     fireEvent.click(exportButton);
 
     // Click detailed format
-    const detailedOption = screen.getByRole('menuitem', { name: 'Detailed Format' });
+    const detailedOption = screen.getByRole('menuitem', {
+      name: 'Detailed Format',
+    });
     fireEvent.click(detailedOption);
 
     // Verify the correct format was requested
@@ -222,14 +231,14 @@ describe('ResultsList Selection Tests', () => {
     // Create a filtered list where only one selected item is visible
     const allItems = [...mockItems];
     const filteredItems = [mockItems[0]]; // Only first item is visible
-    
+
     render(
       <ResultsList
         useResultsContext={() => ({
           ...mockContext,
           results: allItems,
           filteredResults: filteredItems,
-          selectedItems: new Set([1, 2]) // Both items selected, but only one visible
+          selectedItems: new Set([1, 2]), // Both items selected, but only one visible
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -243,7 +252,9 @@ describe('ResultsList Selection Tests', () => {
 
     // Click export and choose format
     fireEvent.click(exportButton);
-    const detailedOption = screen.getByRole('menuitem', { name: 'Detailed Format' });
+    const detailedOption = screen.getByRole('menuitem', {
+      name: 'Detailed Format',
+    });
     fireEvent.click(detailedOption);
 
     // Verify the clipboard function was called
@@ -255,7 +266,7 @@ describe('ResultsList Selection Tests', () => {
       <ResultsList
         useResultsContext={() => ({
           ...mockUseResultsContext(),
-          selectedItems: new Set() // No items selected
+          selectedItems: new Set(), // No items selected
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -275,14 +286,14 @@ describe('ResultsList Selection Tests', () => {
     // Create a scenario where selected items are not in filtered results
     const allItems = [...mockItems];
     const filteredItems = [mockItems[0]]; // Only first item is visible
-    
+
     render(
       <ResultsList
         useResultsContext={() => ({
           ...mockContext,
           results: allItems,
           filteredResults: filteredItems,
-          selectedItems: new Set([2]) // Selected item is not in filtered results
+          selectedItems: new Set([2]), // Selected item is not in filtered results
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -296,7 +307,9 @@ describe('ResultsList Selection Tests', () => {
 
     // Click export and choose format
     fireEvent.click(exportButton);
-    const detailedOption = screen.getByRole('menuitem', { name: 'Detailed Format' });
+    const detailedOption = screen.getByRole('menuitem', {
+      name: 'Detailed Format',
+    });
     fireEvent.click(detailedOption);
 
     // Verify the clipboard function was called
@@ -309,7 +322,7 @@ describe('ResultsList Selection Tests', () => {
         useResultsContext={() => ({
           ...mockUseResultsContext(),
           filteredResults: mockItems,
-          selectedItems: new Set([1]) // One item selected and visible
+          selectedItems: new Set([1]), // One item selected and visible
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -329,14 +342,14 @@ describe('ResultsList Selection Tests', () => {
     // Create a filtered list with only some items visible
     const allItems = [...mockItems];
     const filteredItems = [mockItems[0]]; // Only first item is visible after filtering
-    
+
     render(
       <ResultsList
         useResultsContext={() => ({
           ...mockContext,
           results: allItems,
           filteredResults: filteredItems,
-          selectedItems: new Set() // No items selected
+          selectedItems: new Set(), // No items selected
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -350,7 +363,9 @@ describe('ResultsList Selection Tests', () => {
 
     // Click export and choose format
     fireEvent.click(exportButton);
-    const detailedOption = screen.getByRole('menuitem', { name: 'Detailed Format' });
+    const detailedOption = screen.getByRole('menuitem', {
+      name: 'Detailed Format',
+    });
     fireEvent.click(detailedOption);
 
     // Verify the clipboard function was called
@@ -369,7 +384,7 @@ describe('ResultsList Filter Collapse Tests', () => {
     };
     Object.defineProperty(window, 'localStorage', {
       value: localStorageMock,
-      writable: true
+      writable: true,
     });
   });
 
@@ -428,14 +443,14 @@ describe('ResultsList Repository Filter Tests', () => {
           results: [
             {
               ...mockItems[0],
-              repository_url: 'https://api.github.com/repos/test/repo1'
+              repository_url: 'https://api.github.com/repos/test/repo1',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
-            }
+              repository_url: 'https://api.github.com/repos/test/repo2',
+            },
           ],
-          filteredResults: []
+          filteredResults: [],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(0)}
         buttonStyles={mockButtonStyles}
@@ -448,8 +463,10 @@ describe('ResultsList Repository Filter Tests', () => {
     fireEvent.click(showButton);
 
     // Find repository filter buttons
-    const repoButtons = screen.getAllByRole('button', { name: /test\/repo\d/i });
-    repoButtons.forEach(button => {
+    const repoButtons = screen.getAllByRole('button', {
+      name: /test\/repo\d/i,
+    });
+    repoButtons.forEach((button: HTMLElement) => {
       expect(button).toBeDisabled();
     });
   });
@@ -468,13 +485,13 @@ describe('ResultsList Repository Filter', () => {
           results: [
             {
               ...mockItems[0],
-              repository_url: 'https://api.github.com/repos/test/repo1'
+              repository_url: 'https://api.github.com/repos/test/repo1',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
-            }
-          ]
+              repository_url: 'https://api.github.com/repos/test/repo2',
+            },
+          ],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -487,7 +504,9 @@ describe('ResultsList Repository Filter', () => {
     fireEvent.click(showButton);
 
     // Check if repo filter buttons are rendered
-    const repoButtons = screen.getAllByRole('button', { name: /test\/repo\d/i });
+    const repoButtons = screen.getAllByRole('button', {
+      name: /test\/repo\d/i,
+    });
     expect(repoButtons).toHaveLength(2);
     expect(repoButtons[0]).toHaveTextContent('test/repo1');
     expect(repoButtons[1]).toHaveTextContent('test/repo2');
@@ -505,13 +524,13 @@ describe('ResultsList Repository Filter', () => {
           results: [
             {
               ...mockItems[0],
-              repository_url: 'https://api.github.com/repos/test/repo1'
+              repository_url: 'https://api.github.com/repos/test/repo1',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
-            }
-          ]
+              repository_url: 'https://api.github.com/repos/test/repo2',
+            },
+          ],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -524,7 +543,9 @@ describe('ResultsList Repository Filter', () => {
     fireEvent.click(showButton);
 
     // Click repo1 filter button
-    const repoButtons = screen.getAllByRole('button', { name: /test\/repo\d/i });
+    const repoButtons = screen.getAllByRole('button', {
+      name: /test\/repo\d/i,
+    });
     fireEvent.click(repoButtons[0]);
 
     // Verify setRepoFilters was called with a function
@@ -548,14 +569,14 @@ describe('ResultsList Repository Filter', () => {
           results: [
             {
               ...mockItems[0],
-              repository_url: 'https://api.github.com/repos/test/repo1'
+              repository_url: 'https://api.github.com/repos/test/repo1',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
-            }
+              repository_url: 'https://api.github.com/repos/test/repo2',
+            },
           ],
-          repoFilters: ['test/repo1']
+          repoFilters: ['test/repo1'],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -568,7 +589,9 @@ describe('ResultsList Repository Filter', () => {
     fireEvent.click(showButton);
 
     // Click repo1 filter button again to deselect
-    const repoButtons = screen.getAllByRole('button', { name: /test\/repo\d/i });
+    const repoButtons = screen.getAllByRole('button', {
+      name: /test\/repo\d/i,
+    });
     fireEvent.click(repoButtons[0]);
 
     // Verify setRepoFilters was called with a function
@@ -592,14 +615,14 @@ describe('ResultsList Repository Filter', () => {
           results: [
             {
               ...mockItems[0],
-              repository_url: 'https://api.github.com/repos/test/repo1'
+              repository_url: 'https://api.github.com/repos/test/repo1',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
-            }
+              repository_url: 'https://api.github.com/repos/test/repo2',
+            },
           ],
-          repoFilters: ['test/repo1']
+          repoFilters: ['test/repo1'],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -612,7 +635,9 @@ describe('ResultsList Repository Filter', () => {
     fireEvent.click(showButton);
 
     // Click repo2 filter button to add another repo
-    const repoButtons = screen.getAllByRole('button', { name: /test\/repo\d/i });
+    const repoButtons = screen.getAllByRole('button', {
+      name: /test\/repo\d/i,
+    });
     fireEvent.click(repoButtons[1]);
 
     // Verify setRepoFilters was called with a function
@@ -626,8 +651,9 @@ describe('ResultsList Repository Filter', () => {
 
   it('should show correct counts for repository filters', () => {
     const mockContext = mockUseResultsContext();
-    const mockCountItemsMatchingFilter = vi.fn()
-      .mockImplementation((items, filterType, filterValue, excludedLabels) => {
+    const mockCountItemsMatchingFilter = vi
+      .fn()
+      .mockImplementation((_items, filterType, filterValue, _excludedLabels) => {
         if (filterType === 'repo') {
           if (filterValue === 'test/repo1') return 1;
           if (filterValue === 'test/repo2') return 2;
@@ -642,31 +668,31 @@ describe('ResultsList Repository Filter', () => {
           results: [
             {
               ...mockItems[0],
-              repository_url: 'https://api.github.com/repos/test/repo1'
+              repository_url: 'https://api.github.com/repos/test/repo1',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
+              repository_url: 'https://api.github.com/repos/test/repo2',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
-            }
+              repository_url: 'https://api.github.com/repos/test/repo2',
+            },
           ],
           filteredResults: [
             {
               ...mockItems[0],
-              repository_url: 'https://api.github.com/repos/test/repo1'
+              repository_url: 'https://api.github.com/repos/test/repo1',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
+              repository_url: 'https://api.github.com/repos/test/repo2',
             },
             {
               ...mockItems[1],
-              repository_url: 'https://api.github.com/repos/test/repo2'
-            }
-          ]
+              repository_url: 'https://api.github.com/repos/test/repo2',
+            },
+          ],
         })}
         countItemsMatchingFilter={mockCountItemsMatchingFilter}
         buttonStyles={mockButtonStyles}
@@ -679,8 +705,10 @@ describe('ResultsList Repository Filter', () => {
     fireEvent.click(showButton);
 
     // Check repository counts
-    const repoButtons = screen.getAllByRole('button', { name: /test\/repo\d/i });
+    const repoButtons = screen.getAllByRole('button', {
+      name: /test\/repo\d/i,
+    });
     expect(repoButtons[0]).toHaveTextContent('test/repo1 (1)');
     expect(repoButtons[1]).toHaveTextContent('test/repo2 (2)');
   });
-}); 
+});

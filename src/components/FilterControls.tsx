@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Box, Button, Flash, Text, Heading, ButtonGroup } from '@primer/react';
+import { Box, Button, Text, Heading, ButtonGroup } from '@primer/react';
 import { GitHubItem } from '../types';
 import { FilterType, FilterValue } from '../utils/filterUtils';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -9,7 +9,7 @@ interface UseResultsContextHookType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr' | 'comment';
-  statusFilter: 'all' | 'open' | 'closed' | 'merged';  
+  statusFilter: 'all' | 'open' | 'closed' | 'merged';
   sortOrder: 'updated' | 'created';
   labelFilter: string;
   excludedLabels: string[];
@@ -24,8 +24,8 @@ interface UseResultsContextHookType {
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
   copyResultsToClipboard: (format: 'detailed' | 'compact') => void;
-  descriptionVisible: {[id: number]: boolean};
-  expanded: {[id: number]: boolean};
+  descriptionVisible: { [id: number]: boolean };
+  expanded: { [id: number]: boolean };
   clipboardMessage: string | null;
   clearAllFilters: () => void;
   isCompactView: boolean;
@@ -41,9 +41,9 @@ interface UseResultsContextHookType {
 interface FilterControlsProps {
   useResultsContext: () => UseResultsContextHookType;
   countItemsMatchingFilter: (
-    items: GitHubItem[], 
-    filterType: FilterType, 
-    filterValue: FilterValue, 
+    items: GitHubItem[],
+    filterType: FilterType,
+    filterValue: FilterValue,
     excludedLabels: string[]
   ) => number;
   buttonStyles: any;
@@ -52,7 +52,7 @@ interface FilterControlsProps {
 const FilterControls = memo(function FilterControls({
   useResultsContext,
   countItemsMatchingFilter,
-  buttonStyles
+  buttonStyles,
 }: FilterControlsProps) {
   const {
     results,
@@ -68,11 +68,14 @@ const FilterControls = memo(function FilterControls({
     setLabelFilter,
     setExcludedLabels,
     clearAllFilters,
-    setRepoFilters
+    setRepoFilters,
   } = useResultsContext();
 
   // Collapsible state for filters
-  const [areFiltersCollapsed, setAreFiltersCollapsed] = useLocalStorage('github-events-filters-collapsed', false);
+  const [areFiltersCollapsed, setAreFiltersCollapsed] = useLocalStorage(
+    'github-events-filters-collapsed',
+    false
+  );
 
   // Helper to get base results for counting (before current filters but after other filters)
   const baseResults = useMemo(() => {
@@ -88,7 +91,7 @@ const FilterControls = memo(function FilterControls({
         return repoUrl?.replace('https://api.github.com/repos/', '');
       })
       .filter(Boolean) as string[];
-    
+
     return Array.from(new Set(repositories)).sort();
   }, [results]);
 
@@ -107,7 +110,8 @@ const FilterControls = memo(function FilterControls({
   const getFilterSummary = () => {
     const summaryParts: string[] = [];
     if (filter !== 'all') {
-      const filterName = filter === 'pr' ? 'PRs' : filter === 'comment' ? 'Comments' : 'Issues';
+      const filterName =
+        filter === 'pr' ? 'PRs' : filter === 'comment' ? 'Comments' : 'Issues';
       summaryParts.push(`Type: ${filterName}`);
     }
     if (statusFilter !== 'all') {
@@ -126,29 +130,34 @@ const FilterControls = memo(function FilterControls({
   };
 
   // Check if any filters are applied
-  const hasActiveFilters = filter !== 'all' || 
+  const hasActiveFilters =
+    filter !== 'all' ||
     statusFilter !== 'all' ||
     labelFilter !== '' ||
     excludedLabels.length > 0 ||
     repoFilters.length > 0;
 
   return (
-    <Box sx={{ 
-      border: '1px solid', 
-      borderColor: 'border.default', 
-      borderRadius: 2, 
-      mb: 4,
-      bg: 'canvas.subtle'
-    }}>
+    <Box
+      sx={{
+        border: '1px solid',
+        borderColor: 'border.default',
+        borderRadius: 2,
+        mb: 4,
+        bg: 'canvas.subtle',
+      }}
+    >
       {/* Filter Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        p: 2,
-        borderBottom: areFiltersCollapsed ? 'none' : '1px solid',
-        borderColor: 'border.default'
-      }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          p: 2,
+          borderBottom: areFiltersCollapsed ? 'none' : '1px solid',
+          borderColor: 'border.default',
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Heading as="h2" sx={{ fontSize: 2, fontWeight: 'bold', m: 0 }}>
             Filters ({filteredResults.length})
@@ -169,10 +178,10 @@ const FilterControls = memo(function FilterControls({
             variant="invisible"
             size="small"
             onClick={() => setAreFiltersCollapsed(!areFiltersCollapsed)}
-            sx={{ 
+            sx={{
               ...buttonStyles,
-              color: 'fg.muted', 
-              ':hover': { color: 'fg.default' }
+              color: 'fg.muted',
+              ':hover': { color: 'fg.default' },
             }}
           >
             {areFiltersCollapsed ? 'Show' : 'Hide'}
@@ -182,12 +191,14 @@ const FilterControls = memo(function FilterControls({
 
       {/* Filter Summary when collapsed */}
       {areFiltersCollapsed && hasActiveFilters && (
-        <Box sx={{
-          p: 2,
-          bg: 'canvas.subtle',
-          borderBottom: '1px solid',
-          borderColor: 'border.default'
-        }}>
+        <Box
+          sx={{
+            p: 2,
+            bg: 'canvas.subtle',
+            borderBottom: '1px solid',
+            borderColor: 'border.default',
+          }}
+        >
           <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
             {getFilterSummary()}
           </Text>
@@ -197,229 +208,444 @@ const FilterControls = memo(function FilterControls({
       {/* Filter UI */}
       {!areFiltersCollapsed && (
         <Box sx={{ p: 2 }}>
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 3
-          }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 3,
+            }}
+          >
             {/* Type Filter UI */}
             <Box sx={{ gap: 1 }}>
-            <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
-              Type
-            </Heading>
-            <ButtonGroup>
-              <Button
-                variant={filter === 'issue' ? 'primary' : 'default'} 
-                onClick={() => setFilter(filter === 'issue' ? 'all' : 'issue')}
-                size="small"
-                sx={buttonStyles}
+              <Heading
+                as="h3"
+                sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}
               >
-                Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels)})
-              </Button>
-              <Button
-                variant={filter === 'pr' ? 'primary' : 'default'} 
-                onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
-                size="small"
-                sx={buttonStyles}
-              >
-                PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
-              </Button>
-              <Button
-                variant={filter === 'comment' ? 'primary' : 'default'} 
-                onClick={() => setFilter(filter === 'comment' ? 'all' : 'comment')}
-                size="small"
-                sx={buttonStyles}
-              >
-                Comments ({countItemsMatchingFilter(baseResults, 'type', 'comment', excludedLabels)})
-              </Button>
-            </ButtonGroup>
-          </Box>
-
-          {/* Status Filter UI */}
-          <Box sx={{ gap: 1 }}>
-            <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
-              Status
-            </Heading>
-            <ButtonGroup>
-              <Button 
-                variant={statusFilter === 'open' ? 'primary' : 'default'} 
-                onClick={() => setStatusFilter(statusFilter === 'open' ? 'all' : 'open')}
-                size="small"
-                sx={buttonStyles}
-              >
-                Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels)})
-              </Button>
-              <Button 
-                variant={statusFilter === 'closed' ? 'primary' : 'default'} 
-                onClick={() => setStatusFilter(statusFilter === 'closed' ? 'all' : 'closed')}
-                size="small"
-                sx={buttonStyles}
-              >
-                Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels)})
-              </Button>
-              <Button 
-                variant={statusFilter === 'merged' ? 'primary' : 'default'} 
-                onClick={() => setStatusFilter(statusFilter === 'merged' ? 'all' : 'merged')}
-                size="small"
-                sx={buttonStyles}
-              >
-                Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
-              </Button>
-            </ButtonGroup>
-          </Box>
-        </Box>
-
-        {/* Label Filters */}
-        {availableLabels.length > 0 && (
-          <Box sx={{ mt: 3 }}>
-            {/* Inclusive Label Filter */}
-            <Box sx={{ gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'success.fg' }}>
-                  Include Labels
-                </Heading>
-                <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
-                  show items with selected label
-                </Text>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                {availableLabels
-                  .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-                  .map(label => {
-                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
-                    const potentialCount = countItemsMatchingFilter(results, 'label', label, excludedLabels);
-                    const hasMatches = currentCount > 0;
-                    const hasPotentialMatches = potentialCount > 0;
-                    
-                    return (
-                      <Button
-                        key={label}
-                        size="small"
-                        variant={labelFilter === label ? 'primary' : 'default'}
-                        onClick={() => setLabelFilter(labelFilter === label ? '' : label)}
-                        sx={{
-                          color: hasMatches ? 'fg.default' : 'fg.muted',
-                          opacity: (!hasMatches || excludedLabels.includes(label)) ? 0.5 : 1,
-                          cursor: (!hasPotentialMatches || excludedLabels.includes(label)) ? 'not-allowed' : 'pointer',
-                          textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
-                          fontSize: 0,
-                          py: 0,
-                          height: '24px'
-                        }}
-                        disabled={!hasPotentialMatches || excludedLabels.includes(label)}
-                        title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
-                      >
-                        {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
-                      </Button>
-                    );
-                  })}
-              </Box>
-            </Box>
-
-            {/* Exclusive Label Filter */}
-            <Box sx={{ mt: 2, gap: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'danger.fg' }}>
-                  Exclude Labels
-                </Heading>
-                <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
-                  hide items with selected labels
-                </Text>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                {availableLabels
-                  .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
-                  .map(label => {
-                    const currentCount = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
-                    const potentialCount = countItemsMatchingFilter(results, 'label', label, []);
-                    const hasMatches = currentCount > 0;
-                    const hasPotentialMatches = potentialCount > 0;
-
-                    return (
-                      <Button
-                        key={label}
-                        size="small"
-                        variant={excludedLabels.includes(label) ? 'danger' : 'default'}
-                        onClick={() => {
-                          if (excludedLabels.includes(label)) {
-                            setExcludedLabels(prev => prev.filter(l => l !== label));
-                          } else {
-                            setExcludedLabels(prev => [...prev, label]);
-                            if (labelFilter === label) {
-                              setLabelFilter('');
-                            }
-                          }
-                        }}
-                        sx={{
-                          opacity: (!hasMatches || labelFilter === label) ? 0.5 : 1,
-                          cursor: (!hasPotentialMatches || labelFilter === label) ? 'not-allowed' : 'pointer',
-                          textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
-                          fontSize: 0,
-                          py: 0,
-                          height: '24px'
-                        }}
-                        disabled={!hasPotentialMatches || labelFilter === label}
-                        title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
-                      >
-                        {label} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
-                      </Button>
-                    );
-                  })}
-              </Box>
-            </Box>
-          </Box>
-        )}
-
-        {/* Repository Filter */}
-        {getUniqueRepositories.length > 0 && (
-          <Box sx={{ mt: 3, gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}>
-                Repositories
+                Type
               </Heading>
-              <Text as="span" sx={{fontSize: 0, color: 'fg.muted', fontWeight: 'normal'}}>
-                filter by repository
-              </Text>
+              <ButtonGroup>
+                <Button
+                  variant={filter === 'issue' ? 'primary' : 'default'}
+                  onClick={() =>
+                    setFilter(filter === 'issue' ? 'all' : 'issue')
+                  }
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Issues (
+                  {countItemsMatchingFilter(
+                    baseResults,
+                    'type',
+                    'issue',
+                    excludedLabels
+                  )}
+                  )
+                </Button>
+                <Button
+                  variant={filter === 'pr' ? 'primary' : 'default'}
+                  onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  PRs (
+                  {countItemsMatchingFilter(
+                    baseResults,
+                    'type',
+                    'pr',
+                    excludedLabels
+                  )}
+                  )
+                </Button>
+                <Button
+                  variant={filter === 'comment' ? 'primary' : 'default'}
+                  onClick={() =>
+                    setFilter(filter === 'comment' ? 'all' : 'comment')
+                  }
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Comments (
+                  {countItemsMatchingFilter(
+                    baseResults,
+                    'type',
+                    'comment',
+                    excludedLabels
+                  )}
+                  )
+                </Button>
+              </ButtonGroup>
             </Box>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              {getUniqueRepositories.map(repo => {
-                const currentCount = countItemsMatchingFilter(baseResults, 'repo', repo, excludedLabels);
-                const potentialCount = countItemsMatchingFilter(results, 'repo', repo, excludedLabels);
-                const hasMatches = currentCount > 0;
-                const hasPotentialMatches = potentialCount > 0;
 
-                return (
-                  <Button
-                    key={repo}
-                    size="small"
-                    variant={repoFilters.includes(repo) ? 'primary' : 'default'}
-                    onClick={() => handleRepoFilterChange(repo)}
-                    sx={{
-                      color: hasMatches ? 'fg.default' : 'fg.muted',
-                      opacity: !hasMatches ? 0.5 : 1,
-                      cursor: !hasPotentialMatches ? 'not-allowed' : 'pointer',
-                      textDecoration: !hasMatches && hasPotentialMatches ? 'line-through' : 'none',
-                      fontSize: 0,
-                      py: 0,
-                      height: '24px',
-                      ':hover:not([disabled])': {
-                        bg: repoFilters.includes(repo) ? 'btn.primary.hoverBg' : 'btn.hoverBg'
-                      }
-                    }}
-                    disabled={!hasPotentialMatches}
-                    title={!hasMatches && hasPotentialMatches ? 'No matches with current filters' : ''}
-                  >
-                    {repo} ({currentCount}{currentCount !== potentialCount ? ` / ${potentialCount}` : ''})
-                  </Button>
-                );
-              })}
+            {/* Status Filter UI */}
+            <Box sx={{ gap: 1 }}>
+              <Heading
+                as="h3"
+                sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}
+              >
+                Status
+              </Heading>
+              <ButtonGroup>
+                <Button
+                  variant={statusFilter === 'open' ? 'primary' : 'default'}
+                  onClick={() =>
+                    setStatusFilter(statusFilter === 'open' ? 'all' : 'open')
+                  }
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Open (
+                  {countItemsMatchingFilter(
+                    baseResults,
+                    'status',
+                    'open',
+                    excludedLabels
+                  )}
+                  )
+                </Button>
+                <Button
+                  variant={statusFilter === 'closed' ? 'primary' : 'default'}
+                  onClick={() =>
+                    setStatusFilter(
+                      statusFilter === 'closed' ? 'all' : 'closed'
+                    )
+                  }
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Closed (
+                  {countItemsMatchingFilter(
+                    baseResults,
+                    'status',
+                    'closed',
+                    excludedLabels
+                  )}
+                  )
+                </Button>
+                <Button
+                  variant={statusFilter === 'merged' ? 'primary' : 'default'}
+                  onClick={() =>
+                    setStatusFilter(
+                      statusFilter === 'merged' ? 'all' : 'merged'
+                    )
+                  }
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Merged (
+                  {countItemsMatchingFilter(
+                    baseResults,
+                    'status',
+                    'merged',
+                    excludedLabels
+                  )}
+                  )
+                </Button>
+              </ButtonGroup>
             </Box>
           </Box>
-        )}
+
+          {/* Label Filters */}
+          {availableLabels.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              {/* Inclusive Label Filter */}
+              <Box sx={{ gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                  <Heading
+                    as="h3"
+                    sx={{
+                      fontSize: 1,
+                      fontWeight: 'semibold',
+                      color: 'success.fg',
+                    }}
+                  >
+                    Include Labels
+                  </Heading>
+                  <Text
+                    as="span"
+                    sx={{
+                      fontSize: 0,
+                      color: 'fg.muted',
+                      fontWeight: 'normal',
+                    }}
+                  >
+                    show items with selected label
+                  </Text>
+                </Box>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {availableLabels
+                    .sort((a, b) =>
+                      a.toLowerCase().localeCompare(b.toLowerCase())
+                    )
+                    .map(label => {
+                      const currentCount = countItemsMatchingFilter(
+                        baseResults,
+                        'label',
+                        label,
+                        excludedLabels
+                      );
+                      const potentialCount = countItemsMatchingFilter(
+                        results,
+                        'label',
+                        label,
+                        excludedLabels
+                      );
+                      const hasMatches = currentCount > 0;
+                      const hasPotentialMatches = potentialCount > 0;
+
+                      return (
+                        <Button
+                          key={label}
+                          size="small"
+                          variant={
+                            labelFilter === label ? 'primary' : 'default'
+                          }
+                          onClick={() =>
+                            setLabelFilter(labelFilter === label ? '' : label)
+                          }
+                          sx={{
+                            color: hasMatches ? 'fg.default' : 'fg.muted',
+                            opacity:
+                              !hasMatches || excludedLabels.includes(label)
+                                ? 0.5
+                                : 1,
+                            cursor:
+                              !hasPotentialMatches ||
+                              excludedLabels.includes(label)
+                                ? 'not-allowed'
+                                : 'pointer',
+                            textDecoration:
+                              !hasMatches && hasPotentialMatches
+                                ? 'line-through'
+                                : 'none',
+                            fontSize: 0,
+                            py: 0,
+                            height: '24px',
+                          }}
+                          disabled={
+                            !hasPotentialMatches ||
+                            excludedLabels.includes(label)
+                          }
+                          title={
+                            !hasMatches && hasPotentialMatches
+                              ? 'No matches with current filters'
+                              : ''
+                          }
+                        >
+                          {label} ({currentCount}
+                          {currentCount !== potentialCount
+                            ? ` / ${potentialCount}`
+                            : ''}
+                          )
+                        </Button>
+                      );
+                    })}
+                </Box>
+              </Box>
+
+              {/* Exclusive Label Filter */}
+              <Box sx={{ mt: 2, gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                  <Heading
+                    as="h3"
+                    sx={{
+                      fontSize: 1,
+                      fontWeight: 'semibold',
+                      color: 'danger.fg',
+                    }}
+                  >
+                    Exclude Labels
+                  </Heading>
+                  <Text
+                    as="span"
+                    sx={{
+                      fontSize: 0,
+                      color: 'fg.muted',
+                      fontWeight: 'normal',
+                    }}
+                  >
+                    hide items with selected labels
+                  </Text>
+                </Box>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {availableLabels
+                    .sort((a, b) =>
+                      a.toLowerCase().localeCompare(b.toLowerCase())
+                    )
+                    .map(label => {
+                      const currentCount = countItemsMatchingFilter(
+                        baseResults,
+                        'label',
+                        label,
+                        excludedLabels
+                      );
+                      const potentialCount = countItemsMatchingFilter(
+                        results,
+                        'label',
+                        label,
+                        []
+                      );
+                      const hasMatches = currentCount > 0;
+                      const hasPotentialMatches = potentialCount > 0;
+
+                      return (
+                        <Button
+                          key={label}
+                          size="small"
+                          variant={
+                            excludedLabels.includes(label)
+                              ? 'danger'
+                              : 'default'
+                          }
+                          onClick={() => {
+                            if (excludedLabels.includes(label)) {
+                              setExcludedLabels(prev =>
+                                prev.filter(l => l !== label)
+                              );
+                            } else {
+                              setExcludedLabels(prev => [...prev, label]);
+                              if (labelFilter === label) {
+                                setLabelFilter('');
+                              }
+                            }
+                          }}
+                          sx={{
+                            opacity:
+                              !hasMatches || labelFilter === label ? 0.5 : 1,
+                            cursor:
+                              !hasPotentialMatches || labelFilter === label
+                                ? 'not-allowed'
+                                : 'pointer',
+                            textDecoration:
+                              !hasMatches && hasPotentialMatches
+                                ? 'line-through'
+                                : 'none',
+                            fontSize: 0,
+                            py: 0,
+                            height: '24px',
+                          }}
+                          disabled={
+                            !hasPotentialMatches || labelFilter === label
+                          }
+                          title={
+                            !hasMatches && hasPotentialMatches
+                              ? 'No matches with current filters'
+                              : ''
+                          }
+                        >
+                          {label} ({currentCount}
+                          {currentCount !== potentialCount
+                            ? ` / ${potentialCount}`
+                            : ''}
+                          )
+                        </Button>
+                      );
+                    })}
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          {/* Repository Filter */}
+          {getUniqueRepositories.length > 0 && (
+            <Box sx={{ mt: 3, gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                <Heading
+                  as="h3"
+                  sx={{
+                    fontSize: 1,
+                    fontWeight: 'semibold',
+                    color: 'fg.muted',
+                  }}
+                >
+                  Repositories
+                </Heading>
+                <Text
+                  as="span"
+                  sx={{ fontSize: 0, color: 'fg.muted', fontWeight: 'normal' }}
+                >
+                  filter by repository
+                </Text>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {getUniqueRepositories.map(repo => {
+                  const currentCount = countItemsMatchingFilter(
+                    baseResults,
+                    'repo',
+                    repo,
+                    excludedLabels
+                  );
+                  const potentialCount = countItemsMatchingFilter(
+                    results,
+                    'repo',
+                    repo,
+                    excludedLabels
+                  );
+                  const hasMatches = currentCount > 0;
+                  const hasPotentialMatches = potentialCount > 0;
+
+                  return (
+                    <Button
+                      key={repo}
+                      size="small"
+                      variant={
+                        repoFilters.includes(repo) ? 'primary' : 'default'
+                      }
+                      onClick={() => handleRepoFilterChange(repo)}
+                      sx={{
+                        color: hasMatches ? 'fg.default' : 'fg.muted',
+                        opacity: !hasMatches ? 0.5 : 1,
+                        cursor: !hasPotentialMatches
+                          ? 'not-allowed'
+                          : 'pointer',
+                        textDecoration:
+                          !hasMatches && hasPotentialMatches
+                            ? 'line-through'
+                            : 'none',
+                        fontSize: 0,
+                        py: 0,
+                        height: '24px',
+                        ':hover:not([disabled])': {
+                          bg: repoFilters.includes(repo)
+                            ? 'btn.primary.hoverBg'
+                            : 'btn.hoverBg',
+                        },
+                      }}
+                      disabled={!hasPotentialMatches}
+                      title={
+                        !hasMatches && hasPotentialMatches
+                          ? 'No matches with current filters'
+                          : ''
+                      }
+                    >
+                      {repo} ({currentCount}
+                      {currentCount !== potentialCount
+                        ? ` / ${potentialCount}`
+                        : ''}
+                      )
+                    </Button>
+                  );
+                })}
+              </Box>
+            </Box>
+          )}
         </Box>
       )}
     </Box>
   );
 });
 
-export default FilterControls; 
+export default FilterControls;

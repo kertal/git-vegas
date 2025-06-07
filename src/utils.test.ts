@@ -7,7 +7,7 @@ import {
   updateUrlParams,
   validateGitHubUsernames,
   validateGitHubUsernameFormat,
-  validateUsernameList
+  validateUsernameList,
 } from './utils';
 
 describe('debounce', () => {
@@ -103,13 +103,21 @@ describe('URL parameter functions', () => {
   describe('getParamFromUrl', () => {
     it('should get parameter from URL', () => {
       // Use the global mock's replaceState to set URL
-      window.history.replaceState({}, '', 'http://localhost:3000?username=test&date=2024-03-15');
+      window.history.replaceState(
+        {},
+        '',
+        'http://localhost:3000?username=test&date=2024-03-15'
+      );
       expect(getParamFromUrl('username')).toBe('test');
       expect(getParamFromUrl('date')).toBe('2024-03-15');
     });
 
     it('should return null for missing parameters', () => {
-      window.history.replaceState({}, '', 'http://localhost:3000?username=test');
+      window.history.replaceState(
+        {},
+        '',
+        'http://localhost:3000?username=test'
+      );
       expect(getParamFromUrl('missing')).toBeNull();
     });
 
@@ -121,11 +129,15 @@ describe('URL parameter functions', () => {
 
   describe('updateUrlParams', () => {
     it('should update URL parameters', () => {
-      window.history.replaceState({}, '', 'http://localhost:3000?existing=value');
+      window.history.replaceState(
+        {},
+        '',
+        'http://localhost:3000?existing=value'
+      );
       vi.clearAllMocks(); // Clear the setup call
-      
+
       updateUrlParams({ new: 'param', existing: 'newvalue' });
-      
+
       expect(window.history.replaceState).toHaveBeenCalledWith(
         {},
         '',
@@ -134,11 +146,15 @@ describe('URL parameter functions', () => {
     });
 
     it('should remove parameters with null or empty values', () => {
-      window.history.replaceState({}, '', 'http://localhost:3000?remove=value&keep=value');
+      window.history.replaceState(
+        {},
+        '',
+        'http://localhost:3000?remove=value&keep=value'
+      );
       vi.clearAllMocks(); // Clear the setup call
-      
+
       updateUrlParams({ remove: null, keep: 'value' });
-      
+
       expect(window.history.replaceState).toHaveBeenCalledWith(
         {},
         '',
@@ -149,11 +165,11 @@ describe('URL parameter functions', () => {
     it('updateUrlParams updates URL correctly', () => {
       const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
       replaceStateSpy.mockClear(); // Clear any previous calls
-      
+
       updateUrlParams({
         username: 'testuser',
         startDate: '2024-01-01',
-        endDate: null
+        endDate: null,
       });
 
       expect(replaceStateSpy).toHaveBeenCalledWith(
@@ -178,7 +194,10 @@ describe('validateGitHubUsernames', () => {
       .mockResolvedValueOnce({ ok: true }) // First username valid
       .mockResolvedValueOnce({ ok: false, status: 404 }); // Second username invalid
 
-    const result = await validateGitHubUsernames(['valid-user', 'invalid-user']);
+    const result = await validateGitHubUsernames([
+      'valid-user',
+      'invalid-user',
+    ]);
     expect(result.valid).toEqual(['valid-user']);
     expect(result.invalid).toEqual(['invalid-user']);
     expect(result.errors['invalid-user']).toBe('Username not found on GitHub');
@@ -190,7 +209,9 @@ describe('validateGitHubUsernames', () => {
     const result = await validateGitHubUsernames(['test-user']);
     expect(result.valid).toEqual([]);
     expect(result.invalid).toEqual(['test-user']);
-    expect(result.errors['test-user']).toBe('Network error while validating username');
+    expect(result.errors['test-user']).toBe(
+      'Network error while validating username'
+    );
   });
 
   it('should handle rate limiting', async () => {
@@ -199,7 +220,9 @@ describe('validateGitHubUsernames', () => {
     const result = await validateGitHubUsernames(['test-user']);
     expect(result.valid).toEqual([]);
     expect(result.invalid).toEqual(['test-user']);
-    expect(result.errors['test-user']).toBe('API rate limit exceeded. Please try again later or add a GitHub token.');
+    expect(result.errors['test-user']).toBe(
+      'API rate limit exceeded. Please try again later or add a GitHub token.'
+    );
   });
 
   it('should handle unknown API errors', async () => {
@@ -215,7 +238,9 @@ describe('validateGitHubUsernames', () => {
     const result = await validateGitHubUsernames(['invalid--username']);
     expect(result.valid).toEqual([]);
     expect(result.invalid).toEqual(['invalid--username']);
-    expect(result.errors['invalid--username']).toBe('Username cannot contain consecutive hyphens');
+    expect(result.errors['invalid--username']).toBe(
+      'Username cannot contain consecutive hyphens'
+    );
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -229,8 +254,8 @@ describe('validateGitHubUsernames', () => {
       'https://api.github.com/users/test-user',
       expect.objectContaining({
         headers: expect.objectContaining({
-          'Authorization': `token ${token}`
-        })
+          Authorization: `token ${token}`,
+        }),
       })
     );
   });
@@ -258,7 +283,7 @@ describe('validateGitHubUsernameFormat', () => {
 
   it('should reject empty or null usernames', () => {
     const invalidInputs = ['', '   ', null, undefined];
-    
+
     invalidInputs.forEach(input => {
       const result = validateGitHubUsernameFormat(input as any);
       expect(result.isValid).toBe(false);
@@ -373,7 +398,7 @@ describe('validateUsernameList', () => {
   it('should reject null/undefined input', () => {
     const result1 = validateUsernameList(null as any);
     const result2 = validateUsernameList(undefined as any);
-    
+
     expect(result1.usernames).toEqual([]);
     expect(result1.errors).toContain('Please enter at least one username');
     expect(result2.usernames).toEqual([]);
@@ -381,27 +406,46 @@ describe('validateUsernameList', () => {
   });
 
   it('should reject too many usernames', () => {
-    const manyUsernames = Array.from({ length: 20 }, (_, i) => `user${i}`).join(', ');
+    const manyUsernames = Array.from({ length: 20 }, (_, i) => `user${i}`).join(
+      ', '
+    );
     const result = validateUsernameList(manyUsernames);
-    
+
     expect(result.usernames).toHaveLength(15); // Should be limited to first 15
-    expect(result.errors).toContain('Too many usernames. Please limit to 15 usernames at a time.');
+    expect(result.errors).toContain(
+      'Too many usernames. Please limit to 15 usernames at a time.'
+    );
   });
 
   it('should validate individual username formats', () => {
-    const result = validateUsernameList('validuser, invalid--user, -badstart, gooduser');
-    
-    expect(result.usernames).toEqual(['validuser', 'invalid--user', '-badstart', 'gooduser']);
-    expect(result.errors).toContain('"invalid--user": Username cannot contain consecutive hyphens');
-    expect(result.errors).toContain('"-badstart": Username cannot begin with a hyphen');
+    const result = validateUsernameList(
+      'validuser, invalid--user, -badstart, gooduser'
+    );
+
+    expect(result.usernames).toEqual([
+      'validuser',
+      'invalid--user',
+      '-badstart',
+      'gooduser',
+    ]);
+    expect(result.errors).toContain(
+      '"invalid--user": Username cannot contain consecutive hyphens'
+    );
+    expect(result.errors).toContain(
+      '"-badstart": Username cannot begin with a hyphen'
+    );
   });
 
   it('should handle multiple validation errors', () => {
-    const result = validateUsernameList('user1, user1, invalid--user, admin, user@invalid');
-    
+    const result = validateUsernameList(
+      'user1, user1, invalid--user, admin, user@invalid'
+    );
+
     expect(result.errors.length).toBeGreaterThan(1);
     expect(result.errors.some(e => e.includes('Duplicate'))).toBe(true);
-    expect(result.errors.some(e => e.includes('consecutive hyphens'))).toBe(true);
+    expect(result.errors.some(e => e.includes('consecutive hyphens'))).toBe(
+      true
+    );
     expect(result.errors.some(e => e.includes('reserved'))).toBe(true);
     expect(result.errors.some(e => e.includes('may only contain'))).toBe(true);
   });
@@ -434,18 +478,22 @@ describe('URL parameter handling', () => {
   });
 
   it('getParamFromUrl returns correct value for existing parameter', () => {
-    window.history.replaceState({}, '', 'http://localhost:3000?username=testuser');
+    window.history.replaceState(
+      {},
+      '',
+      'http://localhost:3000?username=testuser'
+    );
     expect(getParamFromUrl('username')).toBe('testuser');
   });
 
   it('updateUrlParams updates URL correctly', () => {
     const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
     replaceStateSpy.mockClear(); // Clear any previous calls
-    
+
     updateUrlParams({
       username: 'testuser',
       startDate: '2024-01-01',
-      endDate: null
+      endDate: null,
     });
 
     expect(replaceStateSpy).toHaveBeenCalledWith(
@@ -474,7 +522,11 @@ describe('URL parameters and localStorage interaction', () => {
     localStorage.setItem('github-end-date', JSON.stringify('2023-12-31'));
 
     // Set URL parameters
-    window.history.replaceState({}, '', 'http://localhost:3000?username=urluser&startDate=2024-01-01&endDate=2024-12-31');
+    window.history.replaceState(
+      {},
+      '',
+      'http://localhost:3000?username=urluser&startDate=2024-01-01&endDate=2024-12-31'
+    );
 
     // Test that URL parameters are returned instead of localStorage values
     const urlUsername = getParamFromUrl('username');
@@ -511,16 +563,18 @@ describe('Search results caching', () => {
         user: {
           login: 'testuser',
           avatar_url: 'https://github.com/testuser.png',
-          html_url: 'https://github.com/testuser'
-        }
-      }
+          html_url: 'https://github.com/testuser',
+        },
+      },
     ];
 
     // Store results
     localStorage.setItem('github-search-results', JSON.stringify(mockResults));
 
     // Retrieve results
-    const storedResults = JSON.parse(localStorage.getItem('github-search-results') || '[]');
+    const storedResults = JSON.parse(
+      localStorage.getItem('github-search-results') || '[]'
+    );
     expect(storedResults).toEqual(mockResults);
   });
 
@@ -529,14 +583,16 @@ describe('Search results caching', () => {
       username: 'testuser',
       startDate: '2024-01-01',
       endDate: '2024-01-31',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Store params
     localStorage.setItem('github-last-search', JSON.stringify(mockParams));
 
     // Retrieve params
-    const storedParams = JSON.parse(localStorage.getItem('github-last-search') || 'null');
+    const storedParams = JSON.parse(
+      localStorage.getItem('github-last-search') || 'null'
+    );
     expect(storedParams).toEqual(mockParams);
   });
 
@@ -545,7 +601,7 @@ describe('Search results caching', () => {
       username: 'testuser',
       startDate: '2024-01-01',
       endDate: '2024-01-31',
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Store params
@@ -555,8 +611,10 @@ describe('Search results caching', () => {
     vi.advanceTimersByTime(2 * 60 * 60 * 1000);
 
     // Check if cache is expired (more than 1 hour old)
-    const storedParams = JSON.parse(localStorage.getItem('github-last-search') || 'null');
+    const storedParams = JSON.parse(
+      localStorage.getItem('github-last-search') || 'null'
+    );
     const isExpired = Date.now() - storedParams.timestamp > 3600000;
     expect(isExpired).toBe(true);
   });
-}); 
+});

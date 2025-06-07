@@ -3,14 +3,13 @@ import {
   validateSearchParams,
   validateAndCacheUsernames,
   fetchUserItems,
-  fetchUserEvents,
   transformEventToItem,
   isCacheValid,
   performGitHubSearch,
   createSearchCacheParams,
   GitHubSearchParams,
   GitHubEvent,
-  CacheCallbacks
+  CacheCallbacks,
 } from './githubSearch';
 import type { UsernameCache } from '../types';
 import { GitHubItem } from '../types';
@@ -20,12 +19,12 @@ vi.mock('../utils', () => ({
   validateGitHubUsernames: vi.fn(),
   isValidDateString: vi.fn(),
   validateUsernameList: vi.fn(),
-  updateUrlParams: vi.fn()
+  updateUrlParams: vi.fn(),
 }));
 
 vi.mock('./usernameCache', () => ({
   categorizeUsernames: vi.fn(),
-  getInvalidUsernames: vi.fn()
+  getInvalidUsernames: vi.fn(),
 }));
 
 // Mock fetch globally
@@ -33,42 +32,47 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // Import mocked functions for type safety
-import { validateGitHubUsernames, isValidDateString, validateUsernameList, updateUrlParams } from '../utils';
+import {
+  validateGitHubUsernames,
+  isValidDateString,
+  validateUsernameList,
+  updateUrlParams,
+} from '../utils';
 import { categorizeUsernames, getInvalidUsernames } from './usernameCache';
 
 describe('githubSearch utilities', () => {
   const mockCache: UsernameCache = {
     validatedUsernames: new Set(['validuser']),
-    invalidUsernames: new Set(['invaliduser'])
+    invalidUsernames: new Set(['invaliduser']),
   };
 
   const mockCacheCallbacks: CacheCallbacks = {
     addToValidated: vi.fn(),
     addToInvalid: vi.fn(),
-    removeFromValidated: vi.fn()
+    removeFromValidated: vi.fn(),
   };
 
   const mockSearchParams: GitHubSearchParams = {
     username: 'testuser',
     startDate: '2023-01-01',
     endDate: '2023-12-31',
-    githubToken: 'fake-token'
+    githubToken: 'fake-token',
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Setup default mocks
     vi.mocked(isValidDateString).mockReturnValue(true);
     vi.mocked(validateUsernameList).mockReturnValue({
       usernames: ['testuser'],
-      errors: []
+      errors: [],
     });
     vi.mocked(getInvalidUsernames).mockReturnValue([]);
     vi.mocked(categorizeUsernames).mockReturnValue({
       needValidation: [],
       alreadyValid: ['testuser'],
-      alreadyInvalid: []
+      alreadyInvalid: [],
     });
   });
 
@@ -79,7 +83,7 @@ describe('githubSearch utilities', () => {
   describe('validateSearchParams', () => {
     it('should validate correct parameters', () => {
       const result = validateSearchParams(mockSearchParams);
-      
+
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
     });
@@ -87,7 +91,7 @@ describe('githubSearch utilities', () => {
     it('should reject empty username', () => {
       const params = { ...mockSearchParams, username: '' };
       const result = validateSearchParams(params);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Please enter a GitHub username');
     });
@@ -95,46 +99,50 @@ describe('githubSearch utilities', () => {
     it('should reject missing dates', () => {
       const params = { ...mockSearchParams, startDate: '', endDate: '' };
       const result = validateSearchParams(params);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Please select both start and end dates');
     });
 
     it('should reject invalid date format', () => {
       vi.mocked(isValidDateString).mockReturnValue(false);
-      
+
       const result = validateSearchParams(mockSearchParams);
-      
+
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Invalid start date format. Please use YYYY-MM-DD');
-      expect(result.errors).toContain('Invalid end date format. Please use YYYY-MM-DD');
+      expect(result.errors).toContain(
+        'Invalid start date format. Please use YYYY-MM-DD'
+      );
+      expect(result.errors).toContain(
+        'Invalid end date format. Please use YYYY-MM-DD'
+      );
     });
 
     it('should reject start date after end date', () => {
       const params = {
         ...mockSearchParams,
         startDate: '2023-12-31',
-        endDate: '2023-01-01'
+        endDate: '2023-01-01',
       };
-      
+
       const result = validateSearchParams(params);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Start date must be before end date');
     });
 
     it('should handle multiple validation errors', () => {
       vi.mocked(isValidDateString).mockReturnValue(false);
-      
+
       const params = {
         username: '',
         startDate: 'invalid',
         endDate: 'invalid',
-        githubToken: 'token'
+        githubToken: 'token',
       };
-      
+
       const result = validateSearchParams(params);
-      
+
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(3);
     });
@@ -146,11 +154,16 @@ describe('githubSearch utilities', () => {
       vi.mocked(categorizeUsernames).mockReturnValue({
         needValidation: [],
         alreadyValid: ['testuser'],
-        alreadyInvalid: []
+        alreadyInvalid: [],
       });
 
-      const result = await validateAndCacheUsernames(['testuser'], mockCache, 'token', mockCacheCallbacks);
-      
+      const result = await validateAndCacheUsernames(
+        ['testuser'],
+        mockCache,
+        'token',
+        mockCacheCallbacks
+      );
+
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
     });
@@ -158,8 +171,13 @@ describe('githubSearch utilities', () => {
     it('should reject already invalid usernames', async () => {
       vi.mocked(getInvalidUsernames).mockReturnValue(['invaliduser']);
 
-      const result = await validateAndCacheUsernames(['invaliduser'], mockCache, 'token', mockCacheCallbacks);
-      
+      const result = await validateAndCacheUsernames(
+        ['invaliduser'],
+        mockCache,
+        'token',
+        mockCacheCallbacks
+      );
+
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Invalid GitHub username: invaliduser');
     });
@@ -167,47 +185,66 @@ describe('githubSearch utilities', () => {
     it('should handle multiple invalid usernames', async () => {
       vi.mocked(getInvalidUsernames).mockReturnValue(['invalid1', 'invalid2']);
 
-      const result = await validateAndCacheUsernames(['invalid1', 'invalid2'], mockCache, 'token', mockCacheCallbacks);
-      
+      const result = await validateAndCacheUsernames(
+        ['invalid1', 'invalid2'],
+        mockCache,
+        'token',
+        mockCacheCallbacks
+      );
+
       expect(result.valid).toBe(false);
-      expect(result.errors[0]).toContain('Invalid GitHub usernames: invalid1, invalid2');
+      expect(result.errors[0]).toContain(
+        'Invalid GitHub usernames: invalid1, invalid2'
+      );
     });
 
     it('should validate new usernames successfully', async () => {
       vi.mocked(categorizeUsernames).mockReturnValue({
         needValidation: ['newuser'],
         alreadyValid: [],
-        alreadyInvalid: []
+        alreadyInvalid: [],
       });
-      
+
       vi.mocked(validateGitHubUsernames).mockResolvedValue({
         valid: ['newuser'],
         invalid: [],
-        errors: {}
+        errors: {},
       });
 
-      const result = await validateAndCacheUsernames(['newuser'], mockCache, 'token', mockCacheCallbacks);
-      
+      const result = await validateAndCacheUsernames(
+        ['newuser'],
+        mockCache,
+        'token',
+        mockCacheCallbacks
+      );
+
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
-      expect(mockCacheCallbacks.addToValidated).toHaveBeenCalledWith(['newuser']);
+      expect(mockCacheCallbacks.addToValidated).toHaveBeenCalledWith([
+        'newuser',
+      ]);
     });
 
     it('should handle validation failures', async () => {
       vi.mocked(categorizeUsernames).mockReturnValue({
         needValidation: ['baduser'],
         alreadyValid: [],
-        alreadyInvalid: []
+        alreadyInvalid: [],
       });
-      
+
       vi.mocked(validateGitHubUsernames).mockResolvedValue({
         valid: [],
         invalid: ['baduser'],
-        errors: { baduser: 'User not found' }
+        errors: { baduser: 'User not found' },
       });
 
-      const result = await validateAndCacheUsernames(['baduser'], mockCache, 'token', mockCacheCallbacks);
-      
+      const result = await validateAndCacheUsernames(
+        ['baduser'],
+        mockCache,
+        'token',
+        mockCacheCallbacks
+      );
+
       expect(result.valid).toBe(false);
       expect(result.errors[0]).toContain('Validation failed');
       expect(result.errors[0]).toContain('baduser: User not found');
@@ -218,32 +255,45 @@ describe('githubSearch utilities', () => {
       vi.mocked(categorizeUsernames).mockReturnValue({
         needValidation: ['testuser'],
         alreadyValid: [],
-        alreadyInvalid: []
+        alreadyInvalid: [],
       });
-      
-      vi.mocked(validateGitHubUsernames).mockRejectedValue(new Error('API Error'));
 
-      const result = await validateAndCacheUsernames(['testuser'], mockCache, 'token', mockCacheCallbacks);
-      
+      vi.mocked(validateGitHubUsernames).mockRejectedValue(
+        new Error('API Error')
+      );
+
+      const result = await validateAndCacheUsernames(
+        ['testuser'],
+        mockCache,
+        'token',
+        mockCacheCallbacks
+      );
+
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Error validating usernames. Please try again.');
+      expect(result.errors).toContain(
+        'Error validating usernames. Please try again.'
+      );
     });
 
     it('should work without cache callbacks', async () => {
       vi.mocked(categorizeUsernames).mockReturnValue({
         needValidation: ['newuser'],
         alreadyValid: [],
-        alreadyInvalid: []
+        alreadyInvalid: [],
       });
-      
+
       vi.mocked(validateGitHubUsernames).mockResolvedValue({
         valid: ['newuser'],
         invalid: [],
-        errors: {}
+        errors: {},
       });
 
-      const result = await validateAndCacheUsernames(['newuser'], mockCache, 'token');
-      
+      const result = await validateAndCacheUsernames(
+        ['newuser'],
+        mockCache,
+        'token'
+      );
+
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
     });
@@ -263,31 +313,36 @@ describe('githubSearch utilities', () => {
         user: {
           login: 'testuser',
           avatar_url: 'https://github.com/testuser.png',
-          html_url: 'https://github.com/testuser'
+          html_url: 'https://github.com/testuser',
         },
         repository_url: 'https://api.github.com/repos/test/repo',
         labels: [],
         pull_request: undefined,
-        merged: false
-      }
+        merged: false,
+      },
     ];
 
     it('should fetch user items successfully', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ items: mockItems })
+        json: () => Promise.resolve({ items: mockItems }),
       });
 
-      const result = await fetchUserItems('testuser', '2023-01-01', '2023-12-31', 'token');
-      
+      const result = await fetchUserItems(
+        'testuser',
+        '2023-01-01',
+        '2023-12-31',
+        'token'
+      );
+
       expect(result).toEqual(mockItems);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.github.com/search/issues?q=author:testuser+created:2023-01-01..2023-12-31&per_page=100',
         {
           headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'Authorization': 'token token'
-          }
+            Accept: 'application/vnd.github.v3+json',
+            Authorization: 'token token',
+          },
         }
       );
     });
@@ -295,30 +350,35 @@ describe('githubSearch utilities', () => {
     it('should work without authentication token', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ items: mockItems })
+        json: () => Promise.resolve({ items: mockItems }),
       });
 
-      const result = await fetchUserItems('testuser', '2023-01-01', '2023-12-31');
-      
-      expect(result).toEqual(mockItems);
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
-        {
-          headers: {
-            'Accept': 'application/vnd.github.v3+json'
-          }
-        }
+      const result = await fetchUserItems(
+        'testuser',
+        '2023-01-01',
+        '2023-12-31'
       );
+
+      expect(result).toEqual(mockItems);
+      expect(mockFetch).toHaveBeenCalledWith(expect.any(String), {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
     });
 
     it('should handle empty response', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({})
+        json: () => Promise.resolve({}),
       });
 
-      const result = await fetchUserItems('testuser', '2023-01-01', '2023-12-31');
-      
+      const result = await fetchUserItems(
+        'testuser',
+        '2023-01-01',
+        '2023-12-31'
+      );
+
       expect(result).toEqual([]);
     });
 
@@ -326,7 +386,7 @@ describe('githubSearch utilities', () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
-        statusText: 'Forbidden'
+        statusText: 'Forbidden',
       });
 
       await expect(
@@ -337,37 +397,55 @@ describe('githubSearch utilities', () => {
     it('should handle 404 errors and update cache', async () => {
       const cache: UsernameCache = {
         validatedUsernames: new Set(['testuser']),
-        invalidUsernames: new Set<string>()
+        invalidUsernames: new Set<string>(),
       };
 
       mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
-        statusText: 'Not Found'
+        statusText: 'Not Found',
       });
 
       await expect(
-        fetchUserItems('testuser', '2023-01-01', '2023-12-31', 'token', cache, mockCacheCallbacks)
+        fetchUserItems(
+          'testuser',
+          '2023-01-01',
+          '2023-12-31',
+          'token',
+          cache,
+          mockCacheCallbacks
+        )
       ).rejects.toThrow('GitHub API error: 404 Not Found');
 
-      expect(mockCacheCallbacks.removeFromValidated).toHaveBeenCalledWith('testuser');
-      expect(mockCacheCallbacks.addToInvalid).toHaveBeenCalledWith(['testuser']);
+      expect(mockCacheCallbacks.removeFromValidated).toHaveBeenCalledWith(
+        'testuser'
+      );
+      expect(mockCacheCallbacks.addToInvalid).toHaveBeenCalledWith([
+        'testuser',
+      ]);
     });
 
     it('should not update cache for 404 if user not in validated cache', async () => {
       const cache: UsernameCache = {
         validatedUsernames: new Set<string>(),
-        invalidUsernames: new Set<string>()
+        invalidUsernames: new Set<string>(),
       };
 
       mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
-        statusText: 'Not Found'
+        statusText: 'Not Found',
       });
 
       await expect(
-        fetchUserItems('testuser', '2023-01-01', '2023-12-31', 'token', cache, mockCacheCallbacks)
+        fetchUserItems(
+          'testuser',
+          '2023-01-01',
+          '2023-12-31',
+          'token',
+          cache,
+          mockCacheCallbacks
+        )
       ).rejects.toThrow('GitHub API error: 404 Not Found');
 
       expect(mockCacheCallbacks.removeFromValidated).not.toHaveBeenCalled();
@@ -379,7 +457,7 @@ describe('githubSearch utilities', () => {
     const baseParams = {
       username: 'testuser',
       startDate: '2023-01-01',
-      endDate: '2023-12-31'
+      endDate: '2023-12-31',
     };
 
     it('should return false for null cache', () => {
@@ -390,7 +468,7 @@ describe('githubSearch utilities', () => {
     it('should return true for valid cache within expiry', () => {
       const lastSearch = {
         ...baseParams,
-        timestamp: Date.now() - 30000 // 30 seconds ago
+        timestamp: Date.now() - 30000, // 30 seconds ago
       };
 
       const result = isCacheValid(baseParams, lastSearch);
@@ -400,7 +478,7 @@ describe('githubSearch utilities', () => {
     it('should return false for expired cache', () => {
       const lastSearch = {
         ...baseParams,
-        timestamp: Date.now() - 4000000 // Over 1 hour ago
+        timestamp: Date.now() - 4000000, // Over 1 hour ago
       };
 
       const result = isCacheValid(baseParams, lastSearch);
@@ -412,7 +490,7 @@ describe('githubSearch utilities', () => {
         username: 'differentuser',
         startDate: '2023-01-01',
         endDate: '2023-12-31',
-        timestamp: Date.now() - 30000
+        timestamp: Date.now() - 30000,
       };
 
       const result = isCacheValid(baseParams, lastSearch);
@@ -422,7 +500,7 @@ describe('githubSearch utilities', () => {
     it('should respect custom cache expiry', () => {
       const lastSearch = {
         ...baseParams,
-        timestamp: Date.now() - 30000 // 30 seconds ago
+        timestamp: Date.now() - 30000, // 30 seconds ago
       };
 
       const result = isCacheValid(baseParams, lastSearch, 10000); // 10 second expiry
@@ -436,25 +514,31 @@ describe('githubSearch utilities', () => {
     beforeEach(() => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ items: [] })
+        json: () => Promise.resolve({ items: [] }),
       });
     });
 
     it('should perform successful search', async () => {
       const result = await performGitHubSearch(mockSearchParams, mockCache, {
         onProgress: mockProgressCallback,
-        cacheCallbacks: mockCacheCallbacks
+        cacheCallbacks: mockCacheCallbacks,
       });
 
       expect(result).toEqual({
         items: [],
         totalCount: 0,
-        processedUsernames: ['testuser']
+        processedUsernames: ['testuser'],
       });
 
-      expect(mockProgressCallback).toHaveBeenCalledWith('Validating usernames...');
-      expect(mockProgressCallback).toHaveBeenCalledWith('Starting search API...');
-      expect(mockProgressCallback).toHaveBeenCalledWith('Fetching data for testuser...');
+      expect(mockProgressCallback).toHaveBeenCalledWith(
+        'Validating usernames...'
+      );
+      expect(mockProgressCallback).toHaveBeenCalledWith(
+        'Starting search API...'
+      );
+      expect(mockProgressCallback).toHaveBeenCalledWith(
+        'Fetching data for testuser...'
+      );
       // URL parameters are no longer automatically updated
       expect(updateUrlParams).not.toHaveBeenCalled();
     });
@@ -470,7 +554,7 @@ describe('githubSearch utilities', () => {
     it('should handle username format validation errors', async () => {
       vi.mocked(validateUsernameList).mockReturnValue({
         usernames: [],
-        errors: ['Invalid username format']
+        errors: ['Invalid username format'],
       });
 
       await expect(
@@ -497,7 +581,7 @@ describe('githubSearch utilities', () => {
     it('should handle multiple users', async () => {
       vi.mocked(validateUsernameList).mockReturnValue({
         usernames: ['user1', 'user2'],
-        errors: []
+        errors: [],
       });
 
       const mockItems1 = [{ id: 1 } as GitHubItem];
@@ -508,14 +592,15 @@ describe('githubSearch utilities', () => {
         callCount++;
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ 
-            items: callCount === 1 ? mockItems1 : mockItems2 
-          })
+          json: () =>
+            Promise.resolve({
+              items: callCount === 1 ? mockItems1 : mockItems2,
+            }),
         });
       });
 
       const result = await performGitHubSearch(mockSearchParams, mockCache, {
-        requestDelay: 0 // Skip delay for faster tests
+        requestDelay: 0, // Skip delay for faster tests
       });
 
       expect(result.items).toHaveLength(2);
@@ -525,30 +610,28 @@ describe('githubSearch utilities', () => {
 
     it('should work without progress callback', async () => {
       const result = await performGitHubSearch(mockSearchParams, mockCache);
-      
+
       expect(result).toEqual({
         items: [],
         totalCount: 0,
-        processedUsernames: ['testuser']
+        processedUsernames: ['testuser'],
       });
     });
 
     it('should work without cache callbacks', async () => {
-      const result = await performGitHubSearch(mockSearchParams, mockCache, {
-        updateUrl: false
-      });
-      
+      const result = await performGitHubSearch(mockSearchParams, mockCache);
+
       expect(result).toEqual({
         items: [],
         totalCount: 0,
-        processedUsernames: ['testuser']
+        processedUsernames: ['testuser'],
       });
     });
 
     it('should handle username context in error messages', async () => {
       vi.mocked(validateUsernameList).mockReturnValue({
         usernames: ['failuser'],
-        errors: []
+        errors: [],
       });
 
       mockFetch.mockRejectedValue(new Error('Rate limited'));
@@ -570,7 +653,7 @@ describe('githubSearch utilities', () => {
         username: 'testuser',
         startDate: '2023-01-01',
         endDate: '2023-12-31',
-        timestamp: mockTimestamp
+        timestamp: mockTimestamp,
       });
 
       vi.restoreAllMocks();
@@ -596,12 +679,12 @@ describe('githubSearch utilities', () => {
             id: 1,
             login: 'testuser',
             avatar_url: 'https://avatar.url',
-            url: 'https://api.github.com/users/testuser'
+            url: 'https://api.github.com/users/testuser',
           },
           repo: {
             id: 456,
             name: 'testuser/testrepo',
-            url: 'https://api.github.com/repos/testuser/testrepo'
+            url: 'https://api.github.com/repos/testuser/testrepo',
           },
           payload: {
             action: 'opened',
@@ -619,12 +702,12 @@ describe('githubSearch utilities', () => {
               user: {
                 login: 'testuser',
                 avatar_url: 'https://avatar.url',
-                html_url: 'https://github.com/testuser'
-              }
-            }
+                html_url: 'https://github.com/testuser',
+              },
+            },
           },
           public: true,
-          created_at: '2024-01-01T00:00:00Z'
+          created_at: '2024-01-01T00:00:00Z',
         };
 
         const result = transformEventToItem(mockEvent);
@@ -641,16 +724,16 @@ describe('githubSearch utilities', () => {
           repository_url: 'https://api.github.com/repos/testuser/testrepo',
           repository: {
             full_name: 'testuser/testrepo',
-            html_url: 'https://github.com/testuser/testrepo'
+            html_url: 'https://github.com/testuser/testrepo',
           },
           closed_at: undefined,
           number: 1,
           user: {
             login: 'testuser',
             avatar_url: 'https://avatar.url',
-            html_url: 'https://github.com/testuser'
+            html_url: 'https://github.com/testuser',
           },
-          pull_request: undefined
+          pull_request: undefined,
         });
       });
 
@@ -662,26 +745,27 @@ describe('githubSearch utilities', () => {
             id: 1,
             login: 'testuser',
             avatar_url: 'https://avatar.url',
-            url: 'https://api.github.com/users/testuser'
+            url: 'https://api.github.com/users/testuser',
           },
           repo: {
             id: 456,
             name: 'testuser/testrepo',
-            url: 'https://api.github.com/repos/testuser/testrepo'
+            url: 'https://api.github.com/repos/testuser/testrepo',
           },
           payload: {
             action: 'created',
             comment: {
               id: 999,
               body: 'This is a comment on the issue',
-              html_url: 'https://github.com/testuser/testrepo/issues/1#issuecomment-999',
+              html_url:
+                'https://github.com/testuser/testrepo/issues/1#issuecomment-999',
               created_at: '2024-01-01T12:00:00Z',
               updated_at: '2024-01-01T12:00:00Z',
               user: {
                 login: 'commenter',
                 avatar_url: 'https://commenter.avatar.url',
-                html_url: 'https://github.com/commenter'
-              }
+                html_url: 'https://github.com/commenter',
+              },
             },
             issue: {
               id: 789,
@@ -697,19 +781,20 @@ describe('githubSearch utilities', () => {
               user: {
                 login: 'testuser',
                 avatar_url: 'https://avatar.url',
-                html_url: 'https://github.com/testuser'
-              }
-            }
+                html_url: 'https://github.com/testuser',
+              },
+            },
           },
           public: true,
-          created_at: '2024-01-01T12:00:00Z'
+          created_at: '2024-01-01T12:00:00Z',
         };
 
         const result = transformEventToItem(mockEvent);
 
         expect(result).toEqual({
           id: 999,
-          html_url: 'https://github.com/testuser/testrepo/issues/1#issuecomment-999',
+          html_url:
+            'https://github.com/testuser/testrepo/issues/1#issuecomment-999',
           title: 'Comment on: Test Issue',
           created_at: '2024-01-01T12:00:00Z',
           updated_at: '2024-01-01T12:00:00Z',
@@ -719,16 +804,16 @@ describe('githubSearch utilities', () => {
           repository_url: 'https://api.github.com/repos/testuser/testrepo',
           repository: {
             full_name: 'testuser/testrepo',
-            html_url: 'https://github.com/testuser/testrepo'
+            html_url: 'https://github.com/testuser/testrepo',
           },
           closed_at: undefined,
           number: 1,
           user: {
             login: 'commenter',
             avatar_url: 'https://commenter.avatar.url',
-            html_url: 'https://github.com/commenter'
+            html_url: 'https://github.com/commenter',
           },
-          pull_request: undefined
+          pull_request: undefined,
         });
       });
 
@@ -740,16 +825,16 @@ describe('githubSearch utilities', () => {
             id: 1,
             login: 'testuser',
             avatar_url: 'https://avatar.url',
-            url: 'https://api.github.com/users/testuser'
+            url: 'https://api.github.com/users/testuser',
           },
           repo: {
             id: 456,
             name: 'testuser/testrepo',
-            url: 'https://api.github.com/repos/testuser/testrepo'
+            url: 'https://api.github.com/repos/testuser/testrepo',
           },
           payload: {},
           public: true,
-          created_at: '2024-01-01T00:00:00Z'
+          created_at: '2024-01-01T00:00:00Z',
         };
 
         const result = transformEventToItem(mockEvent);
@@ -758,20 +843,20 @@ describe('githubSearch utilities', () => {
       });
     });
 
-         describe('performGitHubSearch with Events API', () => {
-       it('should use Events API when apiMode is events', async () => {
-                  // Clear any previous mock calls
-         vi.clearAllMocks();
-         
-         // Reset mocks for this specific test
-         vi.mocked(getInvalidUsernames).mockReturnValue([]);
-         vi.mocked(categorizeUsernames).mockReturnValue({
-           needValidation: [],
-           alreadyValid: ['testuser'],
-           alreadyInvalid: []
-         });
-         
-         const mockEvents = [
+    describe('performGitHubSearch with Events API', () => {
+      it('should use Events API when apiMode is events', async () => {
+        // Clear any previous mock calls
+        vi.clearAllMocks();
+
+        // Reset mocks for this specific test
+        vi.mocked(getInvalidUsernames).mockReturnValue([]);
+        vi.mocked(categorizeUsernames).mockReturnValue({
+          needValidation: [],
+          alreadyValid: ['testuser'],
+          alreadyInvalid: [],
+        });
+
+        const mockEvents = [
           {
             id: '123',
             type: 'IssuesEvent',
@@ -779,12 +864,12 @@ describe('githubSearch utilities', () => {
               id: 1,
               login: 'testuser',
               avatar_url: 'https://avatar.url',
-              url: 'https://api.github.com/users/testuser'
+              url: 'https://api.github.com/users/testuser',
             },
             repo: {
               id: 456,
               name: 'testuser/testrepo',
-              url: 'https://api.github.com/repos/testuser/testrepo'
+              url: 'https://api.github.com/repos/testuser/testrepo',
             },
             payload: {
               action: 'opened',
@@ -796,30 +881,30 @@ describe('githubSearch utilities', () => {
                 state: 'open',
                 body: 'Test issue body',
                 labels: [],
-                                 created_at: '2024-01-15T00:00:00Z',
-                 updated_at: '2024-01-15T01:00:00Z',
-                 closed_at: undefined,
-                 user: {
+                created_at: '2024-01-15T00:00:00Z',
+                updated_at: '2024-01-15T01:00:00Z',
+                closed_at: undefined,
+                user: {
                   login: 'testuser',
                   avatar_url: 'https://avatar.url',
-                  html_url: 'https://github.com/testuser'
-                }
-              }
+                  html_url: 'https://github.com/testuser',
+                },
+              },
             },
             public: true,
-            created_at: '2024-01-15T00:00:00Z'
-          }
+            created_at: '2024-01-15T00:00:00Z',
+          },
         ];
 
-                 // Mock fetch to return events on first call, empty on subsequent calls (pagination)
-         let callCount = 0;
-         mockFetch.mockImplementation(() => {
-           callCount++;
-           return Promise.resolve({
-             ok: true,
-             json: () => Promise.resolve(callCount === 1 ? mockEvents : [])
-           });
-         });
+        // Mock fetch to return events on first call, empty on subsequent calls (pagination)
+        let callCount = 0;
+        mockFetch.mockImplementation(() => {
+          callCount++;
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(callCount === 1 ? mockEvents : []),
+          });
+        });
 
         const result = await performGitHubSearch(
           {
@@ -827,7 +912,7 @@ describe('githubSearch utilities', () => {
             startDate: '2024-01-01',
             endDate: '2024-01-31',
             githubToken: 'token123',
-            apiMode: 'events'
+            apiMode: 'events',
           },
           mockCache
         );
@@ -842,12 +927,12 @@ describe('githubSearch utilities', () => {
 
       it('should handle pagination limit error gracefully', async () => {
         vi.clearAllMocks();
-        
+
         vi.mocked(getInvalidUsernames).mockReturnValue([]);
         vi.mocked(categorizeUsernames).mockReturnValue({
           needValidation: [],
           alreadyValid: ['testuser'],
-          alreadyInvalid: []
+          alreadyInvalid: [],
         });
 
         // Mock fetch to return pagination limit error (422)
@@ -855,11 +940,13 @@ describe('githubSearch utilities', () => {
           ok: false,
           status: 422,
           statusText: 'Unprocessable Entity',
-          json: () => Promise.resolve({
-            message: 'In order to keep the API fast for everyone, pagination is limited for this resource.',
-            documentation_url: 'https://docs.github.com/v3/#pagination',
-            status: '422'
-          })
+          json: () =>
+            Promise.resolve({
+              message:
+                'In order to keep the API fast for everyone, pagination is limited for this resource.',
+              documentation_url: 'https://docs.github.com/v3/#pagination',
+              status: '422',
+            }),
         });
 
         const result = await performGitHubSearch(
@@ -868,7 +955,7 @@ describe('githubSearch utilities', () => {
             startDate: '2024-01-01',
             endDate: '2024-01-31',
             githubToken: 'token123',
-            apiMode: 'events'
+            apiMode: 'events',
           },
           mockCache
         );
@@ -879,4 +966,4 @@ describe('githubSearch utilities', () => {
       });
     });
   });
-}); 
+});
