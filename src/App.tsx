@@ -62,13 +62,45 @@ function App() {
   const [endDate, setEndDate] = useLocalStorage('github-end-date', new Date().toISOString().split('T')[0]);
   const [githubToken, setGithubToken] = useLocalStorage('github-token', '');
   const [isCompactView, setIsCompactView] = useLocalStorage('github-compact-view', false);
-  const [filter, setFilter] = useLocalStorage<'all' | 'issue' | 'pr'>('github-filter', 'all');
-  const [statusFilter, setStatusFilter] = useLocalStorage<'all' | 'open' | 'closed' | 'merged'>('github-status-filter', 'all');
+  
+  // Consolidated filters state
+  const [currentFilters, setCurrentFilters] = useLocalStorage<ResultsFilter>('github-current-filters', createDefaultFilter());
+  
+  // Individual filter setters for convenience
+  const setFilter = useCallback((filter: 'all' | 'issue' | 'pr') => {
+    setCurrentFilters(prev => ({ ...prev, filter }));
+  }, [setCurrentFilters]);
+  
+  const setStatusFilter = useCallback((statusFilter: 'all' | 'open' | 'closed' | 'merged') => {
+    setCurrentFilters(prev => ({ ...prev, statusFilter }));
+  }, [setCurrentFilters]);
+  
+  const setLabelFilter = useCallback((labelFilter: string) => {
+    setCurrentFilters(prev => ({ ...prev, labelFilter }));
+  }, [setCurrentFilters]);
+  
+  const setExcludedLabels = useCallback((excludedLabels: string[] | ((prev: string[]) => string[])) => {
+    setCurrentFilters(prev => ({ 
+      ...prev, 
+      excludedLabels: typeof excludedLabels === 'function' ? excludedLabels(prev.excludedLabels) : excludedLabels 
+    }));
+  }, [setCurrentFilters]);
+  
+  const setSearchText = useCallback((searchText: string) => {
+    setCurrentFilters(prev => ({ ...prev, searchText }));
+  }, [setCurrentFilters]);
+  
+  const setRepoFilters = useCallback((repoFilters: string[] | ((prev: string[]) => string[])) => {
+    setCurrentFilters(prev => ({ 
+      ...prev, 
+      repoFilters: typeof repoFilters === 'function' ? repoFilters(prev.repoFilters) : repoFilters 
+    }));
+  }, [setCurrentFilters]);
+  
+  // Extract individual filter values for convenience
+  const { filter, statusFilter, labelFilter, excludedLabels, searchText, repoFilters } = currentFilters;
+  
   const [sortOrder, setSortOrder] = useLocalStorage<'updated' | 'created'>('github-sort-order', 'updated');
-  const [labelFilter, setLabelFilter] = useLocalStorage('github-label-filter', '');
-  const [excludedLabels, setExcludedLabels] = useLocalStorage<string[]>('github-excluded-labels', []);
-  const [searchText, setSearchText] = useLocalStorage('github-search-text', '');
-  const [repoFilters, setRepoFilters] = useLocalStorage<string[]>('github-repo-filters', []);
   const [descriptionVisible, setDescriptionVisible] = useLocalStorage<{[id: number]: boolean}>('github-description-visible', {});
   const [expanded, setExpanded] = useLocalStorage<{[id: number]: boolean}>('github-expanded', {});
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<number>>('github-selected-items', new Set());
@@ -90,15 +122,6 @@ function App() {
   const availableLabels = useMemo(() => {
     return extractAvailableLabels(Array.isArray(results) ? results : []);
   }, [results]);
-
-  const currentFilters: ResultsFilter = useMemo(() => ({
-    filter,
-    statusFilter,
-    labelFilter,
-    excludedLabels,
-    repoFilters,
-    searchText
-  }), [filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText]);
 
   const filteredResults = useMemo(() => {
     return applyFiltersAndSort(Array.isArray(results) ? results : [], currentFilters, sortOrder);
@@ -255,14 +278,8 @@ function App() {
 
   // Clear all filters using new utilities
   const clearAllFilters = useCallback(() => {
-    const defaultFilter = createDefaultFilter();
-    setFilter(defaultFilter.filter);
-    setStatusFilter(defaultFilter.statusFilter);
-    setLabelFilter(defaultFilter.labelFilter);
-    setExcludedLabels(defaultFilter.excludedLabels);
-    setSearchText(defaultFilter.searchText);
-    setRepoFilters(defaultFilter.repoFilters);
-  }, [setFilter, setStatusFilter, setLabelFilter, setExcludedLabels, setSearchText, setRepoFilters]);
+    setCurrentFilters(createDefaultFilter());
+  }, [setCurrentFilters]);
 
   // Clipboard handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
