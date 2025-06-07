@@ -52,10 +52,14 @@ export const categorizeUsernames = (
   validatedCache: Set<string>,
   invalidCache: Set<string>
 ) => {
-  const needValidation = usernames.filter(u => !validatedCache.has(u) && !invalidCache.has(u));
-  const alreadyValid = usernames.filter(u => validatedCache.has(u));
+  // Defensive programming: ensure caches are Sets
+  const safeValidatedCache = validatedCache instanceof Set ? validatedCache : new Set<string>();
+  const safeInvalidCache = invalidCache instanceof Set ? invalidCache : new Set<string>();
+  
+  const needValidation = usernames.filter(u => !safeValidatedCache.has(u) && !safeInvalidCache.has(u));
+  const alreadyValid = usernames.filter(u => safeValidatedCache.has(u));
   // Only include in alreadyInvalid if NOT in validatedCache (prioritize validated)
-  const alreadyInvalid = usernames.filter(u => invalidCache.has(u) && !validatedCache.has(u));
+  const alreadyInvalid = usernames.filter(u => safeInvalidCache.has(u) && !safeValidatedCache.has(u));
 
   return {
     needValidation,
@@ -92,5 +96,7 @@ export const getInvalidUsernames = (
   usernames: string[],
   invalidCache: Set<string>
 ): string[] => {
-  return usernames.filter(u => invalidCache.has(u));
+  // Defensive programming: ensure invalidCache is a Set
+  const safeInvalidCache = invalidCache instanceof Set ? invalidCache : new Set<string>();
+  return usernames.filter(u => safeInvalidCache.has(u));
 }; 

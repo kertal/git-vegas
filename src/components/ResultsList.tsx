@@ -759,7 +759,7 @@ const ResultsList = memo(function ResultsList({
                 }}
               >
                 Export to Clipboard {(() => {
-                  const visibleSelectedCount = filteredResults.filter(item => selectedItems.has(item.id)).length;
+                  const visibleSelectedCount = filteredResults.filter(item => selectedItems instanceof Set && selectedItems.has(item.id)).length;
                   return visibleSelectedCount > 0 ? `(${visibleSelectedCount} selected)` : '(all)';
                 })()}
               </ActionMenu.Button>
@@ -799,7 +799,7 @@ const ResultsList = memo(function ResultsList({
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <Checkbox
-                      checked={selectedItems.has(item.id)}
+                      checked={selectedItems instanceof Set && selectedItems.has(item.id)}
                       onChange={() => toggleItemSelection(item.id)}
                     />
                     {item.body && (
@@ -923,7 +923,7 @@ const ResultsList = memo(function ResultsList({
                   <Stack direction="horizontal" alignItems="center" sx={{ mb: 2, gap: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                       <Checkbox
-                        checked={selectedItems.has(item.id)}
+                        checked={selectedItems instanceof Set && selectedItems.has(item.id)}
                         onChange={() => toggleItemSelection(item.id)}
                       />
                       {item.body && (

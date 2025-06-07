@@ -92,4 +92,35 @@ export interface SlotMachineLoaderProps {
 export interface SettingsDialogProps {
   isOpen: boolean;
   onDismiss: () => void;
+}
+
+/**
+ * Consolidated settings types for localStorage optimization
+ */
+
+// Form-related settings that are used together
+export interface FormSettings {
+  username: string;
+  startDate: string;
+  endDate: string;
+  githubToken: string;
+}
+
+// UI/Display settings that control how data is presented
+export interface UISettings {
+  isCompactView: boolean;
+  sortOrder: 'updated' | 'created';
+}
+
+// Item-specific UI state (visibility, expansion, selection)
+export interface ItemUIState {
+  descriptionVisible: {[id: number]: boolean};
+  expanded: {[id: number]: boolean};
+  selectedItems: Set<number>;
+}
+
+// Username validation cache for API optimization
+export interface UsernameCache {
+  validatedUsernames: Set<string>;
+  invalidUsernames: Set<string>;
 } 

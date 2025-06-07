@@ -275,4 +275,80 @@ describe('usernameCache utilities', () => {
       expect(result).toEqual(['user1', 'user2', 'user4']);
     });
   });
+});
+
+describe('Defensive Programming - Corrupted Cache Data', () => {
+  const usernames = ['user1', 'user2', 'user3'];
+
+  describe('categorizeUsernames with corrupted cache data', () => {
+    it('should handle corrupted invalidCache gracefully', () => {
+      const validatedCache = new Set(['user1']);
+      const corruptedInvalidCache = ['user2', 'user3'] as any; // Array instead of Set
+
+      const result = categorizeUsernames(usernames, validatedCache, corruptedInvalidCache);
+
+      expect(result.needValidation).toEqual(['user2', 'user3']);
+      expect(result.alreadyValid).toEqual(['user1']);
+      expect(result.alreadyInvalid).toEqual([]);
+    });
+
+    it('should handle corrupted validatedCache gracefully', () => {
+      const corruptedValidatedCache = { user1: true } as any; // Object instead of Set
+      const invalidCache = new Set(['user2']);
+
+      const result = categorizeUsernames(usernames, corruptedValidatedCache, invalidCache);
+
+      expect(result.needValidation).toEqual(['user1', 'user3']);
+      expect(result.alreadyValid).toEqual([]);
+      expect(result.alreadyInvalid).toEqual(['user2']);
+    });
+
+    it('should handle both caches being corrupted', () => {
+      const corruptedValidatedCache = 'not-a-set' as any;
+      const corruptedInvalidCache = null as any;
+
+      const result = categorizeUsernames(usernames, corruptedValidatedCache, corruptedInvalidCache);
+
+      expect(result.needValidation).toEqual(['user1', 'user2', 'user3']);
+      expect(result.alreadyValid).toEqual([]);
+      expect(result.alreadyInvalid).toEqual([]);
+    });
+  });
+
+  describe('needsValidation with corrupted cache data', () => {
+    it('should handle corrupted caches gracefully', () => {
+      const corruptedValidatedCache = undefined as any;
+      const corruptedInvalidCache = [] as any; // Array instead of Set
+
+      const result = needsValidation(usernames, corruptedValidatedCache, corruptedInvalidCache);
+
+      expect(result).toBe(true); // All usernames need validation when caches are corrupted
+    });
+  });
+
+  describe('getInvalidUsernames with corrupted cache data', () => {
+    it('should handle corrupted invalidCache gracefully', () => {
+      const corruptedInvalidCache = { user2: true, user3: true } as any; // Object instead of Set
+
+      const result = getInvalidUsernames(usernames, corruptedInvalidCache);
+
+      expect(result).toEqual([]); // No usernames should be considered invalid when cache is corrupted
+    });
+
+    it('should handle null invalidCache gracefully', () => {
+      const nullInvalidCache = null as any;
+
+      const result = getInvalidUsernames(usernames, nullInvalidCache);
+
+      expect(result).toEqual([]);
+    });
+
+    it('should handle undefined invalidCache gracefully', () => {
+      const undefinedInvalidCache = undefined as any;
+
+      const result = getInvalidUsernames(usernames, undefinedInvalidCache);
+
+      expect(result).toEqual([]);
+    });
+  });
 }); 

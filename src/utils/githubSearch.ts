@@ -1,6 +1,7 @@
 import { GitHubItem } from '../types';
 import { validateGitHubUsernames, isValidDateString, validateUsernameList, updateUrlParams, type BatchValidationResult } from '../utils';
 import { categorizeUsernames, getInvalidUsernames } from './usernameCache';
+import type { UsernameCache } from '../types';
 
 /**
  * GitHub Search Utilities
@@ -21,16 +22,6 @@ export interface GitHubSearchParams {
   endDate: string;
   /** GitHub personal access token (optional) */
   githubToken?: string;
-}
-
-/**
- * Username validation cache state
- */
-export interface UsernameCache {
-  /** Set of validated usernames */
-  validatedUsernames: Set<string>;
-  /** Set of invalid usernames */
-  invalidUsernames: Set<string>;
 }
 
 /**

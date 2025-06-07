@@ -161,6 +161,7 @@ describe('App Component', () => {
     vi.clearAllMocks();
     localStorageMock.getItem.mockImplementation(() => null);
     localStorageMock.setItem.mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   describe('Initial Rendering', () => {
@@ -301,6 +302,138 @@ describe('App Component', () => {
         expect(screen.getByLabelText(/GitHub username/i)).toBeInTheDocument();
         // No context errors means contexts are properly provided
       });
+    });
+  });
+
+  describe('Selected Items Error Handling', () => {
+    it('should handle corrupted selectedItems data gracefully and not crash with .has error', async () => {
+      // Simulate corrupted selectedItems data in localStorage (not a proper Set)
+      const corruptedItemUIState = {
+        descriptionVisible: {},
+        expanded: {},
+        selectedItems: [1, 2, 3] // Array instead of Set - this would cause .has() error
+      };
+      
+      window.localStorage.setItem('github-item-ui-state', JSON.stringify(corruptedItemUIState));
+      
+      // Mock some results to work with
+      const mockResults = [
+        { id: 1, title: 'Test Issue 1', number: 1, pull_request: undefined, state: 'open', html_url: 'https://github.com/test/repo/issues/1', repository_url: 'https://api.github.com/repos/test/repo', user: { login: 'testuser', avatar_url: 'https://avatar.url' }, labels: [], created_at: '2023-01-01T00:00:00Z', updated_at: '2023-01-01T00:00:00Z' },
+        { id: 2, title: 'Test Issue 2', number: 2, pull_request: undefined, state: 'open', html_url: 'https://github.com/test/repo/issues/2', repository_url: 'https://api.github.com/repos/test/repo', user: { login: 'testuser', avatar_url: 'https://avatar.url' }, labels: [], created_at: '2023-01-01T00:00:00Z', updated_at: '2023-01-01T00:00:00Z' }
+      ];
+      
+      window.localStorage.setItem('github-search-results', JSON.stringify(mockResults));
+      
+      const { getByText } = render(<App />);
+      
+      // App should render without crashing
+      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      
+      // Should not throw "selectedItems.has is not a function" error
+      // The defensive code should create a new Set automatically
+      
+      // Verify that the console.warn was called for corrupted data
+      expect(console.warn).toHaveBeenCalledWith(
+        'selectedItems is not a Set instance, creating new empty Set:',
+        [1, 2, 3]
+      );
+    });
+
+    it('should handle selectedItems.has() calls safely when data is corrupted', async () => {
+      // Set up corrupted data
+      const corruptedItemUIState = {
+        descriptionVisible: {},
+        expanded: {},
+        selectedItems: { some: 'invalid', data: 'structure' } // Invalid object
+      };
+      
+      window.localStorage.setItem('github-item-ui-state', JSON.stringify(corruptedItemUIState));
+      
+      const mockResults = [
+        { id: 1, title: 'Test Issue 1', number: 1, pull_request: undefined, state: 'open', html_url: 'https://github.com/test/repo/issues/1', repository_url: 'https://api.github.com/repos/test/repo', user: { login: 'testuser', avatar_url: 'https://avatar.url' }, labels: [], created_at: '2023-01-01T00:00:00Z', updated_at: '2023-01-01T00:00:00Z' }
+      ];
+      
+      window.localStorage.setItem('github-search-results', JSON.stringify(mockResults));
+      
+      const { container } = render(<App />);
+      
+      // Find copy button and try to click it - this would trigger the selectedItems.has() call
+      const copyButton = container.querySelector('[aria-label*="Copy"]');
+      if (copyButton) {
+        fireEvent.click(copyButton);
+      }
+      
+      // Should not throw an error - the app should handle it gracefully
+      expect(container).toBeInTheDocument();
+    });
+  });
+
+  describe('Username Cache Error Handling', () => {
+    it('should handle corrupted invalidUsernames cache data gracefully', async () => {
+      // Simulate corrupted username cache data in localStorage
+      const corruptedUsernameCache = {
+        validatedUsernames: new Set(['validuser']),
+        invalidUsernames: ['invaliduser1', 'invaliduser2'] // Array instead of Set - this would cause .has() error
+      };
+      
+      window.localStorage.setItem('github-username-cache', JSON.stringify(corruptedUsernameCache));
+      
+      const { getByText } = render(<App />);
+      
+      // App should render without crashing
+      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      
+      // Verify that the console.warn was called for corrupted data
+      expect(console.warn).toHaveBeenCalledWith(
+        'invalidUsernames is not a Set instance, creating new empty Set:',
+        ['invaliduser1', 'invaliduser2']
+      );
+    });
+
+    it('should handle corrupted validatedUsernames cache data gracefully', async () => {
+      // Simulate corrupted username cache data
+      const corruptedUsernameCache = {
+        validatedUsernames: { user1: true, user2: true }, // Object instead of Set
+        invalidUsernames: new Set(['invaliduser'])
+      };
+      
+      window.localStorage.setItem('github-username-cache', JSON.stringify(corruptedUsernameCache));
+      
+      const { getByText } = render(<App />);
+      
+      // App should render without crashing
+      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      
+      // Verify that the console.warn was called for corrupted data
+      expect(console.warn).toHaveBeenCalledWith(
+        'validatedUsernames is not a Set instance, creating new empty Set:',
+        { user1: true, user2: true }
+      );
+    });
+
+    it('should handle both username caches being corrupted', async () => {
+      // Simulate both caches being corrupted
+      const corruptedUsernameCache = {
+        validatedUsernames: 'not-a-set',
+        invalidUsernames: null
+      };
+      
+      window.localStorage.setItem('github-username-cache', JSON.stringify(corruptedUsernameCache));
+      
+      const { getByText } = render(<App />);
+      
+      // App should render without crashing
+      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      
+      // Verify that console.warn was called for both corrupted caches
+      expect(console.warn).toHaveBeenCalledWith(
+        'validatedUsernames is not a Set instance, creating new empty Set:',
+        'not-a-set'
+      );
+      expect(console.warn).toHaveBeenCalledWith(
+        'invalidUsernames is not a Set instance, creating new empty Set:',
+        null
+      );
     });
   });
 });

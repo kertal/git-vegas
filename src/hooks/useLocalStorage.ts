@@ -1,8 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getParamFromUrl } from '../utils';
+import { FormSettings } from '../types';
 
 // Helper function to check if a value is a Set
 const isSet = (value: any): value is Set<any> => value instanceof Set;
+
+// Enhanced serialization for complex objects containing Sets
+const serializeValue = (value: any): string => {
+  const replacer = (key: string, val: any) => {
+    if (val instanceof Set) {
+      return { __type: 'Set', __value: Array.from(val) };
+    }
+    return val;
+  };
+  return JSON.stringify(value, replacer);
+};
+
+// Enhanced deserialization for complex objects containing Sets
+const deserializeValue = (jsonString: string): any => {
+  const reviver = (key: string, val: any) => {
+    if (val && typeof val === 'object' && val.__type === 'Set') {
+      return new Set(val.__value);
+    }
+    return val;
+  };
+  return JSON.parse(jsonString, reviver);
+};
 
 // Map localStorage keys to URL parameter names
 const localStorageToUrlParamMap: Record<string, string> = {
@@ -10,6 +33,108 @@ const localStorageToUrlParamMap: Record<string, string> = {
   'github-start-date': 'startDate',
   'github-end-date': 'endDate'
 };
+
+// Specialized hook for form settings that handles URL parameter mapping
+export function useFormSettings(key: string, initialValue: FormSettings) {
+  // Get initial value from URL parameters first, then localStorage, then initialValue
+  const [value, setValue] = useState<FormSettings>(() => {
+    try {
+      let result = { ...initialValue };
+      
+      // First try to get from localStorage
+      const item = window.localStorage.getItem(key);
+      if (item !== null) {
+        try {
+          const parsedItem = deserializeValue(item);
+          result = { ...initialValue, ...parsedItem };
+        } catch {
+          // If deserialization fails, use initial value
+        }
+      }
+      
+      // Then override with URL parameters if they exist
+      const urlUsername = getParamFromUrl('username');
+      const urlStartDate = getParamFromUrl('startDate');
+      const urlEndDate = getParamFromUrl('endDate');
+      
+      if (urlUsername !== null) result.username = urlUsername;
+      if (urlStartDate !== null) result.startDate = urlStartDate;
+      if (urlEndDate !== null) result.endDate = urlEndDate;
+      
+      return result;
+    } catch (error) {
+      console.error(`Error reading from localStorage key "${key}":`, error);
+      return initialValue;
+    }
+  });
+
+  // Update localStorage and URL parameters whenever value changes
+  useEffect(() => {
+    try {
+      // Skip storing if value equals initial value (deep comparison for objects)
+      if (JSON.stringify(value) === JSON.stringify(initialValue)) {
+        window.localStorage.removeItem(key);
+        
+        // Clear URL parameters when value equals initial
+        const url = new URL(window.location.href);
+        url.searchParams.delete('username');
+        url.searchParams.delete('startDate');
+        url.searchParams.delete('endDate');
+        window.history.replaceState({}, '', url.toString());
+        return;
+      }
+
+      // Store to localStorage using enhanced serialization
+      window.localStorage.setItem(key, serializeValue(value));
+
+      // Update URL parameters for each field
+      const url = new URL(window.location.href);
+      
+      if (value.username === initialValue.username || value.username === '') {
+        url.searchParams.delete('username');
+      } else {
+        url.searchParams.set('username', value.username);
+      }
+      
+      if (value.startDate === initialValue.startDate || value.startDate === '') {
+        url.searchParams.delete('startDate');
+      } else {
+        url.searchParams.set('startDate', value.startDate);
+      }
+      
+      if (value.endDate === initialValue.endDate || value.endDate === '') {
+        url.searchParams.delete('endDate');
+      } else {
+        url.searchParams.set('endDate', value.endDate);
+      }
+      
+      window.history.replaceState({}, '', url.toString());
+    } catch (error) {
+      console.error(`Error saving to localStorage key "${key}":`, error);
+    }
+  }, [key, value, initialValue]);
+
+  // Provide a clear function
+  const clear = useCallback(() => {
+    try {
+      window.localStorage.removeItem(key);
+      
+      // Clear URL parameters
+      const url = new URL(window.location.href);
+      url.searchParams.delete('username');
+      url.searchParams.delete('startDate');
+      url.searchParams.delete('endDate');
+      window.history.replaceState({}, '', url.toString());
+      
+      // Set value to initialValue after clearing localStorage to avoid re-storing
+      setValue(initialValue);
+    } catch (error) {
+      console.error(`Error clearing localStorage key "${key}":`, error);
+    }
+  }, [key, initialValue]);
+
+  return [value, setValue, clear] as const;
+}
 
 export function useLocalStorage<T>(key: string, initialValue: T) {
   // Get initial value from URL parameters first, then localStorage, then initialValue
@@ -30,14 +155,9 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       if (item === null) return initialValue;
 
       try {
-        const parsedItem = JSON.parse(item);
-        // If initialValue is a Set, convert the parsed array back to a Set
-        if (isSet(initialValue)) {
-          return new Set(parsedItem) as T;
-        }
-        return parsedItem;
+        return deserializeValue(item);
       } catch {
-        // If JSON parsing fails, return the raw item
+        // If deserialization fails, return the raw item or initial value
         return item as unknown as T;
       }
     } catch (error) {
@@ -49,15 +169,14 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   // Update localStorage whenever value changes
   useEffect(() => {
     try {
-      // Skip storing if value is the default value
+      // Skip storing if value is the default value (shallow comparison for objects)
       if (value === initialValue) {
         window.localStorage.removeItem(key);
         return;
       }
 
-      // If value is a Set, convert it to an array for storage
-      const valueToStore = isSet(value) ? Array.from(value) : value;
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
+      // Use enhanced serialization
+      window.localStorage.setItem(key, serializeValue(value));
 
       // Update URL parameters if this is a mapped key
       const urlParam = localStorageToUrlParamMap[key];

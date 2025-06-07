@@ -7,14 +7,15 @@ import SearchForm from './components/SearchForm';
 import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
 import { OfflineBanner } from './components/OfflineBanner';
-import { GitHubItem, FormContextType, ResultsContextType } from './types';
+import { GitHubItem, FormContextType, ResultsContextType, FormSettings, UISettings, ItemUIState, UsernameCache } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useFormSettings } from './hooks/useLocalStorage';
 import { getParamFromUrl, validateUsernameList } from './utils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { countItemsMatchingFilter } from './utils/filterUtils';
 import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import { extractAvailableLabels, applyFiltersAndSort, createDefaultFilter, ResultsFilter } from './utils/resultsUtils';
-import { performGitHubSearch, GitHubSearchParams, UsernameCache } from './utils/githubSearch';
+import { performGitHubSearch, GitHubSearchParams } from './utils/githubSearch';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -50,22 +51,163 @@ export const buttonStyles = {
 
 // Add the main App component
 function App() {
-  // State declarations
-  const [validatedUsernames, setValidatedUsernames] = useLocalStorage<Set<string>>('validated-github-usernames', new Set());
-  const [invalidUsernames, setInvalidUsernames] = useLocalStorage<Set<string>>('invalid-github-usernames', new Set());
-  const [username, setUsername] = useLocalStorage('github-username', '');
-  const [startDate, setStartDate] = useLocalStorage('github-start-date', (() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 30); // Default to last 30 days
-    return date.toISOString().split('T')[0];
-  })());
-  const [endDate, setEndDate] = useLocalStorage('github-end-date', new Date().toISOString().split('T')[0]);
-  const [githubToken, setGithubToken] = useLocalStorage('github-token', '');
-  const [isCompactView, setIsCompactView] = useLocalStorage('github-compact-view', false);
+  // Consolidated settings - reducing from 11 useLocalStorage calls to 5
+  const [formSettings, setFormSettings] = useFormSettings('github-form-settings', {
+    username: '',
+    startDate: (() => {
+      const date = new Date();
+      date.setDate(date.getDate() - 30); // Default to last 30 days
+      return date.toISOString().split('T')[0];
+    })(),
+    endDate: new Date().toISOString().split('T')[0],
+    githubToken: ''
+  });
   
-  // Consolidated filters state
+  const [uiSettings, setUISettings] = useLocalStorage<UISettings>('github-ui-settings', {
+    isCompactView: false,
+    sortOrder: 'updated'
+  });
+  
+  const [itemUIState, setItemUIState] = useLocalStorage<ItemUIState>('github-item-ui-state', {
+    descriptionVisible: {},
+    expanded: {},
+    selectedItems: new Set()
+  });
+  
+  const [usernameCache, setUsernameCache] = useLocalStorage<UsernameCache>('github-username-cache', {
+    validatedUsernames: new Set(),
+    invalidUsernames: new Set()
+  });
+  
   const [currentFilters, setCurrentFilters] = useLocalStorage<ResultsFilter>('github-current-filters', createDefaultFilter());
+  const [results, setResults] = useLocalStorage<GitHubItem[]>('github-search-results', []);
+
+  // Extract individual values for convenience
+  const { username, startDate, endDate, githubToken } = formSettings;
+  const { isCompactView, sortOrder } = uiSettings;
+  const { descriptionVisible, expanded, selectedItems: rawSelectedItems } = itemUIState;
+  const { validatedUsernames: rawValidatedUsernames, invalidUsernames: rawInvalidUsernames } = usernameCache;
+
+  // Ensure selectedItems is always a Set instance (defensive programming)
+  const selectedItems = useMemo(() => {
+    if (rawSelectedItems instanceof Set) {
+      return rawSelectedItems;
+    }
+    // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
+    console.warn('selectedItems is not a Set instance, creating new empty Set:', rawSelectedItems);
+    return new Set<number>();
+  }, [rawSelectedItems]);
+
+  // Ensure validatedUsernames is always a Set instance (defensive programming)
+  const validatedUsernames = useMemo(() => {
+    if (rawValidatedUsernames instanceof Set) {
+      return rawValidatedUsernames;
+    }
+    // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
+    console.warn('validatedUsernames is not a Set instance, creating new empty Set:', rawValidatedUsernames);
+    return new Set<string>();
+  }, [rawValidatedUsernames]);
+
+  // Ensure invalidUsernames is always a Set instance (defensive programming)
+  const invalidUsernames = useMemo(() => {
+    if (rawInvalidUsernames instanceof Set) {
+      return rawInvalidUsernames;
+    }
+    // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
+    console.warn('invalidUsernames is not a Set instance, creating new empty Set:', rawInvalidUsernames);
+    return new Set<string>();
+  }, [rawInvalidUsernames]);
+
+  // Additional component state (not persisted)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isManuallySpinning, setIsManuallySpinning] = useState(false);
+  const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
+
+  // Individual setters for form settings
+  const setUsername = useCallback((username: string) => {
+    setFormSettings(prev => ({ ...prev, username }));
+  }, [setFormSettings]);
   
+  const setStartDate = useCallback((startDate: string) => {
+    setFormSettings(prev => ({ ...prev, startDate }));
+  }, [setFormSettings]);
+  
+  const setEndDate = useCallback((endDate: string) => {
+    setFormSettings(prev => ({ ...prev, endDate }));
+  }, [setFormSettings]);
+  
+  const setGithubToken = useCallback((githubToken: string) => {
+    setFormSettings(prev => ({ ...prev, githubToken }));
+  }, [setFormSettings]);
+
+  // Individual setters for UI settings
+  const setIsCompactView = useCallback((isCompactView: boolean | ((prev: boolean) => boolean)) => {
+    setUISettings(prev => ({ 
+      ...prev, 
+      isCompactView: typeof isCompactView === 'function' ? isCompactView(prev.isCompactView) : isCompactView 
+    }));
+  }, [setUISettings]);
+  
+  const setSortOrder = useCallback((sortOrder: 'updated' | 'created') => {
+    setUISettings(prev => ({ ...prev, sortOrder }));
+  }, [setUISettings]);
+
+  // Individual setters for item UI state
+  const setDescriptionVisible = useCallback((descriptionVisible: {[id: number]: boolean} | ((prev: {[id: number]: boolean}) => {[id: number]: boolean})) => {
+    setItemUIState(prev => ({ 
+      ...prev, 
+      descriptionVisible: typeof descriptionVisible === 'function' ? descriptionVisible(prev.descriptionVisible) : descriptionVisible 
+    }));
+  }, [setItemUIState]);
+  
+  const setExpanded = useCallback((expanded: {[id: number]: boolean} | ((prev: {[id: number]: boolean}) => {[id: number]: boolean})) => {
+    setItemUIState(prev => ({ 
+      ...prev, 
+      expanded: typeof expanded === 'function' ? expanded(prev.expanded) : expanded 
+    }));
+  }, [setItemUIState]);
+  
+  const setSelectedItems = useCallback((selectedItems: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    setItemUIState(prev => {
+      // Ensure prev.selectedItems is always a Set
+      const currentSelectedItems = prev.selectedItems instanceof Set ? prev.selectedItems : new Set<number>();
+      
+      return {
+        ...prev, 
+        selectedItems: typeof selectedItems === 'function' ? selectedItems(currentSelectedItems) : selectedItems 
+      };
+    });
+  }, [setItemUIState]);
+
+  // Individual setters for username cache
+  const setValidatedUsernames = useCallback((validatedUsernames: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setUsernameCache(prev => {
+      // Ensure prev.validatedUsernames is always a Set
+      const currentValidatedUsernames = prev.validatedUsernames instanceof Set ? prev.validatedUsernames : new Set<string>();
+      
+      return {
+        ...prev, 
+        validatedUsernames: typeof validatedUsernames === 'function' ? validatedUsernames(currentValidatedUsernames) : validatedUsernames 
+      };
+    });
+  }, [setUsernameCache]);
+  
+  const setInvalidUsernames = useCallback((invalidUsernames: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setUsernameCache(prev => {
+      // Ensure prev.invalidUsernames is always a Set
+      const currentInvalidUsernames = prev.invalidUsernames instanceof Set ? prev.invalidUsernames : new Set<string>();
+      
+      return {
+        ...prev, 
+        invalidUsernames: typeof invalidUsernames === 'function' ? invalidUsernames(currentInvalidUsernames) : invalidUsernames 
+      };
+    });
+  }, [setUsernameCache]);
+
   // Individual filter setters for convenience
   const setFilter = useCallback((filter: 'all' | 'issue' | 'pr') => {
     setCurrentFilters(prev => ({ ...prev, filter }));
@@ -100,19 +242,6 @@ function App() {
   // Extract individual filter values for convenience
   const { filter, statusFilter, labelFilter, excludedLabels, searchText, repoFilters } = currentFilters;
   
-  const [sortOrder, setSortOrder] = useLocalStorage<'updated' | 'created'>('github-sort-order', 'updated');
-  const [descriptionVisible, setDescriptionVisible] = useLocalStorage<{[id: number]: boolean}>('github-description-visible', {});
-  const [expanded, setExpanded] = useLocalStorage<{[id: number]: boolean}>('github-expanded', {});
-  const [selectedItems, setSelectedItems] = useLocalStorage<Set<number>>('github-selected-items', new Set());
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [isManuallySpinning, setIsManuallySpinning] = useState(false);
-  const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
-  const [results, setResults] = useLocalStorage<GitHubItem[]>('github-search-results', []);
-
   // Helper functions for Set operations using the new utilities
   const addToValidated = useCallback(createAddToCache(setValidatedUsernames), [setValidatedUsernames]);
   const addToInvalid = useCallback(createAddToCache(setInvalidUsernames), [setInvalidUsernames]);
@@ -227,20 +356,6 @@ function App() {
     setLoadingProgress,
     setError
   ]);
-
-  // Effect to populate form fields from URL parameters on mount (but don't auto-search)
-  useEffect(() => {
-    const urlUsername = getParamFromUrl('username');
-    const urlStartDate = getParamFromUrl('startDate');
-    const urlEndDate = getParamFromUrl('endDate');
-
-    // If we have URL parameters, populate form values
-    if (urlUsername && urlStartDate && urlEndDate) {
-      setUsername(urlUsername);
-      setStartDate(urlStartDate);
-      setEndDate(urlEndDate);
-    }
-  }, []); // Only run once on mount
 
   // Show initial loading animation
   useEffect(() => {
