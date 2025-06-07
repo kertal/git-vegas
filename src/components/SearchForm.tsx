@@ -164,11 +164,7 @@ const SearchForm = memo(function SearchForm() {
         </Flash>
       )}
 
-      {loading && loadingProgress && (
-        <Flash variant="default" sx={{ marginTop: 3 }}>
-          {loadingProgress}
-        </Flash>
-      )}
+
     </Box>
   );
 });
