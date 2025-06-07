@@ -81,7 +81,7 @@ describe('Results Caching', () => {
     });
 
     // Manually click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /search/i });
+    const searchButton = screen.getByRole('button', { name: /^search$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -128,7 +128,7 @@ describe('Results Caching', () => {
     });
 
     // Manually click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /search/i });
+    const searchButton = screen.getByRole('button', { name: /^search$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -159,7 +159,7 @@ describe('Results Caching', () => {
     });
 
     // Click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /search/i });
+    const searchButton = screen.getByRole('button', { name: /^search$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -229,7 +229,7 @@ describe('Results Caching', () => {
     });
 
     // Click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /search/i });
+    const searchButton = screen.getByRole('button', { name: /^search$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });

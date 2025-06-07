@@ -207,7 +207,7 @@ describe('App Component', () => {
       fireEvent.change(startDateInput, { target: { value: '2024-01-01' } });
       fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
 
-      expect(screen.getByRole('button', { name: /Search/i })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /^Search$/i })).toBeEnabled();
     });
   });
 
@@ -519,11 +519,11 @@ describe('App Component', () => {
       );
 
       // Select Events API mode
-      const eventsRadio = screen.getByDisplayValue('events');
-      fireEvent.click(eventsRadio);
+      const eventsButton = screen.getByRole('button', { name: /github events/i });
+      fireEvent.click(eventsButton);
 
       // Verify Events API mode is selected
-      expect(eventsRadio).toBeChecked();
+      expect(eventsButton).toHaveAttribute('data-variant', 'primary');
     });
 
     it('should show ResultsList view when Search API is selected (default)', async () => {
@@ -538,11 +538,11 @@ describe('App Component', () => {
       );
 
       // Search API should be selected by default
-      const searchRadio = screen.getByDisplayValue('search');
-      expect(searchRadio).toBeChecked();
+      const searchButton = screen.getByRole('button', { name: /github issues & prs/i });
+      expect(searchButton).toHaveAttribute('data-variant', 'primary');
 
       // Verify Search API mode is selected by default
-      expect(searchRadio).toBeChecked();
+      expect(searchButton).toHaveAttribute('data-variant', 'primary');
     });
   });
 });

@@ -84,8 +84,8 @@ describe('URL State Integration', () => {
 
     // Check that API mode is set from URL
     await waitFor(() => {
-      const eventsRadio = screen.getByLabelText(/events api/i);
-      expect(eventsRadio).toBeChecked();
+      const eventsButton = screen.getByRole('button', { name: /github events/i });
+      expect(eventsButton).toHaveAttribute('data-variant', 'primary');
     });
 
     // Verify URL cleanup was called after applying URL params
@@ -104,13 +104,13 @@ describe('URL State Integration', () => {
     fireEvent.change(usernameInput, { target: { value: 'shareuser' } });
 
     // Switch to events API
-    const eventsRadio = screen.getByLabelText(/events api/i);
-    fireEvent.click(eventsRadio);
+    const eventsButton = screen.getByRole('button', { name: /github events/i });
+    fireEvent.click(eventsButton);
 
     // Wait for state to update
     await waitFor(() => {
       expect(usernameInput).toHaveValue('shareuser');
-      expect(eventsRadio).toBeChecked();
+      expect(eventsButton).toHaveAttribute('data-variant', 'primary');
     });
 
     // Find and click the share button
@@ -142,11 +142,11 @@ describe('URL State Integration', () => {
     fireEvent.change(endDateInput, { target: { value: '2024-02-28' } });
 
     // Switch to events API to access filters
-    const eventsRadio = screen.getByLabelText(/events api/i);
-    fireEvent.click(eventsRadio);
+    const eventsButton = screen.getByRole('button', { name: /github events/i });
+    fireEvent.click(eventsButton);
 
     await waitFor(() => {
-      expect(eventsRadio).toBeChecked();
+      expect(eventsButton).toHaveAttribute('data-variant', 'primary');
     });
 
     // Wait for filters to appear and interact with them
@@ -251,8 +251,8 @@ describe('URL State Integration', () => {
     const startDateInput = screen.getByLabelText(/start date/i);
     expect(startDateInput).toHaveValue('2024-02-01'); // URL value
 
-    const eventsRadio = screen.getByLabelText(/events api/i);
-    expect(eventsRadio).toBeChecked(); // URL value
+    const eventsButton = screen.getByRole('button', { name: /github events/i });
+    expect(eventsButton).toHaveAttribute('data-variant', 'primary'); // URL value
 
     // Verify URL cleanup after applying overrides
     expect(mockHistory.replaceState).toHaveBeenCalledWith(
@@ -278,8 +278,8 @@ describe('URL State Integration', () => {
     });
 
     // Invalid parameters should be ignored, defaults should be used
-    const searchRadio = screen.getByLabelText(/search api/i);
-    expect(searchRadio).toBeChecked(); // Default value, invalid apiMode ignored
+    const searchButton = screen.getByRole('button', { name: /github issues & prs/i });
+    expect(searchButton).toHaveAttribute('data-variant', 'primary'); // Default value, invalid apiMode ignored
 
     // URL should still be cleaned up
     expect(mockHistory.replaceState).toHaveBeenCalledWith(

@@ -6,8 +6,8 @@ import {
   TextInput,
   Flash,
   Spinner,
-  Radio,
-  RadioGroup,
+  ButtonGroup,
+  Text,
 } from '@primer/react';
 import { useFormContext } from '../App';
 import { debounce } from '../utils';
@@ -69,24 +69,22 @@ const SearchForm = memo(function SearchForm() {
           handleSearch();
         }}
       >
-        {/* API Mode Selector */}
-        <Box>
-          <RadioGroup
-            name="apiMode"
-            onChange={value => setApiMode(value as 'search' | 'events')}
-          >
-            <RadioGroup.Label>API Mode</RadioGroup.Label>
-            <FormControl>
-              <Radio value="search" checked={apiMode === 'search'} />
-              <FormControl.Label>Search API (recommended)</FormControl.Label>
-            </FormControl>
-            <FormControl>
-              <Radio value="events" checked={apiMode === 'events'} />
-              <FormControl.Label>
-                Events API (last 90 days only, includes more activity types)
-              </FormControl.Label>
-            </FormControl>
-          </RadioGroup>
+        {/* API Mode Switch */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+          <ButtonGroup>
+            <Button
+              variant={apiMode === 'search' ? 'primary' : 'default'}
+              onClick={() => setApiMode('search')}
+            >
+              GitHub Issues & PRs
+            </Button>
+            <Button
+              variant={apiMode === 'events' ? 'primary' : 'default'}
+              onClick={() => setApiMode('events')}
+            >
+              GitHub Events
+            </Button>
+          </ButtonGroup>
         </Box>
 
         {/* Main search fields in a horizontal layout */}
