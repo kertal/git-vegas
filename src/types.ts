@@ -55,7 +55,7 @@ export interface FormContextType {
 export interface ResultsContextType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
-  filter: 'all' | 'issue' | 'pr';
+  filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
   sortOrder: 'updated' | 'created';
   labelFilter: string;
@@ -63,7 +63,7 @@ export interface ResultsContextType {
   searchText: string;
   repoFilters: string[];
   availableLabels: string[];
-  setFilter: (filter: 'all' | 'issue' | 'pr') => void;
+  setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
   setSortOrder: (sort: 'updated' | 'created') => void;
   setLabelFilter: (filter: string) => void;

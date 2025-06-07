@@ -7,6 +7,7 @@ import SearchForm from './components/SearchForm';
 import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
 import TimelineView from './components/TimelineView';
+import FilterControls from './components/FilterControls';
 import { OfflineBanner } from './components/OfflineBanner';
 import { GitHubItem, FormContextType, ResultsContextType, FormSettings, UISettings, ItemUIState, UsernameCache } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -222,7 +223,7 @@ function App() {
   }, [setUsernameCache]);
 
   // Individual filter setters for convenience
-  const setFilter = useCallback((filter: 'all' | 'issue' | 'pr') => {
+  const setFilter = useCallback((filter: 'all' | 'issue' | 'pr' | 'comment') => {
     setCurrentFilters(prev => ({ ...prev, filter }));
   }, [setCurrentFilters]);
   
@@ -647,7 +648,14 @@ function App() {
             }}>
               <SearchForm />
               {apiMode === 'events' ? (
-                <TimelineView items={results} />
+                <>
+                  <FilterControls 
+                    useResultsContext={useResultsContext}
+                    countItemsMatchingFilter={countItemsMatchingFilter}
+                    buttonStyles={buttonStyles}
+                  />
+                  <TimelineView items={filteredResults} />
+                </>
               ) : (
                 <ResultsList 
                   useResultsContext={useResultsContext}

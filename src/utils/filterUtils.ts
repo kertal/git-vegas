@@ -66,8 +66,19 @@ export const countItemsMatchingFilter = (
     case 'type':
       return items.filter(item => {
         if (filterValue === 'all') return true;
-        if (filterValue === 'pr') return !!item.pull_request;
-        if (filterValue === 'issue') return !item.pull_request;
+        
+        // Check if this is a comment event
+        const isComment = item.title.startsWith('Comment on:');
+        
+        if (filterValue === 'pr') {
+          return !!item.pull_request && !isComment;
+        }
+        if (filterValue === 'issue') {
+          return !item.pull_request && !isComment;
+        }
+        if (filterValue === 'comment') {
+          return isComment;
+        }
         return false;
       }).length;
 

@@ -13,6 +13,7 @@ import {
   hasActiveFilters,
   createDefaultFilter,
   getFilterSummary,
+  getItemType,
   ResultsFilter
 } from './resultsUtils';
 import type { GitHubItem } from '../types';
@@ -188,6 +189,32 @@ describe('resultsUtils', () => {
       const result = filterByType(mockGitHubItems, 'pr');
       expect(result).toHaveLength(2);
       expect(result.every(item => !!item.pull_request)).toBe(true);
+    });
+
+    it('should return only comments when filter is "comment"', () => {
+      const commentItem = {
+        ...mockGitHubItems[0],
+        title: 'Comment on: Test Issue',
+        pull_request: undefined
+      };
+      
+      const itemsWithComment = [...mockGitHubItems, commentItem];
+      const result = filterByType(itemsWithComment, 'comment');
+      
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Comment on: Test Issue');
+    });
+  });
+
+  describe('getItemType', () => {
+    it('should identify item types correctly', () => {
+      const issueItem = { ...mockGitHubItems[0], pull_request: undefined };
+      const prItem = { ...mockGitHubItems[2] }; // Use item 2 which has pull_request
+      const commentItem = { ...mockGitHubItems[0], title: 'Comment on: Test Issue', pull_request: undefined };
+      
+      expect(getItemType(issueItem)).toBe('issue');
+      expect(getItemType(prItem)).toBe('pr');
+      expect(getItemType(commentItem)).toBe('comment');
     });
   });
 

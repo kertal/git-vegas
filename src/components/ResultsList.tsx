@@ -12,7 +12,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 interface UseResultsContextHookType {
   results: GitHubItem[];
   filteredResults: GitHubItem[];
-  filter: 'all' | 'issue' | 'pr';
+  filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';  
   sortOrder: 'updated' | 'created';
   labelFilter: string;
@@ -20,7 +20,7 @@ interface UseResultsContextHookType {
   searchText: string;
   repoFilters: string[];
   availableLabels: string[];
-  setFilter: (filter: 'all' | 'issue' | 'pr') => void;
+  setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (filter: 'all' | 'open' | 'closed' | 'merged') => void;
   setSortOrder: (order: 'updated' | 'created') => void;
   setLabelFilter: (label: string) => void;
@@ -468,6 +468,14 @@ const ResultsList = memo(function ResultsList({
                     sx={buttonStyles}
                   >
                     PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
+                  </Button>
+                  <Button
+                    variant={filter === 'comment' ? 'primary' : 'default'} 
+                    onClick={() => setFilter(filter === 'comment' ? 'all' : 'comment')}
+                    size="small"
+                    sx={buttonStyles}
+                  >
+                    Comments ({countItemsMatchingFilter(baseResults, 'type', 'comment', excludedLabels)})
                   </Button>
                 </ButtonGroup>
               </Box>

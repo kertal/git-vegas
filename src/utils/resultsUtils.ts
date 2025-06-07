@@ -10,8 +10,8 @@ import { GitHubItem } from '../types';
  * Filter configuration for GitHub items
  */
 export interface ResultsFilter {
-  /** Type filter: 'all', 'issue', or 'pr' */
-  filter: 'all' | 'issue' | 'pr';
+  /** Type filter: 'all', 'issue', 'pr', or 'comment' */
+  filter: 'all' | 'issue' | 'pr' | 'comment';
   /** Status filter: 'all', 'open', 'closed', or 'merged' */
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
   /** Label filter: specific label name to include */
@@ -45,17 +45,47 @@ export const extractAvailableLabels = (items: GitHubItem[]): string[] => {
 };
 
 /**
- * Filters GitHub items based on type (issue vs pull request)
+ * Determines the type of a GitHub item (issue, pull request, or comment)
+ * 
+ * @param item - GitHub item to analyze
+ * @returns The item type
+ */
+export const getItemType = (item: GitHubItem): 'issue' | 'pr' | 'comment' => {
+  // Check if this is a comment event (title starts with "Comment on:")
+  if (item.title.startsWith('Comment on:')) {
+    return 'comment';
+  }
+  // Check if it's a pull request
+  if (item.pull_request) {
+    return 'pr';
+  }
+  // Default to issue
+  return 'issue';
+};
+
+/**
+ * Filters GitHub items based on type (issue vs pull request vs comment)
  * 
  * @param items - Array of GitHub items to filter
- * @param filter - Type filter ('all', 'issue', 'pr')
+ * @param filter - Type filter ('all', 'issue', 'pr', 'comment')
  * @returns Filtered array of items
  */
-export const filterByType = (items: GitHubItem[], filter: 'all' | 'issue' | 'pr'): GitHubItem[] => {
+export const filterByType = (items: GitHubItem[], filter: 'all' | 'issue' | 'pr' | 'comment'): GitHubItem[] => {
   if (filter === 'all') return items;
-  if (filter === 'pr') return items.filter(item => !!item.pull_request);
-  if (filter === 'issue') return items.filter(item => !item.pull_request);
-  return items;
+  
+  return items.filter(item => {
+    const itemType = getItemType(item);
+    
+    if (filter === 'pr') {
+      return itemType === 'pr';
+    } else if (filter === 'issue') {
+      return itemType === 'issue';
+    } else if (filter === 'comment') {
+      return itemType === 'comment';
+    }
+    
+    return false;
+  });
 };
 
 /**
