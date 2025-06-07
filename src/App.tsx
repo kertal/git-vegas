@@ -6,6 +6,7 @@ import { SlotMachineLoader } from './components/SlotMachineLoader';
 import SearchForm from './components/SearchForm';
 import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
+import TimelineView from './components/TimelineView';
 import { OfflineBanner } from './components/OfflineBanner';
 import { GitHubItem, FormContextType, ResultsContextType, FormSettings, UISettings, ItemUIState, UsernameCache } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -60,7 +61,8 @@ function App() {
       return date.toISOString().split('T')[0];
     })(),
     endDate: new Date().toISOString().split('T')[0],
-    githubToken: ''
+    githubToken: '',
+    apiMode: 'search'
   });
   
   const [uiSettings, setUISettings] = useLocalStorage<UISettings>('github-ui-settings', {
@@ -80,10 +82,17 @@ function App() {
   });
   
   const [currentFilters, setCurrentFilters] = useLocalStorage<ResultsFilter>('github-current-filters', createDefaultFilter());
-  const [results, setResults] = useLocalStorage<GitHubItem[]>('github-search-results', []);
+  const [searchResults, setSearchResults] = useLocalStorage<GitHubItem[]>('github-search-results', []);
+  const [eventsResults, setEventsResults] = useLocalStorage<GitHubItem[]>('github-events-results', []);
+  const [lastSearchParams, setLastSearchParams] = useLocalStorage<{username: string; startDate: string; endDate: string; apiMode: string; timestamp: number} | null>('github-last-search-params', null);
 
   // Extract individual values for convenience
-  const { username, startDate, endDate, githubToken } = formSettings;
+  const { username, startDate, endDate, githubToken, apiMode } = formSettings;
+  
+  // Get the appropriate results based on current API mode
+  const results = useMemo(() => {
+    return apiMode === 'events' ? eventsResults : searchResults;
+  }, [apiMode, eventsResults, searchResults]);
   const { isCompactView, sortOrder } = uiSettings;
   const { descriptionVisible, expanded, selectedItems: rawSelectedItems } = itemUIState;
   const { validatedUsernames: rawValidatedUsernames, invalidUsernames: rawInvalidUsernames } = usernameCache;
@@ -142,6 +151,10 @@ function App() {
   
   const setGithubToken = useCallback((githubToken: string) => {
     setFormSettings(prev => ({ ...prev, githubToken }));
+  }, [setFormSettings]);
+
+  const setApiMode = useCallback((apiMode: 'search' | 'events') => {
+    setFormSettings(prev => ({ ...prev, apiMode }));
   }, [setFormSettings]);
 
   // Individual setters for UI settings
@@ -287,14 +300,45 @@ function App() {
     }
   }, [username]);
 
-  // Update handleSearch to always trigger new requests (no caching on button click)
+  // Helper function to check if cached results are valid
+  const isCacheValid = useCallback((cacheExpiryMs: number = 3600000) => {
+    if (!lastSearchParams) return false;
+    
+    return (
+      lastSearchParams.username === username &&
+      lastSearchParams.startDate === startDate &&
+      lastSearchParams.endDate === endDate &&
+      lastSearchParams.apiMode === apiMode &&
+      Date.now() - lastSearchParams.timestamp < cacheExpiryMs
+    );
+  }, [lastSearchParams, username, startDate, endDate, apiMode]);
+
+  // Helper function to set the appropriate results based on API mode
+  const setCurrentResults = useCallback((items: GitHubItem[]) => {
+    if (apiMode === 'events') {
+      setEventsResults(items);
+    } else {
+      setSearchResults(items);
+    }
+  }, [apiMode, setEventsResults, setSearchResults]);
+
+  // Update handleSearch to check cache first
   const handleSearch = useCallback(async () => {
+    // Check if we have valid cached results for the current parameters
+    if (isCacheValid() && results.length > 0) {
+      setLoadingProgress(`Using cached results (${results.length} items)`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setLoadingProgress('');
+      return;
+    }
+
     // Create search parameters
     const searchParams: GitHubSearchParams = {
       username,
       startDate,
       endDate,
-      githubToken
+      githubToken,
+      apiMode
     };
 
     // Create username cache object
@@ -327,7 +371,14 @@ function App() {
       });
 
       // Update results and search parameters
-      setResults(result.items);
+      setCurrentResults(result.items);
+      setLastSearchParams({
+        username,
+        startDate,
+        endDate,
+        apiMode,
+        timestamp: Date.now()
+      });
       
       // Show success message briefly
       setLoadingProgress(`Successfully loaded ${result.totalCount} items!`);
@@ -346,15 +397,19 @@ function App() {
     startDate,
     endDate,
     githubToken,
+    apiMode,
     validatedUsernames,
     invalidUsernames,
     addToValidated,
     addToInvalid,
     removeFromValidated,
-    setResults,
+    setCurrentResults,
+    setLastSearchParams,
     setLoading,
     setLoadingProgress,
-    setError
+    setError,
+    isCacheValid,
+    results.length
   ]);
 
   // Show initial loading animation
@@ -364,6 +419,19 @@ function App() {
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
+
+  // Auto-load cached results when switching API modes (if cache is valid)
+  useEffect(() => {
+    if (isCacheValid() && results.length === 0) {
+      // If we have cached results but current results array is empty, 
+      // it means we switched API modes and should show the cached data immediately
+      const cachedResults = apiMode === 'events' ? eventsResults : searchResults;
+      if (cachedResults.length > 0) {
+        setLoadingProgress(`Loaded ${cachedResults.length} cached items`);
+        setTimeout(() => setLoadingProgress(''), 1000);
+      }
+    }
+  }, [apiMode, isCacheValid, results.length, eventsResults, searchResults, setLoadingProgress]);
 
   // Handle manual spin
   const handleManualSpin = useCallback(() => {
@@ -528,22 +596,24 @@ function App() {
         </PageLayout.Header>
 
         <PageLayout.Content sx={{ px: 3, py: 4 }}>
-          <FormContext.Provider value={{
-            username,
-            startDate,
-            endDate,
-            githubToken,
-            setUsername,
-            setStartDate,
-            setEndDate,
-            setGithubToken,
-            handleSearch,
-            handleUsernameBlur,
-            validateUsernameFormat,
-            loading,
-            loadingProgress,
-            error
-          }}>
+                  <FormContext.Provider value={{
+          username,
+          startDate,
+          endDate,
+          githubToken,
+          apiMode,
+          setUsername,
+          setStartDate,
+          setEndDate,
+          setGithubToken,
+          setApiMode,
+          handleSearch,
+          handleUsernameBlur,
+          validateUsernameFormat,
+          loading,
+          loadingProgress,
+          error
+        }}>
             <ResultsContext.Provider value={{
               results,
               filteredResults,
@@ -576,11 +646,15 @@ function App() {
               setRepoFilters
             }}>
               <SearchForm />
-              <ResultsList 
-                useResultsContext={useResultsContext}
-                countItemsMatchingFilter={countItemsMatchingFilter}
-                buttonStyles={buttonStyles}
-              />
+              {apiMode === 'events' ? (
+                <TimelineView items={results} />
+              ) : (
+                <ResultsList 
+                  useResultsContext={useResultsContext}
+                  countItemsMatchingFilter={countItemsMatchingFilter}
+                  buttonStyles={buttonStyles}
+                />
+              )}
               <SettingsDialog 
                 isOpen={isSettingsOpen}
                 onDismiss={() => setIsSettingsOpen(false)}

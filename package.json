@@ -18,6 +18,7 @@
   "dependencies": {
     "@primer/octicons-react": "^19.15.2",
     "@primer/react": "^37.22.0",
+    "date-fns": "^4.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",

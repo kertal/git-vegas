@@ -436,6 +436,41 @@ describe('App Component', () => {
       );
     });
   });
+
+  describe('API Mode Selection', () => {
+    it('should show Timeline view when Events API is selected', async () => {
+      render(<App />);
+      
+      // Wait for initial loading to complete
+      await waitFor(() => {
+        expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
+      }, { timeout: 3000 });
+
+      // Select Events API mode
+      const eventsRadio = screen.getByDisplayValue('events');
+      fireEvent.click(eventsRadio);
+
+      // Check if the warning message appears
+      expect(screen.getByText(/Events API Limitations/)).toBeInTheDocument();
+      expect(screen.getByText(/Only returns data from the last 30 days/)).toBeInTheDocument();
+    });
+
+    it('should show ResultsList view when Search API is selected (default)', async () => {
+      render(<App />);
+      
+      // Wait for initial loading to complete
+      await waitFor(() => {
+        expect(screen.queryByText(/Loading/)).not.toBeInTheDocument();
+      }, { timeout: 3000 });
+
+      // Search API should be selected by default
+      const searchRadio = screen.getByDisplayValue('search');
+      expect(searchRadio).toBeChecked();
+
+      // Should not show Events API warning
+      expect(screen.queryByText(/Events API Limitations/)).not.toBeInTheDocument();
+    });
+  });
 });
 
 // Helper function to simulate the filtering logic

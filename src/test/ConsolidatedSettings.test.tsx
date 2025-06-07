@@ -26,7 +26,8 @@ describe('Consolidated Settings', () => {
         username: '',
         startDate: '2024-01-01',
         endDate: '2024-01-31',
-        githubToken: ''
+        githubToken: '',
+        apiMode: 'search'
       };
 
       const { result } = renderHook(() => 
@@ -38,7 +39,8 @@ describe('Consolidated Settings', () => {
           username: 'testuser',
           startDate: '2024-02-01',
           endDate: '2024-02-28',
-          githubToken: 'token123'
+          githubToken: 'token123',
+          apiMode: 'search'
         });
       });
 
@@ -50,7 +52,8 @@ describe('Consolidated Settings', () => {
         username: 'testuser',
         startDate: '2024-02-01',
         endDate: '2024-02-28',
-        githubToken: 'token123'
+        githubToken: 'token123',
+        apiMode: 'search'
       });
 
       // Should also update URL parameters
@@ -65,7 +68,8 @@ describe('Consolidated Settings', () => {
         username: 'localuser',
         startDate: '2023-01-01',
         endDate: '2023-12-31',
-        githubToken: 'localtoken'
+        githubToken: 'localtoken',
+        apiMode: 'search'
       }));
 
       // Set URL parameters
@@ -79,7 +83,8 @@ describe('Consolidated Settings', () => {
         username: '',
         startDate: '2024-01-01',
         endDate: '2024-01-31',
-        githubToken: ''
+        githubToken: '',
+        apiMode: 'search'
       };
 
       const { result } = renderHook(() => 
@@ -91,7 +96,8 @@ describe('Consolidated Settings', () => {
         username: 'urluser',
         startDate: '2024-01-01',
         endDate: '2024-01-31',
-        githubToken: 'localtoken' // GitHub token comes from localStorage since not in URL
+        githubToken: 'localtoken', // GitHub token comes from localStorage since not in URL
+        apiMode: 'search' // Default apiMode value
       });
     });
 
@@ -106,7 +112,8 @@ describe('Consolidated Settings', () => {
         username: '',
         startDate: '2024-01-01',
         endDate: '2024-01-31',
-        githubToken: ''
+        githubToken: '',
+        apiMode: 'search'
       };
 
       const { result } = renderHook(() => 
@@ -119,7 +126,8 @@ describe('Consolidated Settings', () => {
           username: 'testuser',
           startDate: '2024-02-01',
           endDate: '2024-02-28',
-          githubToken: 'token123'
+          githubToken: 'token123',
+          apiMode: 'search'
         });
       });
 

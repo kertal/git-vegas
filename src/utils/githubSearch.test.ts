@@ -3,13 +3,16 @@ import {
   validateSearchParams,
   validateAndCacheUsernames,
   fetchUserItems,
+  fetchUserEvents,
+  transformEventToItem,
   isCacheValid,
   performGitHubSearch,
   createSearchCacheParams,
   GitHubSearchParams,
-  UsernameCache,
+  GitHubEvent,
   CacheCallbacks
 } from './githubSearch';
+import type { UsernameCache } from '../types';
 import { GitHubItem } from '../types';
 
 // Mock the dependencies
@@ -451,7 +454,7 @@ describe('githubSearch utilities', () => {
       });
 
       expect(mockProgressCallback).toHaveBeenCalledWith('Validating usernames...');
-      expect(mockProgressCallback).toHaveBeenCalledWith('Starting search...');
+      expect(mockProgressCallback).toHaveBeenCalledWith('Starting search API...');
       expect(mockProgressCallback).toHaveBeenCalledWith('Fetching data for testuser...');
       expect(updateUrlParams).toHaveBeenCalled();
     });
@@ -580,6 +583,300 @@ describe('githubSearch utilities', () => {
 
       expect(result.timestamp).toBeGreaterThanOrEqual(beforeTime);
       expect(result.timestamp).toBeLessThanOrEqual(afterTime);
+    });
+  });
+
+  describe('GitHub Events API', () => {
+    describe('transformEventToItem', () => {
+      it('should transform IssuesEvent to GitHubItem', () => {
+        const mockEvent = {
+          id: '123',
+          type: 'IssuesEvent',
+          actor: {
+            id: 1,
+            login: 'testuser',
+            avatar_url: 'https://avatar.url',
+            url: 'https://api.github.com/users/testuser'
+          },
+          repo: {
+            id: 456,
+            name: 'testuser/testrepo',
+            url: 'https://api.github.com/repos/testuser/testrepo'
+          },
+          payload: {
+            action: 'opened',
+            issue: {
+              id: 789,
+              number: 1,
+              title: 'Test Issue',
+              html_url: 'https://github.com/testuser/testrepo/issues/1',
+              state: 'open',
+              body: 'Test issue body',
+              labels: [{ name: 'bug', color: 'red', description: 'Bug label' }],
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T01:00:00Z',
+              closed_at: undefined,
+              user: {
+                login: 'testuser',
+                avatar_url: 'https://avatar.url',
+                html_url: 'https://github.com/testuser'
+              }
+            }
+          },
+          public: true,
+          created_at: '2024-01-01T00:00:00Z'
+        };
+
+        const result = transformEventToItem(mockEvent);
+
+        expect(result).toEqual({
+          id: 789,
+          html_url: 'https://github.com/testuser/testrepo/issues/1',
+          title: 'Test Issue',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T01:00:00Z',
+          state: 'open',
+          body: 'Test issue body',
+          labels: [{ name: 'bug', color: 'red', description: 'Bug label' }],
+          repository_url: 'https://api.github.com/repos/testuser/testrepo',
+          repository: {
+            full_name: 'testuser/testrepo',
+            html_url: 'https://github.com/testuser/testrepo'
+          },
+          closed_at: undefined,
+          number: 1,
+          user: {
+            login: 'testuser',
+            avatar_url: 'https://avatar.url',
+            html_url: 'https://github.com/testuser'
+          },
+          pull_request: undefined
+        });
+      });
+
+      it('should transform IssueCommentEvent correctly', () => {
+        const mockEvent: GitHubEvent = {
+          id: '126',
+          type: 'IssueCommentEvent',
+          actor: {
+            id: 1,
+            login: 'testuser',
+            avatar_url: 'https://avatar.url',
+            url: 'https://api.github.com/users/testuser'
+          },
+          repo: {
+            id: 456,
+            name: 'testuser/testrepo',
+            url: 'https://api.github.com/repos/testuser/testrepo'
+          },
+          payload: {
+            action: 'created',
+            comment: {
+              id: 999,
+              body: 'This is a comment on the issue',
+              html_url: 'https://github.com/testuser/testrepo/issues/1#issuecomment-999',
+              created_at: '2024-01-01T12:00:00Z',
+              updated_at: '2024-01-01T12:00:00Z',
+              user: {
+                login: 'commenter',
+                avatar_url: 'https://commenter.avatar.url',
+                html_url: 'https://github.com/commenter'
+              }
+            },
+            issue: {
+              id: 789,
+              number: 1,
+              title: 'Test Issue',
+              html_url: 'https://github.com/testuser/testrepo/issues/1',
+              state: 'open',
+              body: 'Test issue body',
+              labels: [{ name: 'bug', color: 'red', description: 'Bug label' }],
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T01:00:00Z',
+              closed_at: undefined,
+              user: {
+                login: 'testuser',
+                avatar_url: 'https://avatar.url',
+                html_url: 'https://github.com/testuser'
+              }
+            }
+          },
+          public: true,
+          created_at: '2024-01-01T12:00:00Z'
+        };
+
+        const result = transformEventToItem(mockEvent);
+
+        expect(result).toEqual({
+          id: 999,
+          html_url: 'https://github.com/testuser/testrepo/issues/1#issuecomment-999',
+          title: 'Comment on: Test Issue',
+          created_at: '2024-01-01T12:00:00Z',
+          updated_at: '2024-01-01T12:00:00Z',
+          state: 'open',
+          body: 'This is a comment on the issue',
+          labels: [{ name: 'bug', color: 'red', description: 'Bug label' }],
+          repository_url: 'https://api.github.com/repos/testuser/testrepo',
+          repository: {
+            full_name: 'testuser/testrepo',
+            html_url: 'https://github.com/testuser/testrepo'
+          },
+          closed_at: undefined,
+          number: 1,
+          user: {
+            login: 'commenter',
+            avatar_url: 'https://commenter.avatar.url',
+            html_url: 'https://github.com/commenter'
+          },
+          pull_request: undefined
+        });
+      });
+
+      it('should return null for unsupported event types', () => {
+        const mockEvent = {
+          id: '125',
+          type: 'PushEvent',
+          actor: {
+            id: 1,
+            login: 'testuser',
+            avatar_url: 'https://avatar.url',
+            url: 'https://api.github.com/users/testuser'
+          },
+          repo: {
+            id: 456,
+            name: 'testuser/testrepo',
+            url: 'https://api.github.com/repos/testuser/testrepo'
+          },
+          payload: {},
+          public: true,
+          created_at: '2024-01-01T00:00:00Z'
+        };
+
+        const result = transformEventToItem(mockEvent);
+
+        expect(result).toBeNull();
+      });
+    });
+
+         describe('performGitHubSearch with Events API', () => {
+       it('should use Events API when apiMode is events', async () => {
+                  // Clear any previous mock calls
+         vi.clearAllMocks();
+         
+         // Reset mocks for this specific test
+         vi.mocked(getInvalidUsernames).mockReturnValue([]);
+         vi.mocked(categorizeUsernames).mockReturnValue({
+           needValidation: [],
+           alreadyValid: ['testuser'],
+           alreadyInvalid: []
+         });
+         
+         const mockEvents = [
+          {
+            id: '123',
+            type: 'IssuesEvent',
+            actor: {
+              id: 1,
+              login: 'testuser',
+              avatar_url: 'https://avatar.url',
+              url: 'https://api.github.com/users/testuser'
+            },
+            repo: {
+              id: 456,
+              name: 'testuser/testrepo',
+              url: 'https://api.github.com/repos/testuser/testrepo'
+            },
+            payload: {
+              action: 'opened',
+              issue: {
+                id: 789,
+                number: 1,
+                title: 'Test Issue',
+                html_url: 'https://github.com/testuser/testrepo/issues/1',
+                state: 'open',
+                body: 'Test issue body',
+                labels: [],
+                                 created_at: '2024-01-15T00:00:00Z',
+                 updated_at: '2024-01-15T01:00:00Z',
+                 closed_at: undefined,
+                 user: {
+                  login: 'testuser',
+                  avatar_url: 'https://avatar.url',
+                  html_url: 'https://github.com/testuser'
+                }
+              }
+            },
+            public: true,
+            created_at: '2024-01-15T00:00:00Z'
+          }
+        ];
+
+                 // Mock fetch to return events on first call, empty on subsequent calls (pagination)
+         let callCount = 0;
+         mockFetch.mockImplementation(() => {
+           callCount++;
+           return Promise.resolve({
+             ok: true,
+             json: () => Promise.resolve(callCount === 1 ? mockEvents : [])
+           });
+         });
+
+        const result = await performGitHubSearch(
+          {
+            username: 'testuser',
+            startDate: '2024-01-01',
+            endDate: '2024-01-31',
+            githubToken: 'token123',
+            apiMode: 'events'
+          },
+          mockCache
+        );
+
+        expect(result.items).toHaveLength(1);
+        expect(result.items[0].title).toBe('Test Issue');
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://api.github.com/users/testuser/events?page=1&per_page=100',
+          expect.any(Object)
+        );
+      });
+
+      it('should handle pagination limit error gracefully', async () => {
+        vi.clearAllMocks();
+        
+        vi.mocked(getInvalidUsernames).mockReturnValue([]);
+        vi.mocked(categorizeUsernames).mockReturnValue({
+          needValidation: [],
+          alreadyValid: ['testuser'],
+          alreadyInvalid: []
+        });
+
+        // Mock fetch to return pagination limit error (422)
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 422,
+          statusText: 'Unprocessable Entity',
+          json: () => Promise.resolve({
+            message: 'In order to keep the API fast for everyone, pagination is limited for this resource.',
+            documentation_url: 'https://docs.github.com/v3/#pagination',
+            status: '422'
+          })
+        });
+
+        const result = await performGitHubSearch(
+          {
+            username: 'testuser',
+            startDate: '2024-01-01',
+            endDate: '2024-01-31',
+            githubToken: 'token123',
+            apiMode: 'events'
+          },
+          mockCache
+        );
+
+        // Should return empty results instead of throwing error
+        expect(result.items).toHaveLength(0);
+        expect(result.processedUsernames).toContain('testuser');
+      });
     });
   });
 }); 

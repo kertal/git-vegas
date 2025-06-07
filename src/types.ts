@@ -38,10 +38,12 @@ export interface FormContextType {
   startDate: string;
   endDate: string;
   githubToken: string;
+  apiMode: 'search' | 'events';
   setUsername: (value: string) => void;
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
   setGithubToken: (value: string) => void;
+  setApiMode: (value: 'search' | 'events') => void;
   handleSearch: () => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
@@ -104,6 +106,7 @@ export interface FormSettings {
   startDate: string;
   endDate: string;
   githubToken: string;
+  apiMode: 'search' | 'events';
 }
 
 // UI/Display settings that control how data is presented

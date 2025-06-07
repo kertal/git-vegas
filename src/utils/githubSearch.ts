@@ -22,6 +22,8 @@ export interface GitHubSearchParams {
   endDate: string;
   /** GitHub personal access token (optional) */
   githubToken?: string;
+  /** API mode to use */
+  apiMode?: 'search' | 'events';
 }
 
 /**
@@ -227,6 +229,263 @@ export const fetchUserItems = async (
 };
 
 /**
+ * GitHub Events API response interface
+ */
+export interface GitHubEvent {
+  id: string;
+  type: string;
+  actor: {
+    id: number;
+    login: string;
+    display_login?: string;
+    avatar_url: string;
+    url: string;
+  };
+  repo: {
+    id: number;
+    name: string;
+    url: string;
+  };
+  payload: {
+    action?: string;
+    issue?: {
+      id: number;
+      number: number;
+      title: string;
+      html_url: string;
+      state: string;
+      body?: string;
+      labels: { name: string; color?: string; description?: string }[];
+      created_at: string;
+      updated_at: string;
+      closed_at?: string;
+      pull_request?: {
+        merged_at?: string;
+        url?: string;
+      };
+      user: {
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      };
+    };
+    pull_request?: {
+      id: number;
+      number: number;
+      title: string;
+      html_url: string;
+      state: string;
+      body?: string;
+      labels: { name: string; color?: string; description?: string }[];
+      created_at: string;
+      updated_at: string;
+      closed_at?: string;
+      merged_at?: string;
+      merged?: boolean;
+      user: {
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      };
+    };
+    comment?: {
+      id: number;
+      body: string;
+      html_url: string;
+      created_at: string;
+      updated_at: string;
+      user: {
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      };
+    };
+  };
+  public: boolean;
+  created_at: string;
+}
+
+/**
+ * Transforms GitHub Event to GitHubItem
+ * 
+ * @param event - GitHub event from Events API
+ * @returns GitHubItem or null if event doesn't contain relevant data
+ */
+export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
+  const { type, payload, repo, created_at, actor } = event;
+  
+  // Only process events that contain issues, pull requests, or comments
+  if (type === 'IssuesEvent' && payload.issue) {
+    const issue = payload.issue;
+    return {
+      id: issue.id,
+      html_url: issue.html_url,
+      title: issue.title,
+      created_at: issue.created_at,
+      updated_at: issue.updated_at,
+      state: issue.state,
+      body: issue.body,
+      labels: issue.labels,
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`
+      },
+      closed_at: issue.closed_at,
+      number: issue.number,
+      user: issue.user,
+      pull_request: issue.pull_request
+    };
+  }
+  
+  if (type === 'PullRequestEvent' && payload.pull_request) {
+    const pr = payload.pull_request;
+    return {
+      id: pr.id,
+      html_url: pr.html_url,
+      title: pr.title,
+      created_at: pr.created_at,
+      updated_at: pr.updated_at,
+      state: pr.state,
+      body: pr.body,
+      labels: pr.labels,
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`
+      },
+      closed_at: pr.closed_at,
+      merged_at: pr.merged_at,
+      merged: pr.merged,
+      number: pr.number,
+      user: pr.user,
+      pull_request: {
+        merged_at: pr.merged_at,
+        url: pr.html_url
+      }
+    };
+  }
+  
+  if (type === 'IssueCommentEvent' && payload.comment && payload.issue) {
+    const comment = payload.comment;
+    const issue = payload.issue;
+    return {
+      id: comment.id,
+      html_url: comment.html_url,
+      title: `Comment on: ${issue.title}`,
+      created_at: comment.created_at,
+      updated_at: comment.updated_at,
+      state: issue.state,
+      body: comment.body,
+      labels: issue.labels,
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`
+      },
+      closed_at: issue.closed_at,
+      number: issue.number,
+      user: comment.user,
+      pull_request: issue.pull_request
+    };
+  }
+  
+  return null;
+};
+
+/**
+ * Fetches GitHub events for a single user
+ * 
+ * @param username - GitHub username
+ * @param startDate - Start date in YYYY-MM-DD format (for filtering)
+ * @param endDate - End date in YYYY-MM-DD format (for filtering)
+ * @param githubToken - GitHub token for authentication
+ * @param cache - Username validation cache
+ * @param cacheCallbacks - Callbacks for cache updates
+ * @returns Promise with GitHub items from events
+ */
+export const fetchUserEvents = async (
+  username: string,
+  startDate: string,
+  endDate: string,
+  githubToken?: string,
+  cache?: UsernameCache,
+  cacheCallbacks?: CacheCallbacks
+): Promise<GitHubItem[]> => {
+  const headers: HeadersInit = {
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  
+  if (githubToken) {
+    headers['Authorization'] = `token ${githubToken}`;
+  }
+  
+  // GitHub Events API only returns last 30 days and max 300 events
+  // Pagination is limited for this resource - reduce to 3 pages max
+  const allItems: GitHubItem[] = [];
+  let page = 1;
+  const maxPages = 3; // Limited pagination to respect GitHub API constraints
+  
+  while (page <= maxPages) {
+    const response = await fetch(
+      `https://api.github.com/users/${username}/events?page=${page}&per_page=100`,
+      { headers }
+    );
+    
+    if (!response.ok) {
+      // If a previously validated username now fails, remove it from cache
+      if (response.status === 404 && cache?.validatedUsernames.has(username) && cacheCallbacks) {
+        cacheCallbacks.removeFromValidated(username);
+        cacheCallbacks.addToInvalid([username]);
+      }
+      
+      // Handle pagination limit error specifically
+      if (response.status === 422) {
+        const errorData = await response.json().catch(() => null);
+        if (errorData?.message?.includes('pagination is limited')) {
+          // Return what we have so far instead of throwing
+          console.warn(`GitHub Events API pagination limit reached for ${username}. Returning partial results.`);
+          return allItems;
+        }
+      }
+      
+      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const events: GitHubEvent[] = await response.json();
+    
+    if (events.length === 0) {
+      break; // No more events
+    }
+    
+    // Transform and filter events
+    const startDateTime = new Date(startDate).getTime();
+    const endDateTime = new Date(endDate).getTime() + (24 * 60 * 60 * 1000); // Add 1 day to include end date
+    
+    for (const event of events) {
+      const eventTime = new Date(event.created_at).getTime();
+      
+      // Stop if event is before start date (events are sorted newest first)
+      if (eventTime < startDateTime) {
+        return allItems;
+      }
+      
+      // Include if within date range
+      if (eventTime <= endDateTime) {
+        const item = transformEventToItem(event);
+        if (item) {
+          allItems.push(item);
+        }
+      }
+    }
+    
+    page++;
+  }
+  
+  return allItems;
+};
+
+/**
  * Checks if search results are cached and still valid
  * 
  * @param params - Search parameters
@@ -292,21 +551,31 @@ export const performGitHubSearch = async (
   }
 
   // Fetch data for all users
-  onProgress?.('Starting search...');
+  const apiMode = params.apiMode || 'search';
+  onProgress?.(`Starting ${apiMode === 'events' ? 'events' : 'search'} API...`);
   const allResults: GitHubItem[] = [];
   
   for (const username of usernames) {
     onProgress?.(`Fetching data for ${username}...`);
     
     try {
-      const items = await fetchUserItems(
-        username,
-        params.startDate,
-        params.endDate,
-        params.githubToken,
-        cache,
-        cacheCallbacks
-      );
+      const items = apiMode === 'events' 
+        ? await fetchUserEvents(
+            username,
+            params.startDate,
+            params.endDate,
+            params.githubToken,
+            cache,
+            cacheCallbacks
+          )
+        : await fetchUserItems(
+            username,
+            params.startDate,
+            params.endDate,
+            params.githubToken,
+            cache,
+            cacheCallbacks
+          );
       
       allResults.push(...items);
       onProgress?.(`Found ${items.length} items for ${username}`);
