@@ -1,5 +1,5 @@
 import React, { memo, useMemo } from 'react';
-import { Box, Button, Text, Heading, ButtonGroup } from '@primer/react';
+import { Box, Button, Text, Heading, ButtonGroup, TextInput, FormControl } from '@primer/react';
 import { GitHubItem } from '../types';
 import { FilterType, FilterValue } from '../utils/filterUtils';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -21,6 +21,7 @@ interface UseResultsContextHookType {
   setSortOrder: (order: 'updated' | 'created') => void;
   setLabelFilter: (label: string) => void;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
+  setSearchText: (searchText: string) => void;
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
   copyResultsToClipboard: (format: 'detailed' | 'compact') => void;
@@ -56,19 +57,24 @@ const FilterControls = memo(function FilterControls({
 }: FilterControlsProps) {
   const {
     results,
-    filteredResults,
     filter,
     statusFilter,
+    sortOrder,
     labelFilter,
     excludedLabels,
+    searchText,
     repoFilters,
     availableLabels,
     setFilter,
     setStatusFilter,
+    setSortOrder,
     setLabelFilter,
     setExcludedLabels,
+    setSearchText,
     clearAllFilters,
     setRepoFilters,
+    isCompactView,
+    setIsCompactView,
   } = useResultsContext();
 
   // Collapsible state for filters
@@ -123,6 +129,9 @@ const FilterControls = memo(function FilterControls({
     if (excludedLabels.length > 0) {
       summaryParts.push(`Excluded: ${excludedLabels.join(', ')}`);
     }
+    if (searchText) {
+      summaryParts.push(`Search: "${searchText}"`);
+    }
     if (repoFilters.length > 0) {
       summaryParts.push(`Repos: ${repoFilters.join(', ')}`);
     }
@@ -135,32 +144,45 @@ const FilterControls = memo(function FilterControls({
     statusFilter !== 'all' ||
     labelFilter !== '' ||
     excludedLabels.length > 0 ||
+    searchText !== '' ||
     repoFilters.length > 0;
 
   return (
     <Box
       sx={{
+        maxWidth: '1200px',
+        margin: '16px auto',
+        bg: 'canvas.subtle',
+        borderRadius: 2,
         border: '1px solid',
         borderColor: 'border.default',
-        borderRadius: 2,
-        mb: 4,
-        bg: 'canvas.subtle',
+        overflow: 'hidden',
       }}
     >
-      {/* Filter Header */}
+      {/* Filters header */}
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 2,
           p: 2,
-          borderBottom: areFiltersCollapsed ? 'none' : '1px solid',
+          bg: 'canvas.default',
+          borderBottom: '1px solid',
           borderColor: 'border.default',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Heading as="h2" sx={{ fontSize: 2, fontWeight: 'bold', m: 0 }}>
-            Filters ({filteredResults.length})
+          <Heading
+            as="h2"
+            sx={{
+              fontSize: 2,
+              fontWeight: 'semibold',
+              color: 'fg.default',
+              m: 0,
+            }}
+          >
+            Filters
           </Heading>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -339,6 +361,88 @@ const FilterControls = memo(function FilterControls({
                     excludedLabels
                   )}
                   )
+                </Button>
+              </ButtonGroup>
+            </Box>
+
+            {/* Search Text Filter */}
+            <Box sx={{ gap: 1 }}>
+              <Heading
+                as="h3"
+                sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}
+              >
+                Search
+              </Heading>
+              <FormControl>
+                <FormControl.Label visuallyHidden>
+                  Search in titles and descriptions
+                </FormControl.Label>
+                <TextInput
+                  placeholder="Search in titles and descriptions..."
+                  value={searchText}
+                  onChange={e => setSearchText(e.target.value)}
+                  size="small"
+                  sx={{ width: '100%' }}
+                />
+              </FormControl>
+            </Box>
+
+            {/* Sort Order */}
+            <Box sx={{ gap: 1 }}>
+              <Heading
+                as="h3"
+                sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}
+              >
+                Sort by
+              </Heading>
+              <ButtonGroup>
+                <Button
+                  variant={sortOrder === 'updated' ? 'primary' : 'default'}
+                  onClick={() =>
+                    setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')
+                  }
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Last Updated
+                </Button>
+                <Button
+                  variant={sortOrder === 'created' ? 'primary' : 'default'}
+                  onClick={() =>
+                    setSortOrder(sortOrder === 'created' ? 'updated' : 'created')
+                  }
+                  size="small"
+                  sx={buttonStyles}
+                >
+                  Creation Date
+                </Button>
+              </ButtonGroup>
+            </Box>
+
+            {/* View Options */}
+            <Box sx={{ gap: 1 }}>
+              <Heading
+                as="h3"
+                sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}
+              >
+                View
+              </Heading>
+              <ButtonGroup>
+                <Button
+                  size="small"
+                  variant={!isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(false)}
+                  sx={buttonStyles}
+                >
+                  Detailed
+                </Button>
+                <Button
+                  size="small"
+                  variant={isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(true)}
+                  sx={buttonStyles}
+                >
+                  Compact
                 </Button>
               </ButtonGroup>
             </Box>

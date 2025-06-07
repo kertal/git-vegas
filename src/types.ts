@@ -68,6 +68,7 @@ export interface ResultsContextType {
   setSortOrder: (sort: 'updated' | 'created') => void;
   setLabelFilter: (filter: string) => void;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
+  setSearchText: (searchText: string) => void;
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
   copyResultsToClipboard: (format: 'detailed' | 'compact') => void;

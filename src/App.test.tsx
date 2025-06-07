@@ -522,11 +522,8 @@ describe('App Component', () => {
       const eventsRadio = screen.getByDisplayValue('events');
       fireEvent.click(eventsRadio);
 
-      // Check if the warning message appears
-      expect(screen.getByText(/Events API Limitations/)).toBeInTheDocument();
-      expect(
-        screen.getByText(/Only returns data from the last 30 days/)
-      ).toBeInTheDocument();
+      // Verify Events API mode is selected
+      expect(eventsRadio).toBeChecked();
     });
 
     it('should show ResultsList view when Search API is selected (default)', async () => {
@@ -544,10 +541,8 @@ describe('App Component', () => {
       const searchRadio = screen.getByDisplayValue('search');
       expect(searchRadio).toBeChecked();
 
-      // Should not show Events API warning
-      expect(
-        screen.queryByText(/Events API Limitations/)
-      ).not.toBeInTheDocument();
+      // Verify Search API mode is selected by default
+      expect(searchRadio).toBeChecked();
     });
   });
 });

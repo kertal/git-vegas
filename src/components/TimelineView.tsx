@@ -11,6 +11,7 @@ import {
 } from '@primer/octicons-react';
 import { GitHubItem } from '../types';
 import { formatDistanceToNow, format } from 'date-fns';
+import { getContrastColor } from '../utils';
 
 interface TimelineViewProps {
   items: GitHubItem[];
@@ -85,17 +86,42 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
   }
 
   return (
-    <Box sx={{ maxWidth: '100%', margin: '0 auto' }}>
-      <Box sx={{ mb: 3 }}>
-        <Text as="h2" sx={{ fontSize: 3, fontWeight: 'bold', mb: 2 }}>
-          Activity Timeline ({sortedItems.length} events)
-        </Text>
-        <Text color="fg.muted">
-          Showing GitHub activity from newest to oldest
-        </Text>
-      </Box>
+    <Box>
+      {/* Timeline Section */}
+      <Box
+        sx={{
+          maxWidth: '1200px',
+          margin: '24px auto',
+          bg: 'canvas.default',
+          borderRadius: 2,
+          border: '1px solid',
+          borderColor: 'border.default',
+          p: 3,
+        }}
+      >
+        {/* Timeline header */}
+        <Box
+          sx={{
+            mb: 3,
+            pb: 3,
+            borderBottom: '1px solid',
+            borderColor: 'border.muted',
+          }}
+        >
+          <Text
+            as="h2"
+            sx={{
+              fontSize: 3,
+              fontWeight: 'semibold',
+              color: 'fg.default',
+              m: 0,
+            }}
+          >
+            Activity Timeline ({sortedItems.length} events)
+          </Text>
+        </Box>
 
-      <Timeline>
+        <Timeline>
         {sortedItems.map((item, index) => {
           const eventType = getEventType(item);
           const repoName = formatRepoName(item.repository_url);
@@ -273,22 +299,10 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
             </Timeline.Item>
           );
         })}
-      </Timeline>
+        </Timeline>
+      </Box>
     </Box>
   );
 });
-
-// Helper function to determine if text should be white or black based on background color
-const getContrastColor = (hexColor: string): string => {
-  // Convert hex to RGB
-  const r = parseInt(hexColor.slice(0, 2), 16);
-  const g = parseInt(hexColor.slice(2, 4), 16);
-  const b = parseInt(hexColor.slice(4, 6), 16);
-
-  // Calculate luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-  return luminance > 0.5 ? '#000000' : '#ffffff';
-};
 
 export default TimelineView;

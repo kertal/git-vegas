@@ -445,6 +445,13 @@ function App() {
     [setCurrentFilters]
   );
 
+  const setSearchText = useCallback(
+    (searchText: string) => {
+      setCurrentFilters(prev => ({ ...prev, searchText }));
+    },
+    [setCurrentFilters]
+  );
+
   // Extract individual filter values for convenience
   const {
     filter,
@@ -888,6 +895,7 @@ function App() {
                 setSortOrder,
                 setLabelFilter,
                 setExcludedLabels,
+                setSearchText,
                 toggleDescriptionVisibility,
                 toggleExpand,
                 copyResultsToClipboard,

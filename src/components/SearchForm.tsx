@@ -158,14 +158,7 @@ const SearchForm = memo(function SearchForm() {
         </Box>
       </Box>
 
-      {apiMode === 'events' && (
-        <Flash variant="warning" sx={{ marginTop: 3 }}>
-          <strong>Events API Limitations:</strong> Only returns data from the
-          last 30 days and may include different activity types than the Search
-          API. Event data can have 30s-6h latency. The Search API is recommended
-          for comprehensive issue/PR searches.
-        </Flash>
-      )}
+
 
       {error && (
         <Flash variant="danger" sx={{ marginTop: 3 }}>
