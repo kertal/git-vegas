@@ -387,65 +387,8 @@ const FilterControls = memo(function FilterControls({
               </FormControl>
             </Box>
 
-            {/* Sort Order */}
-            <Box sx={{ gap: 1 }}>
-              <Heading
-                as="h3"
-                sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}
-              >
-                Sort by
-              </Heading>
-              <ButtonGroup>
-                <Button
-                  variant={sortOrder === 'updated' ? 'primary' : 'default'}
-                  onClick={() =>
-                    setSortOrder(sortOrder === 'updated' ? 'created' : 'updated')
-                  }
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Last Updated
-                </Button>
-                <Button
-                  variant={sortOrder === 'created' ? 'primary' : 'default'}
-                  onClick={() =>
-                    setSortOrder(sortOrder === 'created' ? 'updated' : 'created')
-                  }
-                  size="small"
-                  sx={buttonStyles}
-                >
-                  Creation Date
-                </Button>
-              </ButtonGroup>
-            </Box>
 
-            {/* View Options */}
-            <Box sx={{ gap: 1 }}>
-              <Heading
-                as="h3"
-                sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted' }}
-              >
-                View
-              </Heading>
-              <ButtonGroup>
-                <Button
-                  size="small"
-                  variant={!isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(false)}
-                  sx={buttonStyles}
-                >
-                  Detailed
-                </Button>
-                <Button
-                  size="small"
-                  variant={isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(true)}
-                  sx={buttonStyles}
-                >
-                  Compact
-                </Button>
-              </ButtonGroup>
-            </Box>
+          
           </Box>
 
           {/* Label Filters */}

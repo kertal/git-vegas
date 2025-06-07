@@ -6,7 +6,7 @@ import {
   useEffect,
   useMemo,
 } from 'react';
-import { Box, Button, Heading, IconButton, PageLayout } from '@primer/react';
+import { Box, Button, Heading, IconButton, PageLayout, PageHeader } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 import './App.css';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
@@ -756,85 +756,19 @@ function App() {
   }, [setSelectedItems]);
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        bg: 'canvas.default',
-        color: 'fg.default',
-      }}
-    >
-      <OfflineBanner />
+  
+
       <PageLayout sx={{ '--spacing': '0 !important' }}>
-        <PageLayout.Header sx={{ p: 0 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              borderColor: 'border.default',
-              borderBottom: '1px solid',
-              height: '56px',
-              position: 'relative',
-            }}
-          >
-            <Box sx={{ pl: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Heading sx={{ fontSize: 3, m: 0 }}>🎰 Git Vegas</Heading>
-            </Box>
+        <PageLayout.Header>
 
-            {/* Center slot machine */}
-            <Box
-              sx={{
-                position: 'absolute',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                display: 'flex',
-                alignItems: 'center',
-                flexDirection: 'column',
-                gap: 1,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <SlotMachineLoader
-                  avatarUrls={(Array.isArray(results) ? results : [])
-                    .map(item => item.user.avatar_url)
-                    .filter(Boolean)}
-                  isLoading={loading || initialLoading}
-                  isManuallySpinning={isManuallySpinning}
-                />
-                <Button
-                  variant="invisible"
-                  onClick={handleManualSpin}
-                  disabled={isManuallySpinning || loading || initialLoading}
-                  sx={{
-                    p: 1,
-                    color: 'fg.default',
-                    opacity:
-                      isManuallySpinning || loading || initialLoading ? 0.5 : 1,
-                    '&:hover:not(:disabled)': {
-                      color: 'accent.fg',
-                      transform: 'scale(1.1)',
-                      transition: 'transform 0.2s ease-in-out',
-                    },
-                    '&:disabled': {
-                      cursor: 'not-allowed',
-                    },
-                    '&:focus': {
-                      outline: 'none',
-                      boxShadow: 'none',
-                    },
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    lineHeight: 1,
-                    height: 'auto',
-                    minWidth: 'auto',
-                  }}
-                >
-                  🕹️
-                </Button>
-              </Box>
-            </Box>
+          <PageHeader role="banner" aria-label="Title">
+            <PageHeader.TitleArea>            <PageHeader.LeadingVisual>
+              🎰
+            </PageHeader.LeadingVisual>
+              <PageHeader.Title>Git Vegas</PageHeader.Title>
+            </PageHeader.TitleArea>
+            <PageHeader.Actions>
 
-            <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
               <ShareButton
                 formSettings={formSettings}
                 uiSettings={uiSettings}
@@ -848,13 +782,14 @@ function App() {
                 aria-label="Settings"
                 onClick={() => setIsSettingsOpen(true)}
                 variant="invisible"
-                sx={{
-                  color: 'fg.default',
-                  '&:hover': { color: 'accent.fg' },
-                }}
               />
-            </Box>
-          </Box>
+
+            </PageHeader.Actions>
+          </PageHeader>
+
+
+
+
         </PageLayout.Header>
 
         <PageLayout.Content sx={{ px: 3, py: 4 }}>
@@ -936,8 +871,92 @@ function App() {
             </ResultsContext.Provider>
           </FormContext.Provider>
         </PageLayout.Content>
+
+        <PageLayout.Footer
+          sx={{
+            position: 'sticky',
+            bottom: 0,
+            zIndex: 10,
+            bg: 'canvas.default',
+            borderTop: '1px solid',
+            borderColor: 'border.default',
+            backdropFilter: 'blur(8px)',
+          }}
+          padding="condensed"
+        >
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              py: 1,
+              minHeight: '40px',
+            }}
+          >
+            {/* Left side: Slot Machine */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <SlotMachineLoader
+                avatarUrls={(Array.isArray(results) ? results : [])
+                  .map(item => item.user.avatar_url)
+                  .filter(Boolean)}
+                isLoading={loading || initialLoading}
+                isManuallySpinning={isManuallySpinning}
+              />
+              <Button
+                variant="invisible"
+                onClick={handleManualSpin}
+                disabled={isManuallySpinning || loading || initialLoading}
+                sx={{
+                  p: 1,
+                  color: 'fg.default',
+                  opacity:
+                    isManuallySpinning || loading || initialLoading ? 0.5 : 1,
+                  '&:hover:not(:disabled)': {
+                    color: 'accent.fg',
+                    transform: 'scale(1.1)',
+                    transition: 'transform 0.2s ease-in-out',
+                  },
+                  '&:disabled': {
+                    cursor: 'not-allowed',
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                    boxShadow: 'none',
+                  },
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  lineHeight: 1,
+                  height: 'auto',
+                  minWidth: 'auto',
+                }}
+              >
+                🕹️
+              </Button>
+            </Box>
+
+            {/* Right side: Loading Message */}
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <OfflineBanner />
+              {(loading || initialLoading) && loadingProgress && (
+                <Box
+                  sx={{
+                    px: 3,
+                    py: 1,
+                    bg: 'attention.subtle',
+                    color: 'attention.fg',
+                    borderRadius: 2,
+                    fontSize: 1,
+                    fontWeight: 'medium',
+                  }}
+                >
+                  {loadingProgress}
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </PageLayout.Footer>
       </PageLayout>
-    </Box>
+  
   );
 }
 

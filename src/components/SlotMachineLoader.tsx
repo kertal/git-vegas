@@ -108,8 +108,6 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
             left: 0,
             right: 0,
             bottom: 0,
-            background:
-              'linear-gradient(to bottom, rgba(0,0,0,1) 0%, transparent 40%, transparent 60%, rgba(0,0,0,1) 100%)',
             pointerEvents: 'none',
             zIndex: 1,
           },

@@ -22,9 +22,7 @@ if ('serviceWorker' in navigator) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider colorMode="night" nightScheme="dark">
-      {' '}
-      {/* Explicitly set nightScheme to dark */}
+    <ThemeProvider>
       <BaseStyles>
         <App />
       </BaseStyles>

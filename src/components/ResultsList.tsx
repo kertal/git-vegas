@@ -473,8 +473,7 @@ const ResultsList = memo(function ResultsList({
       {/* Filters Section */}
       <Box
         sx={{
-          maxWidth: '1200px',
-          margin: '16px auto',
+          margin: '16px auto 0',
           bg: 'canvas.subtle',
           borderRadius: 2,
           border: '1px solid',
@@ -1007,8 +1006,7 @@ const ResultsList = memo(function ResultsList({
       {filteredResults.length > 0 && (
         <Box
           sx={{
-            maxWidth: '1200px',
-            margin: '24px auto',
+            margin: '24px auto 0',
             bg: 'canvas.default',
             borderRadius: 2,
             border: '1px solid',

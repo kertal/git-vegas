@@ -56,7 +56,7 @@ const SearchForm = memo(function SearchForm() {
   );
 
   return (
-    <Box sx={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <Box>
       <Box
         as="form"
         sx={{
@@ -70,7 +70,7 @@ const SearchForm = memo(function SearchForm() {
         }}
       >
         {/* API Mode Switch */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+        <Box>
           <ButtonGroup>
             <Button
               variant={apiMode === 'search' ? 'primary' : 'default'}
@@ -155,8 +155,6 @@ const SearchForm = memo(function SearchForm() {
           </Box>
         </Box>
       </Box>
-
-
 
       {error && (
         <Flash variant="danger" sx={{ marginTop: 3 }}>
