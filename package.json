@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@primer/octicons-react": "^19.15.2",
+    "@primer/primitives": "^10.7.0",
     "@primer/react": "^37.22.0",
     "date-fns": "^4.1.0",
     "react": "^19.1.0",
@@ -26,7 +27,7 @@
     "react-is": "^19.1.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "styled-components": "5"
+    "styled-components": "^5.3.11"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",

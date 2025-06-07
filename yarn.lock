@@ -1554,7 +1554,7 @@
   resolved "https://registry.yarnpkg.com/@primer/octicons-react/-/octicons-react-19.15.2.tgz#1fce422b6f3a266af90ac2bce926f76e829c6470"
   integrity sha512-bVpBKLm5wOdVlwvjCU/uD4JeeVv5iQWpCO0kgkUYX7yzGgV0mf427kdzqKacYMY5rgcbpmiCKAqFe4j6hXz0ow==
 
-"@primer/primitives@10.x || 11.x":
+"@primer/primitives@10.x || 11.x", "@primer/primitives@^10.7.0":
   version "10.7.0"
   resolved "https://registry.yarnpkg.com/@primer/primitives/-/primitives-10.7.0.tgz#76b18cf020b0a3246a9f498ab9641b65e33e10de"
   integrity sha512-732Dq7c4znkewwRkXldV0NLLppfGrDJHPXsXO2QLHwJxKLwi2icKkzcOR77vb5g0ThObZJrRqlB/4DYajIiyyQ==
@@ -6803,7 +6803,7 @@ style-to-object@1.0.8:
   dependencies:
     inline-style-parser "0.2.4"
 
-styled-components@5:
+styled-components@^5.3.11:
   version "5.3.11"
   resolved "https://registry.yarnpkg.com/styled-components/-/styled-components-5.3.11.tgz#9fda7bf1108e39bf3f3e612fcc18170dedcd57a8"
   integrity sha512-uuzIIfnVkagcVHv9nE0VPlHPSCmXIUGKfJ42LNjxCCTDTL5sgnJ8Z7GZBq0EnLYGln77tPpEpExt2+qa+cZqSw==

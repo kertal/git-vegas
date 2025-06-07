@@ -1,1 +1,5 @@
 /* All content removed to ensure no global styles interfere with Primer */
+body {
+    color: var(--fgColor-default);
+    background-color: var(--bgColor-default);
+  }
