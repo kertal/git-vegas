@@ -97,13 +97,12 @@ function App() {
     labelFilter,
     excludedLabels,
     repoFilters,
-    searchText,
-    sortOrder
-  }), [filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText, sortOrder]);
+    searchText
+  }), [filter, statusFilter, labelFilter, excludedLabels, repoFilters, searchText]);
 
   const filteredResults = useMemo(() => {
-    return applyFiltersAndSort(Array.isArray(results) ? results : [], currentFilters);
-  }, [results, currentFilters]);
+    return applyFiltersAndSort(Array.isArray(results) ? results : [], currentFilters, sortOrder);
+  }, [results, currentFilters, sortOrder]);
 
   // Real-time username format validation
   const validateUsernameFormat = useCallback((usernameString: string) => {

@@ -22,8 +22,6 @@ export interface ResultsFilter {
   repoFilters: string[];
   /** Text search query */
   searchText: string;
-  /** Sort order: 'updated' or 'created' */
-  sortOrder: 'updated' | 'created';
 }
 
 /**
@@ -172,9 +170,14 @@ export const sortItems = (items: GitHubItem[], sortOrder: 'updated' | 'created')
  * 
  * @param items - Array of GitHub items to process
  * @param filters - Filter configuration object
+ * @param sortOrder - Sort order ('updated' or 'created')
  * @returns Filtered and sorted array of items
  */
-export const applyFiltersAndSort = (items: GitHubItem[], filters: ResultsFilter): GitHubItem[] => {
+export const applyFiltersAndSort = (
+  items: GitHubItem[], 
+  filters: ResultsFilter, 
+  sortOrder: 'updated' | 'created' = 'updated'
+): GitHubItem[] => {
   if (!Array.isArray(items)) {
     return [];
   }
@@ -189,7 +192,7 @@ export const applyFiltersAndSort = (items: GitHubItem[], filters: ResultsFilter)
   filteredItems = filterByText(filteredItems, filters.searchText);
   
   // Apply sorting
-  filteredItems = sortItems(filteredItems, filters.sortOrder);
+  filteredItems = sortItems(filteredItems, sortOrder);
   
   return filteredItems;
 };
@@ -224,7 +227,6 @@ export const hasActiveFilters = (filters: ResultsFilter): boolean => {
   return (
     filters.filter !== 'all' ||
     filters.statusFilter !== 'all' ||
-    filters.sortOrder !== 'updated' ||
     filters.labelFilter !== '' ||
     filters.excludedLabels.length > 0 ||
     filters.searchText !== '' ||
@@ -243,8 +245,7 @@ export const createDefaultFilter = (): ResultsFilter => ({
   labelFilter: '',
   excludedLabels: [],
   repoFilters: [],
-  searchText: '',
-  sortOrder: 'updated'
+  searchText: ''
 });
 
 /**

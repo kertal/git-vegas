@@ -15,7 +15,7 @@ import {
   getFilterSummary,
   ResultsFilter
 } from './resultsUtils';
-import { GitHubItem } from '../types';
+import type { GitHubItem } from '../types';
 
 // Sample test data
 const mockGitHubItems: GitHubItem[] = [
@@ -360,24 +360,39 @@ describe('resultsUtils', () => {
   });
 
   describe('applyFiltersAndSort', () => {
-    it('should apply all filters and sorting', () => {
+    it('should apply all filters and sort by created date', () => {
+      const filters: ResultsFilter = {
+        filter: 'all',
+        statusFilter: 'all',
+        labelFilter: '',
+        excludedLabels: [],
+        repoFilters: [],
+        searchText: ''
+      };
+      
+      const result = applyFiltersAndSort(mockGitHubItems, filters, 'created');
+      
+      expect(result).toHaveLength(4);
+      // Should be sorted by created date (newest first)
+      expect(new Date(result[0].created_at).getTime()).toBeGreaterThanOrEqual(
+        new Date(result[1].created_at).getTime()
+      );
+    });
+
+    it('should apply filters with PR filter and sort by updated date', () => {
       const filters: ResultsFilter = {
         filter: 'pr',
         statusFilter: 'all',
         labelFilter: '',
         excludedLabels: [],
         repoFilters: [],
-        searchText: '',
-        sortOrder: 'created'
+        searchText: ''
       };
-
-      const result = applyFiltersAndSort(mockGitHubItems, filters);
+      
+      const result = applyFiltersAndSort(mockGitHubItems, filters, 'updated');
       
       expect(result).toHaveLength(2);
       expect(result.every(item => !!item.pull_request)).toBe(true);
-      // Should be sorted by created date
-      expect(result[0].id).toBe(3);
-      expect(result[1].id).toBe(4);
     });
 
     it('should handle complex filtering', () => {
@@ -387,11 +402,10 @@ describe('resultsUtils', () => {
         labelFilter: 'bug',
         excludedLabels: ['performance'],
         repoFilters: ['user/repo1'],
-        searchText: 'critical',
-        sortOrder: 'updated'
+        searchText: 'critical'
       };
 
-      const result = applyFiltersAndSort(mockGitHubItems, filters);
+      const result = applyFiltersAndSort(mockGitHubItems, filters, 'updated');
       
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(1);
@@ -399,7 +413,7 @@ describe('resultsUtils', () => {
 
     it('should return empty array for non-array input', () => {
       const filters = createDefaultFilter();
-      const result = applyFiltersAndSort(null as any, filters);
+      const result = applyFiltersAndSort(null as any, filters, 'created');
       expect(result).toEqual([]);
     });
   });
@@ -440,6 +454,14 @@ describe('resultsUtils', () => {
       expect(hasActiveFilters(filters)).toBe(false);
     });
 
+    it('should return true when filter is not default', () => {
+      const filters: ResultsFilter = {
+        ...createDefaultFilter(),
+        filter: 'pr'
+      };
+      expect(hasActiveFilters(filters)).toBe(true);
+    });
+
     it('should return true when type filter is active', () => {
       const filters = { ...createDefaultFilter(), filter: 'pr' as const };
       expect(hasActiveFilters(filters)).toBe(true);
@@ -469,25 +491,18 @@ describe('resultsUtils', () => {
       const filters = { ...createDefaultFilter(), repoFilters: ['user/repo1'] };
       expect(hasActiveFilters(filters)).toBe(true);
     });
-
-    it('should return true when sort order is not default', () => {
-      const filters = { ...createDefaultFilter(), sortOrder: 'created' as const };
-      expect(hasActiveFilters(filters)).toBe(true);
-    });
   });
 
   describe('createDefaultFilter', () => {
-    it('should create filter with default values', () => {
-      const filter = createDefaultFilter();
-      
-      expect(filter).toEqual({
+    it('should create default filter without sortOrder', () => {
+      const defaultFilter = createDefaultFilter();
+      expect(defaultFilter).toEqual({
         filter: 'all',
         statusFilter: 'all',
         labelFilter: '',
         excludedLabels: [],
         repoFilters: [],
-        searchText: '',
-        sortOrder: 'updated'
+        searchText: ''
       });
     });
   });
@@ -506,8 +521,7 @@ describe('resultsUtils', () => {
         labelFilter: 'bug',
         excludedLabels: ['wontfix'],
         repoFilters: ['user/repo1'],
-        searchText: 'test query',
-        sortOrder: 'created'
+        searchText: 'test query'
       };
 
       const summary = getFilterSummary(filters);
@@ -535,6 +549,46 @@ describe('resultsUtils', () => {
         'Excluded labels: wontfix, duplicate',
         'Repos: user/repo1, user/repo2'
       ]);
+    });
+  });
+
+  describe('Comprehensive filtering scenarios', () => {
+    it('should handle complex filter combinations', () => {
+      const filters: ResultsFilter = {
+        filter: 'pr',
+        statusFilter: 'open',
+        labelFilter: 'bug',
+        excludedLabels: ['wontfix'],
+        repoFilters: [],
+        searchText: ''
+      };
+
+      const result = applyFiltersAndSort(mockGitHubItems, filters, 'updated');
+      
+      // Should return open PRs with bug label but without wontfix label
+      expect(result.every(item => !!item.pull_request)).toBe(true);
+      expect(result.every(item => item.state === 'open')).toBe(true);
+      expect(result.every(item => item.labels?.some(l => l.name === 'bug'))).toBe(true);
+      expect(result.every(item => !item.labels?.some(l => l.name === 'wontfix'))).toBe(true);
+    });
+
+    it('should handle multiple repository filters', () => {
+      const filters: ResultsFilter = {
+        filter: 'all',
+        statusFilter: 'all',
+        labelFilter: '',
+        excludedLabels: [],
+        repoFilters: ['octocat/Hello-World', 'octocat/Spoon-Knife'],
+        searchText: ''
+      };
+
+      const result = applyFiltersAndSort(mockGitHubItems, filters, 'created');
+      
+      // Should only return items from specified repositories
+      expect(result.every(item => {
+        const repo = item.repository_url?.replace('https://api.github.com/repos/', '');
+        return repo && ['octocat/Hello-World', 'octocat/Spoon-Knife'].includes(repo);
+      })).toBe(true);
     });
   });
 }); 
