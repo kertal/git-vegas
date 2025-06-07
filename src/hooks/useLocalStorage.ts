@@ -27,12 +27,7 @@ const deserializeValue = (jsonString: string): any => {
   return JSON.parse(jsonString, reviver);
 };
 
-// Map localStorage keys to URL parameter names
-const localStorageToUrlParamMap: Record<string, string> = {
-  'github-username': 'username',
-  'github-start-date': 'startDate',
-  'github-end-date': 'endDate'
-};
+
 
 // Specialized hook for form settings that handles URL parameter mapping
 export function useFormSettings(key: string, initialValue: FormSettings) {
@@ -68,47 +63,17 @@ export function useFormSettings(key: string, initialValue: FormSettings) {
     }
   });
 
-  // Update localStorage and URL parameters whenever value changes
+  // Update localStorage whenever value changes
   useEffect(() => {
     try {
       // Skip storing if value equals initial value (deep comparison for objects)
       if (JSON.stringify(value) === JSON.stringify(initialValue)) {
         window.localStorage.removeItem(key);
-        
-        // Clear URL parameters when value equals initial
-        const url = new URL(window.location.href);
-        url.searchParams.delete('username');
-        url.searchParams.delete('startDate');
-        url.searchParams.delete('endDate');
-        window.history.replaceState({}, '', url.toString());
         return;
       }
 
       // Store to localStorage using enhanced serialization
       window.localStorage.setItem(key, serializeValue(value));
-
-      // Update URL parameters for each field
-      const url = new URL(window.location.href);
-      
-      if (value.username === initialValue.username || value.username === '') {
-        url.searchParams.delete('username');
-      } else {
-        url.searchParams.set('username', value.username);
-      }
-      
-      if (value.startDate === initialValue.startDate || value.startDate === '') {
-        url.searchParams.delete('startDate');
-      } else {
-        url.searchParams.set('startDate', value.startDate);
-      }
-      
-      if (value.endDate === initialValue.endDate || value.endDate === '') {
-        url.searchParams.delete('endDate');
-      } else {
-        url.searchParams.set('endDate', value.endDate);
-      }
-      
-      window.history.replaceState({}, '', url.toString());
     } catch (error) {
       console.error(`Error saving to localStorage key "${key}":`, error);
     }
@@ -118,13 +83,6 @@ export function useFormSettings(key: string, initialValue: FormSettings) {
   const clear = useCallback(() => {
     try {
       window.localStorage.removeItem(key);
-      
-      // Clear URL parameters
-      const url = new URL(window.location.href);
-      url.searchParams.delete('username');
-      url.searchParams.delete('startDate');
-      url.searchParams.delete('endDate');
-      window.history.replaceState({}, '', url.toString());
       
       // Set value to initialValue after clearing localStorage to avoid re-storing
       setValue(initialValue);
@@ -140,17 +98,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   // Get initial value from URL parameters first, then localStorage, then initialValue
   const [value, setValue] = useState<T>(() => {
     try {
-      // Check URL parameters first
-      const urlParam = localStorageToUrlParamMap[key];
-      if (urlParam) {
-        const urlValue = getParamFromUrl(urlParam);
-        if (urlValue !== null) {
-          // Don't JSON parse URL parameters
-          return urlValue as unknown as T;
-        }
-      }
-
-      // If no URL parameter, try localStorage
+      // Try localStorage
       const item = window.localStorage.getItem(key);
       if (item === null) return initialValue;
 
@@ -177,18 +125,6 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
 
       // Use enhanced serialization
       window.localStorage.setItem(key, serializeValue(value));
-
-      // Update URL parameters if this is a mapped key
-      const urlParam = localStorageToUrlParamMap[key];
-      if (urlParam) {
-        const url = new URL(window.location.href);
-        if (value === initialValue || value === '') {
-          url.searchParams.delete(urlParam);
-        } else {
-          url.searchParams.set(urlParam, String(value));
-        }
-        window.history.replaceState({}, '', url.toString());
-      }
     } catch (error) {
       console.error(`Error saving to localStorage key "${key}":`, error);
     }
@@ -200,14 +136,6 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       window.localStorage.removeItem(key);
       // Set value to initialValue but don't store it
       setValue(initialValue);
-
-      // Clear URL parameter if this is a mapped key
-      const urlParam = localStorageToUrlParamMap[key];
-      if (urlParam) {
-        const url = new URL(window.location.href);
-        url.searchParams.delete(urlParam);
-        window.history.replaceState({}, '', url.toString());
-      }
     } catch (error) {
       console.error(`Error clearing localStorage key "${key}":`, error);
     }

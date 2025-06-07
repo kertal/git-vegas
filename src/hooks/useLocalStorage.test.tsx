@@ -18,12 +18,13 @@ describe('useLocalStorage', () => {
     expect(result.current[0]).toBe('default-value');
   });
 
-  it('should initialize with URL parameter value over localStorage value', () => {
+  it('should initialize with localStorage value (URL parameters no longer override)', () => {
     window.localStorage.setItem('github-username', JSON.stringify('local-user'));
     window.location.search = '?username=url-user';
 
     const { result } = renderHook(() => useLocalStorage('github-username', 'default-value'));
-    expect(result.current[0]).toBe('url-user');
+    // URL parameters no longer automatically override localStorage
+    expect(result.current[0]).toBe('local-user');
   });
 
   it('should update localStorage when value changes', () => {
@@ -64,17 +65,20 @@ describe('useLocalStorage', () => {
     expect(window.localStorage.getItem('test-key')).toBeNull();
   });
 
-  it('should update URL parameters for mapped keys', () => {
+  it('should not update URL parameters automatically (behavior removed)', () => {
     const { result } = renderHook(() => useLocalStorage('github-username', ''));
 
     act(() => {
       result.current[1]('test-user');
     });
 
-    expect(window.location.search).toBe('?username=test-user');
+    // URL parameters are no longer automatically updated
+    expect(window.location.search).toBe('');
+    // But localStorage should still be updated
+    expect(result.current[0]).toBe('test-user');
   });
 
-  it('should remove URL parameters when clearing mapped keys', () => {
+  it('should not modify URL parameters when clearing (behavior removed)', () => {
     window.location.search = '?username=test-user';
     const { result } = renderHook(() => useLocalStorage('github-username', ''));
 
@@ -82,7 +86,10 @@ describe('useLocalStorage', () => {
       result.current[2]();
     });
 
-    expect(window.location.search).toBe('');
+    // URL parameters are no longer automatically modified
+    expect(window.location.search).toBe('?username=test-user');
+    // But localStorage should be cleared
+    expect(result.current[0]).toBe('');
   });
 
   it('should handle errors gracefully', () => {

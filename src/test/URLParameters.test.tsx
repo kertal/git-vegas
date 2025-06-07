@@ -74,11 +74,13 @@ describe('URL Parameters', () => {
       fireEvent.change(endDateInput, { target: { value: '2024-02-28' } });
     });
 
-    // Wait for URL to update
+    // URL parameters are no longer automatically updated
+    // Instead, verify that the form values are updated in localStorage
     await waitFor(() => {
-      expect(window.location.search).toContain('username=newuser');
-      expect(window.location.search).toContain('startDate=2024-02-01');
-      expect(window.location.search).toContain('endDate=2024-02-28');
+      const formSettings = JSON.parse(localStorage.getItem('github-form-settings') || '{}');
+      expect(formSettings.username).toBe('newuser');
+      expect(formSettings.startDate).toBe('2024-02-01');
+      expect(formSettings.endDate).toBe('2024-02-28');
     });
   });
 

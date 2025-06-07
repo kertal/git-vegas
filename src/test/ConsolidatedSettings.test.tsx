@@ -56,10 +56,10 @@ describe('Consolidated Settings', () => {
         apiMode: 'search'
       });
 
-      // Should also update URL parameters
-      expect(window.location.search).toContain('username=testuser');
-      expect(window.location.search).toContain('startDate=2024-02-01');
-      expect(window.location.search).toContain('endDate=2024-02-28');
+      // URL parameters are no longer automatically updated
+      // expect(window.location.search).toContain('username=testuser');
+      // expect(window.location.search).toContain('startDate=2024-02-01');
+      // expect(window.location.search).toContain('endDate=2024-02-28');
     });
 
     it('should prioritize URL parameters over localStorage for form settings', () => {
@@ -142,10 +142,10 @@ describe('Consolidated Settings', () => {
       // Should clear localStorage
       expect(localStorage.getItem('github-form-settings')).toBeNull();
 
-      // Should clear URL parameters
-      expect(window.location.search).not.toContain('username');
-      expect(window.location.search).not.toContain('startDate');
-      expect(window.location.search).not.toContain('endDate');
+      // URL parameters are no longer automatically cleared
+      // expect(window.location.search).not.toContain('username');
+      // expect(window.location.search).not.toContain('startDate');
+      // expect(window.location.search).not.toContain('endDate');
 
       // Should reset to default values
       expect(result.current[0]).toEqual(defaultFormSettings);

@@ -1,5 +1,5 @@
 import { GitHubItem } from '../types';
-import { validateGitHubUsernames, isValidDateString, validateUsernameList, updateUrlParams, type BatchValidationResult } from '../utils';
+import { validateGitHubUsernames, isValidDateString, validateUsernameList, type BatchValidationResult } from '../utils';
 import { categorizeUsernames, getInvalidUsernames } from './usernameCache';
 import type { UsernameCache } from '../types';
 
@@ -59,8 +59,6 @@ export interface CacheCallbacks {
  * Search options configuration
  */
 export interface GitHubSearchOptions {
-  /** Update URL parameters after successful search */
-  updateUrl?: boolean;
   /** Progress callback for status updates */
   onProgress?: SearchProgressCallback;
   /** Cache callbacks for username validation */
@@ -591,14 +589,7 @@ export const performGitHubSearch = async (
     }
   }
 
-  // Update URL parameters if requested
-  if (options.updateUrl) {
-    updateUrlParams({
-      username: params.username,
-      startDate: params.startDate,
-      endDate: params.endDate
-    });
-  }
+  // URL parameters are no longer automatically updated
 
   onProgress?.(`Successfully loaded ${allResults.length} items!`);
 

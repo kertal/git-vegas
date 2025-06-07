@@ -9,15 +9,17 @@ import ResultsList from './components/ResultsList';
 import TimelineView from './components/TimelineView';
 import FilterControls from './components/FilterControls';
 import { OfflineBanner } from './components/OfflineBanner';
-import { GitHubItem, FormContextType, ResultsContextType, FormSettings, UISettings, ItemUIState, UsernameCache } from './types';
+import { GitHubItem, FormContextType, ResultsContextType, UISettings, ItemUIState, UsernameCache } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFormSettings } from './hooks/useLocalStorage';
-import { getParamFromUrl, validateUsernameList } from './utils';
+import { validateUsernameList } from './utils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { countItemsMatchingFilter } from './utils/filterUtils';
 import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import { extractAvailableLabels, applyFiltersAndSort, createDefaultFilter, ResultsFilter } from './utils/resultsUtils';
 import { performGitHubSearch, GitHubSearchParams } from './utils/githubSearch';
+import { parseUrlParams, applyUrlOverrides, cleanupUrlParams } from './utils/urlState';
+import ShareButton from './components/ShareButton';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -137,6 +139,35 @@ function App() {
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
 
+  // URL state initialization - apply URL overrides on mount if present
+  useEffect(() => {
+    const urlState = parseUrlParams();
+    
+    if (Object.keys(urlState).length > 0) {
+      // Apply URL overrides to current state
+      const overrides = applyUrlOverrides(
+        urlState,
+        formSettings,
+        uiSettings,
+        currentFilters
+      );
+      
+      // Update state with URL overrides
+      if (JSON.stringify(overrides.formSettings) !== JSON.stringify(formSettings)) {
+        setFormSettings(overrides.formSettings);
+      }
+      if (JSON.stringify(overrides.uiSettings) !== JSON.stringify(uiSettings)) {
+        setUISettings(overrides.uiSettings);
+      }
+      if (JSON.stringify(overrides.currentFilters) !== JSON.stringify(currentFilters)) {
+        setCurrentFilters(overrides.currentFilters);
+      }
+      
+      // Clean up URL after applying overrides (only when URL params were actually used)
+      cleanupUrlParams();
+    }
+  }, []); // Only run on mount
+
   // Individual setters for form settings
   const setUsername = useCallback((username: string) => {
     setFormSettings(prev => ({ ...prev, username }));
@@ -240,10 +271,6 @@ function App() {
       ...prev, 
       excludedLabels: typeof excludedLabels === 'function' ? excludedLabels(prev.excludedLabels) : excludedLabels 
     }));
-  }, [setCurrentFilters]);
-  
-  const setSearchText = useCallback((searchText: string) => {
-    setCurrentFilters(prev => ({ ...prev, searchText }));
   }, [setCurrentFilters]);
   
   const setRepoFilters = useCallback((repoFilters: string[] | ((prev: string[]) => string[])) => {
@@ -367,7 +394,6 @@ function App() {
       const result = await performGitHubSearch(searchParams, cache, {
         onProgress,
         cacheCallbacks,
-        updateUrl: true,
         requestDelay: 500
       });
 
@@ -582,6 +608,14 @@ function App() {
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, pr: 3 }}>
+              <ShareButton
+                formSettings={formSettings}
+                uiSettings={uiSettings}
+                currentFilters={currentFilters}
+                searchText={currentFilters.searchText}
+                size="medium"
+                variant="invisible"
+              />
               <IconButton
                 icon={GearIcon}
                 aria-label="Settings"

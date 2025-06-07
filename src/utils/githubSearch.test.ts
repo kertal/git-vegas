@@ -443,8 +443,7 @@ describe('githubSearch utilities', () => {
     it('should perform successful search', async () => {
       const result = await performGitHubSearch(mockSearchParams, mockCache, {
         onProgress: mockProgressCallback,
-        cacheCallbacks: mockCacheCallbacks,
-        updateUrl: true
+        cacheCallbacks: mockCacheCallbacks
       });
 
       expect(result).toEqual({
@@ -456,7 +455,8 @@ describe('githubSearch utilities', () => {
       expect(mockProgressCallback).toHaveBeenCalledWith('Validating usernames...');
       expect(mockProgressCallback).toHaveBeenCalledWith('Starting search API...');
       expect(mockProgressCallback).toHaveBeenCalledWith('Fetching data for testuser...');
-      expect(updateUrlParams).toHaveBeenCalled();
+      // URL parameters are no longer automatically updated
+      expect(updateUrlParams).not.toHaveBeenCalled();
     });
 
     it('should handle parameter validation errors', async () => {
