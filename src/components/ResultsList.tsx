@@ -9,7 +9,6 @@ import {
   ButtonGroup,
   Avatar,
   Stack,
-
   Label,
   Checkbox,
   ActionMenu,
@@ -18,6 +17,7 @@ import {
   IconButton,
   SelectPanel,
   FormControl,
+  ActionBar,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -410,9 +410,9 @@ const ResultsList = memo(function ResultsList({
       // Apply only the other active filters, not the current one being counted
       const labelMatch = includedLabels.length === 0
         ? true
-        : includedLabels.every(requiredLabel => 
-            item.labels?.some((l: any) => l.name === requiredLabel)
-          );
+        : includedLabels.every(requiredLabel =>
+          item.labels?.some((l: any) => l.name === requiredLabel)
+        );
       const excludeMatch =
         excludedLabels.length === 0
           ? true
@@ -421,9 +421,9 @@ const ResultsList = memo(function ResultsList({
         repoFilters.length === 0
           ? true
           : item.repository_url &&
-            repoFilters.includes(
-              item.repository_url.replace('https://api.github.com/repos/', '')
-            );
+          repoFilters.includes(
+            item.repository_url.replace('https://api.github.com/repos/', '')
+          );
       return labelMatch && excludeMatch && repoMatch;
     });
   }, [filteredResults, includedLabels, excludedLabels, repoFilters]);
@@ -496,7 +496,7 @@ const ResultsList = memo(function ResultsList({
           label,
           excludedLabels
         );
-        
+
         return {
           text: `${label} (${currentCount}${currentCount !== potentialCount ? ` / ${potentialCount}` : ''})`,
           id: label,
@@ -529,13 +529,13 @@ const ResultsList = memo(function ResultsList({
 
   // Convert selected labels to ActionListItemInput format
   const selectedIncludeItems = useMemo(() => {
-    return includedLabels.map(label => 
+    return includedLabels.map(label =>
       createLabelItems.find(item => item.id === label)
     ).filter(Boolean) as ActionListItemInput[];
   }, [includedLabels, createLabelItems]);
 
   const selectedExcludeItems = useMemo(() => {
-    return excludedLabels.map(label => 
+    return excludedLabels.map(label =>
       createLabelItems.find(item => item.id === label)
     ).filter(Boolean) as ActionListItemInput[];
   }, [excludedLabels, createLabelItems]);
@@ -796,13 +796,13 @@ const ResultsList = memo(function ResultsList({
                       </Text>
                     </FormControl.Label>
                     <SelectPanel
-                      renderAnchor={({children, ...anchorProps}) => (
-                        <Button 
-                          {...anchorProps} 
-                          trailingAction={TriangleDownIcon} 
+                      renderAnchor={({ children, ...anchorProps }) => (
+                        <Button
+                          {...anchorProps}
+                          trailingAction={TriangleDownIcon}
                           aria-haspopup="dialog"
                           variant="default"
-                          sx={{ 
+                          sx={{
                             justifyContent: 'space-between',
                             border: selectedIncludeItems.length > 0 ? '2px solid' : '1px solid',
                             borderColor: selectedIncludeItems.length > 0 ? 'success.emphasis' : 'border.default',
@@ -812,8 +812,8 @@ const ResultsList = memo(function ResultsList({
                         </Button>
                       )}
                       placeholder={
-                        selectedIncludeItems.length === 0 
-                          ? 'Select labels to include...' 
+                        selectedIncludeItems.length === 0
+                          ? 'Select labels to include...'
                           : `${selectedIncludeItems.length} label${selectedIncludeItems.length === 1 ? '' : 's'} selected`
                       }
                       open={includeLabelsOpen}
@@ -837,13 +837,13 @@ const ResultsList = memo(function ResultsList({
                       </Text>
                     </FormControl.Label>
                     <SelectPanel
-                      renderAnchor={({children, ...anchorProps}) => (
-                        <Button 
-                          {...anchorProps} 
-                          trailingAction={TriangleDownIcon} 
+                      renderAnchor={({ children, ...anchorProps }) => (
+                        <Button
+                          {...anchorProps}
+                          trailingAction={TriangleDownIcon}
                           aria-haspopup="dialog"
                           variant="default"
-                          sx={{ 
+                          sx={{
                             justifyContent: 'space-between',
                             border: selectedExcludeItems.length > 0 ? '2px solid' : '1px solid',
                             borderColor: selectedExcludeItems.length > 0 ? 'danger.emphasis' : 'border.default',
@@ -853,8 +853,8 @@ const ResultsList = memo(function ResultsList({
                         </Button>
                       )}
                       placeholder={
-                        selectedExcludeItems.length === 0 
-                          ? 'Select labels to exclude...' 
+                        selectedExcludeItems.length === 0
+                          ? 'Select labels to exclude...'
                           : `${selectedExcludeItems.length} label${selectedExcludeItems.length === 1 ? '' : 's'} excluded`
                       }
                       open={excludeLabelsOpen}
@@ -1109,25 +1109,6 @@ const ResultsList = memo(function ResultsList({
                     }
                     onChange={() => toggleItemSelection(item.id)}
                   />
-                  {item.body && (
-                    <IconButton
-                      icon={EyeIcon}
-                      aria-label="Show description"
-                      onClick={() => setSelectedItemForDialog(item)}
-                      sx={{
-                        color: 'fg.subtle',
-                        opacity: 0.6,
-                        padding: '2px',
-                        minWidth: 'auto',
-                        minHeight: 'auto',
-                        ':hover': {
-                          color: 'fg.default',
-                          opacity: 1,
-                          bg: 'transparent',
-                        },
-                      }}
-                    />
-                  )}
                   {item.pull_request ? (
                     item.pull_request.merged_at || item.merged ? (
                       <Box sx={{ color: 'done.fg', display: 'flex' }}>
@@ -1196,6 +1177,17 @@ const ResultsList = memo(function ResultsList({
                       day: 'numeric',
                     })}
                   </Text>
+                  {item.body && (
+                    <div
+                    style={{
+                      width: '50xpx',
+                    }}
+                  >
+                    <ActionBar aria-label="Toolbar" size='small'>
+                      <ActionBar.IconButton icon={EyeIcon} aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)}></ActionBar.IconButton>
+                    </ActionBar>
+                    </div>
+                  )}
                 </Box>
               ))}
             </Box>
@@ -1227,14 +1219,6 @@ const ResultsList = memo(function ResultsList({
                         }
                         onChange={() => toggleItemSelection(item.id)}
                       />
-                      {item.body && (
-                        <IconButton
-                          icon={EyeIcon}
-                          aria-label="Show description"
-                          onClick={() => setSelectedItemForDialog(item)}
-                          size="small"
-                        />
-                      )}
                     </Box>
                     <Avatar
                       src={item.user.avatar_url}
