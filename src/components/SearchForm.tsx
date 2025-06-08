@@ -6,8 +6,7 @@ import {
   TextInput,
   Flash,
   Spinner,
-  ButtonGroup,
-  Text,
+  UnderlineNav,
 } from '@primer/react';
 import { useFormContext } from '../App';
 import { debounce } from '../utils';
@@ -70,21 +69,29 @@ const SearchForm = memo(function SearchForm() {
         }}
       >
         {/* API Mode Switch */}
-        <Box>
-          <ButtonGroup>
-            <Button
-              variant={apiMode === 'search' ? 'primary' : 'default'}
-              onClick={() => setApiMode('search')}
+        <Box sx={{ mb: 2 }}>
+          <UnderlineNav aria-label="GitHub API Mode">
+            <UnderlineNav.Item
+              href="#"
+              aria-current={apiMode === 'search' ? 'page' : undefined}
+              onSelect={(e) => {
+                e.preventDefault();
+                setApiMode('search');
+              }}
             >
               GitHub Issues & PRs
-            </Button>
-            <Button
-              variant={apiMode === 'events' ? 'primary' : 'default'}
-              onClick={() => setApiMode('events')}
+            </UnderlineNav.Item>
+            <UnderlineNav.Item
+              href="#"
+              aria-current={apiMode === 'events' ? 'page' : undefined}
+              onSelect={(e) => {
+                e.preventDefault();
+                setApiMode('events');
+              }}
             >
               GitHub Events
-            </Button>
-          </ButtonGroup>
+            </UnderlineNav.Item>
+          </UnderlineNav>
         </Box>
 
         {/* Main search fields in a horizontal layout */}

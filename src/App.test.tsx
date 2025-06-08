@@ -162,7 +162,7 @@ describe('App Component', () => {
   describe('Initial Rendering', () => {
     it('renders without crashing', () => {
       render(<App />, { wrapper: TestWrapper });
-      expect(screen.getByText('🎰 Git Vegas')).toBeInTheDocument();
+      expect(screen.getByText('Git Vegas')).toBeInTheDocument();
     });
 
     it('shows initial loading state', () => {
@@ -281,7 +281,7 @@ describe('App Component', () => {
 
       // Wait for the app to load
       await waitFor(() => {
-        expect(screen.getByText('🎰 Git Vegas')).toBeInTheDocument();
+        expect(screen.getByText('Git Vegas')).toBeInTheDocument();
       });
 
       // Since we can't reliably mock localStorage loading, we'll just test that
@@ -310,7 +310,7 @@ describe('App Component', () => {
 
       await waitFor(() => {
         // If the App renders successfully, contexts are working
-        expect(screen.getByText('🎰 Git Vegas')).toBeInTheDocument();
+        expect(screen.getByText('Git Vegas')).toBeInTheDocument();
         expect(screen.getByLabelText(/GitHub username/i)).toBeInTheDocument();
         // No context errors means contexts are properly provided
       });
@@ -369,7 +369,7 @@ describe('App Component', () => {
       const { getByText } = render(<App />);
 
       // App should render without crashing
-      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      expect(getByText('Git Vegas')).toBeInTheDocument();
 
       // Should not throw "selectedItems.has is not a function" error
       // The defensive code should create a new Set automatically
@@ -444,7 +444,7 @@ describe('App Component', () => {
       const { getByText } = render(<App />);
 
       // App should render without crashing
-      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      expect(getByText('Git Vegas')).toBeInTheDocument();
 
       // Verify that the console.warn was called for corrupted data
       expect(console.warn).toHaveBeenCalledWith(
@@ -468,7 +468,7 @@ describe('App Component', () => {
       const { getByText } = render(<App />);
 
       // App should render without crashing
-      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      expect(getByText('Git Vegas')).toBeInTheDocument();
 
       // Verify that the console.warn was called for corrupted data
       expect(console.warn).toHaveBeenCalledWith(
@@ -492,7 +492,7 @@ describe('App Component', () => {
       const { getByText } = render(<App />);
 
       // App should render without crashing
-      expect(getByText('🎰 Git Vegas')).toBeInTheDocument();
+      expect(getByText('Git Vegas')).toBeInTheDocument();
 
       // Verify that console.warn was called for both corrupted caches
       expect(console.warn).toHaveBeenCalledWith(
@@ -519,11 +519,11 @@ describe('App Component', () => {
       );
 
       // Select Events API mode
-      const eventsButton = screen.getByRole('button', { name: /github events/i });
+      const eventsButton = screen.getByRole('link', { name: /github events/i });
       fireEvent.click(eventsButton);
 
       // Verify Events API mode is selected
-      expect(eventsButton).toHaveAttribute('data-variant', 'primary');
+      expect(eventsButton).toHaveAttribute('aria-current', 'page');
     });
 
     it('should show ResultsList view when Search API is selected (default)', async () => {
@@ -538,11 +538,11 @@ describe('App Component', () => {
       );
 
       // Search API should be selected by default
-      const searchButton = screen.getByRole('button', { name: /github issues & prs/i });
-      expect(searchButton).toHaveAttribute('data-variant', 'primary');
+      const searchButton = screen.getByRole('link', { name: /github issues & prs/i });
+      expect(searchButton).toHaveAttribute('aria-current', 'page');
 
       // Verify Search API mode is selected by default
-      expect(searchButton).toHaveAttribute('data-variant', 'primary');
+      expect(searchButton).toHaveAttribute('aria-current', 'page');
     });
   });
 });
