@@ -15,7 +15,6 @@ export interface ShareableState {
   // Filter settings
   filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
-  labelFilter: string;
   excludedLabels: string[];
   repoFilters: string[];
   searchText: string;
@@ -33,7 +32,6 @@ const urlParamTypes: Record<
   isCompactView: 'boolean',
   filter: 'string',
   statusFilter: 'string',
-  labelFilter: 'string',
   excludedLabels: 'string[]',
   repoFilters: 'string[]',
   searchText: 'string',
@@ -151,7 +149,6 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
     isCompactView: false,
     filter: 'all',
     statusFilter: 'all',
-    labelFilter: '',
     excludedLabels: [],
     repoFilters: [],
     searchText: '',
@@ -253,7 +250,6 @@ export function extractShareableState(
     isCompactView: uiSettings.isCompactView,
     filter: currentFilters.filter,
     statusFilter: currentFilters.statusFilter,
-    labelFilter: (currentFilters.includedLabels || []).join(','),
     excludedLabels: currentFilters.excludedLabels || [],
     repoFilters: currentFilters.repoFilters || [],
     searchText: searchText,
@@ -296,9 +292,7 @@ export function applyUrlOverrides(
     ...(urlState.statusFilter !== undefined && {
       statusFilter: urlState.statusFilter,
     }),
-    ...(urlState.labelFilter !== undefined && {
-      includedLabels: urlState.labelFilter.split(',').filter(Boolean),
-    }),
+
     ...(urlState.excludedLabels !== undefined && {
       excludedLabels: urlState.excludedLabels,
     }),

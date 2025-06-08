@@ -70,9 +70,8 @@ describe('TimelineView', () => {
   it('should render timeline with events', () => {
     renderWithTheme(<TimelineView items={mockItems} />);
 
-    expect(
-      screen.getByText('Activity Timeline (2 events)')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Activity Timeline')).toBeInTheDocument();
+    expect(screen.getByText('2 events')).toBeInTheDocument();
     expect(screen.getByText('Test Issue')).toBeInTheDocument();
     expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
     expect(screen.getByText('testuser')).toBeInTheDocument();
@@ -84,22 +83,22 @@ describe('TimelineView', () => {
 
     expect(screen.getByText('opened issue')).toBeInTheDocument();
     expect(screen.getByText('merged pull request')).toBeInTheDocument();
-    expect(screen.getByText('Open')).toBeInTheDocument();
-    expect(screen.getByText('Merged')).toBeInTheDocument();
+    // Note: Individual status badges no longer shown in compact view
   });
 
   it('should display labels', () => {
     renderWithTheme(<TimelineView items={mockItems} />);
 
-    expect(screen.getByText('bug')).toBeInTheDocument();
-    expect(screen.getByText('high-priority')).toBeInTheDocument();
-    expect(screen.getByText('feature')).toBeInTheDocument();
+    // Note: Labels no longer displayed in compact timeline view
+    // This test could be updated to check that the basic structure is there
+    expect(screen.getByText('Activity Timeline')).toBeInTheDocument();
   });
 
   it('should show repository names', () => {
     renderWithTheme(<TimelineView items={mockItems} />);
 
-    expect(screen.getAllByText('test/repo')).toHaveLength(2);
+    // Timeline now shows just the repo name (last part), not full path
+    expect(screen.getAllByText('repo')).toHaveLength(2);
   });
 
   it('should show empty state when no items', () => {
@@ -164,7 +163,7 @@ describe('TimelineView', () => {
     expect(screen.getByText('commenter')).toBeInTheDocument();
     expect(screen.getByText('commented on issue')).toBeInTheDocument();
     expect(screen.getByText('Comment on: Test Issue')).toBeInTheDocument();
-    expect(screen.getByText('test/repo')).toBeInTheDocument();
-    expect(screen.getByText('#789')).toBeInTheDocument();
+    expect(screen.getByText('repo')).toBeInTheDocument();
+    // Note: Issue numbers no longer displayed separately in compact view
   });
 });

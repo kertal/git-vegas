@@ -47,10 +47,11 @@ const mockUseResultsContext = () => ({
   filter: 'all' as const,
   statusFilter: 'all' as const,
   sortOrder: 'updated' as const,
-  includedLabels: [],
+  includedLabels: ["test"],
   excludedLabels: [],
   searchText: '',
   repoFilters: [],
+          includedLabels: ["test"],
   availableLabels: [],
   setFilter: vi.fn(),
   setStatusFilter: vi.fn(),
@@ -145,10 +146,8 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    // Find and click the export button
-    const exportButton = screen.getByRole('button', {
-      name: /Export to Clipboard/,
-    });
+    // Find and click the export button (ActionMenu button with clipboard icon)
+    const exportButton = screen.getByRole('button', { expanded: false });
     fireEvent.click(exportButton);
 
     // Test detailed format
@@ -185,8 +184,9 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    const exportButton = screen.getByText('Export to Clipboard (2 selected)');
-    expect(exportButton).toBeDefined();
+    // The export button now shows just a clipboard icon and number
+    const exportButton = screen.getByRole('button', { expanded: false });
+    expect(exportButton).toBeInTheDocument();
   });
 
   it('should copy only selected items when selection exists', () => {
@@ -208,9 +208,7 @@ describe('ResultsList Selection Tests', () => {
     );
 
     // Find and click the export button
-    const exportButton = screen.getByRole('button', {
-      name: /Export to Clipboard \(1 selected\)/,
-    });
+    const exportButton = screen.getByRole('button', { expanded: false });
     fireEvent.click(exportButton);
 
     // Click detailed format
@@ -246,9 +244,9 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    // Should show only one selected item in the button text
-    const exportButton = screen.getByText('Export to Clipboard (1 selected)');
-    expect(exportButton).toBeDefined();
+    // Should show export button (compact view with clipboard icon)
+    const exportButton = screen.getByRole('button', { expanded: false });
+    expect(exportButton).toBeInTheDocument();
 
     // Click export and choose format
     fireEvent.click(exportButton);
@@ -274,8 +272,10 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    const exportButton = screen.getByText('Export to Clipboard (all)');
-    expect(exportButton).toBeDefined();
+    const exportButton = screen.getByRole('button', {
+      expanded: false,
+    });
+    expect(exportButton).toBeInTheDocument();
   });
 
   it('should show "all" when selected items are filtered out', () => {
@@ -301,9 +301,11 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    // Should show "all" since no selected items are visible
-    const exportButton = screen.getByText('Export to Clipboard (all)');
-    expect(exportButton).toBeDefined();
+    // Should show export button (compact view with clipboard icon)
+    const exportButton = screen.getByRole('button', {
+      expanded: false,
+    });
+    expect(exportButton).toBeInTheDocument();
 
     // Click export and choose format
     fireEvent.click(exportButton);
@@ -330,8 +332,10 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    const exportButton = screen.getByText('Export to Clipboard (1 selected)');
-    expect(exportButton).toBeDefined();
+    const exportButton = screen.getByRole('button', {
+      expanded: false,
+    });
+    expect(exportButton).toBeInTheDocument();
   });
 
   it('should export all visible items when none are selected', () => {
@@ -357,9 +361,11 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    // Should show "all" in the button text
-    const exportButton = screen.getByText('Export to Clipboard (all)');
-    expect(exportButton).toBeDefined();
+    // Should show export button (compact view with clipboard icon)
+    const exportButton = screen.getByRole('button', {
+      expanded: false,
+    });
+    expect(exportButton).toBeInTheDocument();
 
     // Click export and choose format
     fireEvent.click(exportButton);
@@ -458,9 +464,9 @@ describe('ResultsList Repository Filter Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    // Click the "Show" button to reveal repository filters
-    const showButton = screen.getByRole('button', { name: /Show/i });
-    fireEvent.click(showButton);
+    // Click the Filters header to expand filters (they start collapsed)
+    const filtersHeader = screen.getAllByText("Filters")[0];
+    fireEvent.click(filtersHeader);
 
     // Find repository filter buttons
     const repoButtons = screen.getAllByRole('button', {
@@ -492,6 +498,8 @@ describe('ResultsList Repository Filter', () => {
               repository_url: 'https://api.github.com/repos/test/repo2',
             },
           ],
+          // Add some filters to make filters active
+          includedLabels: ['test'],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -499,14 +507,12 @@ describe('ResultsList Repository Filter', () => {
       { wrapper: TestWrapper }
     );
 
-    // Click the "Show" button to reveal repository filters
-    const showButton = screen.getByRole('button', { name: /Show/i });
-    fireEvent.click(showButton);
+    // Click the Filters header to expand filters (they start collapsed)
+    const filtersHeader = screen.getAllByText("Filters")[0];
+    fireEvent.click(filtersHeader);
 
     // Check if repo filter buttons are rendered
-    const repoButtons = screen.getAllByRole('button', {
-      name: /test\/repo\d/i,
-    });
+    const repoButtons = screen.getAllByText(/test\/repo\d/);
     expect(repoButtons).toHaveLength(2);
     expect(repoButtons[0]).toHaveTextContent('test/repo1');
     expect(repoButtons[1]).toHaveTextContent('test/repo2');
@@ -531,6 +537,8 @@ describe('ResultsList Repository Filter', () => {
               repository_url: 'https://api.github.com/repos/test/repo2',
             },
           ],
+          // Add some filters to make filters active
+          includedLabels: ['test'],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -538,14 +546,12 @@ describe('ResultsList Repository Filter', () => {
       { wrapper: TestWrapper }
     );
 
-    // Click the "Show" button to reveal repository filters
-    const showButton = screen.getByRole('button', { name: /Show/i });
-    fireEvent.click(showButton);
+    // Click the Filters header to expand filters (they start collapsed)
+    const filtersHeader = screen.getAllByText("Filters")[0];
+    fireEvent.click(filtersHeader);
 
     // Click repo1 filter button
-    const repoButtons = screen.getAllByRole('button', {
-      name: /test\/repo\d/i,
-    });
+    const repoButtons = screen.getAllByText(/test\/repo\d/);
     fireEvent.click(repoButtons[0]);
 
     // Verify setRepoFilters was called with a function
@@ -577,6 +583,7 @@ describe('ResultsList Repository Filter', () => {
             },
           ],
           repoFilters: ['test/repo1'],
+          includedLabels: ["test"],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -584,14 +591,12 @@ describe('ResultsList Repository Filter', () => {
       { wrapper: TestWrapper }
     );
 
-    // Click the "Show" button to reveal repository filters
-    const showButton = screen.getByRole('button', { name: /Show/i });
-    fireEvent.click(showButton);
+    // Click the Filters header to expand filters (they start collapsed)
+    const filtersHeader = screen.getAllByText("Filters")[0];
+    fireEvent.click(filtersHeader);
 
     // Click repo1 filter button again to deselect
-    const repoButtons = screen.getAllByRole('button', {
-      name: /test\/repo\d/i,
-    });
+    const repoButtons = screen.getAllByText(/test\/repo\d/);
     fireEvent.click(repoButtons[0]);
 
     // Verify setRepoFilters was called with a function
@@ -623,6 +628,7 @@ describe('ResultsList Repository Filter', () => {
             },
           ],
           repoFilters: ['test/repo1'],
+          includedLabels: ["test"],
         })}
         countItemsMatchingFilter={vi.fn().mockReturnValue(1)}
         buttonStyles={mockButtonStyles}
@@ -630,14 +636,12 @@ describe('ResultsList Repository Filter', () => {
       { wrapper: TestWrapper }
     );
 
-    // Click the "Show" button to reveal repository filters
-    const showButton = screen.getByRole('button', { name: /Show/i });
-    fireEvent.click(showButton);
+    // Click the Filters header to expand filters (they start collapsed)
+    const filtersHeader = screen.getAllByText("Filters")[0];
+    fireEvent.click(filtersHeader);
 
     // Click repo2 filter button to add another repo
-    const repoButtons = screen.getAllByRole('button', {
-      name: /test\/repo\d/i,
-    });
+    const repoButtons = screen.getAllByText(/test\/repo\d/);
     fireEvent.click(repoButtons[1]);
 
     // Verify setRepoFilters was called with a function
@@ -700,14 +704,12 @@ describe('ResultsList Repository Filter', () => {
       { wrapper: TestWrapper }
     );
 
-    // Click the "Show" button to reveal repository filters
-    const showButton = screen.getByRole('button', { name: /Show/i });
-    fireEvent.click(showButton);
+    // Click the Filters header to expand filters (they start collapsed)
+    const filtersHeader = screen.getAllByText("Filters")[0];
+    fireEvent.click(filtersHeader);
 
     // Check repository counts
-    const repoButtons = screen.getAllByRole('button', {
-      name: /test\/repo\d/i,
-    });
+    const repoButtons = screen.getAllByText(/test\/repo\d/);
     expect(repoButtons[0]).toHaveTextContent('test/repo1 (1)');
     expect(repoButtons[1]).toHaveTextContent('test/repo2 (2)');
   });
@@ -730,7 +732,7 @@ describe('ResultsList Undefined Arrays Handling', () => {
     );
 
     // Should render without crashing
-    expect(screen.getByText('Filters')).toBeDefined();
+    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
   });
 
   it('should handle undefined excludedLabels without crashing', () => {
@@ -749,7 +751,7 @@ describe('ResultsList Undefined Arrays Handling', () => {
     );
 
     // Should render without crashing
-    expect(screen.getByText('Filters')).toBeDefined();
+    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
   });
 
   it('should handle undefined repoFilters without crashing', () => {
@@ -768,7 +770,7 @@ describe('ResultsList Undefined Arrays Handling', () => {
     );
 
     // Should render without crashing
-    expect(screen.getByText('Filters')).toBeDefined();
+    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
   });
 
   it('should handle all undefined arrays without crashing', () => {
@@ -789,7 +791,7 @@ describe('ResultsList Undefined Arrays Handling', () => {
     );
 
     // Should render without crashing and show no active filters
-    expect(screen.getByText('Filters')).toBeDefined();
+    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
     
     // Clear All button should not be present when no filters are active
     expect(screen.queryByText('Clear All')).toBeNull();

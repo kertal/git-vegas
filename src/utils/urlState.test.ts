@@ -154,13 +154,12 @@ describe('urlState utilities', () => {
     });
 
     it('should handle URL encoding', () => {
-      mockLocation.search = '?username=test%20user&labelFilter=bug%2Bfeature';
+      mockLocation.search = '?username=test%20user';
 
       const result = parseUrlParams();
 
       expect(result).toEqual({
         username: 'test user',
-        labelFilter: 'bug+feature',
       });
     });
   });
@@ -176,10 +175,8 @@ describe('urlState utilities', () => {
       endDate: new Date().toISOString().split('T')[0],
       apiMode: 'search',
       isCompactView: false,
-      sortOrder: 'updated',
       filter: 'all',
       statusFilter: 'all',
-      labelFilter: '',
       excludedLabels: [],
       repoFilters: [],
       searchText: '',
@@ -242,7 +239,6 @@ describe('urlState utilities', () => {
       isCompactView: false,
       filter: 'all',
       statusFilter: 'all',
-      labelFilter: '',
       excludedLabels: [],
       repoFilters: [],
       searchText: '',
@@ -272,14 +268,12 @@ describe('urlState utilities', () => {
       const state: ShareableState = {
         ...defaultState,
         username: 'test user',
-        labelFilter: 'bug+feature',
       };
 
       const url = generateShareableUrl(state);
 
       // URLSearchParams encodes spaces as + instead of %20
       expect(url).toContain('username=test+user');
-      expect(url).toContain('labelFilter=bug%2Bfeature');
     });
   });
 
@@ -379,7 +373,6 @@ describe('urlState utilities', () => {
       const currentFilters: ResultsFilter = {
         filter: 'issue',
         statusFilter: 'open',
-        labelFilter: 'bug',
         excludedLabels: ['wontfix'],
         repoFilters: ['repo1'],
         searchText: 'search term',
@@ -398,10 +391,8 @@ describe('urlState utilities', () => {
         endDate: '2024-01-31',
         apiMode: 'events',
         isCompactView: true,
-        sortOrder: 'created',
         filter: 'issue',
         statusFilter: 'open',
-        labelFilter: 'bug',
         excludedLabels: ['wontfix'],
         repoFilters: ['repo1'],
         searchText: 'custom search',
@@ -429,7 +420,6 @@ describe('urlState utilities', () => {
 
       const uiSettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated',
       };
 
       const currentFilters = createDefaultFilter();
@@ -446,7 +436,6 @@ describe('urlState utilities', () => {
       expect(result.formSettings.startDate).toBe('2024-01-01'); // unchanged
 
       expect(result.uiSettings.isCompactView).toBe(true);
-      expect(result.uiSettings.sortOrder).toBe('updated'); // unchanged
 
       expect(result.currentFilters.filter).toBe('pr');
       expect(result.currentFilters.excludedLabels).toEqual(['bug']);
@@ -469,7 +458,6 @@ describe('urlState utilities', () => {
 
       const uiSettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated',
       };
 
       const currentFilters = createDefaultFilter();

@@ -25,7 +25,6 @@ const SearchForm = memo(function SearchForm() {
     handleUsernameBlur,
     validateUsernameFormat,
     loading,
-    loadingProgress,
     error,
   } = useFormContext();
 

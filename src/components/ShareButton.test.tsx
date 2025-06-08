@@ -29,7 +29,6 @@ describe('ShareButton', () => {
 
   const defaultUISettings: UISettings = {
     isCompactView: false,
-    sortOrder: 'updated',
   };
 
   const defaultFilters = createDefaultFilter();
@@ -56,7 +55,7 @@ describe('ShareButton', () => {
       endDate: '2024-01-31',
       apiMode: 'search',
       isCompactView: false,
-      sortOrder: 'updated',
+
       filter: 'all',
       statusFilter: 'all',
       labelFilter: '',
@@ -240,7 +239,6 @@ describe('ShareButton', () => {
 
     const complexUISettings: UISettings = {
       isCompactView: true,
-      sortOrder: 'created',
     };
 
     const complexFilters = {

@@ -28,6 +28,10 @@ import {
   ChevronRightIcon,
   EyeIcon,
   TriangleDownIcon,
+  FilterIcon,
+  ChevronDownIcon,
+  ChevronRightIcon as ChevronRightIconCollapse,
+  PasteIcon,
 } from '@primer/octicons-react';
 
 import ReactMarkdown from 'react-markdown';
@@ -78,7 +82,7 @@ interface ResultsListProps {
     filterValue: FilterValue,
     excludedLabels: string[]
   ) => number;
-  buttonStyles: any;
+  buttonStyles: React.CSSProperties;
 }
 
 // Add new interface for the description dialog
@@ -101,10 +105,10 @@ const DescriptionDialog = memo(function DescriptionDialog({
   hasPrevious,
   hasNext,
 }: DescriptionDialogProps) {
-  if (!item) return null;
-
   // Add keyboard navigation
   React.useEffect(() => {
+    if (!item) return;
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' && hasPrevious) {
         onPrevious();
@@ -117,7 +121,9 @@ const DescriptionDialog = memo(function DescriptionDialog({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onPrevious, onNext, onClose, hasPrevious, hasNext]);
+  }, [item, onPrevious, onNext, onClose, hasPrevious, hasNext]);
+
+  if (!item) return null;
 
   return (
     <Dialog
@@ -214,7 +220,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              a: ({ node, ...props }) => (
+              a: ({ ...props }) => (
                 <Link
                   target="_blank"
                   rel="noopener noreferrer"
@@ -222,7 +228,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
                   {...props}
                 />
               ),
-              pre: ({ node, ...props }) => (
+              pre: ({ ...props }) => (
                 <Box
                   as="pre"
                   sx={{
@@ -259,7 +265,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
                     {...props}
                   />
                 ),
-              img: ({ node, ...props }) => (
+              img: ({ ...props }) => (
                 <Box
                   as="img"
                   sx={{ maxWidth: '100%', height: 'auto' }}
@@ -340,6 +346,12 @@ const ResultsList = memo(function ResultsList({
     false
   );
 
+  // Add state for filters active/inactive toggle
+  const [areFiltersActive, setAreFiltersActive] = useLocalStorage(
+    'github-filters-active',
+    true
+  );
+
   // Add state for the description dialog
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
@@ -369,14 +381,17 @@ const ResultsList = memo(function ResultsList({
     [setRepoFilters]
   );
 
-  // Helper to check if any filters are active
-  const hasActiveFilters =
+  // Helper to check if any filters are configured
+  const hasConfiguredFilters =
     filter !== 'all' ||
     statusFilter !== 'all' ||
     includedLabels.length > 0 ||
     searchText !== '' ||
     repoFilters.length > 0 ||
     excludedLabels.length > 0;
+
+  // Helper to check if any filters are active (configured AND enabled)
+  const hasActiveFilters = areFiltersActive && hasConfiguredFilters;
 
   // Function to generate filter summary text
   const getFilterSummary = () => {
@@ -408,15 +423,15 @@ const ResultsList = memo(function ResultsList({
   const baseResults = useMemo(() => {
     return filteredResults.filter(item => {
       // Apply only the other active filters, not the current one being counted
-      const labelMatch = includedLabels.length === 0
+              const labelMatch = includedLabels.length === 0
         ? true
         : includedLabels.every(requiredLabel =>
-          item.labels?.some((l: any) => l.name === requiredLabel)
+          item.labels?.some((l: { name: string }) => l.name === requiredLabel)
         );
       const excludeMatch =
         excludedLabels.length === 0
           ? true
-          : !item.labels?.some((l: any) => excludedLabels.includes(l.name));
+          : !item.labels?.some((l: { name: string }) => excludedLabels.includes(l.name));
       const repoMatch =
         repoFilters.length === 0
           ? true
@@ -478,6 +493,20 @@ const ResultsList = memo(function ResultsList({
       item => item.id === selectedItemForDialog.id
     );
   };
+
+  // Debug logging
+  console.log('ResultsList Debug:', {
+    totalResults: results.length,
+    filteredResults: filteredResults.length,
+    hasActiveFilters,
+    areFiltersCollapsed,
+    filter,
+    statusFilter,
+    includedLabels,
+    excludedLabels,
+    searchText,
+    repoFilters
+  });
 
   // Helper functions for SelectPanel
   const createLabelItems = useMemo(() => {
@@ -557,9 +586,10 @@ const ResultsList = memo(function ResultsList({
 
   return (
     <Box>
-      {/* Filters Section */}
+      {/* Original Filters Section - Hidden, now integrated into Results */}
       <Box
         sx={{
+          display: 'none',
           margin: '16px auto 0',
           bg: 'canvas.subtle',
           borderRadius: 2,
@@ -964,8 +994,7 @@ const ResultsList = memo(function ResultsList({
       </Box>
 
       {/* Results Section */}
-      {filteredResults.length > 0 && (
-        <Box
+      <Box
           sx={{
             margin: '24px auto 0',
             bg: 'canvas.default',
@@ -1000,7 +1029,7 @@ const ResultsList = memo(function ResultsList({
                 Results
               </Heading>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-                {hasActiveFilters
+                {areFiltersActive && hasConfiguredFilters
                   ? `${filteredResults.length} filtered / ${results.length} total`
                   : `${results.length} items`}
               </Text>
@@ -1010,84 +1039,500 @@ const ResultsList = memo(function ResultsList({
                 </Flash>
               )}
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
-              <ButtonGroup>
-                <Button
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <ActionMenu>
+                <ActionMenu.Button
+                  variant="default"
                   size="small"
-                  variant={!isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(false)}
-                  sx={buttonStyles}
+                  sx={{
+                    ...buttonStyles,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    fontSize: 0,
+                    borderColor: 'border.default',
+                  }}
                 >
-                  Detailed
-                </Button>
-                <Button
-                  size="small"
-                  variant={isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(true)}
-                  sx={buttonStyles}
-                >
-                  Compact
-                </Button>
-              </ButtonGroup>
+                  <PasteIcon size={14} />
+                  {(() => {
+                    const displayResults = areFiltersActive ? filteredResults : results;
+                    const visibleSelectedCount = displayResults.filter(
+                      item =>
+                        selectedItems instanceof Set && selectedItems.has(item.id)
+                    ).length;
+                    return visibleSelectedCount > 0
+                      ? visibleSelectedCount
+                      : displayResults.length;
+                  })()}
+                </ActionMenu.Button>
+
+                <ActionMenu.Overlay>
+                  <ActionList>
+                    <ActionList.Item
+                      onSelect={() => copyResultsToClipboard('detailed')}
+                    >
+                      Detailed Format
+                    </ActionList.Item>
+                    <ActionList.Item
+                      onSelect={() => copyResultsToClipboard('compact')}
+                    >
+                      Compact Format
+                    </ActionList.Item>
+                  </ActionList>
+                </ActionMenu.Overlay>
+              </ActionMenu>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Filters:</Text>
+                <ButtonGroup>
+                  <Button
+                    size="small"
+                    variant={areFiltersActive ? 'primary' : 'default'}
+                    onClick={() => setAreFiltersActive(true)}
+                    sx={{
+                      ...buttonStyles,
+                      border: areFiltersActive && hasConfiguredFilters ? '2px solid' : '1px solid',
+                      borderColor: areFiltersActive && hasConfiguredFilters ? 'success.emphasis' : 'border.default',
+                    }}
+                  >
+                    Active
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={!areFiltersActive ? 'primary' : 'default'}
+                    onClick={() => setAreFiltersActive(false)}
+                    sx={buttonStyles}
+                  >
+                    Off
+                  </Button>
+                </ButtonGroup>
+              </Box>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
+                <ButtonGroup>
+                  <Button
+                    size="small"
+                    variant={!isCompactView ? 'primary' : 'default'}
+                    onClick={() => setIsCompactView(false)}
+                    sx={buttonStyles}
+                  >
+                    Detailed
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={isCompactView ? 'primary' : 'default'}
+                    onClick={() => setIsCompactView(true)}
+                    sx={buttonStyles}
+                  >
+                    Compact
+                  </Button>
+                </ButtonGroup>
+              </Box>
             </Box>
           </Box>
 
-          {/* Actions toolbar */}
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 2,
-              alignItems: 'center',
-              bg: 'canvas.subtle',
-              p: 2,
-              borderRadius: 2,
-              border: '1px solid',
-              borderColor: 'border.default',
-            }}
-          >
-            <ActionMenu>
-              <ActionMenu.Button
-                variant="default"
-                sx={{
-                  ...buttonStyles,
-                  fontSize: 1,
-                  borderColor: 'border.default',
-                }}
-              >
-                Export to Clipboard{' '}
-                {(() => {
-                  const visibleSelectedCount = filteredResults.filter(
-                    item =>
-                      selectedItems instanceof Set && selectedItems.has(item.id)
-                  ).length;
-                  return visibleSelectedCount > 0
-                    ? `(${visibleSelectedCount} selected)`
-                    : '(all)';
-                })()}
-              </ActionMenu.Button>
 
-              <ActionMenu.Overlay>
-                <ActionList>
-                  <ActionList.Item
-                    onSelect={() => copyResultsToClipboard('detailed')}
-                  >
-                    Detailed Format
-                  </ActionList.Item>
-                  <ActionList.Item
-                    onSelect={() => copyResultsToClipboard('compact')}
-                  >
-                    Compact Format
-                  </ActionList.Item>
-                </ActionList>
-              </ActionMenu.Overlay>
-            </ActionMenu>
+
+          {/* Integrated Filters Section - Only show when filters are active */}
+          {areFiltersActive && (
+            <Box
+              sx={{
+                border: '1px solid',
+                borderColor: 'border.default',
+                borderRadius: 2,
+                overflow: 'hidden',
+              }}
+            >
+            {/* Filter Header */}
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: 2,
+                bg: hasActiveFilters ? 'accent.subtle' : 'canvas.subtle',
+                borderBottom: areFiltersCollapsed ? 'none' : '1px solid',
+                borderColor: 'border.default',
+                cursor: 'pointer',
+                ':hover': {
+                  bg: hasActiveFilters ? 'accent.muted' : 'canvas.default',
+                },
+              }}
+              onClick={() => setAreFiltersCollapsed(!areFiltersCollapsed)}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {areFiltersCollapsed ? (
+                    <ChevronRightIconCollapse size={16} />
+                  ) : (
+                    <ChevronDownIcon size={16} />
+                  )}
+                </Box>
+                <FilterIcon size={16} />
+                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', m: 0 }}>
+                  Filters
+                                     {hasActiveFilters && (
+                     <Text as="span" sx={{ 
+                       fontSize: 0, 
+                       fontWeight: 'bold',
+                       ml: 1,
+                       px: 1,
+                       py: 0.5,
+                       bg: 'accent.emphasis',
+                       color: 'fg.onEmphasis',
+                       borderRadius: 1
+                     }}>
+                       ON
+                     </Text>
+                   )}
+                </Heading>
+              </Box>
+              {hasActiveFilters && (
+                <Button
+                  size="small"
+                  variant="danger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearAllFilters();
+                  }}
+                  sx={buttonStyles}
+                >
+                  Clear All
+                </Button>
+              )}
+            </Box>
+
+            {/* Filter Summary when collapsed - Simple single row */}
+            {areFiltersCollapsed && hasActiveFilters && (
+              <Box sx={{ p: 2, bg: 'canvas.default' }}>
+                <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                  Filters: {getFilterSummary()}
+                </Text>
+              </Box>
+            )}
+
+            {/* Filter Content when expanded */}
+            {!areFiltersCollapsed && (
+              <Box sx={{ p: 3 }}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 3,
+                  }}
+                >
+                  {/* Type Filter */}
+                  <Box>
+                    <Heading
+                      as="h4"
+                      sx={{
+                        fontSize: 1,
+                        fontWeight: 'semibold',
+                        color: 'fg.muted',
+                        mb: 2,
+                      }}
+                    >
+                      Type
+                    </Heading>
+                    <ButtonGroup sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Button
+                        variant={filter === 'issue' ? 'primary' : 'default'}
+                        onClick={() =>
+                          setFilter(filter === 'issue' ? 'all' : 'issue')
+                        }
+                        size="small"
+                        sx={{ ...buttonStyles, fontSize: 0 }}
+                      >
+                        Issues ({countItemsMatchingFilter(baseResults, 'type', 'issue', excludedLabels)})
+                      </Button>
+                      <Button
+                        variant={filter === 'pr' ? 'primary' : 'default'}
+                        onClick={() => setFilter(filter === 'pr' ? 'all' : 'pr')}
+                        size="small"
+                        sx={{ ...buttonStyles, fontSize: 0 }}
+                      >
+                        PRs ({countItemsMatchingFilter(baseResults, 'type', 'pr', excludedLabels)})
+                      </Button>
+                      <Button
+                        variant={filter === 'comment' ? 'primary' : 'default'}
+                        onClick={() =>
+                          setFilter(filter === 'comment' ? 'all' : 'comment')
+                        }
+                        size="small"
+                        sx={{ ...buttonStyles, fontSize: 0 }}
+                      >
+                        Comments ({countItemsMatchingFilter(baseResults, 'type', 'comment', excludedLabels)})
+                      </Button>
+                    </ButtonGroup>
+                  </Box>
+
+                  {/* Status Filter */}
+                  <Box>
+                    <Heading
+                      as="h4"
+                      sx={{
+                        fontSize: 1,
+                        fontWeight: 'semibold',
+                        color: 'fg.muted',
+                        mb: 2,
+                      }}
+                    >
+                      Status
+                    </Heading>
+                    <ButtonGroup sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Button
+                        variant={statusFilter === 'open' ? 'primary' : 'default'}
+                        onClick={() =>
+                          setStatusFilter(statusFilter === 'open' ? 'all' : 'open')
+                        }
+                        size="small"
+                        sx={{ ...buttonStyles, fontSize: 0 }}
+                      >
+                        Open ({countItemsMatchingFilter(baseResults, 'status', 'open', excludedLabels)})
+                      </Button>
+                      <Button
+                        variant={statusFilter === 'closed' ? 'primary' : 'default'}
+                        onClick={() =>
+                          setStatusFilter(statusFilter === 'closed' ? 'all' : 'closed')
+                        }
+                        size="small"
+                        sx={{ ...buttonStyles, fontSize: 0 }}
+                      >
+                        Closed ({countItemsMatchingFilter(baseResults, 'status', 'closed', excludedLabels)})
+                      </Button>
+                      <Button
+                        variant={statusFilter === 'merged' ? 'primary' : 'default'}
+                        onClick={() =>
+                          setStatusFilter(statusFilter === 'merged' ? 'all' : 'merged')
+                        }
+                        size="small"
+                        sx={{ ...buttonStyles, fontSize: 0 }}
+                      >
+                        Merged ({countItemsMatchingFilter(baseResults, 'status', 'merged', excludedLabels)})
+                      </Button>
+                    </ButtonGroup>
+                  </Box>
+                </Box>
+
+                                 {/* Label Filters - Full functionality restored */}
+                 {availableLabels.length > 0 && (
+                   <Box sx={{ mt: 3 }}>
+                     <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: ['1fr', '1fr 1fr'] }}>
+                       {/* Include Labels */}
+                       <Box>
+                         <Heading
+                           as="h4"
+                           sx={{
+                             fontSize: 1,
+                             fontWeight: 'semibold',
+                             color: 'success.fg',
+                             mb: 2,
+                           }}
+                         >
+                           Include Labels
+                           <Text as="span" sx={{ fontSize: 0, color: 'fg.muted', fontWeight: 'normal', ml: 1 }}>
+                             (show items with ALL selected)
+                           </Text>
+                         </Heading>
+                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                           {availableLabels.map(label => {
+                             const isSelected = includedLabels.includes(label);
+                             const isExcluded = excludedLabels.includes(label);
+                             const count = countItemsMatchingFilter(baseResults, 'label', label, excludedLabels);
+                             
+                             return (
+                               <Button
+                                 key={label}
+                                 variant={isSelected ? 'primary' : 'default'}
+                                 size="small"
+                                 disabled={isExcluded || count === 0}
+                                 onClick={() => {
+                                   if (isSelected) {
+                                     setIncludedLabels(prev => prev.filter(l => l !== label));
+                                   } else {
+                                     setIncludedLabels(prev => [...prev, label]);
+                                     // Remove from excluded if it was there
+                                     setExcludedLabels(prev => prev.filter(l => l !== label));
+                                   }
+                                 }}
+                                 sx={{
+                                   ...buttonStyles,
+                                   fontSize: 0,
+                                   border: isSelected ? '2px solid' : '1px solid',
+                                   borderColor: isSelected ? 'success.emphasis' : 'border.default',
+                                   opacity: isExcluded ? 0.5 : 1,
+                                 }}
+                               >
+                                 {label} ({count})
+                               </Button>
+                             );
+                           })}
+                         </Box>
+                         {includedLabels.length > 0 && (
+                           <Button
+                             variant="default"
+                             size="small"
+                             onClick={() => setIncludedLabels([])}
+                             sx={{ ...buttonStyles, fontSize: 0, mt: 1 }}
+                           >
+                             Clear ({includedLabels.length})
+                           </Button>
+                         )}
+                       </Box>
+
+                       {/* Exclude Labels */}
+                       <Box>
+                         <Heading
+                           as="h4"
+                           sx={{
+                             fontSize: 1,
+                             fontWeight: 'semibold',
+                             color: 'danger.fg',
+                             mb: 2,
+                           }}
+                         >
+                           Exclude Labels
+                           <Text as="span" sx={{ fontSize: 0, color: 'fg.muted', fontWeight: 'normal', ml: 1 }}>
+                             (hide items with ANY selected)
+                           </Text>
+                         </Heading>
+                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                           {availableLabels.map(label => {
+                             const isSelected = excludedLabels.includes(label);
+                             const isIncluded = includedLabels.includes(label);
+                             const count = countItemsMatchingFilter(results, 'label', label, []);
+                             
+                             return (
+                               <Button
+                                 key={label}
+                                 variant={isSelected ? 'primary' : 'default'}
+                                 size="small"
+                                 disabled={isIncluded || count === 0}
+                                 onClick={() => {
+                                   if (isSelected) {
+                                     setExcludedLabels(prev => prev.filter(l => l !== label));
+                                   } else {
+                                     setExcludedLabels(prev => [...prev, label]);
+                                     // Remove from included if it was there
+                                     setIncludedLabels(prev => prev.filter(l => l !== label));
+                                   }
+                                 }}
+                                 sx={{
+                                   ...buttonStyles,
+                                   fontSize: 0,
+                                   border: isSelected ? '2px solid' : '1px solid',
+                                   borderColor: isSelected ? 'danger.emphasis' : 'border.default',
+                                   opacity: isIncluded ? 0.5 : 1,
+                                 }}
+                               >
+                                 {label} ({count})
+                               </Button>
+                             );
+                           })}
+                         </Box>
+                         {excludedLabels.length > 0 && (
+                           <Button
+                             variant="default"
+                             size="small"
+                             onClick={() => setExcludedLabels([])}
+                             sx={{ ...buttonStyles, fontSize: 0, mt: 1 }}
+                           >
+                             Clear ({excludedLabels.length})
+                           </Button>
+                         )}
+                       </Box>
+                     </Box>
+                   </Box>
+                 )}
+
+                {/* Repository Filters */}
+                {getUniqueRepositories.length > 1 && (
+                  <Box sx={{ mt: 3 }}>
+                    <Heading
+                      as="h4"
+                      sx={{
+                        fontSize: 1,
+                        fontWeight: 'semibold',
+                        color: 'fg.muted',
+                        mb: 2,
+                      }}
+                    >
+                      Repositories
+                    </Heading>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      {getUniqueRepositories.map(repo => (
+                        <Button
+                          key={repo}
+                          variant={repoFilters.includes(repo) ? 'primary' : 'default'}
+                          onClick={() => handleRepoFilterChange(repo)}
+                          size="small"
+                          sx={{ ...buttonStyles, fontSize: 0 }}
+                        >
+                          {repo} ({results.filter(item => 
+                            item.repository_url?.includes(repo)
+                          ).length})
+                        </Button>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            )}
           </Box>
+          )}
 
           {/* Results List */}
-          {isCompactView ? (
-            <Box sx={{ gap: 1 }}>
-              {filteredResults.map(item => (
+          {(() => {
+            const displayResults = areFiltersActive ? filteredResults : results;
+            
+            if (displayResults.length === 0) {
+              return (
+                <Box
+                  sx={{
+                    p: 4,
+                    textAlign: 'center',
+                    border: '1px solid',
+                    borderColor: 'border.default',
+                    borderRadius: 2,
+                    bg: 'canvas.subtle',
+                  }}
+                >
+                  {results.length === 0 ? (
+                    <Box>
+                      <Text sx={{ fontSize: 2, color: 'fg.muted', mb: 2 }}>
+                        No data available
+                      </Text>
+                      <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
+                        Load some GitHub data to see results here.
+                      </Text>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Text sx={{ fontSize: 2, color: 'fg.muted', mb: 2 }}>
+                        No matches found
+                      </Text>
+                      <Text sx={{ fontSize: 1, color: 'fg.muted', mb: 3 }}>
+                        Your current filters don't match any of the {results.length} available items.
+                      </Text>
+                      {hasActiveFilters && (
+                        <Button
+                          variant="default"
+                          onClick={clearAllFilters}
+                          sx={buttonStyles}
+                        >
+                          Clear All Filters
+                        </Button>
+                      )}
+                    </Box>
+                  )}
+                </Box>
+              );
+            }
+
+            return isCompactView ? (
+              <Box sx={{ gap: 1 }}>
+                {displayResults.map(item => (
                 <Box
                   key={item.id}
                   sx={{
@@ -1191,9 +1636,9 @@ const ResultsList = memo(function ResultsList({
                 </Box>
               ))}
             </Box>
-          ) : (
-            <Stack sx={{ gap: 3 }}>
-              {filteredResults.map(item => (
+                        ) : (
+                <Stack sx={{ gap: 3 }}>
+                  {displayResults.map(item => (
                 <Box
                   key={item.id}
                   sx={{
@@ -1338,7 +1783,7 @@ const ResultsList = memo(function ResultsList({
                   >
                     {/* Display labels */}
                     {item.labels &&
-                      item.labels.map((l: any) => (
+                      item.labels.map((l: { name: string; color?: string; description?: string }) => (
                         <Label
                           key={l.name}
                           sx={{
@@ -1402,9 +1847,9 @@ const ResultsList = memo(function ResultsList({
                 </Box>
               ))}
             </Stack>
-          )}
+            );
+          })()}
         </Box>
-      )}
 
       {/* Description Dialog */}
       {selectedItemForDialog && (

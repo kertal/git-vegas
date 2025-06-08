@@ -158,7 +158,6 @@ describe('Consolidated Settings', () => {
     it('should consolidate UI settings into single localStorage key', () => {
       const defaultUISettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated',
       };
 
       const { result } = renderHook(() =>
@@ -168,7 +167,6 @@ describe('Consolidated Settings', () => {
       act(() => {
         result.current[1]({
           isCompactView: true,
-          sortOrder: 'created',
         });
       });
 
@@ -178,7 +176,6 @@ describe('Consolidated Settings', () => {
       const parsed = JSON.parse(stored!);
       expect(parsed).toEqual({
         isCompactView: true,
-        sortOrder: 'created',
       });
     });
 
@@ -189,7 +186,6 @@ describe('Consolidated Settings', () => {
       // For now, we'll test the internal functionality
       const defaultUISettings: UISettings = {
         isCompactView: false,
-        sortOrder: 'updated',
       };
 
       const { result } = renderHook(() =>
@@ -206,7 +202,6 @@ describe('Consolidated Settings', () => {
 
       expect(result.current[0]).toEqual({
         isCompactView: true,
-        sortOrder: 'updated',
       });
     });
   });

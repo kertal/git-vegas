@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Box, Text, Avatar, Link, Label, Timeline } from '@primer/react';
+import { Box, Text, Avatar, Link } from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -10,8 +10,7 @@ import {
   RepoIcon,
 } from '@primer/octicons-react';
 import { GitHubItem } from '../types';
-import { formatDistanceToNow, format } from 'date-fns';
-import { getContrastColor } from '../utils';
+import { formatDistanceToNow } from 'date-fns';
 
 interface TimelineViewProps {
   items: GitHubItem[];
@@ -120,7 +119,7 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
       {/* Compact timeline */}
       <Box sx={{ p: 2 }}>
         {sortedItems.map((item, index) => {
-          const eventType = getEventType(item);
+          // const eventType = getEventType(item); // unused
           const repoName = formatRepoName(item.repository_url);
           const eventDescription = getEventDescription(item);
 

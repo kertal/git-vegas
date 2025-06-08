@@ -6,8 +6,8 @@ import { FormSettings } from '../types';
 // const isSet = (value: any): value is Set<any> => value instanceof Set;
 
 // Enhanced serialization for complex objects containing Sets
-const serializeValue = (value: any): string => {
-  const replacer = (_key: string, val: any) => {
+const serializeValue = (value: unknown): string => {
+  const replacer = (_key: string, val: unknown) => {
     if (val instanceof Set) {
       return { __type: 'Set', __value: Array.from(val) };
     }
@@ -17,14 +17,14 @@ const serializeValue = (value: any): string => {
 };
 
 // Enhanced deserialization for complex objects containing Sets
-const deserializeValue = (jsonString: string): any => {
-  const reviver = (_key: string, val: any) => {
-    if (val && typeof val === 'object' && val.__type === 'Set') {
-      return new Set(val.__value);
+const deserializeValue = <T>(jsonString: string): T => {
+  const reviver = (_key: string, val: unknown) => {
+    if (val && typeof val === 'object' && val !== null && 'length' in val === false && '__type' in val && '__value' in val && (val as { __type: string; __value: unknown }).__type === 'Set') {
+      return new Set((val as { __type: string; __value: unknown[] }).__value);
     }
     return val;
   };
-  return JSON.parse(jsonString, reviver);
+  return JSON.parse(jsonString, reviver) as T;
 };
 
 // Specialized hook for form settings that handles URL parameter mapping
@@ -38,7 +38,7 @@ export function useFormSettings(key: string, initialValue: FormSettings) {
       const item = window.localStorage.getItem(key);
       if (item !== null) {
         try {
-          const parsedItem = deserializeValue(item);
+          const parsedItem = deserializeValue<FormSettings>(item);
           result = { ...initialValue, ...parsedItem };
         } catch {
           // If deserialization fails, use initial value
@@ -101,7 +101,7 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
       if (item === null) return initialValue;
 
       try {
-        return deserializeValue(item);
+        return deserializeValue<T>(item);
       } catch {
         // If deserialization fails, return the raw item or initial value
         return item as unknown as T;
