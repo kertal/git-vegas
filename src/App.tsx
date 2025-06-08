@@ -121,8 +121,13 @@ function App() {
     }
   );
 
-  const [currentFilters, setCurrentFilters] = useLocalStorage<ResultsFilter>(
-    'github-current-filters',
+  // Separate filter states for different API modes
+  const [searchFilters, setSearchFilters] = useLocalStorage<ResultsFilter>(
+    'github-search-filters',
+    createDefaultFilter()
+  );
+  const [eventsFilters, setEventsFilters] = useLocalStorage<ResultsFilter>(
+    'github-events-filters',
     createDefaultFilter()
   );
   const [searchResults, setSearchResults] = useLocalStorage<GitHubItem[]>(
@@ -144,10 +149,18 @@ function App() {
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
-  // Get the appropriate results based on current API mode
+  // Get the appropriate results and filters based on current API mode
   const results = useMemo(() => {
     return apiMode === 'events' ? eventsResults : searchResults;
   }, [apiMode, eventsResults, searchResults]);
+
+  const currentFilters = useMemo(() => {
+    return apiMode === 'events' ? eventsFilters : searchFilters;
+  }, [apiMode, eventsFilters, searchFilters]);
+
+  const setCurrentFilters = useMemo(() => {
+    return apiMode === 'events' ? setEventsFilters : setSearchFilters;
+  }, [apiMode, setEventsFilters, setSearchFilters]);
   const { isCompactView, sortOrder } = uiSettings;
   const {
     descriptionVisible,
@@ -706,7 +719,7 @@ function App() {
     [setExpanded]
   );
 
-  // Clear all filters using new utilities
+  // Clear all filters for current mode only (preserves filters for other mode)
   const clearAllFilters = useCallback(() => {
     setCurrentFilters(createDefaultFilter());
   }, [setCurrentFilters]);
@@ -762,341 +775,191 @@ function App() {
   }, [setSelectedItems]);
 
   return (
-  
-
-      <PageLayout sx={{ '--spacing': '0 !important' }}>
-        <PageLayout.Header>
-
-          <PageHeader role="banner" aria-label="Title">
-            <PageHeader.TitleArea>            <PageHeader.LeadingVisual>
-              🎰
-            </PageHeader.LeadingVisual>
-              <PageHeader.Title>Git Vegas</PageHeader.Title>
-            </PageHeader.TitleArea>
-            <PageHeader.Actions>
-
-              <ShareButton
-                formSettings={formSettings}
-                uiSettings={uiSettings}
-                currentFilters={currentFilters}
-                searchText={currentFilters.searchText}
-                size="medium"
-                variant="invisible"
-              />
-              <IconButton
-                icon={GearIcon}
-                aria-label="Settings"
-                onClick={() => setIsSettingsOpen(true)}
-                variant="invisible"
-              />
-
-            </PageHeader.Actions>
-          </PageHeader>
 
 
+    <PageLayout sx={{ '--spacing': '0 !important' }}>
+      <PageLayout.Header>
+
+        <PageHeader role="banner" aria-label="Title">
+          <PageHeader.TitleArea>            <PageHeader.LeadingVisual>
+            🎰
+          </PageHeader.LeadingVisual>
+            <PageHeader.Title>Git Vegas</PageHeader.Title>
+          </PageHeader.TitleArea>
+          <PageHeader.Actions>
+
+            <ShareButton
+              formSettings={formSettings}
+              uiSettings={uiSettings}
+              currentFilters={currentFilters}
+              searchText={currentFilters.searchText}
+              size="medium"
+              variant="invisible"
+            />
+            <IconButton
+              icon={GearIcon}
+              aria-label="Settings"
+              onClick={() => setIsSettingsOpen(true)}
+              variant="invisible"
+            />
+
+          </PageHeader.Actions>
+        </PageHeader>
 
 
-        </PageLayout.Header>
 
-        <PageLayout.Content sx={{ px: 3, py: 4 }}>
-          <FormContext.Provider
+
+      </PageLayout.Header>
+
+      <PageLayout.Content sx={{ px: 3, py: 4 }}>
+        <FormContext.Provider
+          value={{
+            username,
+            startDate,
+            endDate,
+            githubToken,
+            apiMode,
+            setUsername,
+            setStartDate,
+            setEndDate,
+            setGithubToken,
+            setApiMode,
+            handleSearch,
+            handleUsernameBlur,
+            validateUsernameFormat,
+            loading,
+            loadingProgress,
+            error,
+          }}
+        >
+          <ResultsContext.Provider
             value={{
-              username,
-              startDate,
-              endDate,
-              githubToken,
-              apiMode,
-              setUsername,
-              setStartDate,
-              setEndDate,
-              setGithubToken,
-              setApiMode,
-              handleSearch,
-              handleUsernameBlur,
-              validateUsernameFormat,
-              loading,
-              loadingProgress,
-              error,
+              results,
+              filteredResults,
+              filter,
+              statusFilter,
+              sortOrder,
+              includedLabels: includedLabels || [],
+              excludedLabels: excludedLabels || [],
+              searchText,
+              repoFilters: repoFilters || [],
+              availableLabels,
+              setFilter,
+              setStatusFilter,
+              setSortOrder,
+              setIncludedLabels,
+              setExcludedLabels,
+              setSearchText,
+              toggleDescriptionVisibility,
+              toggleExpand,
+              copyResultsToClipboard,
+              descriptionVisible,
+              expanded,
+              clipboardMessage,
+              clearAllFilters,
+              isCompactView,
+              setIsCompactView,
+              selectedItems,
+              toggleItemSelection,
+              selectAllItems,
+              clearSelection,
+              setRepoFilters,
             }}
           >
-            <ResultsContext.Provider
-              value={{
-                results,
-                filteredResults,
-                filter,
-                statusFilter,
-                sortOrder,
-                includedLabels: includedLabels || [],
-                excludedLabels: excludedLabels || [],
-                searchText,
-                repoFilters: repoFilters || [],
-                availableLabels,
-                setFilter,
-                setStatusFilter,
-                setSortOrder,
-                setIncludedLabels,
-                setExcludedLabels,
-                setSearchText,
-                toggleDescriptionVisibility,
-                toggleExpand,
-                copyResultsToClipboard,
-                descriptionVisible,
-                expanded,
-                clipboardMessage,
-                clearAllFilters,
-                isCompactView,
-                setIsCompactView,
-                selectedItems,
-                toggleItemSelection,
-                selectAllItems,
-                clearSelection,
-                setRepoFilters,
+            <SearchForm />
+            {apiMode === 'events' ? (
+              <TimelineView items={results} />
+            ) : (
+              <ResultsList
+                useResultsContext={useResultsContext}
+                countItemsMatchingFilter={countItemsMatchingFilter}
+                buttonStyles={buttonStyles}
+              />
+            )}
+            <SettingsDialog
+              isOpen={isSettingsOpen}
+              onDismiss={() => setIsSettingsOpen(false)}
+            />
+          </ResultsContext.Provider>
+        </FormContext.Provider>
+      </PageLayout.Content>
+
+      <PageLayout.Footer
+        padding="condensed"
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            py: 1,
+            minHeight: '40px',
+          }}
+        >
+          {/* Left side: Slot Machine */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <SlotMachineLoader
+              avatarUrls={(Array.isArray(results) ? results : [])
+                .map(item => item.user.avatar_url)
+                .filter(Boolean)}
+              isLoading={loading || initialLoading}
+              isManuallySpinning={isManuallySpinning}
+            />
+            <Button
+              variant="invisible"
+              onClick={handleManualSpin}
+              disabled={isManuallySpinning || loading || initialLoading}
+              sx={{
+                p: 1,
+                color: 'fg.default',
+                opacity:
+                  isManuallySpinning || loading || initialLoading ? 0.5 : 1,
+                '&:hover:not(:disabled)': {
+                  color: 'accent.fg',
+                  transform: 'scale(1.1)',
+                  transition: 'transform 0.2s ease-in-out',
+                },
+                '&:disabled': {
+                  cursor: 'not-allowed',
+                },
+                '&:focus': {
+                  outline: 'none',
+                  boxShadow: 'none',
+                },
+                cursor: 'pointer',
+                fontSize: '12px',
+                lineHeight: 1,
+                height: 'auto',
+                minWidth: 'auto',
               }}
             >
-              <SearchForm />
-              {apiMode === 'events' ? (
-                <>
-                  {/* Events Timeline with Basic Filtering */}
-                  <Box
-                    sx={{
-                      margin: '16px auto 0',
-                      maxWidth: '1200px',
-                      bg: 'canvas.subtle',
-                      borderRadius: 2,
-                      border: '1px solid',
-                      borderColor: 'border.default',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {/* Header */}
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 2,
-                        p: 2,
-                        bg: 'canvas.default',
-                        borderBottom: '1px solid',
-                        borderColor: 'border.default',
-                      }}
-                    >
-                      <Text sx={{ fontSize: 2, fontWeight: 'semibold', color: 'fg.default', m: 0 }}>
-                        GitHub Events Timeline
-                      </Text>
-                      <Text sx={{ color: 'fg.muted' }}>
-                        {filteredResults.length} events
-                      </Text>
-                    </Box>
+              🕹️
+            </Button>
+          </Box>
 
-                    {/* Basic Filters for Events */}
-                    <Box sx={{ p: 2 }}>
-                      <Box
-                        sx={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                          gap: 3,
-                        }}
-                      >
-                        {/* Type Filter */}
-                        <Box sx={{ gap: 1 }}>
-                          <Heading
-                            as="h3"
-                            sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted', mb: 1 }}
-                          >
-                            Type
-                          </Heading>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            <Button
-                              size="small"
-                              variant={filter === 'all' ? 'primary' : 'default'}
-                              onClick={() => setFilter('all')}
-                              sx={buttonStyles}
-                            >
-                              All ({countItemsMatchingFilter(results, 'type', 'all', excludedLabels || [])})
-                            </Button>
-                            <Button
-                              size="small"
-                              variant={filter === 'issue' ? 'primary' : 'default'}
-                              onClick={() => setFilter('issue')}
-                              sx={buttonStyles}
-                            >
-                              Issues ({countItemsMatchingFilter(results, 'type', 'issue', excludedLabels || [])})
-                            </Button>
-                            <Button
-                              size="small"
-                              variant={filter === 'pr' ? 'primary' : 'default'}
-                              onClick={() => setFilter('pr')}
-                              sx={buttonStyles}
-                            >
-                              PRs ({countItemsMatchingFilter(results, 'type', 'pr', excludedLabels || [])})
-                            </Button>
-                            <Button
-                              size="small"
-                              variant={filter === 'comment' ? 'primary' : 'default'}
-                              onClick={() => setFilter('comment')}
-                              sx={buttonStyles}
-                            >
-                              Comments ({countItemsMatchingFilter(results, 'type', 'comment', excludedLabels || [])})
-                            </Button>
-                          </Box>
-                        </Box>
-
-                        {/* Status Filter */}
-                        <Box sx={{ gap: 1 }}>
-                          <Heading
-                            as="h3"
-                            sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted', mb: 1 }}
-                          >
-                            Status
-                          </Heading>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            <Button
-                              size="small"
-                              variant={statusFilter === 'all' ? 'primary' : 'default'}
-                              onClick={() => setStatusFilter('all')}
-                              sx={buttonStyles}
-                            >
-                              All ({countItemsMatchingFilter(results, 'status', 'all', excludedLabels || [])})
-                            </Button>
-                            <Button
-                              size="small"
-                              variant={statusFilter === 'open' ? 'primary' : 'default'}
-                              onClick={() => setStatusFilter('open')}
-                              sx={buttonStyles}
-                            >
-                              Open ({countItemsMatchingFilter(results, 'status', 'open', excludedLabels || [])})
-                            </Button>
-                            <Button
-                              size="small"
-                              variant={statusFilter === 'closed' ? 'primary' : 'default'}
-                              onClick={() => setStatusFilter('closed')}
-                              sx={buttonStyles}
-                            >
-                              Closed ({countItemsMatchingFilter(results, 'status', 'closed', excludedLabels || [])})
-                            </Button>
-                          </Box>
-                        </Box>
-                      </Box>
-
-                      {/* Clear Filters Button */}
-                      {(filter !== 'all' || statusFilter !== 'all') && (
-                        <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'border.muted' }}>
-                          <Button
-                            variant="danger"
-                            size="small"
-                            onClick={clearAllFilters}
-                            sx={buttonStyles}
-                          >
-                            Clear All Filters
-                          </Button>
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                  
-                  <TimelineView items={filteredResults} />
-                </>
-              ) : (
-                <ResultsList
-                  useResultsContext={useResultsContext}
-                  countItemsMatchingFilter={countItemsMatchingFilter}
-                  buttonStyles={buttonStyles}
-                />
-              )}
-              <SettingsDialog
-                isOpen={isSettingsOpen}
-                onDismiss={() => setIsSettingsOpen(false)}
-              />
-            </ResultsContext.Provider>
-          </FormContext.Provider>
-        </PageLayout.Content>
-
-        <PageLayout.Footer
-          sx={{
-            position: 'sticky',
-            bottom: 0,
-            zIndex: 10,
-            bg: 'canvas.default',
-            borderTop: '1px solid',
-            borderColor: 'border.default',
-            backdropFilter: 'blur(8px)',
-          }}
-          padding="condensed"
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              py: 1,
-              minHeight: '40px',
-            }}
-          >
-            {/* Left side: Slot Machine */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <SlotMachineLoader
-                avatarUrls={(Array.isArray(results) ? results : [])
-                  .map(item => item.user.avatar_url)
-                  .filter(Boolean)}
-                isLoading={loading || initialLoading}
-                isManuallySpinning={isManuallySpinning}
-              />
-              <Button
-                variant="invisible"
-                onClick={handleManualSpin}
-                disabled={isManuallySpinning || loading || initialLoading}
+          {/* Right side: Loading Message */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <OfflineBanner />
+            {(loading || initialLoading) && loadingProgress && (
+              <Box
                 sx={{
-                  p: 1,
-                  color: 'fg.default',
-                  opacity:
-                    isManuallySpinning || loading || initialLoading ? 0.5 : 1,
-                  '&:hover:not(:disabled)': {
-                    color: 'accent.fg',
-                    transform: 'scale(1.1)',
-                    transition: 'transform 0.2s ease-in-out',
-                  },
-                  '&:disabled': {
-                    cursor: 'not-allowed',
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                    boxShadow: 'none',
-                  },
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  lineHeight: 1,
-                  height: 'auto',
-                  minWidth: 'auto',
+                  px: 3,
+                  py: 1,
+                  bg: 'attention.subtle',
+                  color: 'attention.fg',
+                  borderRadius: 2,
+                  fontSize: 1,
+                  fontWeight: 'medium',
                 }}
               >
-                🕹️
-              </Button>
-            </Box>
-
-            {/* Right side: Loading Message */}
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <OfflineBanner />
-              {(loading || initialLoading) && loadingProgress && (
-                <Box
-                  sx={{
-                    px: 3,
-                    py: 1,
-                    bg: 'attention.subtle',
-                    color: 'attention.fg',
-                    borderRadius: 2,
-                    fontSize: 1,
-                    fontWeight: 'medium',
-                  }}
-                >
-                  {loadingProgress}
-                </Box>
-              )}
-            </Box>
+                {loadingProgress}
+              </Box>
+            )}
           </Box>
-        </PageLayout.Footer>
-      </PageLayout>
-  
+        </Box>
+      </PageLayout.Footer>
+    </PageLayout>
+
   );
 }
 

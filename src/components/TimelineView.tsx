@@ -86,220 +86,133 @@ const TimelineView = memo(function TimelineView({ items }: TimelineViewProps) {
   }
 
   return (
-    <Box>
-      {/* Timeline Section */}
+    <Box
+      sx={{
+        maxWidth: '1200px',
+        margin: '16px auto',
+        bg: 'canvas.default',
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'border.default',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Compact header */}
       <Box
         sx={{
-          maxWidth: '1200px',
-          margin: '24px auto',
-          bg: 'canvas.default',
-          borderRadius: 2,
-          border: '1px solid',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          p: 2,
+          bg: 'canvas.subtle',
+          borderBottom: '1px solid',
           borderColor: 'border.default',
-          p: 3,
         }}
       >
-        {/* Timeline header */}
-        <Box
-          sx={{
-            mb: 3,
-            pb: 3,
-            borderBottom: '1px solid',
-            borderColor: 'border.muted',
-          }}
-        >
-          <Text
-            as="h2"
-            sx={{
-              fontSize: 3,
-              fontWeight: 'semibold',
-              color: 'fg.default',
-              m: 0,
-            }}
-          >
-            Activity Timeline ({sortedItems.length} events)
-          </Text>
-        </Box>
+        <Text sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.default' }}>
+          Activity Timeline
+        </Text>
+        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+          {sortedItems.length} events
+        </Text>
+      </Box>
 
-        <Timeline>
+      {/* Compact timeline */}
+      <Box sx={{ p: 2 }}>
         {sortedItems.map((item, index) => {
           const eventType = getEventType(item);
           const repoName = formatRepoName(item.repository_url);
           const eventDescription = getEventDescription(item);
 
           return (
-            <Timeline.Item key={`${item.id}-${index}`}>
-              <Timeline.Badge>{getEventIcon(item)}</Timeline.Badge>
+            <Box
+              key={`${item.id}-${index}`}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                py: 1,
+                px: 1,
+                mb: 1,
+                borderRadius: 1,
+                '&:hover': {
+                  bg: 'canvas.subtle',
+                },
+                fontSize: 0,
+              }}
+            >
+              {/* Icon */}
+              <Box sx={{ color: 'fg.muted', flexShrink: 0 }}>
+                {getEventIcon(item)}
+              </Box>
 
-              <Timeline.Body>
-                <Box sx={{ mb: 3 }}>
-                  {/* Header with user action and timestamp */}
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      mb: 2,
-                    }}
-                  >
-                    <Avatar
-                      src={item.user.avatar_url}
-                      size={20}
-                      alt={item.user.login}
-                    />
-                    <Link
-                      href={item.user.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{ fontWeight: 'semibold', fontSize: 1 }}
-                    >
-                      {item.user.login}
-                    </Link>
-                    <Text color="fg.muted" sx={{ fontSize: 1 }}>
-                      {eventDescription}
-                    </Text>
-                    <Label
-                      size="small"
-                      variant={
-                        eventType === 'pull_request'
-                          ? 'accent'
-                          : eventType === 'comment'
-                            ? 'secondary'
-                            : 'attention'
-                      }
-                    >
-                      #{item.number}
-                    </Label>
-                    <Text color="fg.muted" sx={{ fontSize: 1 }}>
-                      in
-                    </Text>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <RepoIcon size={12} />
-                      <Link
-                        href={`https://github.com/${repoName}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        sx={{ fontSize: 1, fontWeight: 'semibold' }}
-                      >
-                        {repoName}
-                      </Link>
-                    </Box>
-                  </Box>
+              {/* Avatar */}
+              <Avatar
+                src={item.user.avatar_url}
+                size={16}
+                alt={item.user.login}
+                sx={{ flexShrink: 0 }}
+              />
 
-                  {/* Timestamp */}
-                  <Box sx={{ mb: 2 }}>
-                    <Text color="fg.muted" sx={{ fontSize: 0 }}>
-                      {format(new Date(item.created_at), 'PPP p')} •{' '}
-                      {formatDistanceToNow(new Date(item.created_at), {
-                        addSuffix: true,
-                      })}
-                    </Text>
-                  </Box>
+              {/* User and action */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                <Link
+                  href={item.user.html_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ fontWeight: 'semibold', flexShrink: 0 }}
+                >
+                  {item.user.login}
+                </Link>
+                <Text color="fg.muted" sx={{ flexShrink: 0 }}>
+                  {eventDescription}
+                </Text>
+              </Box>
 
-                  {/* Title and link */}
-                  <Box sx={{ mb: 3 }}>
-                    <Link
-                      href={item.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{
-                        fontSize: 2,
-                        fontWeight: 'semibold',
-                        color: 'fg.default',
-                        textDecoration: 'none',
-                        display: 'block',
-                        lineHeight: 1.3,
-                        '&:hover': {
-                          textDecoration: 'underline',
-                        },
-                      }}
-                    >
-                      {item.title}
-                    </Link>
-                  </Box>
+              {/* Title (truncated) */}
+              <Link
+                href={item.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{
+                  fontWeight: 'semibold',
+                  color: 'fg.default',
+                  textDecoration: 'none',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  minWidth: 0,
+                  flex: 1,
+                  '&:hover': {
+                    textDecoration: 'underline',
+                  },
+                }}
+              >
+                {item.title}
+              </Link>
 
-                  {/* Labels */}
-                  {item.labels && item.labels.length > 0 && (
-                    <Box
-                      sx={{ mb: 3, display: 'flex', gap: 1, flexWrap: 'wrap' }}
-                    >
-                      {item.labels.slice(0, 6).map((label, labelIndex) => (
-                        <Label
-                          key={labelIndex}
-                          size="small"
-                          sx={{
-                            backgroundColor: label.color
-                              ? `#${label.color}`
-                              : undefined,
-                            color: label.color
-                              ? getContrastColor(label.color)
-                              : undefined,
-                          }}
-                        >
-                          {label.name}
-                        </Label>
-                      ))}
-                      {item.labels.length > 6 && (
-                        <Text
-                          color="fg.muted"
-                          sx={{ fontSize: 0, alignSelf: 'center' }}
-                        >
-                          +{item.labels.length - 6} more
-                        </Text>
-                      )}
-                    </Box>
-                  )}
+              {/* Repo */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                <RepoIcon size={12} />
+                <Link
+                  href={`https://github.com/${repoName}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ color: 'fg.muted', textDecoration: 'none' }}
+                >
+                  {repoName.split('/')[1] || repoName}
+                </Link>
+              </Box>
 
-                  {/* Status information */}
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <Label
-                      size="small"
-                      variant={
-                        item.merged_at
-                          ? 'done'
-                          : item.state === 'open'
-                            ? 'success'
-                            : 'secondary'
-                      }
-                    >
-                      {item.merged_at
-                        ? 'Merged'
-                        : item.state === 'open'
-                          ? 'Open'
-                          : 'Closed'}
-                    </Label>
-
-                    {item.merged_at && (
-                      <Text color="fg.muted" sx={{ fontSize: 0 }}>
-                        Merged{' '}
-                        {formatDistanceToNow(new Date(item.merged_at), {
-                          addSuffix: true,
-                        })}
-                      </Text>
-                    )}
-
-                    {item.closed_at && !item.merged_at && (
-                      <Text color="fg.muted" sx={{ fontSize: 0 }}>
-                        Closed{' '}
-                        {formatDistanceToNow(new Date(item.closed_at), {
-                          addSuffix: true,
-                        })}
-                      </Text>
-                    )}
-                  </Box>
-                </Box>
-              </Timeline.Body>
-            </Timeline.Item>
+              {/* Time */}
+              <Text color="fg.muted" sx={{ flexShrink: 0, fontSize: 0 }}>
+                {formatDistanceToNow(new Date(item.created_at), {
+                  addSuffix: true,
+                })}
+              </Text>
+            </Box>
           );
         })}
-        </Timeline>
       </Box>
     </Box>
   );

@@ -484,7 +484,7 @@ describe('resultsUtils', () => {
       const filters: ResultsFilter = {
         filter: 'all',
         statusFilter: 'open',
-        labelFilter: 'bug',
+        includedLabels: ['bug'],
         excludedLabels: ['performance'],
         repoFilters: ['user/repo1'],
         searchText: 'critical',
@@ -590,7 +590,7 @@ describe('resultsUtils', () => {
       expect(defaultFilter).toEqual({
         filter: 'all',
         statusFilter: 'all',
-        labelFilter: '',
+        includedLabels: [],
         excludedLabels: [],
         repoFilters: [],
         searchText: '',
@@ -609,7 +609,7 @@ describe('resultsUtils', () => {
       const filters: ResultsFilter = {
         filter: 'pr',
         statusFilter: 'open',
-        labelFilter: 'bug',
+        includedLabels: ['bug'],
         excludedLabels: ['wontfix'],
         repoFilters: ['user/repo1'],
         searchText: 'test query',
@@ -620,7 +620,7 @@ describe('resultsUtils', () => {
       expect(summary).toEqual([
         'Type: PRs',
         'Status: open',
-        'Label: bug',
+        'Include: bug',
         'Excluded labels: wontfix',
         'Search: "test query"',
         'Repos: user/repo1',
@@ -648,7 +648,7 @@ describe('resultsUtils', () => {
       const filters: ResultsFilter = {
         filter: 'pr',
         statusFilter: 'open',
-        labelFilter: 'bug',
+        includedLabels: ['bug'],
         excludedLabels: ['wontfix'],
         repoFilters: [],
         searchText: '',
@@ -671,7 +671,7 @@ describe('resultsUtils', () => {
       const filters: ResultsFilter = {
         filter: 'all',
         statusFilter: 'all',
-        labelFilter: '',
+        includedLabels: [],
         excludedLabels: [],
         repoFilters: ['octocat/Hello-World', 'octocat/Spoon-Knife'],
         searchText: '',
