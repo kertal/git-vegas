@@ -199,7 +199,7 @@ describe('urlState utilities', () => {
       expect(params.get('apiMode')).toBe('events');
       expect(params.get('isCompactView')).toBe('true');
       expect(params.get('filter')).toBeNull(); // default value
-      expect(params.get('sortOrder')).toBeNull(); // default value
+
     });
 
     it('should handle arrays correctly', () => {
@@ -240,7 +240,6 @@ describe('urlState utilities', () => {
       endDate: new Date().toISOString().split('T')[0],
       apiMode: 'search',
       isCompactView: false,
-      sortOrder: 'updated',
       filter: 'all',
       statusFilter: 'all',
       labelFilter: '',
@@ -375,7 +374,6 @@ describe('urlState utilities', () => {
 
       const uiSettings: UISettings = {
         isCompactView: true,
-        sortOrder: 'created',
       };
 
       const currentFilters: ResultsFilter = {

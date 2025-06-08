@@ -11,7 +11,6 @@ export interface ShareableState {
 
   // UI settings
   isCompactView: boolean;
-  sortOrder: 'updated' | 'created';
 
   // Filter settings
   filter: 'all' | 'issue' | 'pr' | 'comment';
@@ -32,7 +31,6 @@ const urlParamTypes: Record<
   endDate: 'string',
   apiMode: 'string',
   isCompactView: 'boolean',
-  sortOrder: 'string',
   filter: 'string',
   statusFilter: 'string',
   labelFilter: 'string',
@@ -44,7 +42,6 @@ const urlParamTypes: Record<
 // Valid values for enum-like parameters
 const validValues: Partial<Record<keyof ShareableState, string[]>> = {
   apiMode: ['search', 'events'],
-  sortOrder: ['updated', 'created'],
   filter: ['all', 'issue', 'pr', 'comment'],
   statusFilter: ['all', 'open', 'closed', 'merged'],
 };
@@ -152,7 +149,6 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
     endDate: new Date().toISOString().split('T')[0],
     apiMode: 'search',
     isCompactView: false,
-    sortOrder: 'updated',
     filter: 'all',
     statusFilter: 'all',
     labelFilter: '',
@@ -255,12 +251,11 @@ export function extractShareableState(
     endDate: formSettings.endDate,
     apiMode: formSettings.apiMode,
     isCompactView: uiSettings.isCompactView,
-    sortOrder: uiSettings.sortOrder,
     filter: currentFilters.filter,
     statusFilter: currentFilters.statusFilter,
-    labelFilter: currentFilters.labelFilter,
-    excludedLabels: currentFilters.excludedLabels,
-    repoFilters: currentFilters.repoFilters,
+    labelFilter: (currentFilters.includedLabels || []).join(','),
+    excludedLabels: currentFilters.excludedLabels || [],
+    repoFilters: currentFilters.repoFilters || [],
     searchText: searchText,
   };
 }
@@ -293,7 +288,6 @@ export function applyUrlOverrides(
     ...(urlState.isCompactView !== undefined && {
       isCompactView: urlState.isCompactView,
     }),
-    ...(urlState.sortOrder !== undefined && { sortOrder: urlState.sortOrder }),
   };
 
   const newCurrentFilters: ResultsFilter = {
@@ -303,7 +297,7 @@ export function applyUrlOverrides(
       statusFilter: urlState.statusFilter,
     }),
     ...(urlState.labelFilter !== undefined && {
-      labelFilter: urlState.labelFilter,
+      includedLabels: urlState.labelFilter.split(',').filter(Boolean),
     }),
     ...(urlState.excludedLabels !== undefined && {
       excludedLabels: urlState.excludedLabels,

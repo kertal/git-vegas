@@ -57,7 +57,6 @@ export interface ResultsContextType {
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
-  sortOrder: 'updated' | 'created';
   includedLabels: string[];
   excludedLabels: string[];
   searchText: string;
@@ -65,7 +64,6 @@ export interface ResultsContextType {
   availableLabels: string[];
   setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
-  setSortOrder: (sort: 'updated' | 'created') => void;
   setIncludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setSearchText: (searchText: string) => void;
@@ -113,7 +111,6 @@ export interface FormSettings {
 // UI/Display settings that control how data is presented
 export interface UISettings {
   isCompactView: boolean;
-  sortOrder: 'updated' | 'created';
 }
 
 // Item-specific UI state (visibility, expansion, selection)

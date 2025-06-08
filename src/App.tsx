@@ -6,7 +6,7 @@ import {
   useEffect,
   useMemo,
 } from 'react';
-import { Box, Button, Heading, IconButton, PageLayout, PageHeader, Text } from '@primer/react';
+import { Box, Button, IconButton, PageLayout, PageHeader } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 import './App.css';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
@@ -100,7 +100,6 @@ function App() {
     'github-ui-settings',
     {
       isCompactView: false,
-      sortOrder: 'updated',
     }
   );
 
@@ -161,7 +160,7 @@ function App() {
   const setCurrentFilters = useMemo(() => {
     return apiMode === 'events' ? setEventsFilters : setSearchFilters;
   }, [apiMode, setEventsFilters, setSearchFilters]);
-  const { isCompactView, sortOrder } = uiSettings;
+  const { isCompactView } = uiSettings;
   const {
     descriptionVisible,
     expanded,
@@ -304,12 +303,7 @@ function App() {
     [setUISettings]
   );
 
-  const setSortOrder = useCallback(
-    (sortOrder: 'updated' | 'created') => {
-      setUISettings(prev => ({ ...prev, sortOrder }));
-    },
-    [setUISettings]
-  );
+
 
   // Individual setters for item UI state
   const setDescriptionVisible = useCallback(
@@ -502,9 +496,9 @@ function App() {
     return applyFiltersAndSort(
       Array.isArray(results) ? results : [],
       currentFilters,
-      sortOrder
+      'updated'
     );
-  }, [results, currentFilters, sortOrder]);
+  }, [results, currentFilters]);
 
   // Real-time username format validation
   const validateUsernameFormat = useCallback((usernameString: string) => {
@@ -873,7 +867,6 @@ function App() {
               filteredResults,
               filter,
               statusFilter,
-              sortOrder,
               includedLabels: includedLabels || [],
               excludedLabels: excludedLabels || [],
               searchText,
@@ -881,7 +874,6 @@ function App() {
               availableLabels,
               setFilter,
               setStatusFilter,
-              setSortOrder,
               setIncludedLabels,
               setExcludedLabels,
               setSearchText,

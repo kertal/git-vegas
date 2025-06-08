@@ -9,7 +9,7 @@ import {
   ButtonGroup,
   Avatar,
   Stack,
-  BranchName,
+
   Label,
   Checkbox,
   ActionMenu,
@@ -44,7 +44,6 @@ interface UseResultsContextHookType {
   filteredResults: GitHubItem[];
   filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
-  sortOrder: 'updated' | 'created';
   includedLabels: string[];
   excludedLabels: string[];
   searchText: string;
@@ -52,7 +51,6 @@ interface UseResultsContextHookType {
   availableLabels: string[];
   setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (filter: 'all' | 'open' | 'closed' | 'merged') => void;
-  setSortOrder: (order: 'updated' | 'created') => void;
   setIncludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   toggleDescriptionVisibility: (id: number) => void;
@@ -317,7 +315,6 @@ const ResultsList = memo(function ResultsList({
     filteredResults,
     filter,
     statusFilter,
-    sortOrder,
     includedLabels = [],
     excludedLabels = [],
     searchText,
@@ -325,7 +322,6 @@ const ResultsList = memo(function ResultsList({
     availableLabels,
     setFilter,
     setStatusFilter,
-    setSortOrder,
     setIncludedLabels,
     setExcludedLabels,
     copyResultsToClipboard,
@@ -1014,57 +1010,26 @@ const ResultsList = memo(function ResultsList({
                 </Flash>
               )}
             </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Sort by:</Text>
-                <ButtonGroup>
-                  <Button
-                    variant={sortOrder === 'updated' ? 'primary' : 'default'}
-                    onClick={() =>
-                      setSortOrder(
-                        sortOrder === 'updated' ? 'created' : 'updated'
-                      )
-                    }
-                    size="small"
-                    sx={buttonStyles}
-                  >
-                    Last Updated
-                  </Button>
-                  <Button
-                    variant={sortOrder === 'created' ? 'primary' : 'default'}
-                    onClick={() =>
-                      setSortOrder(
-                        sortOrder === 'created' ? 'updated' : 'created'
-                      )
-                    }
-                    size="small"
-                    sx={buttonStyles}
-                  >
-                    Creation Date
-                  </Button>
-                </ButtonGroup>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
-                <ButtonGroup>
-                  <Button
-                    size="small"
-                    variant={!isCompactView ? 'primary' : 'default'}
-                    onClick={() => setIsCompactView(false)}
-                    sx={buttonStyles}
-                  >
-                    Detailed
-                  </Button>
-                  <Button
-                    size="small"
-                    variant={isCompactView ? 'primary' : 'default'}
-                    onClick={() => setIsCompactView(true)}
-                    sx={buttonStyles}
-                  >
-                    Compact
-                  </Button>
-                </ButtonGroup>
-              </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
+              <ButtonGroup>
+                <Button
+                  size="small"
+                  variant={!isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(false)}
+                  sx={buttonStyles}
+                >
+                  Detailed
+                </Button>
+                <Button
+                  size="small"
+                  variant={isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(true)}
+                  sx={buttonStyles}
+                >
+                  Compact
+                </Button>
+              </ButtonGroup>
             </Box>
           </Box>
 
@@ -1121,54 +1086,84 @@ const ResultsList = memo(function ResultsList({
 
           {/* Results List */}
           {isCompactView ? (
-            <Box as="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
+            <Box sx={{ gap: 1 }}>
               {filteredResults.map(item => (
                 <Box
-                  as="li"
                   key={item.id}
                   sx={{
-                    borderBottom: '1px solid',
-                    borderColor: 'border.muted',
-                    py: 2,
                     display: 'flex',
                     alignItems: 'center',
                     gap: 2,
+                    py: 1,
+                    px: 2,
+                    borderRadius: 1,
+                    ':hover': {
+                      bg: 'canvas.subtle',
+                    },
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Checkbox
-                      checked={
-                        selectedItems instanceof Set &&
-                        selectedItems.has(item.id)
-                      }
-                      onChange={() => toggleItemSelection(item.id)}
+                  <Checkbox
+                    checked={
+                      selectedItems instanceof Set &&
+                      selectedItems.has(item.id)
+                    }
+                    onChange={() => toggleItemSelection(item.id)}
+                  />
+                  {item.body && (
+                    <IconButton
+                      icon={EyeIcon}
+                      aria-label="Show description"
+                      onClick={() => setSelectedItemForDialog(item)}
+                      sx={{
+                        color: 'fg.subtle',
+                        opacity: 0.6,
+                        padding: '2px',
+                        minWidth: 'auto',
+                        minHeight: 'auto',
+                        ':hover': {
+                          color: 'fg.default',
+                          opacity: 1,
+                          bg: 'transparent',
+                        },
+                      }}
                     />
-                    {item.body && (
-                      <IconButton
-                        icon={EyeIcon}
-                        aria-label="Show description"
-                        onClick={() => setSelectedItemForDialog(item)}
-                        sx={{
-                          color: 'fg.subtle',
-                          opacity: 0.6,
-                          padding: '4px',
-                          ':hover': {
-                            color: 'fg.default',
-                            opacity: 1,
-                            bg: 'transparent',
-                          },
-                          ':active': {
-                            bg: 'transparent',
-                          },
-                        }}
-                      />
-                    )}
-                  </Box>
+                  )}
+                  {item.pull_request ? (
+                    item.pull_request.merged_at || item.merged ? (
+                      <Box sx={{ color: 'done.fg', display: 'flex' }}>
+                        <GitMergeIcon size={16} />
+                      </Box>
+                    ) : item.state === 'closed' ? (
+                      <Box sx={{ color: 'closed.fg', display: 'flex' }}>
+                        <GitPullRequestIcon size={16} />
+                      </Box>
+                    ) : (
+                      <Box sx={{ color: 'open.fg', display: 'flex' }}>
+                        <GitPullRequestIcon size={16} />
+                      </Box>
+                    )
+                  ) : (
+                    item.state === 'closed' ? (
+                      <Box sx={{ position: 'relative', display: 'inline-flex', color: 'closed.fg' }}>
+                        <IssueOpenedIcon size={16} />
+                        <Box sx={{ position: 'absolute', top: '3px', left: '3px' }}>
+                          <XIcon size={10} />
+                        </Box>
+                      </Box>
+                    ) : (
+                      <Box sx={{ color: 'open.fg', display: 'flex' }}>
+                        <IssueOpenedIcon size={16} />
+                      </Box>
+                    )
+                  )}
                   <Avatar
                     src={item.user.avatar_url}
                     alt={`${item.user.login}'s avatar`}
-                    size={20}
+                    size={16}
                   />
+                  <Text sx={{ fontSize: 1, color: 'fg.muted', flexShrink: 0 }}>
+                    {item.user.login}
+                  </Text>
                   <Link
                     href={item.html_url}
                     target="_blank"
@@ -1176,99 +1171,31 @@ const ResultsList = memo(function ResultsList({
                     sx={{
                       color: 'accent.fg',
                       textDecoration: 'none',
+                      fontSize: 1,
+                      flexGrow: 1,
+                      minWidth: 0,
                       ':hover': { textDecoration: 'underline' },
-                      flex: 1,
                     }}
                   >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      {item.pull_request ? (
-                        item.pull_request.merged_at || item.merged ? (
-                          <Box
-                            as="span"
-                            aria-label="Merged Pull Request"
-                            sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              color: 'done.fg',
-                            }}
-                          >
-                            <GitMergeIcon size={16} />
-                            <Text sx={{ ml: 1 }}>Merged</Text>
-                          </Box>
-                        ) : item.state === 'closed' ? (
-                          <Box
-                            as="span"
-                            aria-label="Closed Pull Request"
-                            sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              color: 'closed.fg',
-                            }}
-                          >
-                            <GitPullRequestIcon size={16} />
-                            <Text sx={{ ml: 1 }}>Closed</Text>
-                          </Box>
-                        ) : (
-                          <Box
-                            as="span"
-                            aria-label="Open Pull Request"
-                            sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              color: 'open.fg',
-                            }}
-                          >
-                            <GitPullRequestIcon size={16} />
-                            <Text sx={{ ml: 1 }}>Open</Text>
-                          </Box>
-                        )
-                      ) : (
-                        <Box
-                          as="span"
-                          aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color:
-                              item.state === 'closed' ? 'closed.fg' : 'open.fg',
-                          }}
-                        >
-                          <IssueOpenedIcon size={16} />
-                          {item.state === 'closed' && (
-                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                              <XIcon size={12} />
-                            </Box>
-                          )}
-                          <Text sx={{ ml: 1 }}>
-                            {item.state === 'closed' ? 'Closed' : 'Open'}
-                          </Text>
-                        </Box>
-                      )}
-                      <Text
-                        sx={{
-                          fontWeight: 'semibold',
-                          fontSize: 2,
-                          color: 'accent.fg',
-                        }}
-                      >
-                        {item.title}
-                      </Text>
-                    </Box>
-                  </Link>
-                  <Stack
-                    direction="horizontal"
-                    alignItems="center"
-                    sx={{ color: 'fg.muted', fontSize: 0, gap: 2 }}
-                  >
-                    <Text>•</Text>
-                    <BranchName>
-                      {item.repository_url?.split('/').slice(-2).join('/')}
-                    </BranchName>
-                    <Text>•</Text>
-                    <Text>
-                      {new Date(item.updated_at).toLocaleDateString()}
+                    <Text
+                      sx={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {item.title}
                     </Text>
-                  </Stack>
+                  </Link>
+                  <Text sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}>
+                    {item.repository_url?.split('/').slice(-1)[0] || 'N/A'}
+                  </Text>
+                  <Text sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}>
+                    {new Date(item.updated_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </Text>
                 </Box>
               ))}
             </Box>
