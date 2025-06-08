@@ -68,34 +68,8 @@ const SearchForm = memo(function SearchForm() {
           handleSearch();
         }}
       >
-        {/* API Mode Switch */}
-        <Box sx={{ mb: 2 }}>
-          <UnderlineNav aria-label="GitHub API Mode">
-            <UnderlineNav.Item
-              href="#"
-              aria-current={apiMode === 'search' ? 'page' : undefined}
-              onSelect={(e) => {
-                e.preventDefault();
-                setApiMode('search');
-              }}
-            >
-              GitHub Issues & PRs
-            </UnderlineNav.Item>
-            <UnderlineNav.Item
-              href="#"
-              aria-current={apiMode === 'events' ? 'page' : undefined}
-              onSelect={(e) => {
-                e.preventDefault();
-                setApiMode('events');
-              }}
-            >
-              GitHub Events
-            </UnderlineNav.Item>
-          </UnderlineNav>
-        </Box>
-
-        {/* Main search fields in a horizontal layout */}
-        <Box
+          {/* Main search fields in a horizontal layout */}
+          <Box
           sx={{
             display: 'grid',
             gridTemplateColumns:
@@ -161,6 +135,32 @@ const SearchForm = memo(function SearchForm() {
             </Button>
           </Box>
         </Box>
+        {/* API Mode Switch */}
+        <Box sx={{ mb: 2 }}>
+          <UnderlineNav aria-label="GitHub API Mode">
+            <UnderlineNav.Item
+              href="#"
+              aria-current={apiMode === 'search' ? 'page' : undefined}
+              onSelect={(e) => {
+                e.preventDefault();
+                setApiMode('search');
+              }}
+            >
+              GitHub Issues & PRs
+            </UnderlineNav.Item>
+            <UnderlineNav.Item
+              href="#"
+              aria-current={apiMode === 'events' ? 'page' : undefined}
+              onSelect={(e) => {
+                e.preventDefault();
+                setApiMode('events');
+              }}
+            >
+              GitHub Events
+            </UnderlineNav.Item>
+          </UnderlineNav>
+        </Box>
+
       </Box>
 
       {error && (

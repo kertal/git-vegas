@@ -781,8 +781,46 @@ function App() {
       <PageLayout.Header>
 
         <PageHeader role="banner" aria-label="Title">
-          <PageHeader.TitleArea>            <PageHeader.LeadingVisual>
-            🎰
+          <PageHeader.TitleArea>
+            <PageHeader.LeadingVisual>
+            <SlotMachineLoader
+              avatarUrls={(Array.isArray(results) ? results : [])
+                .map(item => item.user.avatar_url)
+                .filter(Boolean)}
+              isLoading={loading || initialLoading}
+              isManuallySpinning={isManuallySpinning}
+            />
+             <Button
+              variant="invisible"
+              onClick={handleManualSpin}
+              disabled={isManuallySpinning || loading || initialLoading}
+              sx={{
+                p: 1,
+                color: 'fg.default',
+                opacity:
+                  isManuallySpinning || loading || initialLoading ? 0.5 : 1,
+                '&:hover:not(:disabled)': {
+                  color: 'accent.fg',
+                  transform: 'scale(1.1)',
+                  transition: 'transform 0.2s ease-in-out',
+                },
+                '&:disabled': {
+                  cursor: 'not-allowed',
+                },
+                '&:focus': {
+                  outline: 'none',
+                  boxShadow: 'none',
+                },
+                cursor: 'pointer',
+                fontSize: '12px',
+                lineHeight: 1,
+                height: 'auto',
+                minWidth: 'auto',
+              }}
+            >
+              🕹️
+            </Button>
+
           </PageHeader.LeadingVisual>
             <PageHeader.Title>Git Vegas</PageHeader.Title>
           </PageHeader.TitleArea>
@@ -805,9 +843,6 @@ function App() {
 
           </PageHeader.Actions>
         </PageHeader>
-
-
-
 
       </PageLayout.Header>
 
@@ -896,46 +931,6 @@ function App() {
             minHeight: '40px',
           }}
         >
-          {/* Left side: Slot Machine */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <SlotMachineLoader
-              avatarUrls={(Array.isArray(results) ? results : [])
-                .map(item => item.user.avatar_url)
-                .filter(Boolean)}
-              isLoading={loading || initialLoading}
-              isManuallySpinning={isManuallySpinning}
-            />
-            <Button
-              variant="invisible"
-              onClick={handleManualSpin}
-              disabled={isManuallySpinning || loading || initialLoading}
-              sx={{
-                p: 1,
-                color: 'fg.default',
-                opacity:
-                  isManuallySpinning || loading || initialLoading ? 0.5 : 1,
-                '&:hover:not(:disabled)': {
-                  color: 'accent.fg',
-                  transform: 'scale(1.1)',
-                  transition: 'transform 0.2s ease-in-out',
-                },
-                '&:disabled': {
-                  cursor: 'not-allowed',
-                },
-                '&:focus': {
-                  outline: 'none',
-                  boxShadow: 'none',
-                },
-                cursor: 'pointer',
-                fontSize: '12px',
-                lineHeight: 1,
-                height: 'auto',
-                minWidth: 'auto',
-              }}
-            >
-              🕹️
-            </Button>
-          </Box>
 
           {/* Right side: Loading Message */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
