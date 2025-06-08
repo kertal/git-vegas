@@ -14,12 +14,12 @@ export interface ResultsFilter {
   filter: 'all' | 'issue' | 'pr' | 'comment';
   /** Status filter: 'all', 'open', 'closed', or 'merged' */
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
-  /** Label filter: specific label name to include */
-  labelFilter: string;
+  /** Array of label names to include */
+  includedLabels?: string[];
   /** Array of label names to exclude */
-  excludedLabels: string[];
+  excludedLabels?: string[];
   /** Array of repository filters in 'owner/repo' format */
-  repoFilters: string[];
+  repoFilters?: string[];
   /** Text search query */
   searchText: string;
 }
@@ -125,25 +125,35 @@ export const filterByStatus = (
  * Filters GitHub items based on label criteria
  *
  * @param items - Array of GitHub items to filter
- * @param labelFilter - Label name to include (empty string means no filter)
+ * @param includedLabels - Array of label names to include (empty array means no filter)
  * @param excludedLabels - Array of label names to exclude
  * @returns Filtered array of items
  */
 export const filterByLabels = (
   items: GitHubItem[],
-  labelFilter: string,
-  excludedLabels: string[]
+  includedLabels: string[] | undefined,
+  excludedLabels: string[] | undefined
 ): GitHubItem[] => {
+  // Provide default empty arrays if parameters are undefined
+  const safeIncludedLabels = includedLabels || [];
+  const safeExcludedLabels = excludedLabels || [];
+
   return items.filter(item => {
-    // Apply inclusive label filter
-    if (labelFilter && !item.labels?.some(l => l.name === labelFilter)) {
-      return false;
+    // Apply inclusive label filter - item must have ALL included labels
+    if (safeIncludedLabels.length > 0) {
+      const itemLabels = item.labels?.map(l => l.name) || [];
+      const hasAllIncludedLabels = safeIncludedLabels.every(requiredLabel =>
+        itemLabels.includes(requiredLabel)
+      );
+      if (!hasAllIncludedLabels) {
+        return false;
+      }
     }
 
-    // Apply exclusive label filters
+    // Apply exclusive label filters - item must have NONE of the excluded labels
     if (
-      excludedLabels.length > 0 &&
-      item.labels?.some(l => excludedLabels.includes(l.name))
+      safeExcludedLabels.length > 0 &&
+      item.labels?.some(l => safeExcludedLabels.includes(l.name))
     ) {
       return false;
     }
@@ -161,18 +171,19 @@ export const filterByLabels = (
  */
 export const filterByRepository = (
   items: GitHubItem[],
-  repoFilters: string[]
+  repoFilters: string[] | undefined
 ): GitHubItem[] => {
-  if (repoFilters.length === 0) return items;
+  const safeRepoFilters = repoFilters || [];
+  if (safeRepoFilters.length === 0) return items;
 
-  console.log('Filtering by repositories:', repoFilters);
+  console.log('Filtering by repositories:', safeRepoFilters);
   return items.filter(item => {
     const itemRepo = item.repository_url?.replace(
       'https://api.github.com/repos/',
       ''
     );
     console.log('Item repository:', itemRepo);
-    const included = itemRepo && repoFilters.includes(itemRepo);
+    const included = itemRepo && safeRepoFilters.includes(itemRepo);
     console.log('Is included:', included);
     return included;
   });
@@ -246,7 +257,7 @@ export const applyFiltersAndSort = (
   filteredItems = filterByStatus(filteredItems, filters.statusFilter);
   filteredItems = filterByLabels(
     filteredItems,
-    filters.labelFilter,
+    filters.includedLabels,
     filters.excludedLabels
   );
   filteredItems = filterByRepository(filteredItems, filters.repoFilters);
@@ -288,10 +299,10 @@ export const hasActiveFilters = (filters: ResultsFilter): boolean => {
   return (
     filters.filter !== 'all' ||
     filters.statusFilter !== 'all' ||
-    filters.labelFilter !== '' ||
-    filters.excludedLabels.length > 0 ||
+    (filters.includedLabels || []).length > 0 ||
+    (filters.excludedLabels || []).length > 0 ||
     filters.searchText !== '' ||
-    filters.repoFilters.length > 0
+    (filters.repoFilters || []).length > 0
   );
 };
 
@@ -303,7 +314,7 @@ export const hasActiveFilters = (filters: ResultsFilter): boolean => {
 export const createDefaultFilter = (): ResultsFilter => ({
   filter: 'all',
   statusFilter: 'all',
-  labelFilter: '',
+  includedLabels: [],
   excludedLabels: [],
   repoFilters: [],
   searchText: '',
@@ -324,17 +335,17 @@ export const getFilterSummary = (filters: ResultsFilter): string[] => {
   if (filters.statusFilter !== 'all') {
     summaryParts.push(`Status: ${filters.statusFilter}`);
   }
-  if (filters.labelFilter) {
-    summaryParts.push(`Label: ${filters.labelFilter}`);
+  if ((filters.includedLabels || []).length > 0) {
+    summaryParts.push(`Include: ${(filters.includedLabels || []).join(', ')}`);
   }
-  if (filters.excludedLabels.length > 0) {
-    summaryParts.push(`Excluded labels: ${filters.excludedLabels.join(', ')}`);
+  if ((filters.excludedLabels || []).length > 0) {
+    summaryParts.push(`Excluded labels: ${(filters.excludedLabels || []).join(', ')}`);
   }
   if (filters.searchText) {
     summaryParts.push(`Search: "${filters.searchText}"`);
   }
-  if (filters.repoFilters.length > 0) {
-    summaryParts.push(`Repos: ${filters.repoFilters.join(', ')}`);
+  if ((filters.repoFilters || []).length > 0) {
+    summaryParts.push(`Repos: ${(filters.repoFilters || []).join(', ')}`);
   }
 
   return summaryParts;

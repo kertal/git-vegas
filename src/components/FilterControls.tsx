@@ -11,7 +11,7 @@ interface UseResultsContextHookType {
   filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
   sortOrder: 'updated' | 'created';
-  labelFilter: string;
+  includedLabels: string[];
   excludedLabels: string[];
   searchText: string;
   repoFilters: string[];
@@ -19,7 +19,7 @@ interface UseResultsContextHookType {
   setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (filter: 'all' | 'open' | 'closed' | 'merged') => void;
   setSortOrder: (order: 'updated' | 'created') => void;
-  setLabelFilter: (label: string) => void;
+  setIncludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setSearchText: (searchText: string) => void;
   toggleDescriptionVisibility: (id: number) => void;
@@ -60,15 +60,15 @@ const FilterControls = memo(function FilterControls({
     filter,
     statusFilter,
     sortOrder,
-    labelFilter,
-    excludedLabels,
+    includedLabels = [],
+    excludedLabels = [],
     searchText,
-    repoFilters,
+    repoFilters = [],
     availableLabels,
     setFilter,
     setStatusFilter,
     setSortOrder,
-    setLabelFilter,
+    setIncludedLabels,
     setExcludedLabels,
     setSearchText,
     clearAllFilters,
@@ -123,8 +123,8 @@ const FilterControls = memo(function FilterControls({
     if (statusFilter !== 'all') {
       summaryParts.push(`Status: ${statusFilter}`);
     }
-    if (labelFilter) {
-      summaryParts.push(`Label: ${labelFilter}`);
+    if (includedLabels.length > 0) {
+      summaryParts.push(`Include: ${includedLabels.join(', ')}`);
     }
     if (excludedLabels.length > 0) {
       summaryParts.push(`Excluded: ${excludedLabels.join(', ')}`);
@@ -142,7 +142,7 @@ const FilterControls = memo(function FilterControls({
   const hasActiveFilters =
     filter !== 'all' ||
     statusFilter !== 'all' ||
-    labelFilter !== '' ||
+    includedLabels.length > 0 ||
     excludedLabels.length > 0 ||
     searchText !== '' ||
     repoFilters.length > 0;

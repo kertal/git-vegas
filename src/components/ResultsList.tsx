@@ -16,6 +16,8 @@ import {
   ActionList,
   Dialog,
   IconButton,
+  SelectPanel,
+  FormControl,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -25,13 +27,16 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EyeIcon,
+  TriangleDownIcon,
 } from '@primer/octicons-react';
+
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
 import { FilterType, FilterValue } from '../utils/filterUtils';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { type ActionListItemInput } from '@primer/react/deprecated';
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -40,7 +45,7 @@ interface UseResultsContextHookType {
   filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
   sortOrder: 'updated' | 'created';
-  labelFilter: string;
+  includedLabels: string[];
   excludedLabels: string[];
   searchText: string;
   repoFilters: string[];
@@ -48,7 +53,7 @@ interface UseResultsContextHookType {
   setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (filter: 'all' | 'open' | 'closed' | 'merged') => void;
   setSortOrder: (order: 'updated' | 'created') => void;
-  setLabelFilter: (label: string) => void;
+  setIncludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   toggleDescriptionVisibility: (id: number) => void;
   toggleExpand: (id: number) => void;
@@ -87,6 +92,8 @@ interface DescriptionDialogProps {
   hasPrevious: boolean;
   hasNext: boolean;
 }
+
+
 
 const DescriptionDialog = memo(function DescriptionDialog({
   item,
@@ -311,15 +318,15 @@ const ResultsList = memo(function ResultsList({
     filter,
     statusFilter,
     sortOrder,
-    labelFilter,
-    excludedLabels,
+    includedLabels = [],
+    excludedLabels = [],
     searchText,
-    repoFilters,
+    repoFilters = [],
     availableLabels,
     setFilter,
     setStatusFilter,
     setSortOrder,
-    setLabelFilter,
+    setIncludedLabels,
     setExcludedLabels,
     copyResultsToClipboard,
     clipboardMessage,
@@ -340,6 +347,12 @@ const ResultsList = memo(function ResultsList({
   // Add state for the description dialog
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
+
+  // Add state for SelectPanel components
+  const [includeLabelsOpen, setIncludeLabelsOpen] = useState(false);
+  const [excludeLabelsOpen, setExcludeLabelsOpen] = useState(false);
+  const [includeLabelFilter, setIncludeLabelFilter] = useState('');
+  const [excludeLabelFilter, setExcludeLabelFilter] = useState('');
 
   // Handle repository filter changes
   const handleRepoFilterChange = useCallback(
@@ -364,7 +377,7 @@ const ResultsList = memo(function ResultsList({
   const hasActiveFilters =
     filter !== 'all' ||
     statusFilter !== 'all' ||
-    labelFilter !== '' ||
+    includedLabels.length > 0 ||
     searchText !== '' ||
     repoFilters.length > 0 ||
     excludedLabels.length > 0;
@@ -379,8 +392,8 @@ const ResultsList = memo(function ResultsList({
     if (statusFilter !== 'all') {
       summaryParts.push(`Status: ${statusFilter}`);
     }
-    if (labelFilter) {
-      summaryParts.push(`Label: ${labelFilter}`);
+    if (includedLabels.length > 0) {
+      summaryParts.push(`Include: ${includedLabels.join(', ')}`);
     }
     if (excludedLabels.length > 0) {
       summaryParts.push(`Excluded labels: ${excludedLabels.join(', ')}`);
@@ -399,9 +412,11 @@ const ResultsList = memo(function ResultsList({
   const baseResults = useMemo(() => {
     return filteredResults.filter(item => {
       // Apply only the other active filters, not the current one being counted
-      const labelMatch = labelFilter
-        ? item.labels?.some((l: any) => l.name === labelFilter)
-        : true;
+      const labelMatch = includedLabels.length === 0
+        ? true
+        : includedLabels.every(requiredLabel => 
+            item.labels?.some((l: any) => l.name === requiredLabel)
+          );
       const excludeMatch =
         excludedLabels.length === 0
           ? true
@@ -415,7 +430,7 @@ const ResultsList = memo(function ResultsList({
             );
       return labelMatch && excludeMatch && repoMatch;
     });
-  }, [filteredResults, labelFilter, excludedLabels, repoFilters]);
+  }, [filteredResults, includedLabels, excludedLabels, repoFilters]);
 
   // Add helper to get unique repositories
   const getUniqueRepositories = useMemo(() => {
@@ -467,6 +482,82 @@ const ResultsList = memo(function ResultsList({
       item => item.id === selectedItemForDialog.id
     );
   };
+
+  // Helper functions for SelectPanel
+  const createLabelItems = useMemo(() => {
+    return availableLabels
+      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+      .map(label => {
+        const currentCount = countItemsMatchingFilter(
+          baseResults,
+          'label',
+          label,
+          excludedLabels
+        );
+        const potentialCount = countItemsMatchingFilter(
+          results,
+          'label',
+          label,
+          excludedLabels
+        );
+        
+        return {
+          text: `${label} (${currentCount}${currentCount !== potentialCount ? ` / ${potentialCount}` : ''})`,
+          id: label,
+          disabled: potentialCount === 0,
+        } as ActionListItemInput;
+      });
+  }, [availableLabels, baseResults, results, excludedLabels, countItemsMatchingFilter]);
+
+  // Filter items for include labels (show selected + search filtered)
+  const filteredIncludeItems = useMemo(() => {
+    return createLabelItems.filter(item => {
+      const labelId = String(item.id);
+      const isSelected = includedLabels.some(selected => selected === labelId);
+      const matchesFilter = item.text?.toLowerCase().includes(includeLabelFilter.toLowerCase());
+      const notExcluded = !excludedLabels.includes(labelId);
+      return (isSelected || matchesFilter) && notExcluded;
+    });
+  }, [createLabelItems, includedLabels, includeLabelFilter, excludedLabels]);
+
+  // Filter items for exclude labels (show selected + search filtered)
+  const filteredExcludeItems = useMemo(() => {
+    return createLabelItems.filter(item => {
+      const labelId = String(item.id);
+      const isSelected = excludedLabels.some(selected => selected === labelId);
+      const matchesFilter = item.text?.toLowerCase().includes(excludeLabelFilter.toLowerCase());
+      const notIncluded = !includedLabels.includes(labelId);
+      return (isSelected || matchesFilter) && notIncluded;
+    });
+  }, [createLabelItems, excludedLabels, excludeLabelFilter, includedLabels]);
+
+  // Convert selected labels to ActionListItemInput format
+  const selectedIncludeItems = useMemo(() => {
+    return includedLabels.map(label => 
+      createLabelItems.find(item => item.id === label)
+    ).filter(Boolean) as ActionListItemInput[];
+  }, [includedLabels, createLabelItems]);
+
+  const selectedExcludeItems = useMemo(() => {
+    return excludedLabels.map(label => 
+      createLabelItems.find(item => item.id === label)
+    ).filter(Boolean) as ActionListItemInput[];
+  }, [excludedLabels, createLabelItems]);
+
+  // Handle label selection changes
+  const handleIncludeLabelsChange = useCallback((selected: ActionListItemInput[]) => {
+    const labelIds = selected.map(item => String(item.id!));
+    setIncludedLabels(labelIds);
+    // Remove any newly selected labels from excluded
+    setExcludedLabels(prev => prev.filter(label => !labelIds.includes(label)));
+  }, [setIncludedLabels, setExcludedLabels]);
+
+  const handleExcludeLabelsChange = useCallback((selected: ActionListItemInput[]) => {
+    const labelIds = selected.map(item => String(item.id!));
+    setExcludedLabels(labelIds);
+    // Remove any newly selected labels from included
+    setIncludedLabels(prev => prev.filter(label => !labelIds.includes(label)));
+  }, [setExcludedLabels, setIncludedLabels]);
 
   return (
     <Box>
@@ -696,217 +787,91 @@ const ResultsList = memo(function ResultsList({
               </Box>
             </Box>
 
-            {/* Label Filters */}
+            {/* Label Filters using SelectPanel */}
             {availableLabels.length > 0 && (
               <Box sx={{ mt: 3 }}>
-                {/* Inclusive Label Filter */}
-                <Box sx={{ gap: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                    <Heading
-                      as="h3"
-                      sx={{
-                        fontSize: 1,
-                        fontWeight: 'semibold',
-                        color: 'success.fg',
-                      }}
-                    >
+                <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: ['1fr', '1fr 1fr'] }}>
+                  {/* Include Labels SelectPanel */}
+                  <FormControl>
+                    <FormControl.Label sx={{ fontSize: 1, fontWeight: 'semibold', color: 'success.fg' }}>
                       Include Labels
-                    </Heading>
-                    <Text
-                      as="span"
-                      sx={{
-                        fontSize: 0,
-                        color: 'fg.muted',
-                        fontWeight: 'normal',
-                      }}
-                    >
-                      show items with selected label
-                    </Text>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      gap: 1,
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    {availableLabels
-                      .sort((a, b) =>
-                        a.toLowerCase().localeCompare(b.toLowerCase())
-                      )
-                      .map(label => {
-                        const currentCount = countItemsMatchingFilter(
-                          baseResults,
-                          'label',
-                          label,
-                          excludedLabels
-                        );
-                        const potentialCount = countItemsMatchingFilter(
-                          results,
-                          'label',
-                          label,
-                          excludedLabels
-                        );
-                        const hasMatches = currentCount > 0;
-                        const hasPotentialMatches = potentialCount > 0;
+                      <Text as="span" sx={{ fontSize: 0, color: 'fg.muted', fontWeight: 'normal', ml: 2 }}>
+                        show items with ALL selected labels
+                      </Text>
+                    </FormControl.Label>
+                    <SelectPanel
+                      renderAnchor={({children, ...anchorProps}) => (
+                        <Button 
+                          {...anchorProps} 
+                          trailingAction={TriangleDownIcon} 
+                          aria-haspopup="dialog"
+                          variant="default"
+                          sx={{ 
+                            justifyContent: 'space-between',
+                            border: selectedIncludeItems.length > 0 ? '2px solid' : '1px solid',
+                            borderColor: selectedIncludeItems.length > 0 ? 'success.emphasis' : 'border.default',
+                          }}
+                        >
+                          {children}
+                        </Button>
+                      )}
+                      placeholder={
+                        selectedIncludeItems.length === 0 
+                          ? 'Select labels to include...' 
+                          : `${selectedIncludeItems.length} label${selectedIncludeItems.length === 1 ? '' : 's'} selected`
+                      }
+                      open={includeLabelsOpen}
+                      onOpenChange={setIncludeLabelsOpen}
+                      items={filteredIncludeItems}
+                      selected={selectedIncludeItems}
+                      onSelectedChange={handleIncludeLabelsChange}
+                      onFilterChange={setIncludeLabelFilter}
+                      filterValue={includeLabelFilter}
+                      placeholderText="Filter labels..."
+                      showSelectedOptionsFirst
+                    />
+                  </FormControl>
 
-                        return (
-                          <Button
-                            key={label}
-                            size="small"
-                            variant={
-                              labelFilter === label ? 'primary' : 'default'
-                            }
-                            onClick={() =>
-                              setLabelFilter(labelFilter === label ? '' : label)
-                            }
-                            sx={{
-                              color: hasMatches ? 'fg.default' : 'fg.muted',
-                              opacity:
-                                !hasMatches || excludedLabels.includes(label)
-                                  ? 0.5
-                                  : 1,
-                              cursor:
-                                !hasPotentialMatches ||
-                                excludedLabels.includes(label)
-                                  ? 'not-allowed'
-                                  : 'pointer',
-                              textDecoration:
-                                !hasMatches && hasPotentialMatches
-                                  ? 'line-through'
-                                  : 'none',
-                              fontSize: 0,
-                              py: 0,
-                              height: '24px',
-                            }}
-                            disabled={
-                              !hasPotentialMatches ||
-                              excludedLabels.includes(label)
-                            }
-                            title={
-                              !hasMatches && hasPotentialMatches
-                                ? 'No matches with current filters'
-                                : ''
-                            }
-                          >
-                            {label} ({currentCount}
-                            {currentCount !== potentialCount
-                              ? ` / ${potentialCount}`
-                              : ''}
-                            )
-                          </Button>
-                        );
-                      })}
-                  </Box>
-                </Box>
-
-                {/* Exclusive Label Filter */}
-                <Box sx={{ mt: 2, gap: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                    <Heading
-                      as="h3"
-                      sx={{
-                        fontSize: 1,
-                        fontWeight: 'semibold',
-                        color: 'danger.fg',
-                      }}
-                    >
+                  {/* Exclude Labels SelectPanel */}
+                  <FormControl>
+                    <FormControl.Label sx={{ fontSize: 1, fontWeight: 'semibold', color: 'danger.fg' }}>
                       Exclude Labels
-                    </Heading>
-                    <Text
-                      as="span"
-                      sx={{
-                        fontSize: 0,
-                        color: 'fg.muted',
-                        fontWeight: 'normal',
-                      }}
-                    >
-                      hide items with selected labels
-                    </Text>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      gap: 1,
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    {availableLabels
-                      .sort((a, b) =>
-                        a.toLowerCase().localeCompare(b.toLowerCase())
-                      )
-                      .map(label => {
-                        const currentCount = countItemsMatchingFilter(
-                          baseResults,
-                          'label',
-                          label,
-                          excludedLabels
-                        );
-                        const potentialCount = countItemsMatchingFilter(
-                          results,
-                          'label',
-                          label,
-                          []
-                        );
-                        const hasMatches = currentCount > 0;
-                        const hasPotentialMatches = potentialCount > 0;
-
-                        return (
-                          <Button
-                            key={label}
-                            size="small"
-                            variant={
-                              excludedLabels.includes(label)
-                                ? 'danger'
-                                : 'default'
-                            }
-                            onClick={() => {
-                              if (excludedLabels.includes(label)) {
-                                setExcludedLabels(prev =>
-                                  prev.filter(l => l !== label)
-                                );
-                              } else {
-                                setExcludedLabels(prev => [...prev, label]);
-                                if (labelFilter === label) {
-                                  setLabelFilter('');
-                                }
-                              }
-                            }}
-                            sx={{
-                              opacity:
-                                !hasMatches || labelFilter === label ? 0.5 : 1,
-                              cursor:
-                                !hasPotentialMatches || labelFilter === label
-                                  ? 'not-allowed'
-                                  : 'pointer',
-                              textDecoration:
-                                !hasMatches && hasPotentialMatches
-                                  ? 'line-through'
-                                  : 'none',
-                              fontSize: 0,
-                              py: 0,
-                              height: '24px',
-                            }}
-                            disabled={
-                              !hasPotentialMatches || labelFilter === label
-                            }
-                            title={
-                              !hasMatches && hasPotentialMatches
-                                ? 'No matches with current filters'
-                                : ''
-                            }
-                          >
-                            {label} ({currentCount}
-                            {currentCount !== potentialCount
-                              ? ` / ${potentialCount}`
-                              : ''}
-                            )
-                          </Button>
-                        );
-                      })}
-                  </Box>
+                      <Text as="span" sx={{ fontSize: 0, color: 'fg.muted', fontWeight: 'normal', ml: 2 }}>
+                        hide items with ANY selected labels
+                      </Text>
+                    </FormControl.Label>
+                    <SelectPanel
+                      renderAnchor={({children, ...anchorProps}) => (
+                        <Button 
+                          {...anchorProps} 
+                          trailingAction={TriangleDownIcon} 
+                          aria-haspopup="dialog"
+                          variant="default"
+                          sx={{ 
+                            justifyContent: 'space-between',
+                            border: selectedExcludeItems.length > 0 ? '2px solid' : '1px solid',
+                            borderColor: selectedExcludeItems.length > 0 ? 'danger.emphasis' : 'border.default',
+                          }}
+                        >
+                          {children}
+                        </Button>
+                      )}
+                      placeholder={
+                        selectedExcludeItems.length === 0 
+                          ? 'Select labels to exclude...' 
+                          : `${selectedExcludeItems.length} label${selectedExcludeItems.length === 1 ? '' : 's'} excluded`
+                      }
+                      open={excludeLabelsOpen}
+                      onOpenChange={setExcludeLabelsOpen}
+                      items={filteredExcludeItems}
+                      selected={selectedExcludeItems}
+                      onSelectedChange={handleExcludeLabelsChange}
+                      onFilterChange={setExcludeLabelFilter}
+                      filterValue={excludeLabelFilter}
+                      placeholderText="Filter labels..."
+                      showSelectedOptionsFirst
+                    />
+                  </FormControl>
                 </Box>
               </Box>
             )}
@@ -1477,7 +1442,7 @@ const ResultsList = memo(function ResultsList({
                             cursor: 'pointer',
                           }}
                           title={l.description || l.name}
-                          onClick={() => setLabelFilter(l.name)}
+                          onClick={() => setIncludedLabels(prev => [...prev, l.name])}
                         >
                           {l.name}
                         </Label>

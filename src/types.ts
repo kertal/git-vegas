@@ -58,7 +58,7 @@ export interface ResultsContextType {
   filter: 'all' | 'issue' | 'pr' | 'comment';
   statusFilter: 'all' | 'open' | 'closed' | 'merged';
   sortOrder: 'updated' | 'created';
-  labelFilter: string;
+  includedLabels: string[];
   excludedLabels: string[];
   searchText: string;
   repoFilters: string[];
@@ -66,7 +66,7 @@ export interface ResultsContextType {
   setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
   setSortOrder: (sort: 'updated' | 'created') => void;
-  setLabelFilter: (filter: string) => void;
+  setIncludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
   setSearchText: (searchText: string) => void;
   toggleDescriptionVisibility: (id: number) => void;

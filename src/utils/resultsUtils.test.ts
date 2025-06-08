@@ -263,7 +263,7 @@ describe('resultsUtils', () => {
 
   describe('filterByLabels', () => {
     it('should filter by inclusive label', () => {
-      const result = filterByLabels(mockGitHubItems, 'bug', []);
+      const result = filterByLabels(mockGitHubItems, ['bug'], []);
       expect(result).toHaveLength(2);
       expect(
         result.every(item => item.labels?.some(l => l.name === 'bug'))
@@ -271,7 +271,7 @@ describe('resultsUtils', () => {
     });
 
     it('should filter by excluded labels', () => {
-      const result = filterByLabels(mockGitHubItems, '', ['bug']);
+      const result = filterByLabels(mockGitHubItems, [], ['bug']);
       expect(result).toHaveLength(2);
       expect(
         result.every(item => !item.labels?.some(l => l.name === 'bug'))
@@ -279,13 +279,13 @@ describe('resultsUtils', () => {
     });
 
     it('should apply both inclusive and exclusive filters', () => {
-      const result = filterByLabels(mockGitHubItems, 'bug', ['performance']);
+      const result = filterByLabels(mockGitHubItems, ['bug'], ['performance']);
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(1); // Has bug but not performance label
     });
 
     it('should return all items when no filters applied', () => {
-      const result = filterByLabels(mockGitHubItems, '', []);
+      const result = filterByLabels(mockGitHubItems, [], []);
       expect(result).toHaveLength(4);
     });
 
@@ -294,8 +294,47 @@ describe('resultsUtils', () => {
         { ...mockGitHubItems[0], labels: undefined },
       ] as GitHubItem[];
 
-      const result = filterByLabels(itemsWithoutLabels, 'bug', []);
+      const result = filterByLabels(itemsWithoutLabels, ['bug'], []);
       expect(result).toHaveLength(0);
+    });
+
+    it('should handle undefined includedLabels parameter', () => {
+      const result = filterByLabels(mockGitHubItems, undefined, ['performance']);
+      expect(result).toHaveLength(3); // Should exclude items with 'performance' label
+      expect(
+        result.every(item => !item.labels?.some(l => l.name === 'performance'))
+      ).toBe(true);
+    });
+
+    it('should handle undefined excludedLabels parameter', () => {
+      const result = filterByLabels(mockGitHubItems, ['bug'], undefined);
+      expect(result).toHaveLength(2); // Should include only items with 'bug' label
+      expect(
+        result.every(item => item.labels?.some(l => l.name === 'bug'))
+      ).toBe(true);
+    });
+
+    it('should handle both undefined parameters', () => {
+      const result = filterByLabels(mockGitHubItems, undefined, undefined);
+      expect(result).toHaveLength(4); // Should return all items when no filters
+    });
+
+    it('should handle filter object with undefined array properties', () => {
+      // This simulates the original error scenario
+      const filterWithUndefinedArrays = {
+        filter: 'all',
+        statusFilter: 'all',
+        searchText: '',
+        // includedLabels, excludedLabels, and repoFilters are undefined
+      } as any;
+
+      // This should not throw an error
+      expect(() => {
+        applyFiltersAndSort(mockGitHubItems, filterWithUndefinedArrays, 'updated');
+      }).not.toThrow();
+
+      const result = applyFiltersAndSort(mockGitHubItems, filterWithUndefinedArrays, 'updated');
+      expect(result).toHaveLength(4); // Should return all items
     });
   });
 
@@ -410,7 +449,7 @@ describe('resultsUtils', () => {
       const filters: ResultsFilter = {
         filter: 'all',
         statusFilter: 'all',
-        labelFilter: '',
+        includedLabels: [],
         excludedLabels: [],
         repoFilters: [],
         searchText: '',
@@ -429,7 +468,7 @@ describe('resultsUtils', () => {
       const filters: ResultsFilter = {
         filter: 'pr',
         statusFilter: 'all',
-        labelFilter: '',
+        includedLabels: [],
         excludedLabels: [],
         repoFilters: [],
         searchText: '',
@@ -525,7 +564,7 @@ describe('resultsUtils', () => {
     });
 
     it('should return true when label filter is active', () => {
-      const filters = { ...createDefaultFilter(), labelFilter: 'bug' };
+      const filters = { ...createDefaultFilter(), includedLabels: ['bug'] };
       expect(hasActiveFilters(filters)).toBe(true);
     });
 

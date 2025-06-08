@@ -47,7 +47,7 @@ const mockUseResultsContext = () => ({
   filter: 'all' as const,
   statusFilter: 'all' as const,
   sortOrder: 'updated' as const,
-  labelFilter: '',
+  includedLabels: [],
   excludedLabels: [],
   searchText: '',
   repoFilters: [],
@@ -55,7 +55,7 @@ const mockUseResultsContext = () => ({
   setFilter: vi.fn(),
   setStatusFilter: vi.fn(),
   setSortOrder: vi.fn(),
-  setLabelFilter: vi.fn(),
+  setIncludedLabels: vi.fn(),
   setExcludedLabels: vi.fn(),
   toggleDescriptionVisibility: vi.fn(),
   toggleExpand: vi.fn(),
@@ -710,5 +710,88 @@ describe('ResultsList Repository Filter', () => {
     });
     expect(repoButtons[0]).toHaveTextContent('test/repo1 (1)');
     expect(repoButtons[1]).toHaveTextContent('test/repo2 (2)');
+  });
+});
+
+describe('ResultsList Undefined Arrays Handling', () => {
+  it('should handle undefined includedLabels without crashing', () => {
+    const mockContext = mockUseResultsContext();
+    
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockContext,
+          includedLabels: undefined as any, // Simulate undefined value from context
+        })}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Should render without crashing
+    expect(screen.getByText('Filters')).toBeDefined();
+  });
+
+  it('should handle undefined excludedLabels without crashing', () => {
+    const mockContext = mockUseResultsContext();
+    
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockContext,
+          excludedLabels: undefined as any, // Simulate undefined value from context
+        })}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Should render without crashing
+    expect(screen.getByText('Filters')).toBeDefined();
+  });
+
+  it('should handle undefined repoFilters without crashing', () => {
+    const mockContext = mockUseResultsContext();
+    
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockContext,
+          repoFilters: undefined as any, // Simulate undefined value from context
+        })}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Should render without crashing
+    expect(screen.getByText('Filters')).toBeDefined();
+  });
+
+  it('should handle all undefined arrays without crashing', () => {
+    const mockContext = mockUseResultsContext();
+    
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockContext,
+          includedLabels: undefined as any,
+          excludedLabels: undefined as any,
+          repoFilters: undefined as any,
+        })}
+        countItemsMatchingFilter={mockCountItemsMatchingFilter}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Should render without crashing and show no active filters
+    expect(screen.getByText('Filters')).toBeDefined();
+    
+    // Clear All button should not be present when no filters are active
+    expect(screen.queryByText('Clear All')).toBeNull();
   });
 });

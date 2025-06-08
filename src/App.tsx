@@ -6,7 +6,7 @@ import {
   useEffect,
   useMemo,
 } from 'react';
-import { Box, Button, Heading, IconButton, PageLayout, PageHeader } from '@primer/react';
+import { Box, Button, Heading, IconButton, PageLayout, PageHeader, Text } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 import './App.css';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
@@ -14,7 +14,7 @@ import SearchForm from './components/SearchForm';
 import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
 import TimelineView from './components/TimelineView';
-import FilterControls from './components/FilterControls';
+
 import { OfflineBanner } from './components/OfflineBanner';
 import {
   GitHubItem,
@@ -412,9 +412,15 @@ function App() {
     [setCurrentFilters]
   );
 
-  const setLabelFilter = useCallback(
-    (labelFilter: string) => {
-      setCurrentFilters(prev => ({ ...prev, labelFilter }));
+  const setIncludedLabels = useCallback(
+    (includedLabels: string[] | ((prev: string[]) => string[])) => {
+      setCurrentFilters(prev => ({
+        ...prev,
+        includedLabels:
+          typeof includedLabels === 'function'
+            ? includedLabels(prev.includedLabels || [])
+            : includedLabels,
+      }));
     },
     [setCurrentFilters]
   );
@@ -425,7 +431,7 @@ function App() {
         ...prev,
         excludedLabels:
           typeof excludedLabels === 'function'
-            ? excludedLabels(prev.excludedLabels)
+            ? excludedLabels(prev.excludedLabels || [])
             : excludedLabels,
       }));
     },
@@ -438,7 +444,7 @@ function App() {
         ...prev,
         repoFilters:
           typeof repoFilters === 'function'
-            ? repoFilters(prev.repoFilters)
+            ? repoFilters(prev.repoFilters || [])
             : repoFilters,
       }));
     },
@@ -456,7 +462,7 @@ function App() {
   const {
     filter,
     statusFilter,
-    labelFilter,
+    includedLabels,
     excludedLabels,
     searchText,
     repoFilters,
@@ -820,15 +826,15 @@ function App() {
                 filter,
                 statusFilter,
                 sortOrder,
-                labelFilter,
-                excludedLabels,
+                includedLabels: includedLabels || [],
+                excludedLabels: excludedLabels || [],
                 searchText,
-                repoFilters,
+                repoFilters: repoFilters || [],
                 availableLabels,
                 setFilter,
                 setStatusFilter,
                 setSortOrder,
-                setLabelFilter,
+                setIncludedLabels,
                 setExcludedLabels,
                 setSearchText,
                 toggleDescriptionVisibility,
@@ -850,11 +856,145 @@ function App() {
               <SearchForm />
               {apiMode === 'events' ? (
                 <>
-                  <FilterControls
-                    useResultsContext={useResultsContext}
-                    countItemsMatchingFilter={countItemsMatchingFilter}
-                    buttonStyles={buttonStyles}
-                  />
+                  {/* Events Timeline with Basic Filtering */}
+                  <Box
+                    sx={{
+                      margin: '16px auto 0',
+                      maxWidth: '1200px',
+                      bg: 'canvas.subtle',
+                      borderRadius: 2,
+                      border: '1px solid',
+                      borderColor: 'border.default',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Header */}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 2,
+                        p: 2,
+                        bg: 'canvas.default',
+                        borderBottom: '1px solid',
+                        borderColor: 'border.default',
+                      }}
+                    >
+                      <Text sx={{ fontSize: 2, fontWeight: 'semibold', color: 'fg.default', m: 0 }}>
+                        GitHub Events Timeline
+                      </Text>
+                      <Text sx={{ color: 'fg.muted' }}>
+                        {filteredResults.length} events
+                      </Text>
+                    </Box>
+
+                    {/* Basic Filters for Events */}
+                    <Box sx={{ p: 2 }}>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                          gap: 3,
+                        }}
+                      >
+                        {/* Type Filter */}
+                        <Box sx={{ gap: 1 }}>
+                          <Heading
+                            as="h3"
+                            sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted', mb: 1 }}
+                          >
+                            Type
+                          </Heading>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Button
+                              size="small"
+                              variant={filter === 'all' ? 'primary' : 'default'}
+                              onClick={() => setFilter('all')}
+                              sx={buttonStyles}
+                            >
+                              All ({countItemsMatchingFilter(results, 'type', 'all', excludedLabels || [])})
+                            </Button>
+                            <Button
+                              size="small"
+                              variant={filter === 'issue' ? 'primary' : 'default'}
+                              onClick={() => setFilter('issue')}
+                              sx={buttonStyles}
+                            >
+                              Issues ({countItemsMatchingFilter(results, 'type', 'issue', excludedLabels || [])})
+                            </Button>
+                            <Button
+                              size="small"
+                              variant={filter === 'pr' ? 'primary' : 'default'}
+                              onClick={() => setFilter('pr')}
+                              sx={buttonStyles}
+                            >
+                              PRs ({countItemsMatchingFilter(results, 'type', 'pr', excludedLabels || [])})
+                            </Button>
+                            <Button
+                              size="small"
+                              variant={filter === 'comment' ? 'primary' : 'default'}
+                              onClick={() => setFilter('comment')}
+                              sx={buttonStyles}
+                            >
+                              Comments ({countItemsMatchingFilter(results, 'type', 'comment', excludedLabels || [])})
+                            </Button>
+                          </Box>
+                        </Box>
+
+                        {/* Status Filter */}
+                        <Box sx={{ gap: 1 }}>
+                          <Heading
+                            as="h3"
+                            sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.muted', mb: 1 }}
+                          >
+                            Status
+                          </Heading>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Button
+                              size="small"
+                              variant={statusFilter === 'all' ? 'primary' : 'default'}
+                              onClick={() => setStatusFilter('all')}
+                              sx={buttonStyles}
+                            >
+                              All ({countItemsMatchingFilter(results, 'status', 'all', excludedLabels || [])})
+                            </Button>
+                            <Button
+                              size="small"
+                              variant={statusFilter === 'open' ? 'primary' : 'default'}
+                              onClick={() => setStatusFilter('open')}
+                              sx={buttonStyles}
+                            >
+                              Open ({countItemsMatchingFilter(results, 'status', 'open', excludedLabels || [])})
+                            </Button>
+                            <Button
+                              size="small"
+                              variant={statusFilter === 'closed' ? 'primary' : 'default'}
+                              onClick={() => setStatusFilter('closed')}
+                              sx={buttonStyles}
+                            >
+                              Closed ({countItemsMatchingFilter(results, 'status', 'closed', excludedLabels || [])})
+                            </Button>
+                          </Box>
+                        </Box>
+                      </Box>
+
+                      {/* Clear Filters Button */}
+                      {(filter !== 'all' || statusFilter !== 'all') && (
+                        <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'border.muted' }}>
+                          <Button
+                            variant="danger"
+                            size="small"
+                            onClick={clearAllFilters}
+                            sx={buttonStyles}
+                          >
+                            Clear All Filters
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  </Box>
+                  
                   <TimelineView items={filteredResults} />
                 </>
               ) : (
