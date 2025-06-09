@@ -252,58 +252,64 @@ describe('TimelineView', () => {
   });
 
   describe('Raw View Toggle', () => {
-    it('should show view toggle buttons when setIsRawView is provided', () => {
-      const mockSetIsRawView = vi.fn();
+    it('should show view toggle buttons when setViewMode is provided', () => {
+      const mockSetViewMode = vi.fn();
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
           rawEvents={mockRawEvents}
-          isRawView={false}
-          setIsRawView={mockSetIsRawView}
+          viewMode="standard"
+          setViewMode={mockSetViewMode}
         />
       );
 
       expect(screen.getByText('View:')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Standard' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Grouped' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Raw' })).toBeInTheDocument();
     });
 
-    it('should not show view toggle when setIsRawView is not provided', () => {
+    it('should not show view toggle when setViewMode is not provided', () => {
       renderWithTheme(<TimelineView items={mockItems} />);
 
       expect(screen.queryByText('View:')).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Standard' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Grouped' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Raw' })).not.toBeInTheDocument();
     });
 
-    it('should call setIsRawView when toggle buttons are clicked', () => {
-      const mockSetIsRawView = vi.fn();
+    it('should call setViewMode when toggle buttons are clicked', () => {
+      const mockSetViewMode = vi.fn();
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
           rawEvents={mockRawEvents}
-          isRawView={false}
-          setIsRawView={mockSetIsRawView}
+          viewMode="standard"
+          setViewMode={mockSetViewMode}
         />
       );
 
       const rawButton = screen.getByRole('button', { name: 'Raw' });
       fireEvent.click(rawButton);
-      expect(mockSetIsRawView).toHaveBeenCalledWith(true);
+      expect(mockSetViewMode).toHaveBeenCalledWith('raw');
 
       const standardButton = screen.getByRole('button', { name: 'Standard' });
       fireEvent.click(standardButton);
-      expect(mockSetIsRawView).toHaveBeenCalledWith(false);
+      expect(mockSetViewMode).toHaveBeenCalledWith('standard');
+      
+      const groupedButton = screen.getByRole('button', { name: 'Grouped' });
+      fireEvent.click(groupedButton);
+      expect(mockSetViewMode).toHaveBeenCalledWith('grouped');
     });
 
     it('should show standard view by default', () => {
-      const mockSetIsRawView = vi.fn();
+      const mockSetViewMode = vi.fn();
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
           rawEvents={mockRawEvents}
-          isRawView={false}
-          setIsRawView={mockSetIsRawView}
+          viewMode="standard"
+          setViewMode={mockSetViewMode}
         />
       );
 
@@ -316,14 +322,14 @@ describe('TimelineView', () => {
       expect(screen.queryByText('PullRequestEvent')).not.toBeInTheDocument();
     });
 
-    it('should show raw events when isRawView is true', () => {
-      const mockSetIsRawView = vi.fn();
+    it('should show raw events when viewMode is raw', () => {
+      const mockSetViewMode = vi.fn();
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
           rawEvents={mockRawEvents}
-          isRawView={true}
-          setIsRawView={mockSetIsRawView}
+          viewMode="raw"
+          setViewMode={mockSetViewMode}
         />
       );
 
@@ -337,13 +343,13 @@ describe('TimelineView', () => {
     });
 
     it('should show message when no raw events are available', () => {
-      const mockSetIsRawView = vi.fn();
+      const mockSetViewMode = vi.fn();
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
           rawEvents={[]}
-          isRawView={true}
-          setIsRawView={mockSetIsRawView}
+          viewMode="raw"
+          setViewMode={mockSetViewMode}
         />
       );
 
@@ -352,13 +358,13 @@ describe('TimelineView', () => {
     });
 
     it('should display raw JSON in raw view', () => {
-      const mockSetIsRawView = vi.fn();
+      const mockSetViewMode = vi.fn();
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
           rawEvents={mockRawEvents}
-          isRawView={true}
-          setIsRawView={mockSetIsRawView}
+          viewMode="raw"
+          setViewMode={mockSetViewMode}
         />
       );
 
@@ -370,13 +376,13 @@ describe('TimelineView', () => {
     });
 
     it('should sort raw events by date (newest first)', () => {
-      const mockSetIsRawView = vi.fn();
+      const mockSetViewMode = vi.fn();
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
           rawEvents={mockRawEvents}
-          isRawView={true}
-          setIsRawView={mockSetIsRawView}
+          viewMode="raw"
+          setViewMode={mockSetViewMode}
         />
       );
 
@@ -389,6 +395,32 @@ describe('TimelineView', () => {
       const pullRequestPosition = pullRequestEvent.compareDocumentPosition(issuesEvent);
       // DOCUMENT_POSITION_FOLLOWING means issuesEvent comes after pullRequestEvent
       expect(pullRequestPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('should show grouped view when viewMode is grouped', () => {
+      const mockSetViewMode = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={mockRawEvents}
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show group headers with counts
+      expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+      expect(screen.getByText('PRs - merged')).toBeInTheDocument();
+      expect(screen.getByText('1')).toBeInTheDocument(); // Count badges
+      
+      // Should show individual events within groups
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+      expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
+      
+      // Should show user names and repo names within event items
+      expect(screen.getByText('testuser')).toBeInTheDocument();
+      expect(screen.getByText('testuser2')).toBeInTheDocument();
+      expect(screen.getAllByText('repo')).toHaveLength(2); // Should appear for each event
     });
   });
 });

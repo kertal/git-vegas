@@ -31,6 +31,7 @@ describe('ShareButton', () => {
 
   const defaultUISettings: UISettings = {
     isCompactView: false,
+    timelineViewMode: 'standard',
   };
 
   const defaultFilters = createDefaultFilter();
@@ -241,6 +242,7 @@ describe('ShareButton', () => {
 
     const complexUISettings: UISettings = {
       isCompactView: true,
+      timelineViewMode: 'grouped',
     };
 
     const complexFilters = {

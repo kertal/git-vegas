@@ -103,7 +103,7 @@ function App() {
     'github-ui-settings',
     {
       isCompactView: false,
-      isRawTimelineView: false,
+      timelineViewMode: 'standard',
     }
   );
 
@@ -170,7 +170,7 @@ function App() {
   const setCurrentFilters = useMemo(() => {
     return apiMode === 'events' ? setEventsFilters : setSearchFilters;
   }, [apiMode, setEventsFilters, setSearchFilters]);
-  const { isCompactView, isRawTimelineView } = uiSettings;
+  const { isCompactView, timelineViewMode } = uiSettings;
   const {
     descriptionVisible,
     expanded,
@@ -315,14 +315,14 @@ function App() {
     [setUISettings]
   );
 
-  const setIsRawTimelineView = useCallback(
-    (isRawTimelineView: boolean | ((prev: boolean) => boolean)) => {
+  const setTimelineViewMode = useCallback(
+    (viewMode: 'standard' | 'raw' | 'grouped' | ((prev: 'standard' | 'raw' | 'grouped') => 'standard' | 'raw' | 'grouped')) => {
       setUISettings(prev => ({
         ...prev,
-        isRawTimelineView:
-          typeof isRawTimelineView === 'function'
-            ? isRawTimelineView(prev.isRawTimelineView)
-            : isRawTimelineView,
+        timelineViewMode:
+          typeof viewMode === 'function'
+            ? viewMode(prev.timelineViewMode)
+            : viewMode,
       }));
     },
     [setUISettings]
@@ -936,11 +936,11 @@ function App() {
           >
             <SearchForm />
             {apiMode === 'events' ? (
-              <TimelineView 
-              items={results} 
-              rawEvents={rawEventsResults}
-              isRawView={isRawTimelineView}
-              setIsRawView={setIsRawTimelineView}
+                                <TimelineView
+                    items={results}
+                    rawEvents={rawEventsResults}
+                    viewMode={timelineViewMode}
+                    setViewMode={setTimelineViewMode}
             />
             ) : (
               <ResultsList

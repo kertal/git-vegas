@@ -158,6 +158,7 @@ describe('Consolidated Settings', () => {
     it('should consolidate UI settings into single localStorage key', () => {
       const defaultUISettings: UISettings = {
         isCompactView: false,
+        timelineViewMode: 'standard',
       };
 
       const { result } = renderHook(() =>
@@ -167,6 +168,7 @@ describe('Consolidated Settings', () => {
       act(() => {
         result.current[1]({
           isCompactView: true,
+          timelineViewMode: 'grouped',
         });
       });
 
@@ -186,6 +188,7 @@ describe('Consolidated Settings', () => {
       // For now, we'll test the internal functionality
       const defaultUISettings: UISettings = {
         isCompactView: false,
+        timelineViewMode: 'standard',
       };
 
       const { result } = renderHook(() =>

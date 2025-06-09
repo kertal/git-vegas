@@ -13,18 +13,20 @@ import { GitHubItem } from '../types';
 import { GitHubEvent } from '../utils/githubSearch';
 import { formatDistanceToNow } from 'date-fns';
 
+type ViewMode = 'standard' | 'raw' | 'grouped';
+
 interface TimelineViewProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
-  isRawView?: boolean;
-  setIsRawView?: (isRawView: boolean) => void;
+  viewMode?: ViewMode;
+  setViewMode?: (viewMode: ViewMode) => void;
 }
 
 const TimelineView = memo(function TimelineView({ 
   items, 
   rawEvents = [],
-  isRawView = false, 
-  setIsRawView 
+  viewMode = 'standard', 
+  setViewMode 
 }: TimelineViewProps) {
   // Sort items by created date (newest first)
   const sortedItems = [...items].sort(
@@ -124,21 +126,28 @@ const TimelineView = memo(function TimelineView({
           <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
             {sortedItems.length} events
           </Text>
-          {setIsRawView && (
+          {setViewMode && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
               <ButtonGroup>
                 <Button
                   size="small"
-                  variant={!isRawView ? 'primary' : 'default'}
-                  onClick={() => setIsRawView(false)}
+                  variant={viewMode === 'standard' ? 'primary' : 'default'}
+                  onClick={() => setViewMode('standard')}
                 >
                   Standard
                 </Button>
                 <Button
                   size="small"
-                  variant={isRawView ? 'primary' : 'default'}
-                  onClick={() => setIsRawView(true)}
+                  variant={viewMode === 'grouped' ? 'primary' : 'default'}
+                  onClick={() => setViewMode('grouped')}
+                >
+                  Grouped
+                </Button>
+                <Button
+                  size="small"
+                  variant={viewMode === 'raw' ? 'primary' : 'default'}
+                  onClick={() => setViewMode('raw')}
                 >
                   Raw
                 </Button>
@@ -150,7 +159,7 @@ const TimelineView = memo(function TimelineView({
 
       {/* Timeline content */}
       <Box sx={{ p: 2 }}>
-        {isRawView ? (
+        {viewMode === 'raw' ? (
           // Raw JSON view - show actual GitHub API events
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {rawEvents.length > 0 ? (
@@ -221,6 +230,203 @@ const TimelineView = memo(function TimelineView({
               </Box>
             )}
           </Box>
+        ) : viewMode === 'grouped' ? (
+          // Grouped view - organize events by type
+          (() => {
+            // Group items by event type and action
+            const groups: {
+              'PRs - opened': GitHubItem[];
+              'PRs - merged': GitHubItem[];
+              'PRs - closed': GitHubItem[];
+              'Issues - opened': GitHubItem[];
+              'Issues - closed': GitHubItem[];
+              'Issues - commented': GitHubItem[];
+            } = {
+              'PRs - opened': [],
+              'PRs - merged': [],
+              'PRs - closed': [],
+              'Issues - opened': [],
+              'Issues - closed': [],
+              'Issues - commented': [],
+            };
+
+            sortedItems.forEach(item => {
+              const type = getEventType(item);
+              if (type === 'comment') {
+                groups['Issues - commented'].push(item);
+              } else if (type === 'pull_request') {
+                if (item.merged_at) {
+                  groups['PRs - merged'].push(item);
+                } else if (item.state === 'closed') {
+                  groups['PRs - closed'].push(item);
+                } else {
+                  groups['PRs - opened'].push(item);
+                }
+              } else { // issue
+                if (item.state === 'closed') {
+                  groups['Issues - closed'].push(item);
+                } else {
+                  groups['Issues - opened'].push(item);
+                }
+              }
+            });
+
+            return (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {Object.entries(groups).map(([groupName, groupItems]) => {
+                  if (groupItems.length === 0) return null;
+                  
+                  // Get the appropriate icon for the group
+                  const getGroupIcon = () => {
+                    if (groupName.startsWith('PRs - opened')) return <GitPullRequestIcon size={20} />;
+                    if (groupName.startsWith('PRs - merged')) return <GitMergeIcon size={20} />;
+                    if (groupName.startsWith('PRs - closed')) return <GitPullRequestClosedIcon size={20} />;
+                    if (groupName.startsWith('Issues - opened')) return <IssueOpenedIcon size={20} />;
+                    if (groupName.startsWith('Issues - closed')) return <IssueClosedIcon size={20} />;
+                    if (groupName.startsWith('Issues - commented')) return <CommentIcon size={20} />;
+                    return <IssueOpenedIcon size={20} />;
+                  };
+
+
+                  
+                                      return (
+                      <Box 
+                        key={groupName}
+                        sx={{
+                          border: '1px solid',
+                          borderColor: 'border.default',
+                          borderRadius: 1,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {/* Group Header */}
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 2, 
+                          p: 2,
+                          bg: 'canvas.subtle',
+                          borderBottom: '1px solid',
+                          borderColor: 'border.default'
+                        }}>
+                          <Box sx={{ color: 'fg.muted' }}>
+                            {getGroupIcon()}
+                          </Box>
+                          <Text 
+                            sx={{ 
+                              fontSize: 1, 
+                              fontWeight: 'semibold', 
+                              color: 'fg.default',
+                              flex: 1,
+                            }}
+                          >
+                            {groupName}
+                          </Text>
+                          <Box
+                            sx={{
+                              px: 2,
+                              py: 1,
+                              bg: 'accent.subtle',
+                              color: 'accent.fg',
+                              borderRadius: 1,
+                              fontSize: 0,
+                              fontWeight: 'semibold',
+                            }}
+                          >
+                            {groupItems.length}
+                          </Box>
+                        </Box>
+
+
+                        
+                        {/* Events List */}
+                        <Box sx={{ bg: 'canvas.default' }}>
+                          {groupItems.map((item, index) => {
+                            const repoName = formatRepoName(item.repository_url);
+                            
+                            return (
+                              <Box
+                                key={`${item.id}-${index}`}
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 2,
+                                  py: 1,
+                                  px: 2,
+                                  borderBottom: index < groupItems.length - 1 ? '1px solid' : 'none',
+                                  borderColor: 'border.muted',
+                                  '&:hover': {
+                                    bg: 'canvas.subtle',
+                                  },
+                                  fontSize: 0,
+                                }}
+                              >
+                                {/* Avatar */}
+                                <Avatar
+                                  src={item.user.avatar_url}
+                                  size={14}
+                                  alt={item.user.login}
+                                  sx={{ flexShrink: 0 }}
+                                />
+
+                                {/* User */}
+                                <Link
+                                  href={item.user.html_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{ 
+                                    fontWeight: 'semibold', 
+                                    flexShrink: 0,
+                                    color: 'fg.default',
+                                    textDecoration: 'none',
+                                    '&:hover': { textDecoration: 'underline' }
+                                  }}
+                                >
+                                  {item.user.login}
+                                </Link>
+
+                                {/* Title (truncated) */}
+                                <Link
+                                  href={item.html_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{
+                                    color: 'fg.default',
+                                    textDecoration: 'none',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    minWidth: 0,
+                                    flex: 1,
+                                    '&:hover': {
+                                      textDecoration: 'underline',
+                                    },
+                                  }}
+                                >
+                                  {item.title}
+                                </Link>
+
+                                {/* Repo */}
+                                <Text color="fg.muted" sx={{ flexShrink: 0, fontSize: 0 }}>
+                                  {repoName.split('/')[1] || repoName}
+                                </Text>
+
+                                {/* Time */}
+                                <Text color="fg.muted" sx={{ flexShrink: 0, fontSize: 0 }}>
+                                  {formatDistanceToNow(new Date(item.created_at), {
+                                    addSuffix: true,
+                                  })}
+                                </Text>
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      </Box>
+                    );
+                })}
+              </Box>
+            );
+          })()
         ) : (
           // Standard timeline view
           <>
