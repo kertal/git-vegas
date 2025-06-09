@@ -47,6 +47,7 @@ import ShareButton from './components/ShareButton';
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useFormContext() {
   const context = useContext(FormContext);
   if (!context) {
@@ -58,6 +59,7 @@ export function useFormContext() {
 // Results Context to isolate results state changes
 const ResultsContext = createContext<ResultsContextType | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useResultsContext() {
   const context = useContext(ResultsContext);
   if (!context) {
@@ -69,6 +71,7 @@ export function useResultsContext() {
 }
 
 // Update button styles to be consistent
+// eslint-disable-next-line react-refresh/only-export-components
 export const buttonStyles = {
   height: 28,
   minWidth: 0,
@@ -145,11 +148,7 @@ function App() {
     timestamp: number;
   } | null>('github-last-search-params', null);
 
-  // Track when cache was last used to prevent repeated cache usage
-  const [lastCacheUsage, setLastCacheUsage] = useState<{
-    searchKey: string;
-    timestamp: number;
-  } | null>(null);
+
 
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
@@ -582,11 +581,7 @@ function App() {
       await new Promise(resolve => setTimeout(resolve, 500));
       setLoadingProgress('');
       
-      // Mark that cache was used for this search
-      setLastCacheUsage({
-        searchKey: '',
-        timestamp: Date.now(),
-      });
+
       
       return;
     }
@@ -670,10 +665,7 @@ function App() {
     setLoading,
     setLoadingProgress,
     setError,
-    isCacheValid,
     results.length,
-    lastSearchParams,
-    lastCacheUsage,
   ]);
 
   // Show initial loading animation

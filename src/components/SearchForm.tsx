@@ -28,6 +28,7 @@ const SearchForm = memo(function SearchForm() {
     error,
   } = useFormContext();
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSaveToLocalStorage = useCallback(
     debounce((key: string, value: string) => {
       localStorage.setItem(key, value);
