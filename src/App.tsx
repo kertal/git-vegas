@@ -36,7 +36,7 @@ import {
   createDefaultFilter,
   ResultsFilter,
 } from './utils/resultsUtils';
-import { performGitHubSearch, GitHubSearchParams } from './utils/githubSearch';
+import { performGitHubSearch, GitHubSearchParams, GitHubEvent } from './utils/githubSearch';
 import {
   parseUrlParams,
   applyUrlOverrides,
@@ -103,6 +103,7 @@ function App() {
     'github-ui-settings',
     {
       isCompactView: false,
+      isRawTimelineView: false,
     }
   );
 
@@ -140,6 +141,10 @@ function App() {
     'github-events-results',
     []
   );
+  const [rawEventsResults, setRawEventsResults] = useLocalStorage<GitHubEvent[]>(
+    'github-raw-events-results',
+    []
+  );
   const [lastSearchParams, setLastSearchParams] = useLocalStorage<{
     username: string;
     startDate: string;
@@ -165,7 +170,7 @@ function App() {
   const setCurrentFilters = useMemo(() => {
     return apiMode === 'events' ? setEventsFilters : setSearchFilters;
   }, [apiMode, setEventsFilters, setSearchFilters]);
-  const { isCompactView } = uiSettings;
+  const { isCompactView, isRawTimelineView } = uiSettings;
   const {
     descriptionVisible,
     expanded,
@@ -305,6 +310,19 @@ function App() {
           typeof isCompactView === 'function'
             ? isCompactView(prev.isCompactView)
             : isCompactView,
+      }));
+    },
+    [setUISettings]
+  );
+
+  const setIsRawTimelineView = useCallback(
+    (isRawTimelineView: boolean | ((prev: boolean) => boolean)) => {
+      setUISettings(prev => ({
+        ...prev,
+        isRawTimelineView:
+          typeof isRawTimelineView === 'function'
+            ? isRawTimelineView(prev.isRawTimelineView)
+            : isRawTimelineView,
       }));
     },
     [setUISettings]
@@ -625,6 +643,12 @@ function App() {
 
       // Update results and search parameters
       setCurrentResults(result.items);
+      
+      // Store raw events if using events API
+      if (apiMode === 'events' && result.rawEvents) {
+        setRawEventsResults(result.rawEvents);
+      }
+      
       setLastSearchParams({
         username,
         startDate,
@@ -661,6 +685,7 @@ function App() {
     addToInvalid,
     removeFromValidated,
     setCurrentResults,
+    setRawEventsResults,
     setLastSearchParams,
     setLoading,
     setLoadingProgress,
@@ -911,7 +936,12 @@ function App() {
           >
             <SearchForm />
             {apiMode === 'events' ? (
-              <TimelineView items={results} />
+              <TimelineView 
+              items={results} 
+              rawEvents={rawEventsResults}
+              isRawView={isRawTimelineView}
+              setIsRawView={setIsRawTimelineView}
+            />
             ) : (
               <ResultsList
                 useResultsContext={useResultsContext}

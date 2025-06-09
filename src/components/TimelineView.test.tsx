@@ -1,9 +1,11 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 import { ThemeProvider } from '@primer/react';
+import { vi } from 'vitest';
 import TimelineView from './TimelineView';
 import { GitHubItem } from '../types';
+import { GitHubEvent } from '../utils/githubSearch';
 
 const mockItems: GitHubItem[] = [
   {
@@ -59,6 +61,88 @@ const mockItems: GitHubItem[] = [
       merged_at: '2024-01-16T16:00:00Z',
       url: 'https://github.com/test/repo/pull/456',
     },
+  },
+];
+
+const mockRawEvents: GitHubEvent[] = [
+  {
+    id: '123456789',
+    type: 'IssuesEvent',
+    actor: {
+      id: 1,
+      login: 'testuser',
+      avatar_url: 'https://github.com/testuser.png',
+      url: 'https://api.github.com/users/testuser',
+    },
+    repo: {
+      id: 456,
+      name: 'test/repo',
+      url: 'https://api.github.com/repos/test/repo',
+    },
+    payload: {
+      action: 'opened',
+      issue: {
+        id: 1,
+        number: 123,
+        title: 'Test Issue',
+        html_url: 'https://github.com/test/repo/issues/123',
+        state: 'open',
+        body: 'This is a test issue',
+        labels: [
+          { name: 'bug', color: 'd73a4a', description: 'Something is broken' },
+        ],
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T12:00:00Z',
+        user: {
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          html_url: 'https://github.com/testuser',
+        },
+      },
+    },
+    public: true,
+    created_at: '2024-01-15T10:00:00Z',
+  },
+  {
+    id: '987654321',
+    type: 'PullRequestEvent',
+    actor: {
+      id: 2,
+      login: 'testuser2',
+      avatar_url: 'https://github.com/testuser2.png',
+      url: 'https://api.github.com/users/testuser2',
+    },
+    repo: {
+      id: 456,
+      name: 'test/repo',
+      url: 'https://api.github.com/repos/test/repo',
+    },
+    payload: {
+      action: 'closed',
+      pull_request: {
+        id: 2,
+        number: 456,
+        title: 'Test Pull Request',
+        html_url: 'https://github.com/test/repo/pull/456',
+        state: 'closed',
+        body: 'This is a test PR',
+        labels: [
+          { name: 'feature', color: '1f883d', description: 'New feature' },
+        ],
+        created_at: '2024-01-16T14:00:00Z',
+        updated_at: '2024-01-16T16:00:00Z',
+        closed_at: '2024-01-16T16:00:00Z',
+        merged_at: '2024-01-16T16:00:00Z',
+        merged: true,
+        user: {
+          login: 'testuser2',
+          avatar_url: 'https://github.com/testuser2.png',
+          html_url: 'https://github.com/testuser2',
+        },
+      },
+    },
+    public: true,
+    created_at: '2024-01-16T14:00:00Z',
   },
 ];
 
@@ -165,5 +249,146 @@ describe('TimelineView', () => {
     expect(screen.getByText('Comment on: Test Issue')).toBeInTheDocument();
     expect(screen.getByText('repo')).toBeInTheDocument();
     // Note: Issue numbers no longer displayed separately in compact view
+  });
+
+  describe('Raw View Toggle', () => {
+    it('should show view toggle buttons when setIsRawView is provided', () => {
+      const mockSetIsRawView = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={mockRawEvents}
+          isRawView={false}
+          setIsRawView={mockSetIsRawView}
+        />
+      );
+
+      expect(screen.getByText('View:')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Standard' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Raw' })).toBeInTheDocument();
+    });
+
+    it('should not show view toggle when setIsRawView is not provided', () => {
+      renderWithTheme(<TimelineView items={mockItems} />);
+
+      expect(screen.queryByText('View:')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Standard' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Raw' })).not.toBeInTheDocument();
+    });
+
+    it('should call setIsRawView when toggle buttons are clicked', () => {
+      const mockSetIsRawView = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={mockRawEvents}
+          isRawView={false}
+          setIsRawView={mockSetIsRawView}
+        />
+      );
+
+      const rawButton = screen.getByRole('button', { name: 'Raw' });
+      fireEvent.click(rawButton);
+      expect(mockSetIsRawView).toHaveBeenCalledWith(true);
+
+      const standardButton = screen.getByRole('button', { name: 'Standard' });
+      fireEvent.click(standardButton);
+      expect(mockSetIsRawView).toHaveBeenCalledWith(false);
+    });
+
+    it('should show standard view by default', () => {
+      const mockSetIsRawView = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={mockRawEvents}
+          isRawView={false}
+          setIsRawView={mockSetIsRawView}
+        />
+      );
+
+      // Should show standard timeline items
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+      expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
+      
+      // Should not show raw event types
+      expect(screen.queryByText('IssuesEvent')).not.toBeInTheDocument();
+      expect(screen.queryByText('PullRequestEvent')).not.toBeInTheDocument();
+    });
+
+    it('should show raw events when isRawView is true', () => {
+      const mockSetIsRawView = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={mockRawEvents}
+          isRawView={true}
+          setIsRawView={mockSetIsRawView}
+        />
+      );
+
+      // Should show raw event types
+      expect(screen.getByText('IssuesEvent')).toBeInTheDocument();
+      expect(screen.getByText('PullRequestEvent')).toBeInTheDocument();
+      
+      // Should show actor and repo information
+      expect(screen.getByText('by testuser in test/repo')).toBeInTheDocument();
+      expect(screen.getByText('by testuser2 in test/repo')).toBeInTheDocument();
+    });
+
+    it('should show message when no raw events are available', () => {
+      const mockSetIsRawView = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={[]}
+          isRawView={true}
+          setIsRawView={mockSetIsRawView}
+        />
+      );
+
+      expect(screen.getByText(/No raw events available/)).toBeInTheDocument();
+      expect(screen.getByText(/Raw events are only available after performing a new search in events mode/)).toBeInTheDocument();
+    });
+
+    it('should display raw JSON in raw view', () => {
+      const mockSetIsRawView = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={mockRawEvents}
+          isRawView={true}
+          setIsRawView={mockSetIsRawView}
+        />
+      );
+
+      // Should contain JSON structure elements
+      expect(screen.getByText(/"type": "IssuesEvent"/)).toBeInTheDocument();
+      expect(screen.getByText(/"type": "PullRequestEvent"/)).toBeInTheDocument();
+      expect(screen.getByText(/"action": "opened"/)).toBeInTheDocument();
+      expect(screen.getByText(/"action": "closed"/)).toBeInTheDocument();
+    });
+
+    it('should sort raw events by date (newest first)', () => {
+      const mockSetIsRawView = vi.fn();
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          rawEvents={mockRawEvents}
+          isRawView={true}
+          setIsRawView={mockSetIsRawView}
+        />
+      );
+
+      // The PullRequestEvent (2024-01-16) should appear before IssuesEvent (2024-01-15)
+      // We can check this by looking at the order of event types
+      const pullRequestEvent = screen.getByText('PullRequestEvent');
+      const issuesEvent = screen.getByText('IssuesEvent');
+      
+      // Get their positions in the DOM
+      const pullRequestPosition = pullRequestEvent.compareDocumentPosition(issuesEvent);
+      // DOCUMENT_POSITION_FOLLOWING means issuesEvent comes after pullRequestEvent
+      expect(pullRequestPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
   });
 });

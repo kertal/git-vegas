@@ -111,6 +111,7 @@ export interface FormSettings {
 // UI/Display settings that control how data is presented
 export interface UISettings {
   isCompactView: boolean;
+  isRawTimelineView: boolean;
 }
 
 // Item-specific UI state (visibility, expansion, selection)

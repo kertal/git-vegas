@@ -41,6 +41,8 @@ export interface GitHubSearchResult {
   totalCount: number;
   /** Usernames that were successfully processed */
   processedUsernames: string[];
+  /** Raw GitHub events (only when using events API) */
+  rawEvents?: GitHubEvent[];
 }
 
 /**
@@ -343,6 +345,13 @@ export interface GitHubEvent {
 export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   const { type, payload, repo } = event;
 
+  // Create user object from event actor
+  const actorUser = {
+    login: event.actor.login,
+    avatar_url: event.actor.avatar_url,
+    html_url: `https://github.com/${event.actor.login}`,
+  };
+
   // Only process events that contain issues, pull requests, or comments
   if (type === 'IssuesEvent' && payload.issue) {
     const issue = payload.issue;
@@ -350,7 +359,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       id: issue.id,
       html_url: issue.html_url,
       title: issue.title,
-      created_at: issue.created_at,
+      created_at: event.created_at, // Use event timestamp, not issue timestamp
       updated_at: issue.updated_at,
       state: issue.state,
       body: issue.body,
@@ -362,7 +371,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       closed_at: issue.closed_at,
       number: issue.number,
-      user: issue.user,
+      user: actorUser, // Use event actor instead of issue user
       pull_request: issue.pull_request,
     };
   }
@@ -373,7 +382,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       id: pr.id,
       html_url: pr.html_url,
       title: pr.title,
-      created_at: pr.created_at,
+      created_at: event.created_at, // Use event timestamp, not PR timestamp
       updated_at: pr.updated_at,
       state: pr.state,
       body: pr.body,
@@ -387,7 +396,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: pr.number,
-      user: pr.user,
+      user: actorUser, // Use event actor instead of PR user
       pull_request: {
         merged_at: pr.merged_at,
         url: pr.html_url,
@@ -402,7 +411,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       id: comment.id,
       html_url: comment.html_url,
       title: `Comment on: ${issue.title}`,
-      created_at: comment.created_at,
+      created_at: event.created_at, // Use event timestamp, not comment timestamp
       updated_at: comment.updated_at,
       state: issue.state,
       body: comment.body,
@@ -414,13 +423,21 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       closed_at: issue.closed_at,
       number: issue.number,
-      user: comment.user,
+      user: actorUser, // Use event actor instead of comment user
       pull_request: issue.pull_request,
     };
   }
 
   return null;
 };
+
+/**
+ * Result interface for fetching GitHub events
+ */
+export interface FetchEventsResult {
+  items: GitHubItem[];
+  rawEvents: GitHubEvent[];
+}
 
 /**
  * Fetches GitHub events for a single user
@@ -431,7 +448,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
  * @param githubToken - GitHub token for authentication
  * @param cache - Username validation cache
  * @param cacheCallbacks - Callbacks for cache updates
- * @returns Promise with GitHub items from events
+ * @returns Promise with GitHub items and raw events
  */
 export const fetchUserEvents = async (
   username: string,
@@ -440,7 +457,7 @@ export const fetchUserEvents = async (
   githubToken?: string,
   cache?: UsernameCache,
   cacheCallbacks?: CacheCallbacks
-): Promise<GitHubItem[]> => {
+): Promise<FetchEventsResult> => {
   const headers: HeadersInit = {
     Accept: 'application/vnd.github.v3+json',
   };
@@ -452,6 +469,7 @@ export const fetchUserEvents = async (
   // GitHub Events API only returns last 30 days and max 300 events
   // Pagination is limited for this resource - reduce to 3 pages max
   const allItems: GitHubItem[] = [];
+  const allRawEvents: GitHubEvent[] = [];
   let page = 1;
   const maxPages = 3; // Limited pagination to respect GitHub API constraints
 
@@ -480,7 +498,7 @@ export const fetchUserEvents = async (
           console.warn(
             `GitHub Events API pagination limit reached for ${username}. Returning partial results.`
           );
-          return allItems;
+          return { items: allItems, rawEvents: allRawEvents };
         }
       }
 
@@ -504,11 +522,15 @@ export const fetchUserEvents = async (
 
       // Stop if event is before start date (events are sorted newest first)
       if (eventTime < startDateTime) {
-        return allItems;
+        return { items: allItems, rawEvents: allRawEvents };
       }
 
       // Include if within date range
       if (eventTime <= endDateTime) {
+        // Store the raw event
+        allRawEvents.push(event);
+        
+        // Transform and store the item (if transformable)
         const item = transformEventToItem(event);
         if (item) {
           allItems.push(item);
@@ -519,7 +541,7 @@ export const fetchUserEvents = async (
     page++;
   }
 
-  return allItems;
+  return { items: allItems, rawEvents: allRawEvents };
 };
 
 /**
@@ -596,12 +618,13 @@ export const performGitHubSearch = async (
   const apiMode = params.apiMode || 'search';
   onProgress?.(`Starting ${apiMode === 'events' ? 'events' : 'search'} API...`);
   const allResults: GitHubItem[] = [];
+  const allRawEvents: GitHubEvent[] = [];
 
   for (const username of usernames) {
     onProgress?.(`Fetching data for ${username}...`);
 
     try {
-      const items =
+      const results =
         apiMode === 'events'
           ? await fetchUserEvents(
               username,
@@ -620,7 +643,15 @@ export const performGitHubSearch = async (
               cacheCallbacks
             );
 
+      const items = apiMode === 'events' ? (results as FetchEventsResult).items : (results as GitHubItem[]);
       allResults.push(...items);
+      
+      // Collect raw events if using events API
+      if (apiMode === 'events') {
+        const eventsResult = results as FetchEventsResult;
+        allRawEvents.push(...eventsResult.rawEvents);
+      }
+      
       onProgress?.(`Found ${items.length} items for ${username}`);
 
       // Add delay between requests to avoid rate limiting
@@ -643,6 +674,7 @@ export const performGitHubSearch = async (
     items: allResults,
     totalCount: allResults.length,
     processedUsernames: usernames,
+    ...(apiMode === 'events' && { rawEvents: allRawEvents }),
   };
 };
 

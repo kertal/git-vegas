@@ -11,6 +11,7 @@ export interface ShareableState {
 
   // UI settings
   isCompactView: boolean;
+  isRawTimelineView: boolean;
 
   // Filter settings
   filter: 'all' | 'issue' | 'pr' | 'comment';
@@ -30,6 +31,7 @@ const urlParamTypes: Record<
   endDate: 'string',
   apiMode: 'string',
   isCompactView: 'boolean',
+  isRawTimelineView: 'boolean',
   filter: 'string',
   statusFilter: 'string',
   excludedLabels: 'string[]',
@@ -149,6 +151,7 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
     endDate: new Date().toISOString().split('T')[0],
     apiMode: 'search',
     isCompactView: false,
+    isRawTimelineView: false,
     filter: 'all',
     statusFilter: 'all',
     excludedLabels: [],
@@ -250,6 +253,7 @@ export function extractShareableState(
     endDate: formSettings.endDate,
     apiMode: formSettings.apiMode,
     isCompactView: uiSettings.isCompactView,
+    isRawTimelineView: uiSettings.isRawTimelineView,
     filter: currentFilters.filter,
     statusFilter: currentFilters.statusFilter,
     excludedLabels: currentFilters.excludedLabels || [],
@@ -285,6 +289,9 @@ export function applyUrlOverrides(
     ...uiSettings,
     ...(urlState.isCompactView !== undefined && {
       isCompactView: urlState.isCompactView,
+    }),
+    ...(urlState.isRawTimelineView !== undefined && {
+      isRawTimelineView: urlState.isRawTimelineView,
     }),
   };
 
