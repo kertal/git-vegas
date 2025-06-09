@@ -453,8 +453,7 @@ const ResultsList = memo(function ResultsList({
               'https://api.github.com/repos/',
               ''
             );
-            console.log('Repository URL:', item.repository_url);
-            console.log('Extracted repo:', repo);
+            
             return repo;
           })
           .filter((repo): repo is string => Boolean(repo))
@@ -462,7 +461,7 @@ const ResultsList = memo(function ResultsList({
     ).sort((a, b) =>
       (a || '').toLowerCase().localeCompare((b || '').toLowerCase())
     );
-    console.log('Unique repositories:', repos);
+    
     return repos;
   }, [results]);
 
@@ -495,18 +494,7 @@ const ResultsList = memo(function ResultsList({
   };
 
   // Debug logging
-  console.log('ResultsList Debug:', {
-    totalResults: results.length,
-    filteredResults: filteredResults.length,
-    hasActiveFilters,
-    areFiltersCollapsed,
-    filter,
-    statusFilter,
-    includedLabels,
-    excludedLabels,
-    searchText,
-    repoFilters
-  });
+  
 
   // Helper functions for SelectPanel
   const createLabelItems = useMemo(() => {

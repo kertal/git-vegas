@@ -176,15 +176,12 @@ export const filterByRepository = (
   const safeRepoFilters = repoFilters || [];
   if (safeRepoFilters.length === 0) return items;
 
-  console.log('Filtering by repositories:', safeRepoFilters);
   return items.filter(item => {
     const itemRepo = item.repository_url?.replace(
       'https://api.github.com/repos/',
       ''
     );
-    console.log('Item repository:', itemRepo);
     const included = itemRepo && safeRepoFilters.includes(itemRepo);
-    console.log('Is included:', included);
     return included;
   });
 };
