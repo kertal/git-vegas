@@ -592,15 +592,15 @@ function App() {
   const handleSearch = useCallback(async () => {
     // Never use cache for repeated searches - if user clicks search again, they want fresh data
     const shouldUseCache = false;
-    
+
     // Check if we have valid cached results for the current parameters
     if (shouldUseCache) {
       setLoadingProgress(`Using cached results (${results.length} items)`);
       await new Promise(resolve => setTimeout(resolve, 500));
       setLoadingProgress('');
-      
 
-      
+
+
       return;
     }
 
@@ -643,12 +643,12 @@ function App() {
 
       // Update results and search parameters
       setCurrentResults(result.items);
-      
+
       // Store raw events if using events API
       if (apiMode === 'events' && result.rawEvents) {
         setRawEventsResults(result.rawEvents);
       }
-      
+
       setLastSearchParams({
         username,
         startDate,
@@ -818,45 +818,45 @@ function App() {
         <PageHeader role="banner" aria-label="Title">
           <PageHeader.TitleArea>
             <PageHeader.LeadingVisual>
-            <SlotMachineLoader
-              avatarUrls={(Array.isArray(results) ? results : [])
-                .map(item => item.user.avatar_url)
-                .filter(Boolean)}
-              isLoading={loading || initialLoading}
-              isManuallySpinning={isManuallySpinning}
-            />
-             <Button
-              variant="invisible"
-              onClick={handleManualSpin}
-              disabled={isManuallySpinning || loading || initialLoading}
-              sx={{
-                p: 1,
-                color: 'fg.default',
-                opacity:
-                  isManuallySpinning || loading || initialLoading ? 0.5 : 1,
-                '&:hover:not(:disabled)': {
-                  color: 'accent.fg',
-                  transform: 'scale(1.1)',
-                  transition: 'transform 0.2s ease-in-out',
-                },
-                '&:disabled': {
-                  cursor: 'not-allowed',
-                },
-                '&:focus': {
-                  outline: 'none',
-                  boxShadow: 'none',
-                },
-                cursor: 'pointer',
-                fontSize: '12px',
-                lineHeight: 1,
-                height: 'auto',
-                minWidth: 'auto',
-              }}
-            >
-              🕹️
-            </Button>
+              <SlotMachineLoader
+                avatarUrls={(Array.isArray(results) ? results : [])
+                  .map(item => item.user.avatar_url)
+                  .filter(Boolean)}
+                isLoading={loading || initialLoading}
+                isManuallySpinning={isManuallySpinning}
+              />
+              <Button
+                variant="invisible"
+                onClick={handleManualSpin}
+                disabled={isManuallySpinning || loading || initialLoading}
+                sx={{
+                  p: 1,
+                  color: 'fg.default',
+                  opacity:
+                    isManuallySpinning || loading || initialLoading ? 0.5 : 1,
+                  '&:hover:not(:disabled)': {
+                    color: 'accent.fg',
+                    transform: 'scale(1.1)',
+                    transition: 'transform 0.2s ease-in-out',
+                  },
+                  '&:disabled': {
+                    cursor: 'not-allowed',
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                    boxShadow: 'none',
+                  },
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  lineHeight: 1,
+                  height: 'auto',
+                  minWidth: 'auto',
+                }}
+              >
+                🕹️
+              </Button>
 
-          </PageHeader.LeadingVisual>
+            </PageHeader.LeadingVisual>
             <PageHeader.Title>Git Vegas</PageHeader.Title>
           </PageHeader.TitleArea>
           <PageHeader.Actions>
@@ -936,12 +936,12 @@ function App() {
           >
             <SearchForm />
             {apiMode === 'events' ? (
-                                <TimelineView
-                    items={results}
-                    rawEvents={rawEventsResults}
-                    viewMode={timelineViewMode}
-                    setViewMode={setTimelineViewMode}
-            />
+              <TimelineView
+                items={results}
+                rawEvents={rawEventsResults}
+                viewMode={timelineViewMode}
+                setViewMode={setTimelineViewMode}
+              />
             ) : (
               <ResultsList
                 useResultsContext={useResultsContext}

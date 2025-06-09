@@ -1133,50 +1133,29 @@ const ResultsList = memo(function ResultsList({
               }}
             >
             {/* Filter Header */}
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                p: 2,
-                bg: hasActiveFilters ? 'accent.subtle' : 'canvas.subtle',
-                borderBottom: areFiltersCollapsed ? 'none' : '1px solid',
-                borderColor: 'border.default',
-                cursor: 'pointer',
-                ':hover': {
-                  bg: hasActiveFilters ? 'accent.muted' : 'canvas.default',
-                },
-              }}
-              onClick={() => setAreFiltersCollapsed(!areFiltersCollapsed)}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  {areFiltersCollapsed ? (
-                    <ChevronRightIconCollapse size={16} />
-                  ) : (
-                    <ChevronDownIcon size={16} />
-                  )}
+            {/* Collapsed filters - single row with summary */}
+            {areFiltersCollapsed && hasActiveFilters && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 2,
+                  bg: 'canvas.subtle',
+                  cursor: 'pointer',
+                  ':hover': {
+                    bg: 'canvas.default',
+                  },
+                }}
+                onClick={() => setAreFiltersCollapsed(!areFiltersCollapsed)}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <ChevronRightIconCollapse size={16} />
+                  <FilterIcon size={16} />
+                  <Text sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.default' }}>
+                    Filters: {getFilterSummary()}
+                  </Text>
                 </Box>
-                <FilterIcon size={16} />
-                <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', m: 0 }}>
-                  Filters
-                                     {hasActiveFilters && (
-                     <Text as="span" sx={{ 
-                       fontSize: 0, 
-                       fontWeight: 'bold',
-                       ml: 1,
-                       px: 1,
-                       py: 0.5,
-                       bg: 'accent.emphasis',
-                       color: 'fg.onEmphasis',
-                       borderRadius: 1
-                     }}>
-                       ON
-                     </Text>
-                   )}
-                </Heading>
-              </Box>
-              {hasActiveFilters && (
                 <Button
                   size="small"
                   variant="danger"
@@ -1188,15 +1167,45 @@ const ResultsList = memo(function ResultsList({
                 >
                   Clear All
                 </Button>
-              )}
-            </Box>
+              </Box>
+            )}
 
-            {/* Filter Summary when collapsed - Simple single row */}
-            {areFiltersCollapsed && hasActiveFilters && (
-              <Box sx={{ p: 2, bg: 'canvas.default' }}>
-                <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                  Filters: {getFilterSummary()}
-                </Text>
+            {/* Expanded filters header */}
+            {!areFiltersCollapsed && hasActiveFilters && (
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  p: 2,
+                  bg: 'canvas.subtle',
+                  borderBottom: '1px solid',
+                  borderColor: 'border.default',
+                  cursor: 'pointer',
+                  ':hover': {
+                    bg: 'canvas.default',
+                  },
+                }}
+                onClick={() => setAreFiltersCollapsed(!areFiltersCollapsed)}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <ChevronDownIcon size={16} />
+                  <FilterIcon size={16} />
+                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'semibold', m: 0 }}>
+                    Filters
+                  </Heading>
+                </Box>
+                <Button
+                  size="small"
+                  variant="danger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearAllFilters();
+                  }}
+                  sx={buttonStyles}
+                >
+                  Clear All
+                </Button>
               </Box>
             )}
 
