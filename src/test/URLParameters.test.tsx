@@ -112,7 +112,7 @@ describe('URL Parameters', () => {
     // First, we need to set some filters to make the Clear All button appear
     // Click on a filter button to activate it
     const issuesButton = screen.getByRole('button', {
-      name: /issues \(\d+\)/i,
+      name: 'Issues',
     });
     await act(async () => {
       fireEvent.click(issuesButton);

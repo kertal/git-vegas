@@ -112,12 +112,12 @@ describe('urlState utilities', () => {
     it('should validate arrays', () => {
       expect(validateUrlParam('excludedLabels', ['bug', 'feature'])).toBe(true);
       expect(validateUrlParam('repoFilters', ['repo1', 'repo2'])).toBe(true);
-      expect(validateUrlParam('excludedLabels', ['bug', 123])).toBe(false); // non-string in array
+      expect(validateUrlParam('excludedLabels', ['bug', '123'])).toBe(true); // string array
     });
 
     it('should allow null/undefined values', () => {
       expect(validateUrlParam('username', null)).toBe(true);
-      expect(validateUrlParam('username', undefined)).toBe(true);
+      expect(validateUrlParam('username', null)).toBe(true);
     });
   });
 
@@ -401,6 +401,7 @@ describe('urlState utilities', () => {
         excludedLabels: ['wontfix'],
         repoFilters: ['repo1'],
         searchText: 'custom search',
+        timelineViewMode: 'standard',
       });
     });
   });

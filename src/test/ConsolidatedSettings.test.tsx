@@ -178,6 +178,7 @@ describe('Consolidated Settings', () => {
       const parsed = JSON.parse(stored!);
       expect(parsed).toEqual({
         isCompactView: true,
+        timelineViewMode: 'grouped',
       });
     });
 
@@ -205,6 +206,7 @@ describe('Consolidated Settings', () => {
 
       expect(result.current[0]).toEqual({
         isCompactView: true,
+        timelineViewMode: 'standard',
       });
     });
   });

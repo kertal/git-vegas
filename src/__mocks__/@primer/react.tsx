@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 // Mock components for testing - using any types is legitimate here
 /* eslint-disable @typescript-eslint/no-explicit-any */

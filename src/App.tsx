@@ -28,7 +28,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFormSettings } from './hooks/useLocalStorage';
 import { validateUsernameList } from './utils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
-import { countItemsMatchingFilter } from './utils/filterUtils';
+
 import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import {
   extractAvailableLabels,
@@ -961,7 +961,6 @@ function App() {
             ) : (
               <ResultsList
                 useResultsContext={useResultsContext}
-                countItemsMatchingFilter={countItemsMatchingFilter}
                 buttonStyles={buttonStyles}
               />
             )}

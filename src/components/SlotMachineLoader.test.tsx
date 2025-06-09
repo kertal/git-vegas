@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
-import * as React from 'react';
+
 import { SlotMachineLoader } from './SlotMachineLoader';
 
 describe('SlotMachineLoader', () => {

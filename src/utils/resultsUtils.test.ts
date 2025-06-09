@@ -596,6 +596,7 @@ describe('resultsUtils', () => {
         excludedLabels: [],
         repoFilters: [],
         searchText: '',
+        userFilter: '',
       });
     });
   });

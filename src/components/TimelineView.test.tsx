@@ -411,7 +411,7 @@ describe('TimelineView', () => {
       // Should show group headers with counts
       expect(screen.getByText('Issues - opened')).toBeInTheDocument();
       expect(screen.getByText('PRs - merged')).toBeInTheDocument();
-      expect(screen.getByText('1')).toBeInTheDocument(); // Count badges
+      expect(screen.getAllByText('1')).toHaveLength(2); // Count badges for both groups
       
       // Should show individual events within groups
       expect(screen.getByText('Test Issue')).toBeInTheDocument();

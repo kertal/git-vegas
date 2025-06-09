@@ -809,9 +809,9 @@ describe('githubSearch utilities', () => {
           closed_at: undefined,
           number: 1,
           user: {
-            login: 'commenter',
-            avatar_url: 'https://commenter.avatar.url',
-            html_url: 'https://github.com/commenter',
+            login: 'testuser',
+            avatar_url: 'https://avatar.url',
+            html_url: 'https://github.com/testuser',
           },
           pull_request: undefined,
         });
