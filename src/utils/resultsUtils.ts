@@ -20,6 +20,8 @@ export interface ResultsFilter {
   excludedLabels?: string[];
   /** Array of repository filters in 'owner/repo' format */
   repoFilters?: string[];
+  /** User filter for a specific GitHub username */
+  userFilter?: string;
   /** Text search query */
   searchText: string;
 }
@@ -187,6 +189,24 @@ export const filterByRepository = (
 };
 
 /**
+ * Filters GitHub items based on user
+ *
+ * @param items - Array of GitHub items to filter
+ * @param userFilter - Username to filter by (case-insensitive)
+ * @returns Filtered array of items
+ */
+export const filterByUser = (
+  items: GitHubItem[],
+  userFilter: string | undefined
+): GitHubItem[] => {
+  if (!userFilter?.trim()) return items;
+
+  return items.filter(item => {
+    return item.user.login.toLowerCase() === userFilter.toLowerCase();
+  });
+};
+
+/**
  * Filters GitHub items based on text search in title and body
  *
  * @param items - Array of GitHub items to filter
@@ -258,6 +278,7 @@ export const applyFiltersAndSort = (
     filters.excludedLabels
   );
   filteredItems = filterByRepository(filteredItems, filters.repoFilters);
+  filteredItems = filterByUser(filteredItems, filters.userFilter);
   filteredItems = filterByText(filteredItems, filters.searchText);
 
   // Apply sorting
@@ -299,7 +320,8 @@ export const hasActiveFilters = (filters: ResultsFilter): boolean => {
     (filters.includedLabels || []).length > 0 ||
     (filters.excludedLabels || []).length > 0 ||
     filters.searchText !== '' ||
-    (filters.repoFilters || []).length > 0
+    (filters.repoFilters || []).length > 0 ||
+    Boolean(filters.userFilter && filters.userFilter.trim() !== '')
   );
 };
 
@@ -314,6 +336,7 @@ export const createDefaultFilter = (): ResultsFilter => ({
   includedLabels: [],
   excludedLabels: [],
   repoFilters: [],
+  userFilter: '',
   searchText: '',
 });
 
@@ -331,6 +354,9 @@ export const getFilterSummary = (filters: ResultsFilter): string[] => {
   }
   if (filters.statusFilter !== 'all') {
     summaryParts.push(`Status: ${filters.statusFilter}`);
+  }
+  if (filters.userFilter && filters.userFilter.trim() !== '') {
+    summaryParts.push(`User: ${filters.userFilter}`);
   }
   if ((filters.includedLabels || []).length > 0) {
     summaryParts.push(`Include: ${(filters.includedLabels || []).join(', ')}`);

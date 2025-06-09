@@ -490,6 +490,19 @@ function App() {
     [setCurrentFilters]
   );
 
+  const setUserFilter = useCallback(
+    (userFilter: string | ((prev: string) => string)) => {
+      setCurrentFilters(prev => ({
+        ...prev,
+        userFilter:
+          typeof userFilter === 'function'
+            ? userFilter(prev.userFilter || '')
+            : userFilter,
+      }));
+    },
+    [setCurrentFilters]
+  );
+
   // Extract individual filter values for convenience
   const {
     filter,
@@ -498,6 +511,7 @@ function App() {
     excludedLabels,
     searchText,
     repoFilters,
+    userFilter,
   } = currentFilters;
 
   // Helper functions for Set operations using the new utilities
@@ -912,6 +926,7 @@ function App() {
               excludedLabels: excludedLabels || [],
               searchText,
               repoFilters: repoFilters || [],
+              userFilter: userFilter || '',
               availableLabels,
               setFilter,
               setStatusFilter,
@@ -932,6 +947,7 @@ function App() {
               selectAllItems,
               clearSelection,
               setRepoFilters,
+              setUserFilter,
             }}
           >
             <SearchForm />

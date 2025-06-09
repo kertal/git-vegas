@@ -61,6 +61,7 @@ export interface ResultsContextType {
   excludedLabels: string[];
   searchText: string;
   repoFilters: string[];
+  userFilter: string;
   availableLabels: string[];
   setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
   setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
@@ -81,6 +82,7 @@ export interface ResultsContextType {
   selectAllItems: () => void;
   clearSelection: () => void;
   setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
+  setUserFilter: React.Dispatch<React.SetStateAction<string>>;
 }
 
 // Component Props Types

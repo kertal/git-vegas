@@ -177,6 +177,7 @@ describe('urlState utilities', () => {
       endDate: new Date().toISOString().split('T')[0],
       apiMode: 'search',
       isCompactView: false,
+      timelineViewMode: 'standard',
       filter: 'all',
       statusFilter: 'all',
       excludedLabels: [],
@@ -239,6 +240,7 @@ describe('urlState utilities', () => {
       endDate: new Date().toISOString().split('T')[0],
       apiMode: 'search',
       isCompactView: false,
+      timelineViewMode: 'standard',
       filter: 'all',
       statusFilter: 'all',
       excludedLabels: [],
@@ -370,6 +372,7 @@ describe('urlState utilities', () => {
 
       const uiSettings: UISettings = {
         isCompactView: true,
+        timelineViewMode: 'standard',
       };
 
       const currentFilters: ResultsFilter = {
@@ -422,6 +425,7 @@ describe('urlState utilities', () => {
 
       const uiSettings: UISettings = {
         isCompactView: false,
+        timelineViewMode: 'standard',
       };
 
       const currentFilters = createDefaultFilter();
@@ -460,6 +464,7 @@ describe('urlState utilities', () => {
 
       const uiSettings: UISettings = {
         isCompactView: false,
+        timelineViewMode: 'standard',
       };
 
       const currentFilters = createDefaultFilter();
