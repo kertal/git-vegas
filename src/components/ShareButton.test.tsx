@@ -7,6 +7,8 @@ import { FormSettings, UISettings } from '../types';
 import { createDefaultFilter } from '../utils/resultsUtils';
 import * as urlState from '../utils/urlState';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Mock the urlState utilities
 vi.mock('../utils/urlState', () => ({
   extractShareableState: vi.fn(),

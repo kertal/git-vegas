@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { countItemsMatchingFilter, FilterType } from './filterUtils';
 import { GitHubItem } from '../types';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Sample test data
 const mockGitHubItems: GitHubItem[] = [
   // Open Issue

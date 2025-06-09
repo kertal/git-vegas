@@ -10,6 +10,8 @@ import {
   validateUsernameList,
 } from './utils';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 describe('debounce', () => {
   beforeEach(() => {
     vi.useFakeTimers();

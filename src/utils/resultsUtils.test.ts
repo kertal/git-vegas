@@ -18,6 +18,8 @@ import {
 } from './resultsUtils';
 import type { GitHubItem } from '../types';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Sample test data
 const mockGitHubItems: GitHubItem[] = [
   // Open Issue

@@ -1,9 +1,9 @@
 // Debounce function for rate limiting
-export const debounce = (fn: Function, ms = 300) => {
+export const debounce = <T extends unknown[]>(fn: (...args: T) => void, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
-  return function (this: any, ...args: any[]) {
+  return function (...args: T) {
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn.apply(this, args), ms);
+    timeoutId = setTimeout(() => fn(...args), ms);
   };
 };
 
@@ -252,7 +252,7 @@ export const validateGitHubUsernames = async (
           invalid.push(username);
           errors[username] = `GitHub API error: ${response.status}`;
         }
-      } catch (error) {
+      } catch {
         invalid.push(username);
         errors[username] = 'Network error while validating username';
       }

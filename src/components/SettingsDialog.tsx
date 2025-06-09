@@ -38,7 +38,7 @@ const SettingsDialog = memo(function SettingsDialog({
         localStorage.removeItem('github-token');
       }
     }
-  }, []);
+  }, [setTokenStorage]);
 
   const handleTokenChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {

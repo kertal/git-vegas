@@ -8,6 +8,8 @@ import {
 } from './clipboard';
 import { GitHubItem } from '../types';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Mock the getContrastColor utility
 vi.mock('../utils', () => ({
   getContrastColor: vi.fn((color: string) =>

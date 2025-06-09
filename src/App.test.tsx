@@ -209,6 +209,145 @@ describe('App Component', () => {
 
       expect(screen.getByRole('button', { name: /^Search$/i })).toBeEnabled();
     });
+
+    it('uses cached results for identical search parameters', async () => {
+      // Mock successful API response
+      const mockResponse = {
+        items: mockItems,
+        total_count: mockItems.length,
+      };
+      
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      render(<App />, { wrapper: TestWrapper });
+
+      // Fill in form
+      const usernameInput = screen.getByLabelText(/GitHub username/i);
+      const startDateInput = screen.getByLabelText(/Start date/i);
+      const endDateInput = screen.getByLabelText(/End date/i);
+
+      fireEvent.change(usernameInput, { target: { value: 'testuser' } });
+      fireEvent.change(startDateInput, { target: { value: '2024-01-01' } });
+      fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
+
+      // First search
+      const searchButton = screen.getByRole('button', { name: /^Search$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      });
+
+      // Wait for results to load
+      await waitFor(() => {
+        expect(screen.getByText('Bug: Something is broken')).toBeInTheDocument();
+      });
+
+      // Reset fetch mock call count
+      vi.mocked(global.fetch).mockClear();
+
+      // Second search with same parameters - should force refresh (user wants fresh data)
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        // Should make API call again because user clicked search again (wants fresh data)
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('forces refresh when clicking search again with same parameters', async () => {
+      // Mock successful API response
+      const mockResponse = {
+        items: mockItems,
+        total_count: mockItems.length,
+      };
+      
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      render(<App />, { wrapper: TestWrapper });
+
+      // Fill in form
+      const usernameInput = screen.getByLabelText(/GitHub username/i);
+      const startDateInput = screen.getByLabelText(/Start date/i);
+      const endDateInput = screen.getByLabelText(/End date/i);
+
+      fireEvent.change(usernameInput, { target: { value: 'testuser' } });
+      fireEvent.change(startDateInput, { target: { value: '2024-01-01' } });
+      fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
+
+      // First search
+      const searchButton = screen.getByRole('button', { name: /^Search$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      });
+
+      // Wait for results to load
+      await waitFor(() => {
+        expect(screen.getByText('Bug: Something is broken')).toBeInTheDocument();
+      });
+
+      // Reset fetch mock call count
+      vi.mocked(global.fetch).mockClear();
+
+      // Second search with same parameters - should force refresh (user wants to update)
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        // Should make API call again because user clicked search again (wants fresh data)
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('makes fresh request when search parameters change', async () => {
+      // Mock successful API response
+      const mockResponse = {
+        items: mockItems,
+        total_count: mockItems.length,
+      };
+      
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      render(<App />, { wrapper: TestWrapper });
+
+      // Fill in form
+      const usernameInput = screen.getByLabelText(/GitHub username/i);
+      const startDateInput = screen.getByLabelText(/Start date/i);
+      const endDateInput = screen.getByLabelText(/End date/i);
+
+      fireEvent.change(usernameInput, { target: { value: 'testuser' } });
+      fireEvent.change(startDateInput, { target: { value: '2024-01-01' } });
+      fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
+
+      // First search
+      const searchButton = screen.getByRole('button', { name: /^Search$/i });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+      });
+
+      // Change parameters
+      fireEvent.change(usernameInput, { target: { value: 'newuser' } });
+
+      // Search with new parameters
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        // Should make fresh API call due to parameter change
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+      });
+    });
   });
 
   describe('Settings Dialog', () => {

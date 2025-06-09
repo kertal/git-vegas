@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, act } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
+import * as React from 'react';
 import { SlotMachineLoader } from './SlotMachineLoader';
 
 describe('SlotMachineLoader', () => {
@@ -86,5 +87,64 @@ describe('SlotMachineLoader', () => {
     // Since we have 3 reels and each has a timeout
     expect(clearTimeoutSpy).toHaveBeenCalled();
     clearTimeoutSpy.mockRestore();
+  });
+
+  it('does not cause infinite re-renders when spinning state changes', () => {
+    // Track render count using a ref approach
+    let renderCount = 0;
+    const WrappedSlotMachine = ({ isLoading, avatarUrls }: { isLoading: boolean; avatarUrls: string[] }) => {
+      renderCount++;
+      return <SlotMachineLoader isLoading={isLoading} avatarUrls={avatarUrls} />;
+    };
+
+    const { rerender } = render(
+      <WrappedSlotMachine isLoading={false} avatarUrls={[]} />
+    );
+
+    // Reset count after initial render
+    renderCount = 0;
+
+    // Start loading - should trigger a reasonable number of renders
+    act(() => {
+      rerender(<WrappedSlotMachine isLoading={true} avatarUrls={[]} />);
+    });
+
+    // Stop loading - should trigger a reasonable number of renders
+    act(() => {
+      rerender(<WrappedSlotMachine isLoading={false} avatarUrls={[]} />);
+    });
+
+    // Advance timers to let any spinning state changes happen
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // The component should not re-render excessively (infinite loop would cause hundreds of renders)
+    // We expect a small number of renders (typically 2-4 for these prop changes)
+    expect(renderCount).toBeLessThan(10);
+    expect(renderCount).toBeGreaterThan(0);
+
+    // Component should still be functional
+    const reels = screen.getAllByTestId('reel');
+    expect(reels.length).toBe(3);
+  });
+
+  it('maintains stable behavior with rapid loading state changes', () => {
+    const { rerender } = render(
+      <SlotMachineLoader isLoading={false} avatarUrls={[]} />
+    );
+
+    // Rapidly toggle loading state - this should not cause infinite loops
+    act(() => {
+      rerender(<SlotMachineLoader isLoading={true} avatarUrls={[]} />);
+      rerender(<SlotMachineLoader isLoading={false} avatarUrls={[]} />);
+      rerender(<SlotMachineLoader isLoading={true} avatarUrls={[]} />);
+      rerender(<SlotMachineLoader isLoading={false} avatarUrls={[]} />);
+    });
+
+    // Component should still be functional
+    const reels = screen.getAllByTestId('reel');
+    expect(reels.length).toBe(3); // Should have 3 reels
+    expect(reels[0]).toBeInTheDocument();
   });
 });

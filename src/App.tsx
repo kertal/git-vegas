@@ -145,6 +145,12 @@ function App() {
     timestamp: number;
   } | null>('github-last-search-params', null);
 
+  // Track when cache was last used to prevent repeated cache usage
+  const [lastCacheUsage, setLastCacheUsage] = useState<{
+    searchKey: string;
+    timestamp: number;
+  } | null>(null);
+
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
@@ -251,6 +257,8 @@ function App() {
       // Clean up URL after applying overrides (only when URL params were actually used)
       cleanupUrlParams();
     }
+    // This effect should only run on mount to apply URL overrides
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount
 
   // Individual setters for form settings
@@ -476,12 +484,16 @@ function App() {
   } = currentFilters;
 
   // Helper functions for Set operations using the new utilities
+  // These functions are created by utility functions and don't need dependencies
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const addToValidated = useCallback(createAddToCache(setValidatedUsernames), [
     setValidatedUsernames,
   ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const addToInvalid = useCallback(createAddToCache(setInvalidUsernames), [
     setInvalidUsernames,
   ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const removeFromValidated = useCallback(
     createRemoveFromCache(setValidatedUsernames),
     [setValidatedUsernames]
@@ -561,11 +573,21 @@ function App() {
 
   // Update handleSearch to check cache first
   const handleSearch = useCallback(async () => {
+    // Never use cache for repeated searches - if user clicks search again, they want fresh data
+    const shouldUseCache = false;
+    
     // Check if we have valid cached results for the current parameters
-    if (isCacheValid() && results.length > 0) {
+    if (shouldUseCache) {
       setLoadingProgress(`Using cached results (${results.length} items)`);
       await new Promise(resolve => setTimeout(resolve, 500));
       setLoadingProgress('');
+      
+      // Mark that cache was used for this search
+      setLastCacheUsage({
+        searchKey: '',
+        timestamp: Date.now(),
+      });
+      
       return;
     }
 
@@ -650,6 +672,8 @@ function App() {
     setError,
     isCacheValid,
     results.length,
+    lastSearchParams,
+    lastCacheUsage,
   ]);
 
   // Show initial loading animation
@@ -772,7 +796,7 @@ function App() {
 
 
     <PageLayout sx={{ '--spacing': '0 !important' }}>
-      <PageLayout.Header>
+      <PageLayout.Header className='border-bottom'>
 
         <PageHeader role="banner" aria-label="Title">
           <PageHeader.TitleArea>
@@ -927,7 +951,7 @@ function App() {
           {/* Right side: Loading Message */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <OfflineBanner />
-            {(loading || initialLoading) && loadingProgress && (
+            {((loading || initialLoading) || (loadingProgress && loadingProgress.includes('cached'))) && loadingProgress && (
               <Box
                 sx={{
                   px: 3,

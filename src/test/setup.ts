@@ -4,6 +4,7 @@ import { cleanup } from '@testing-library/react';
 
 // Extend expect matchers
 declare module 'vitest' {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   interface Assertion<T = any> extends jest.Matchers<void, T> {
     toBeInTheDocument(): T;
   }
@@ -103,7 +104,7 @@ class ResizeObserverMock {
 
 window.ResizeObserver = ResizeObserverMock;
 
-// @ts-ignore: Ignore type mismatch for testing purposes
+// @ts-expect-error: Ignore type mismatch for testing purposes
 window.IntersectionObserver = IntersectionObserverMock;
 
 // Mock URL handling
@@ -200,12 +201,15 @@ class MockURL {
 
   get searchParams() {
     // Return a proxy that updates the internal search when modified
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
     return new Proxy(this._searchParams, {
       get(target, prop) {
         const value = target[prop as keyof URLSearchParams];
         if (typeof value === 'function') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return function (this: URLSearchParams, ...args: any[]) {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
             const result = (value as Function).apply(target, args);
             // Update the internal search string after any modification
             const searchString = target.toString();
@@ -340,7 +344,7 @@ window.history.replaceState = vi.fn((state, title, url) => {
 
       // Parse the URL manually to extract components
       const urlMatch = fullUrl.match(
-        /^(https?:\/\/[^\/\?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/
+        /^(https?:\/\/[^/?#]+)(\/[^?#]*)?(\?[^#]*)?(#.*)?$/
       );
 
       if (urlMatch) {

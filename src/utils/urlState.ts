@@ -50,7 +50,7 @@ const validValues: Partial<Record<keyof ShareableState, string[]>> = {
 export function parseUrlParam(
   value: string | null,
   type: 'string' | 'boolean' | 'string[]'
-): any {
+): string | boolean | string[] | null {
   if (value === null) return null;
 
   switch (type) {
@@ -75,13 +75,13 @@ export function parseUrlParam(
  */
 export function validateUrlParam(
   key: keyof ShareableState,
-  value: any
+  value: string | boolean | string[] | null
 ): boolean {
   if (value === null || value === undefined) return true;
 
   // Check against valid values if they exist
   const validValuesList = validValues[key];
-  if (validValuesList && !validValuesList.includes(value)) {
+  if (validValuesList && typeof value === 'string' && !validValuesList.includes(value)) {
     return false;
   }
 
@@ -90,7 +90,7 @@ export function validateUrlParam(
     case 'startDate':
     case 'endDate':
       // Validate date format YYYY-MM-DD
-      return /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value));
+      return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value));
     case 'username':
       // Basic username validation (more detailed validation happens elsewhere)
       return (
@@ -121,8 +121,10 @@ export function parseUrlParams(): Partial<ShareableState> {
     if (rawValue !== null) {
       const parsedValue = parseUrlParam(rawValue, type);
 
-      if (validateUrlParam(paramKey, parsedValue)) {
-        result[paramKey] = parsedValue;
+      if (parsedValue !== null && validateUrlParam(paramKey, parsedValue)) {
+        // Type assertion is safe here because we've validated the value
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (result as any)[paramKey] = parsedValue;
       } else {
         console.warn(`Invalid URL parameter "${key}" with value "${rawValue}"`);
       }

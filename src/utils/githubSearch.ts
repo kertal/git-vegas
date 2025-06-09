@@ -195,7 +195,7 @@ export const validateAndCacheUsernames = async (
           errors: [`Validation failed:\n${detailedErrors.join('\n')}`],
         };
       }
-    } catch (err) {
+    } catch {
       return {
         valid: false,
         errors: ['Error validating usernames. Please try again.'],

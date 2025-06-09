@@ -7,6 +7,8 @@ import {
   getInvalidUsernames,
 } from './usernameCache';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 describe('usernameCache utilities', () => {
   describe('createAddToCache', () => {
     it('should create a function that adds usernames to a Set', () => {

@@ -44,7 +44,7 @@ export interface FormContextType {
   setEndDate: (value: string) => void;
   setGithubToken: (value: string) => void;
   setApiMode: (value: 'search' | 'events') => void;
-  handleSearch: () => void;
+  handleSearch: (forceRefresh?: boolean) => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
   loading: boolean;

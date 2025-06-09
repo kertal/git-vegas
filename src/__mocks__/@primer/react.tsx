@@ -1,24 +1,17 @@
+import React from 'react';
+
+// Mock components for testing - using any types is legitimate here
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Mock Box component
-export const Box = ({ children, sx, ...props }: any) => (
+export const Box = ({ children, ...props }: any) => (
   <div data-testid="box" {...props}>
     {children}
   </div>
 );
 
-// Mock Avatar component
-export const Avatar = ({ src, size, alt, ...props }: any) => (
-  <img
-    data-testid="avatar"
-    src={src}
-    alt={alt}
-    width={size}
-    height={size}
-    {...props}
-  />
-);
-
 // Mock Text component
-export const Text = ({ children, sx, ...props }: any) => (
+export const Text = ({ children, ...props }: any) => (
   <span data-testid="text" {...props}>
     {children}
   </span>
@@ -30,6 +23,7 @@ export const Flash = ({ children }: any) => <div>{children}</div>;
 export const Spinner = () => <div>Loading...</div>;
 export const FormControl = ({ children }: any) => <div>{children}</div>;
 FormControl.Label = ({ children }: any) => <label>{children}</label>;
+FormControl.Caption = ({ children }: any) => <small>{children}</small>;
 export const ButtonGroup = ({ children }: any) => <div>{children}</div>;
 export const Button = ({ children, onClick, ...props }: any) => (
   <button onClick={onClick} {...props}>
@@ -52,7 +46,18 @@ export const Dialog = ({ children }: any) => (
 Dialog.Header = ({ children }: any) => <div>{children}</div>;
 export const IconButton = ({ icon: Icon, ...props }: any) => (
   <button {...props}>
-    <Icon />
+    {Icon && <Icon />}
   </button>
 );
-export const BranchName = ({ children }: any) => <span>{children}</span>;
+export const TextInput = ({ ...props }: any) => <input {...props} />;
+export const UnderlineNav = ({ children }: any) => <nav>{children}</nav>;
+UnderlineNav.Item = ({ children, onSelect, ...props }: any) => (
+  <a onClick={onSelect} {...props}>
+    {children}
+  </a>
+);
+export const Avatar = ({ src, size, ...props }: any) => (
+  <img src={src} width={size} height={size} {...props} alt="avatar" />
+);
+
+/* eslint-enable @typescript-eslint/no-explicit-any */

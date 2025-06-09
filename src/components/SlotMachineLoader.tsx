@@ -8,14 +8,12 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
   isLoading,
   isManuallySpinning = false,
 }: SlotMachineLoaderProps) {
-  // Default emojis as fallback
-  const defaultSymbols = ['🎰', '💎', '7️⃣', '🎲', '🎮', '🎪', '🎨', '🎭', '🎪'];
-
   // Ensure we always have items to display
-  const allItems = useMemo(
-    () => (avatarUrls.length > 0 ? avatarUrls : defaultSymbols),
-    [avatarUrls]
-  );
+  const allItems = useMemo(() => {
+    // Default emojis as fallback
+    const defaultSymbols = ['🎰', '💎', '7️⃣', '🎲', '🎮', '🎪', '🎨', '🎭', '🎪'];
+    return avatarUrls.length > 0 ? avatarUrls : defaultSymbols;
+  }, [avatarUrls]);
 
   const [positions, setPositions] = useState([0, 0, 0]);
   const [spinning, setSpinning] = useState([false, false, false]);
@@ -54,6 +52,8 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
     return () => {
       timeoutIds.forEach(id => window.clearTimeout(id));
     };
+    // Note: 'spinning' is intentionally omitted from dependencies to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, isManuallySpinning, allItems.length]);
 
   const SlotReel = ({
@@ -75,7 +75,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
       }
 
       return sequence;
-    }, [position, allItems]);
+    }, [position]);
 
     // Get the current visible item (middle item when spinning, final item when stopped)
     const visibleItemIndex = Math.floor(itemSequence.length / 2);

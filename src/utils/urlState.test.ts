@@ -14,6 +14,8 @@ import {
 import { FormSettings, UISettings } from '../types';
 import { createDefaultFilter, ResultsFilter } from './resultsUtils';
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Mock window.location and related APIs
 const mockLocation = {
   href: 'http://localhost:3000/',
