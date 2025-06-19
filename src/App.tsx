@@ -670,7 +670,9 @@ function App() {
 
 
       // Show success message briefly
-      setLoadingProgress(`Successfully loaded ${result.totalCount} raw items!`);
+      const eventsCount = result.rawEvents?.length || 0;
+      const itemsCount = result.rawSearchItems?.length || 0;
+      setLoadingProgress(`Successfully loaded ${eventsCount} events and ${itemsCount} issues/PRs!`);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Clear loading state
