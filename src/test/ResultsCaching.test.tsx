@@ -33,32 +33,65 @@ describe('Results Caching', () => {
     mockFetch.mockReset();
   });
 
-  it('should load cached results on mount if available and not expired', () => {
-    // Set up cached results - useLocalStorage stores the array directly
-    localStorage.setItem('github-search-results', JSON.stringify(mockResults));
+  it('should load cached results on mount if available and not expired', async () => {
+    // Set up cached results with new data structure
+    const cachedData = {
+      rawSearchItems: mockResults,
+      rawEvents: [],
+      metadata: {
+        lastFetch: Date.now(),
+        usernames: ['testuser'],
+        apiMode: 'search',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+      },
+    };
+    localStorage.setItem('github-raw-data-storage', JSON.stringify(cachedData));
 
     // Also set the last search params to match
     const lastSearchParams = {
       username: 'testuser',
       startDate: '2024-01-01',
       endDate: '2024-01-31',
+      apiMode: 'search',
       timestamp: Date.now(),
     };
     localStorage.setItem(
-      'github-last-search',
+      'github-last-search-params',
       JSON.stringify(lastSearchParams)
+    );
+
+    // Set URL parameters to match the cached data
+    window.history.replaceState(
+      {},
+      '',
+      '?username=testuser&startDate=2024-01-01&endDate=2024-01-31'
     );
 
     render(<App />);
 
-    expect(screen.getByText('Test Issue')).toBeInTheDocument();
+    // Wait for the cached results to be processed and displayed
+    await waitFor(() => {
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+    });
+    
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('should fetch new results if cache is expired', async () => {
-    // Set up expired cached results - but since useLocalStorage doesn't handle expiration,
-    // this test should just verify that new results can be fetched
-    localStorage.setItem('github-search-results', JSON.stringify(mockResults));
+    // Set up expired cached results with new data structure
+    const cachedData = {
+      rawSearchItems: mockResults,
+      rawEvents: [],
+      metadata: {
+        lastFetch: Date.now(),
+        usernames: ['testuser'],
+        apiMode: 'search',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+      },
+    };
+    localStorage.setItem('github-raw-data-storage', JSON.stringify(cachedData));
 
     // Mock successful API response
     mockFetch.mockResolvedValueOnce({
@@ -81,7 +114,7 @@ describe('Results Caching', () => {
     });
 
     // Manually click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /^search$/i });
+    const searchButton = screen.getByRole('button', { name: /^update$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -92,20 +125,19 @@ describe('Results Caching', () => {
   });
 
   it('should fetch new results if URL parameters differ from cache', async () => {
-    // Set up cached results
-    localStorage.setItem('github-search-results', JSON.stringify(mockResults));
-
-    // Set last search params with different values
-    const lastSearchParams = {
-      username: 'olduser',
-      startDate: '2024-01-01',
-      endDate: '2024-01-31',
-      timestamp: Date.now(),
+    // Set up cached results with new data structure
+    const cachedData = {
+      rawSearchItems: mockResults,
+      rawEvents: [],
+      metadata: {
+        lastFetch: Date.now(),
+        usernames: ['olduser'],
+        apiMode: 'search',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+      },
     };
-    localStorage.setItem(
-      'github-last-search',
-      JSON.stringify(lastSearchParams)
-    );
+    localStorage.setItem('github-raw-data-storage', JSON.stringify(cachedData));
 
     // Set different URL parameters
     window.history.replaceState(
@@ -128,7 +160,7 @@ describe('Results Caching', () => {
     });
 
     // Manually click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /^search$/i });
+    const searchButton = screen.getByRole('button', { name: /^update$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -159,7 +191,7 @@ describe('Results Caching', () => {
     });
 
     // Click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /^search$/i });
+    const searchButton = screen.getByRole('button', { name: /^update$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -172,17 +204,29 @@ describe('Results Caching', () => {
     // Wait for the state to update and localStorage to be written
     await waitFor(
       () => {
-        const cachedData = localStorage.getItem('github-search-results');
+        const cachedData = localStorage.getItem('github-raw-data-storage');
         expect(cachedData).not.toBeNull();
-        expect(JSON.parse(cachedData || '[]')).toEqual(mockResults);
+        const parsedData = JSON.parse(cachedData || '{}');
+        expect(parsedData.rawSearchItems).toEqual(mockResults);
       },
       { timeout: 5000 }
     );
   });
 
   it('should handle cache clearing', async () => {
-    // Set up initial cached results
-    localStorage.setItem('github-search-results', JSON.stringify(mockResults));
+    // Set up initial cached results with new data structure
+    const cachedData = {
+      rawSearchItems: mockResults,
+      rawEvents: [],
+      metadata: {
+        lastFetch: Date.now(),
+        usernames: ['testuser'],
+        apiMode: 'search',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+      },
+    };
+    localStorage.setItem('github-raw-data-storage', JSON.stringify(cachedData));
 
     render(<App />);
 
@@ -229,7 +273,7 @@ describe('Results Caching', () => {
     });
 
     // Click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /^search$/i });
+    const searchButton = screen.getByRole('button', { name: /^update$/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });

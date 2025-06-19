@@ -230,6 +230,29 @@ describe('resultsUtils', () => {
       expect(getItemType(prItem)).toBe('pr');
       expect(getItemType(commentItem)).toBe('comment');
     });
+
+    it('should categorize pull request reviews as pr', () => {
+      const reviewItem: GitHubItem = {
+        id: 123,
+        title: 'Reviewed: Fix bug in authentication',
+        html_url: 'https://github.com/test/repo/pull/123',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        state: 'open',
+        user: {
+          login: 'reviewer',
+          avatar_url: 'https://github.com/reviewer.png',
+          html_url: 'https://github.com/reviewer',
+        },
+        pull_request: {
+          merged_at: undefined,
+          url: 'https://github.com/test/repo/pull/123',
+        },
+      };
+
+      const result = getItemType(reviewItem);
+      expect(result).toBe('pr');
+    });
   });
 
   describe('filterByStatus', () => {

@@ -5,7 +5,6 @@ import {
   FormControl,
   TextInput,
   Flash,
-  Spinner,
   UnderlineNav,
 } from '@primer/react';
 import { useFormContext } from '../App';
@@ -68,8 +67,8 @@ const SearchForm = memo(function SearchForm() {
           handleSearch();
         }}
       >
-          {/* Main search fields in a horizontal layout */}
-          <Box
+        {/* Main search fields in a horizontal layout */}
+        <Box
           sx={{
             display: 'grid',
             gridTemplateColumns:
@@ -78,19 +77,17 @@ const SearchForm = memo(function SearchForm() {
             alignItems: 'flex-start',
           }}
         >
-          <Box>
-            <FormControl required>
-              <FormControl.Label>GitHub Username(s)</FormControl.Label>
-              <TextInput
-                placeholder="Enter usernames (comma-separated for multiple)"
-                value={username}
-                onChange={handleUsernameChange}
-                onBlur={handleUsernameBlur}
-                aria-required="true"
-                block
-              />
-            </FormControl>
-          </Box>
+          <FormControl required>
+            <FormControl.Label>GitHub Username(s)</FormControl.Label>
+            <TextInput
+              placeholder="Enter usernames (comma-separated for multiple)"
+              value={username}
+              onChange={handleUsernameChange}
+              onBlur={handleUsernameBlur}
+              aria-required="true"
+              block
+            />
+          </FormControl>
 
           <FormControl required>
             <FormControl.Label>Start Date</FormControl.Label>
@@ -113,27 +110,18 @@ const SearchForm = memo(function SearchForm() {
               block
             />
           </FormControl>
-
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'flex-end',
-              height: '100%',
-            }}
-          >
+          <FormControl>
+            <FormControl.Label>Action</FormControl.Label>
             <Button
               variant="primary"
               type="submit"
+              block
               disabled={loading}
-              sx={{
-                minWidth: '120px',
-                height: '32px',
-              }}
+              loading={loading}
             >
-              {loading ? <Spinner size="small" /> : 'Search'}
+              Update
             </Button>
-          </Box>
+          </FormControl>
         </Box>
         {/* API Mode Switch */}
         <Box sx={{ mb: 2 }}>
@@ -141,7 +129,7 @@ const SearchForm = memo(function SearchForm() {
             <UnderlineNav.Item
               href="#"
               aria-current={apiMode === 'search' ? 'page' : undefined}
-              onSelect={(e) => {
+              onSelect={e => {
                 e.preventDefault();
                 setApiMode('search');
               }}
@@ -151,7 +139,7 @@ const SearchForm = memo(function SearchForm() {
             <UnderlineNav.Item
               href="#"
               aria-current={apiMode === 'events' ? 'page' : undefined}
-              onSelect={(e) => {
+              onSelect={e => {
                 e.preventDefault();
                 setApiMode('events');
               }}
@@ -160,7 +148,6 @@ const SearchForm = memo(function SearchForm() {
             </UnderlineNav.Item>
           </UnderlineNav>
         </Box>
-
       </Box>
 
       {error && (
@@ -168,8 +155,6 @@ const SearchForm = memo(function SearchForm() {
           {error}
         </Flash>
       )}
-
-
     </Box>
   );
 });

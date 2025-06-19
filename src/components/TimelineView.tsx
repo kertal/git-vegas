@@ -8,9 +8,9 @@ import {
   GitPullRequestClosedIcon,
   CommentIcon,
   RepoIcon,
+  EyeIcon,
 } from '@primer/octicons-react';
-import { GitHubItem } from '../types';
-import { GitHubEvent } from '../utils/githubSearch';
+import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
@@ -37,6 +37,10 @@ const TimelineView = memo(function TimelineView({
   const getEventType = (
     item: GitHubItem
   ): 'issue' | 'pull_request' | 'comment' => {
+    // Check if this is a pull request review (title starts with "Reviewed:")
+    if (item.title.startsWith('Reviewed:')) {
+      return 'pull_request';
+    }
     // Check if this is a comment event (title starts with "Comment on:")
     if (item.title.startsWith('Comment on:')) {
       return 'comment';
@@ -71,6 +75,10 @@ const TimelineView = memo(function TimelineView({
         return 'commented on issue';
       }
     } else if (type === 'pull_request') {
+      // Check if this is a pull request review
+      if (item.title.startsWith('Reviewed:')) {
+        return 'reviewed pull request';
+      }
       if (item.merged_at) return 'merged pull request';
       if (item.state === 'closed') return 'closed pull request';
       return 'opened pull request';
@@ -86,10 +94,16 @@ const TimelineView = memo(function TimelineView({
   };
 
   if (sortedItems.length === 0) {
+    // Check if we have raw events but they're filtered out
+    const hasRawEvents = rawEvents && rawEvents.length > 0;
+    
     return (
       <Box sx={{ textAlign: 'center', py: 6 }}>
         <Text color="fg.muted">
-          No events found for the selected time period.
+          {!hasRawEvents 
+            ? 'No cached events found. Please perform a search in events mode to load events.'
+            : 'No events found for the selected time period. Try adjusting your date range or filters.'
+          }
         </Text>
       </Box>
     );
@@ -238,6 +252,7 @@ const TimelineView = memo(function TimelineView({
               'PRs - opened': GitHubItem[];
               'PRs - merged': GitHubItem[];
               'PRs - closed': GitHubItem[];
+              'PRs - reviewed': GitHubItem[];
               'Issues - opened': GitHubItem[];
               'Issues - closed': GitHubItem[];
               'Issues - commented': GitHubItem[];
@@ -245,6 +260,7 @@ const TimelineView = memo(function TimelineView({
               'PRs - opened': [],
               'PRs - merged': [],
               'PRs - closed': [],
+              'PRs - reviewed': [],
               'Issues - opened': [],
               'Issues - closed': [],
               'Issues - commented': [],
@@ -252,7 +268,10 @@ const TimelineView = memo(function TimelineView({
 
             sortedItems.forEach(item => {
               const type = getEventType(item);
-              if (type === 'comment') {
+              // Add to reviewed if it's a PR review (title starts with "Reviewed:")
+              if (type === 'pull_request' && item.title.startsWith('Reviewed:')) {
+                groups['PRs - reviewed'].push(item);
+              } else if (type === 'comment') {
                 groups['Issues - commented'].push(item);
               } else if (type === 'pull_request') {
                 if (item.merged_at) {
@@ -278,12 +297,13 @@ const TimelineView = memo(function TimelineView({
                   
                   // Get the appropriate icon for the group
                   const getGroupIcon = () => {
-                    if (groupName.startsWith('PRs - opened')) return <GitPullRequestIcon size={20} />;
-                    if (groupName.startsWith('PRs - merged')) return <GitMergeIcon size={20} />;
-                    if (groupName.startsWith('PRs - closed')) return <GitPullRequestClosedIcon size={20} />;
-                    if (groupName.startsWith('Issues - opened')) return <IssueOpenedIcon size={20} />;
-                    if (groupName.startsWith('Issues - closed')) return <IssueClosedIcon size={20} />;
-                    if (groupName.startsWith('Issues - commented')) return <CommentIcon size={20} />;
+                    if (groupName === 'PRs - opened') return <GitPullRequestIcon size={20} />;
+                    if (groupName === 'PRs - merged') return <GitMergeIcon size={20} />;
+                    if (groupName === 'PRs - closed') return <GitPullRequestClosedIcon size={20} />;
+                    if (groupName === 'PRs - reviewed') return <EyeIcon size={20} />;
+                    if (groupName === 'Issues - opened') return <IssueOpenedIcon size={20} />;
+                    if (groupName === 'Issues - closed') return <IssueClosedIcon size={20} />;
+                    if (groupName === 'Issues - commented') return <CommentIcon size={20} />;
                     return <IssueOpenedIcon size={20} />;
                   };
 

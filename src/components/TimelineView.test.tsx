@@ -4,8 +4,7 @@ import { screen } from '@testing-library/dom';
 import { ThemeProvider } from '@primer/react';
 import { vi } from 'vitest';
 import TimelineView from './TimelineView';
-import { GitHubItem } from '../types';
-import { GitHubEvent } from '../utils/githubSearch';
+import { GitHubItem, GitHubEvent } from '../types';
 
 const mockItems: GitHubItem[] = [
   {
@@ -189,7 +188,7 @@ describe('TimelineView', () => {
     renderWithTheme(<TimelineView items={[]} />);
 
     expect(
-      screen.getByText('No events found for the selected time period.')
+      screen.getByText('No cached events found. Please perform a search in events mode to load events.')
     ).toBeInTheDocument();
   });
 

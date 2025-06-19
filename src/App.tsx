@@ -6,43 +6,44 @@ import {
   useEffect,
   useMemo,
 } from 'react';
-import { Box, Button, IconButton, PageLayout, PageHeader } from '@primer/react';
-import { GearIcon } from '@primer/octicons-react';
+import { Box, Button, IconButton, PageLayout, PageHeader, ThemeProvider, Text } from '@primer/react';
+import { GearIcon, DatabaseIcon } from '@primer/octicons-react';
 import './App.css';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
 import SearchForm from './components/SearchForm';
-import SettingsDialog from './components/SettingsDialog';
 import ResultsList from './components/ResultsList';
-import TimelineView from './components/TimelineView';
-
+import SettingsDialog from './components/SettingsDialog';
+import { StorageManager } from './components/StorageManager';
 import { OfflineBanner } from './components/OfflineBanner';
+import ShareButton from './components/ShareButton';
+import TimelineView from './components/TimelineView';
+import { LoadingIndicator } from './components/LoadingIndicator';
+import { useLocalStorage, useFormSettings } from './hooks/useLocalStorage';
+import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
 import {
-  GitHubItem,
-  FormContextType,
-  ResultsContextType,
   UISettings,
   ItemUIState,
   UsernameCache,
+  FormContextType,
+  ResultsContextType,
+  RawDataStorage,
 } from './types';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { useFormSettings } from './hooks/useLocalStorage';
-import { validateUsernameList } from './utils';
-import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
-
-import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import {
-  extractAvailableLabels,
-  applyFiltersAndSort,
   createDefaultFilter,
-  ResultsFilter,
+  applyFiltersAndSort,
+  extractAvailableLabels,
+  type ResultsFilter,
 } from './utils/resultsUtils';
-import { performGitHubSearch, GitHubSearchParams, GitHubEvent } from './utils/githubSearch';
-import {
-  parseUrlParams,
-  applyUrlOverrides,
-  cleanupUrlParams,
-} from './utils/urlState';
-import ShareButton from './components/ShareButton';
+import { parseUrlParams, applyUrlOverrides, cleanupUrlParams } from './utils/urlState';
+import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
+import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
+import { validateUsernameList } from './utils';
+import { performGitHubSearch, type GitHubSearchParams } from './utils/githubSearch';
+import { 
+  categorizeRawEvents, 
+  categorizeRawSearchItems,
+  getAvailableLabelsFromRawEvents,
+} from './utils/rawDataUtils';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -124,6 +125,28 @@ function App() {
     }
   );
 
+  // Raw data storage - use IndexedDB for events, localStorage for search items
+  const [rawDataStorage, setRawDataStorage] = useLocalStorage<RawDataStorage>(
+    'github-raw-data-storage',
+    {
+      rawEvents: [],
+      rawSearchItems: [],
+      metadata: {
+        lastFetch: 0,
+        usernames: [],
+        apiMode: 'search',
+      },
+    }
+  );
+
+  // IndexedDB storage for events (with localStorage fallback)
+  const {
+    events: indexedDBEvents,
+    error: eventsError,
+    storeEvents,
+    clearEvents,
+  } = useIndexedDBStorage('github-events-indexeddb');
+
   // Separate filter states for different API modes
   const [searchFilters, setSearchFilters] = useLocalStorage<ResultsFilter>(
     'github-search-filters',
@@ -133,18 +156,6 @@ function App() {
     'github-events-filters',
     createDefaultFilter()
   );
-  const [searchResults, setSearchResults] = useLocalStorage<GitHubItem[]>(
-    'github-search-results',
-    []
-  );
-  const [eventsResults, setEventsResults] = useLocalStorage<GitHubItem[]>(
-    'github-events-results',
-    []
-  );
-  const [rawEventsResults, setRawEventsResults] = useLocalStorage<GitHubEvent[]>(
-    'github-raw-events-results',
-    []
-  );
   const [lastSearchParams, setLastSearchParams] = useLocalStorage<{
     username: string;
     startDate: string;
@@ -153,15 +164,30 @@ function App() {
     timestamp: number;
   } | null>('github-last-search-params', null);
 
-
-
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
-  // Get the appropriate results and filters based on current API mode
+  // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
-    return apiMode === 'events' ? eventsResults : searchResults;
-  }, [apiMode, eventsResults, searchResults]);
+    if (apiMode === 'events') {
+      // Use IndexedDB events if available, fallback to localStorage
+      const eventsToUse = indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents;
+      return categorizeRawEvents(eventsToUse, startDate, endDate);
+    } else {
+      return categorizeRawSearchItems(rawDataStorage.rawSearchItems, startDate, endDate);
+    }
+  }, [apiMode, indexedDBEvents, rawDataStorage.rawEvents, rawDataStorage.rawSearchItems, startDate, endDate]);
+
+  // Get available labels from raw data
+  const availableLabels = useMemo(() => {
+    if (apiMode === 'events') {
+      // Use IndexedDB events if available, fallback to localStorage
+      const eventsToUse = indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents;
+      return getAvailableLabelsFromRawEvents(eventsToUse);
+    } else {
+      return extractAvailableLabels(results);
+    }
+  }, [apiMode, indexedDBEvents, rawDataStorage.rawEvents, results]);
 
   const currentFilters = useMemo(() => {
     return apiMode === 'events' ? eventsFilters : searchFilters;
@@ -170,6 +196,7 @@ function App() {
   const setCurrentFilters = useMemo(() => {
     return apiMode === 'events' ? setEventsFilters : setSearchFilters;
   }, [apiMode, setEventsFilters, setSearchFilters]);
+
   const { isCompactView, timelineViewMode } = uiSettings;
   const {
     descriptionVisible,
@@ -222,12 +249,14 @@ function App() {
 
   // Additional component state (not persisted)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
+  const [currentUsername, setCurrentUsername] = useState('');
 
   // URL state initialization - apply URL overrides on mount if present
   useEffect(() => {
@@ -327,8 +356,6 @@ function App() {
     },
     [setUISettings]
   );
-
-
 
   // Individual setters for item UI state
   const setDescriptionVisible = useCallback(
@@ -531,10 +558,6 @@ function App() {
   );
 
   // Derived state using new utilities
-  const availableLabels = useMemo(() => {
-    return extractAvailableLabels(Array.isArray(results) ? results : []);
-  }, [results]);
-
   const filteredResults = useMemo(() => {
     return applyFiltersAndSort(
       Array.isArray(results) ? results : [],
@@ -579,6 +602,15 @@ function App() {
     (cacheExpiryMs: number = 3600000) => {
       if (!lastSearchParams) return false;
 
+      // For events mode, be more permissive - show cached events even if parameters don't match exactly
+      if (apiMode === 'events') {
+        // Check if we have any cached events and they're not too old
+        const hasCachedEvents = rawDataStorage.rawEvents.length > 0;
+        const isNotTooOld = Date.now() - rawDataStorage.metadata.lastFetch < cacheExpiryMs;
+        return hasCachedEvents && isNotTooOld;
+      }
+
+      // For search mode, be strict about parameter matching
       return (
         lastSearchParams.username === username &&
         lastSearchParams.startDate === startDate &&
@@ -587,19 +619,7 @@ function App() {
         Date.now() - lastSearchParams.timestamp < cacheExpiryMs
       );
     },
-    [lastSearchParams, username, startDate, endDate, apiMode]
-  );
-
-  // Helper function to set the appropriate results based on API mode
-  const setCurrentResults = useCallback(
-    (items: GitHubItem[]) => {
-      if (apiMode === 'events') {
-        setEventsResults(items);
-      } else {
-        setSearchResults(items);
-      }
-    },
-    [apiMode, setEventsResults, setSearchResults]
+    [lastSearchParams, username, startDate, endDate, apiMode, rawDataStorage.rawEvents.length, rawDataStorage.metadata.lastFetch]
   );
 
   // Update handleSearch to check cache first
@@ -612,8 +632,6 @@ function App() {
       setLoadingProgress(`Using cached results (${results.length} items)`);
       await new Promise(resolve => setTimeout(resolve, 500));
       setLoadingProgress('');
-
-
 
       return;
     }
@@ -643,6 +661,14 @@ function App() {
     // Set up progress callback
     const onProgress = (message: string) => {
       setLoadingProgress(message);
+      
+      // Extract username from progress message
+      const usernameMatch = message.match(/for\s+([a-zA-Z0-9_-]+)/);
+      if (usernameMatch) {
+        setCurrentUsername(usernameMatch[1]);
+      } else if (message.includes('Successfully loaded') || message.includes('Validating usernames')) {
+        setCurrentUsername('');
+      }
     };
 
     setLoading(true);
@@ -655,12 +681,41 @@ function App() {
         requestDelay: 500,
       });
 
-      // Update results and search parameters
-      setCurrentResults(result.items);
-
-      // Store raw events if using events API
+      // Store raw data based on API mode
       if (apiMode === 'events' && result.rawEvents) {
-        setRawEventsResults(result.rawEvents);
+        // Store events in IndexedDB
+        await storeEvents('github-events-indexeddb', result.rawEvents, {
+          lastFetch: Date.now(),
+          usernames: result.processedUsernames,
+          apiMode: 'events',
+          startDate,
+          endDate,
+        });
+        
+        // Also keep a copy in localStorage for backward compatibility
+        setRawDataStorage(prev => ({
+          ...prev,
+          rawEvents: result.rawEvents!,
+          metadata: {
+            lastFetch: Date.now(),
+            usernames: result.processedUsernames,
+            apiMode: 'events',
+            startDate,
+            endDate,
+          },
+        }));
+      } else if (apiMode === 'search' && result.rawSearchItems) {
+        setRawDataStorage(prev => ({
+          ...prev,
+          rawSearchItems: result.rawSearchItems!,
+          metadata: {
+            lastFetch: Date.now(),
+            usernames: result.processedUsernames,
+            apiMode: 'search',
+            startDate,
+            endDate,
+          },
+        }));
       }
 
       setLastSearchParams({
@@ -672,7 +727,7 @@ function App() {
       });
 
       // Show success message briefly
-      setLoadingProgress(`Successfully loaded ${result.totalCount} items!`);
+      setLoadingProgress(`Successfully loaded ${result.totalCount} raw items!`);
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Clear loading state
@@ -698,12 +753,12 @@ function App() {
     addToValidated,
     addToInvalid,
     removeFromValidated,
-    setCurrentResults,
-    setRawEventsResults,
+    setRawDataStorage,
     setLastSearchParams,
     setLoading,
     setLoadingProgress,
     setError,
+    storeEvents,
     results.length,
   ]);
 
@@ -717,11 +772,21 @@ function App() {
 
   // Auto-load cached results when switching API modes (if cache is valid)
   useEffect(() => {
-    if (isCacheValid() && results.length === 0) {
+    // For events mode, always show cached events if available, regardless of cache validity
+    if (apiMode === 'events') {
+      const eventsToShow = indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents;
+      if (eventsToShow.length > 0 && results.length === 0) {
+        setLoadingProgress(`Loaded ${eventsToShow.length} cached events`);
+        setTimeout(() => setLoadingProgress(''), 1000);
+        return;
+      }
+    }
+
+    // For search mode, use the existing cache validation logic
+    if (apiMode === 'search' && isCacheValid() && results.length === 0) {
       // If we have cached results but current results array is empty,
       // it means we switched API modes and should show the cached data immediately
-      const cachedResults =
-        apiMode === 'events' ? eventsResults : searchResults;
+      const cachedResults = rawDataStorage.rawSearchItems;
       if (cachedResults.length > 0) {
         setLoadingProgress(`Loaded ${cachedResults.length} cached items`);
         setTimeout(() => setLoadingProgress(''), 1000);
@@ -730,9 +795,10 @@ function App() {
   }, [
     apiMode,
     isCacheValid,
-    results.length,
-    eventsResults,
-    searchResults,
+    results,
+    indexedDBEvents,
+    rawDataStorage.rawEvents,
+    rawDataStorage.rawSearchItems,
     setLoadingProgress,
   ]);
 
@@ -824,190 +890,188 @@ function App() {
   }, [setSelectedItems]);
 
   return (
-
-
-    <PageLayout sx={{ '--spacing': '0 !important' }}>
-      <PageLayout.Header className='border-bottom'>
-
-        <PageHeader role="banner" aria-label="Title">
-          <PageHeader.TitleArea>
-            <PageHeader.LeadingVisual>
-              <SlotMachineLoader
-                avatarUrls={(Array.isArray(results) ? results : [])
-                  .map(item => item.user.avatar_url)
-                  .filter(Boolean)}
+    <ThemeProvider>
+      <PageLayout sx={{ '--spacing': '0 !important' }}>
+        <PageLayout.Header className='border-bottom'>
+          <PageHeader role="banner" aria-label="Title">
+            <PageHeader.TitleArea>
+              <PageHeader.LeadingVisual>
+                <SlotMachineLoader
+                  avatarUrls={(Array.isArray(results) ? results : [])
+                    .map(item => item.user.avatar_url)
+                    .filter(Boolean)}
+                  isLoading={loading || initialLoading}
+                  isManuallySpinning={isManuallySpinning}
+                />
+                <Button
+                  variant="invisible"
+                  onClick={handleManualSpin}
+                  disabled={isManuallySpinning || loading || initialLoading}
+                  sx={{
+                    p: 1,
+                    color: 'fg.default',
+                    opacity:
+                      isManuallySpinning || loading || initialLoading ? 0.5 : 1,
+                    '&:hover:not(:disabled)': {
+                      color: 'accent.fg',
+                      transform: 'scale(1.1)',
+                      transition: 'transform 0.2s ease-in-out',
+                    },
+                    '&:disabled': {
+                      cursor: 'not-allowed',
+                    },
+                    '&:focus': {
+                      outline: 'none',
+                      boxShadow: 'none',
+                    },
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    lineHeight: 1,
+                    height: 'auto',
+                    minWidth: 'auto',
+                  }}
+                >
+                  🕹️
+                </Button>
+              </PageHeader.LeadingVisual>
+              <PageHeader.Title>Git Vegas</PageHeader.Title>
+            </PageHeader.TitleArea>
+            <PageHeader.Actions>
+              <LoadingIndicator
+                loadingProgress={loadingProgress}
                 isLoading={loading || initialLoading}
-                isManuallySpinning={isManuallySpinning}
+                currentUsername={currentUsername}
               />
-              <Button
+              <ShareButton
+                formSettings={formSettings}
+                uiSettings={uiSettings}
+                currentFilters={currentFilters}
+                searchText={currentFilters.searchText}
+                size="medium"
                 variant="invisible"
-                onClick={handleManualSpin}
-                disabled={isManuallySpinning || loading || initialLoading}
-                sx={{
-                  p: 1,
-                  color: 'fg.default',
-                  opacity:
-                    isManuallySpinning || loading || initialLoading ? 0.5 : 1,
-                  '&:hover:not(:disabled)': {
-                    color: 'accent.fg',
-                    transform: 'scale(1.1)',
-                    transition: 'transform 0.2s ease-in-out',
-                  },
-                  '&:disabled': {
-                    cursor: 'not-allowed',
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                    boxShadow: 'none',
-                  },
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  lineHeight: 1,
-                  height: 'auto',
-                  minWidth: 'auto',
-                }}
-              >
-                🕹️
-              </Button>
+              />
+              <IconButton
+                icon={DatabaseIcon}
+                aria-label="Storage Manager"
+                onClick={() => setIsStorageManagerOpen(true)}
+                variant="invisible"
+              />
+              <IconButton
+                icon={GearIcon}
+                aria-label="Settings"
+                onClick={() => setIsSettingsOpen(true)}
+                variant="invisible"
+              />
+            </PageHeader.Actions>
+          </PageHeader>
+        </PageLayout.Header>
 
-            </PageHeader.LeadingVisual>
-            <PageHeader.Title>Git Vegas</PageHeader.Title>
-          </PageHeader.TitleArea>
-          <PageHeader.Actions>
-
-            <ShareButton
-              formSettings={formSettings}
-              uiSettings={uiSettings}
-              currentFilters={currentFilters}
-              searchText={currentFilters.searchText}
-              size="medium"
-              variant="invisible"
-            />
-            <IconButton
-              icon={GearIcon}
-              aria-label="Settings"
-              onClick={() => setIsSettingsOpen(true)}
-              variant="invisible"
-            />
-
-          </PageHeader.Actions>
-        </PageHeader>
-
-      </PageLayout.Header>
-
-      <PageLayout.Content sx={{ px: 3, py: 4 }}>
-        <FormContext.Provider
-          value={{
-            username,
-            startDate,
-            endDate,
-            githubToken,
-            apiMode,
-            setUsername,
-            setStartDate,
-            setEndDate,
-            setGithubToken,
-            setApiMode,
-            handleSearch,
-            handleUsernameBlur,
-            validateUsernameFormat,
-            loading,
-            loadingProgress,
-            error,
-          }}
-        >
-          <ResultsContext.Provider
+        <PageLayout.Content sx={{ px: 3, py: 4 }}>
+          <FormContext.Provider
             value={{
-              results,
-              filteredResults,
-              filter,
-              statusFilter,
-              includedLabels: includedLabels || [],
-              excludedLabels: excludedLabels || [],
-              searchText,
-              repoFilters: repoFilters || [],
-              userFilter: userFilter || '',
-              availableLabels,
-              setFilter,
-              setStatusFilter,
-              setIncludedLabels,
-              setExcludedLabels,
-              setSearchText,
-              toggleDescriptionVisibility,
-              toggleExpand,
-              copyResultsToClipboard,
-              descriptionVisible,
-              expanded,
-              clipboardMessage,
-              clearAllFilters,
-              isCompactView,
-              setIsCompactView,
-              selectedItems,
-              toggleItemSelection,
-              selectAllItems,
-              clearSelection,
-              setRepoFilters,
-              setUserFilter,
+              username,
+              startDate,
+              endDate,
+              githubToken,
+              apiMode,
+              setUsername,
+              setStartDate,
+              setEndDate,
+              setGithubToken,
+              setApiMode,
+              handleSearch,
+              handleUsernameBlur,
+              validateUsernameFormat,
+              loading,
+              loadingProgress,
+              error,
             }}
           >
-            <SearchForm />
-            {apiMode === 'events' ? (
-              <TimelineView
-                items={results}
-                rawEvents={rawEventsResults}
-                viewMode={timelineViewMode}
-                setViewMode={setTimelineViewMode}
+            <ResultsContext.Provider
+              value={{
+                results,
+                filteredResults,
+                filter,
+                statusFilter,
+                includedLabels: includedLabels || [],
+                excludedLabels: excludedLabels || [],
+                searchText,
+                repoFilters: repoFilters || [],
+                userFilter: userFilter || '',
+                availableLabels,
+                setFilter,
+                setStatusFilter,
+                setIncludedLabels,
+                setExcludedLabels,
+                setSearchText,
+                toggleDescriptionVisibility,
+                toggleExpand,
+                copyResultsToClipboard,
+                descriptionVisible,
+                expanded,
+                clipboardMessage,
+                clearAllFilters,
+                isCompactView,
+                setIsCompactView,
+                selectedItems,
+                toggleItemSelection,
+                selectAllItems,
+                clearSelection,
+                setRepoFilters,
+                setUserFilter,
+              }}
+            >
+              <SearchForm />
+              {apiMode === 'events' ? (
+                <TimelineView
+                  items={results}
+                  rawEvents={indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents}
+                  viewMode={timelineViewMode}
+                  setViewMode={setTimelineViewMode}
+                />
+              ) : (
+                <ResultsList
+                  useResultsContext={useResultsContext}
+                  buttonStyles={buttonStyles}
+                />
+              )}
+              {eventsError && (
+                <Box sx={{ p: 2, bg: 'danger.subtle', color: 'danger.fg', borderRadius: 2, mb: 2 }}>
+                  <Text>Error loading events: {eventsError}</Text>
+                </Box>
+              )}
+              <SettingsDialog
+                isOpen={isSettingsOpen}
+                onDismiss={() => setIsSettingsOpen(false)}
               />
-            ) : (
-              <ResultsList
-                useResultsContext={useResultsContext}
-                buttonStyles={buttonStyles}
+              <StorageManager
+                isOpen={isStorageManagerOpen}
+                onClose={() => setIsStorageManagerOpen(false)}
+                onClearEvents={clearEvents}
               />
-            )}
-            <SettingsDialog
-              isOpen={isSettingsOpen}
-              onDismiss={() => setIsSettingsOpen(false)}
-            />
-          </ResultsContext.Provider>
-        </FormContext.Provider>
-      </PageLayout.Content>
+            </ResultsContext.Provider>
+          </FormContext.Provider>
+        </PageLayout.Content>
 
-      <PageLayout.Footer
-        padding="condensed"
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            py: 1,
-            minHeight: '40px',
-          }}
+        <PageLayout.Footer
+          padding="condensed"
         >
-
-          {/* Right side: Loading Message */}
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <OfflineBanner />
-            {((loading || initialLoading) || (loadingProgress && loadingProgress.includes('cached'))) && loadingProgress && (
-              <Box
-                sx={{
-                  px: 3,
-                  py: 1,
-                  bg: 'attention.subtle',
-                  color: 'attention.fg',
-                  borderRadius: 2,
-                  fontSize: 1,
-                  fontWeight: 'medium',
-                }}
-              >
-                {loadingProgress}
-              </Box>
-            )}
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              py: 1,
+              minHeight: '40px',
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <OfflineBanner />
+            </Box>
           </Box>
-        </Box>
-      </PageLayout.Footer>
-    </PageLayout>
-
+        </PageLayout.Footer>
+      </PageLayout>
+    </ThemeProvider>
   );
 }
 

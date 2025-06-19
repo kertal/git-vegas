@@ -1,4 +1,4 @@
-import { GitHubItem } from '../types';
+import { GitHubItem, GitHubEvent } from '../types';
 import {
   validateGitHubUsernames,
   isValidDateString,
@@ -35,7 +35,7 @@ export interface GitHubSearchParams {
  * Search result with metadata
  */
 export interface GitHubSearchResult {
-  /** Array of GitHub items found */
+  /** Array of GitHub items found (for backward compatibility) */
   items: GitHubItem[];
   /** Total number of items fetched */
   totalCount: number;
@@ -43,6 +43,8 @@ export interface GitHubSearchResult {
   processedUsernames: string[];
   /** Raw GitHub events (only when using events API) */
   rawEvents?: GitHubEvent[];
+  /** Raw GitHub items from search API */
+  rawSearchItems?: GitHubItem[];
 }
 
 /**
@@ -221,8 +223,8 @@ export const validateAndCacheUsernames = async (
  */
 export const fetchUserItems = async (
   username: string,
-  startDate: string,
-  endDate: string,
+  _startDate: string,
+  _endDate: string,
   githubToken?: string,
   cache?: UsernameCache,
   cacheCallbacks?: CacheCallbacks
@@ -236,7 +238,7 @@ export const fetchUserItems = async (
   }
 
   const response = await fetch(
-    `https://api.github.com/search/issues?q=author:${username}+created:${startDate}..${endDate}&per_page=100`,
+    `https://api.github.com/search/issues?q=author:${username}+created:${_startDate}..${_endDate}&per_page=100`,
     { headers }
   );
 
@@ -260,178 +262,6 @@ export const fetchUserItems = async (
 };
 
 /**
- * GitHub Events API response interface
- */
-export interface GitHubEvent {
-  id: string;
-  type: string;
-  actor: {
-    id: number;
-    login: string;
-    display_login?: string;
-    avatar_url: string;
-    url: string;
-  };
-  repo: {
-    id: number;
-    name: string;
-    url: string;
-  };
-  payload: {
-    action?: string;
-    issue?: {
-      id: number;
-      number: number;
-      title: string;
-      html_url: string;
-      state: string;
-      body?: string;
-      labels: { name: string; color?: string; description?: string }[];
-      created_at: string;
-      updated_at: string;
-      closed_at?: string;
-      pull_request?: {
-        merged_at?: string;
-        url?: string;
-      };
-      user: {
-        login: string;
-        avatar_url: string;
-        html_url: string;
-      };
-    };
-    pull_request?: {
-      id: number;
-      number: number;
-      title: string;
-      html_url: string;
-      state: string;
-      body?: string;
-      labels: { name: string; color?: string; description?: string }[];
-      created_at: string;
-      updated_at: string;
-      closed_at?: string;
-      merged_at?: string;
-      merged?: boolean;
-      user: {
-        login: string;
-        avatar_url: string;
-        html_url: string;
-      };
-    };
-    comment?: {
-      id: number;
-      body: string;
-      html_url: string;
-      created_at: string;
-      updated_at: string;
-      user: {
-        login: string;
-        avatar_url: string;
-        html_url: string;
-      };
-    };
-  };
-  public: boolean;
-  created_at: string;
-}
-
-/**
- * Transforms GitHub Event to GitHubItem
- *
- * @param event - GitHub event from Events API
- * @returns GitHubItem or null if event doesn't contain relevant data
- */
-export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
-  const { type, payload, repo } = event;
-
-  // Create user object from event actor
-  const actorUser = {
-    login: event.actor.login,
-    avatar_url: event.actor.avatar_url,
-    html_url: `https://github.com/${event.actor.login}`,
-  };
-
-  // Only process events that contain issues, pull requests, or comments
-  if (type === 'IssuesEvent' && payload.issue) {
-    const issue = payload.issue;
-    return {
-      id: issue.id,
-      html_url: issue.html_url,
-      title: issue.title,
-      created_at: event.created_at, // Use event timestamp, not issue timestamp
-      updated_at: issue.updated_at,
-      state: issue.state,
-      body: issue.body,
-      labels: issue.labels,
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      closed_at: issue.closed_at,
-      number: issue.number,
-      user: actorUser, // Use event actor instead of issue user
-      pull_request: issue.pull_request,
-    };
-  }
-
-  if (type === 'PullRequestEvent' && payload.pull_request) {
-    const pr = payload.pull_request;
-    return {
-      id: pr.id,
-      html_url: pr.html_url,
-      title: pr.title,
-      created_at: event.created_at, // Use event timestamp, not PR timestamp
-      updated_at: pr.updated_at,
-      state: pr.state,
-      body: pr.body,
-      labels: pr.labels,
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      closed_at: pr.closed_at,
-      merged_at: pr.merged_at,
-      merged: pr.merged,
-      number: pr.number,
-      user: actorUser, // Use event actor instead of PR user
-      pull_request: {
-        merged_at: pr.merged_at,
-        url: pr.html_url,
-      },
-    };
-  }
-
-  if (type === 'IssueCommentEvent' && payload.comment && payload.issue) {
-    const comment = payload.comment;
-    const issue = payload.issue;
-    return {
-      id: comment.id,
-      html_url: comment.html_url,
-      title: `Comment on: ${issue.title}`,
-      created_at: event.created_at, // Use event timestamp, not comment timestamp
-      updated_at: comment.updated_at,
-      state: issue.state,
-      body: comment.body,
-      labels: issue.labels,
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      closed_at: issue.closed_at,
-      number: issue.number,
-      user: actorUser, // Use event actor instead of comment user
-      pull_request: issue.pull_request,
-    };
-  }
-
-  return null;
-};
-
-/**
  * Result interface for fetching GitHub events
  */
 export interface FetchEventsResult {
@@ -452,8 +282,8 @@ export interface FetchEventsResult {
  */
 export const fetchUserEvents = async (
   username: string,
-  startDate: string,
-  endDate: string,
+  _startDate: string,
+  _endDate: string,
   githubToken?: string,
   cache?: UsernameCache,
   cacheCallbacks?: CacheCallbacks
@@ -513,30 +343,8 @@ export const fetchUserEvents = async (
       break; // No more events
     }
 
-    // Transform and filter events
-    const startDateTime = new Date(startDate).getTime();
-    const endDateTime = new Date(endDate).getTime() + 24 * 60 * 60 * 1000; // Add 1 day to include end date
-
-    for (const event of events) {
-      const eventTime = new Date(event.created_at).getTime();
-
-      // Stop if event is before start date (events are sorted newest first)
-      if (eventTime < startDateTime) {
-        return { items: allItems, rawEvents: allRawEvents };
-      }
-
-      // Include if within date range
-      if (eventTime <= endDateTime) {
-        // Store the raw event
-        allRawEvents.push(event);
-        
-        // Transform and store the item (if transformable)
-        const item = transformEventToItem(event);
-        if (item) {
-          allItems.push(item);
-        }
-      }
-    }
+    // Store all raw events (no filtering or transformation here)
+    allRawEvents.push(...events);
 
     page++;
   }
@@ -617,42 +425,38 @@ export const performGitHubSearch = async (
   // Fetch data for all users
   const apiMode = params.apiMode || 'search';
   onProgress?.(`Starting ${apiMode === 'events' ? 'events' : 'search'} API...`);
-  const allResults: GitHubItem[] = [];
   const allRawEvents: GitHubEvent[] = [];
+  const allRawSearchItems: GitHubItem[] = [];
 
   for (const username of usernames) {
     onProgress?.(`Fetching data for ${username}...`);
 
     try {
-      const results =
-        apiMode === 'events'
-          ? await fetchUserEvents(
-              username,
-              params.startDate,
-              params.endDate,
-              params.githubToken,
-              cache,
-              cacheCallbacks
-            )
-          : await fetchUserItems(
-              username,
-              params.startDate,
-              params.endDate,
-              params.githubToken,
-              cache,
-              cacheCallbacks
-            );
-
-      const items = apiMode === 'events' ? (results as FetchEventsResult).items : (results as GitHubItem[]);
-      allResults.push(...items);
-      
-      // Collect raw events if using events API
       if (apiMode === 'events') {
-        const eventsResult = results as FetchEventsResult;
+        const eventsResult = await fetchUserEvents(
+          username,
+          params.startDate,
+          params.endDate,
+          params.githubToken,
+          cache,
+          cacheCallbacks
+        );
+        
         allRawEvents.push(...eventsResult.rawEvents);
+        onProgress?.(`Found ${eventsResult.rawEvents.length} raw events for ${username}`);
+      } else {
+        const searchItems = await fetchUserItems(
+          username,
+          params.startDate,
+          params.endDate,
+          params.githubToken,
+          cache,
+          cacheCallbacks
+        );
+        
+        allRawSearchItems.push(...searchItems);
+        onProgress?.(`Found ${searchItems.length} items for ${username}`);
       }
-      
-      onProgress?.(`Found ${items.length} items for ${username}`);
 
       // Add delay between requests to avoid rate limiting
       if (requestDelay > 0) {
@@ -666,15 +470,14 @@ export const performGitHubSearch = async (
     }
   }
 
-  // URL parameters are no longer automatically updated
-
-  onProgress?.(`Successfully loaded ${allResults.length} items!`);
+  onProgress?.(`Successfully loaded raw data!`);
 
   return {
-    items: allResults,
-    totalCount: allResults.length,
+    items: [], // Empty for now - will be processed in UI
+    totalCount: apiMode === 'events' ? allRawEvents.length : allRawSearchItems.length,
     processedUsernames: usernames,
     ...(apiMode === 'events' && { rawEvents: allRawEvents }),
+    ...(apiMode === 'search' && { rawSearchItems: allRawSearchItems }),
   };
 };
 

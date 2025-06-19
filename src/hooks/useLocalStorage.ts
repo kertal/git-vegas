@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getParamFromUrl } from '../utils';
 import { FormSettings } from '../types';
+import { safeSetItem } from '../utils/storageUtils';
 
 // Helper function to check if a value is a Set
 // const isSet = (value: any): value is Set<any> => value instanceof Set;
@@ -70,8 +71,9 @@ export function useFormSettings(key: string, initialValue: FormSettings) {
         return;
       }
 
-      // Store to localStorage using enhanced serialization
-      window.localStorage.setItem(key, serializeValue(value));
+      // Store to localStorage using enhanced serialization and safe setter
+      const serializedValue = serializeValue(value);
+      safeSetItem(key, serializedValue);
     } catch (error) {
       console.error(`Error saving to localStorage key "${key}":`, error);
     }
@@ -121,8 +123,13 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
         return;
       }
 
-      // Use enhanced serialization
-      window.localStorage.setItem(key, serializeValue(value));
+      // Use enhanced serialization and safe setter
+      const serializedValue = serializeValue(value);
+      const success = safeSetItem(key, serializedValue);
+      
+      if (!success) {
+        console.warn(`Failed to save data to localStorage key "${key}" due to quota exceeded`);
+      }
     } catch (error) {
       console.error(`Error saving to localStorage key "${key}":`, error);
     }

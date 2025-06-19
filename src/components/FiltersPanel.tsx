@@ -533,7 +533,6 @@ const FiltersPanel = memo(function FiltersPanel({
                     onFilterChange={setIncludeLabelFilter}
                     filterValue={includeLabelFilter}
                     placeholderText="Filter labels..."
-                    showSelectedOptionsFirst
                   />
                 </FormControl>
 
@@ -579,7 +578,6 @@ const FiltersPanel = memo(function FiltersPanel({
                     onFilterChange={setExcludeLabelFilter}
                     filterValue={excludeLabelFilter}
                     placeholderText="Filter labels..."
-                    showSelectedOptionsFirst
                   />
                 </FormControl>
               </Box>

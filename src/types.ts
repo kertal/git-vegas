@@ -32,6 +32,97 @@ export interface GitHubItem {
   };
 }
 
+// Raw data storage types
+export interface RawDataStorage {
+  // Raw events from GitHub Events API
+  rawEvents: GitHubEvent[];
+  // Raw items from GitHub Search API (already in GitHubItem format)
+  rawSearchItems: GitHubItem[];
+  // Metadata about the raw data
+  metadata: {
+    lastFetch: number;
+    usernames: string[];
+    apiMode: 'search' | 'events';
+    startDate?: string;
+    endDate?: string;
+  };
+}
+
+// GitHub Event type (moved from githubSearch.ts for better organization)
+export interface GitHubEvent {
+  id: string;
+  type: string;
+  actor: {
+    id: number;
+    login: string;
+    display_login?: string;
+    avatar_url: string;
+    url: string;
+  };
+  repo: {
+    id: number;
+    name: string;
+    url: string;
+  };
+  payload: {
+    action?: string;
+    issue?: {
+      id: number;
+      number: number;
+      title: string;
+      html_url: string;
+      state: string;
+      body?: string;
+      labels: { name: string; color?: string; description?: string }[];
+      created_at: string;
+      updated_at: string;
+      closed_at?: string;
+      pull_request?: {
+        merged_at?: string;
+        url?: string;
+      };
+      user: {
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      };
+    };
+    pull_request?: {
+      id: number;
+      number: number;
+      title: string;
+      html_url: string;
+      state: string;
+      body?: string;
+      labels: { name: string; color?: string; description?: string }[];
+      created_at: string;
+      updated_at: string;
+      closed_at?: string;
+      merged_at?: string;
+      merged?: boolean;
+      user: {
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      };
+    };
+    comment?: {
+      id: number;
+      body: string;
+      html_url: string;
+      created_at: string;
+      updated_at: string;
+      user: {
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      };
+    };
+  };
+  public: boolean;
+  created_at: string;
+}
+
 // Context Types
 export interface FormContextType {
   username: string;

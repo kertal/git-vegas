@@ -55,6 +55,10 @@ export const extractAvailableLabels = (items: GitHubItem[]): string[] => {
  * @returns The item type
  */
 export const getItemType = (item: GitHubItem): 'issue' | 'pr' | 'comment' => {
+  // Check if this is a pull request review (title starts with "Reviewed:")
+  if (item.title.startsWith('Reviewed:')) {
+    return 'pr';
+  }
   // Check if this is a comment event (title starts with "Comment on:")
   if (item.title.startsWith('Comment on:')) {
     return 'comment';
