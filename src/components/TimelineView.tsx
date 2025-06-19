@@ -30,10 +30,10 @@ const TimelineView = memo(function TimelineView({
   viewMode = 'standard',
   setViewMode,
 }: TimelineViewProps) {
-  // Sort items by created date (newest first)
+  // Sort items by updated date (newest first)
   const sortedItems = [...items].sort(
     (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 
   const getEventType = (
@@ -287,14 +287,14 @@ const TimelineView = memo(function TimelineView({
               .map(([url, items]) => ({
                 url,
                 items: items.sort((a, b) => 
-                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
                 ),
                 mostRecent: items.reduce((latest, current) => 
-                  new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+                  new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
                 )
               }))
               .sort((a, b) => 
-                new Date(b.mostRecent.created_at).getTime() - new Date(a.mostRecent.created_at).getTime()
+                new Date(b.mostRecent.updated_at).getTime() - new Date(a.mostRecent.updated_at).getTime()
               );
 
             return (
@@ -377,7 +377,7 @@ const TimelineView = memo(function TimelineView({
                               {/* Time */}
                               <Text className="timeline-item-time">
                                 {formatDistanceToNow(
-                                  new Date(item.created_at),
+                                  new Date(item.updated_at),
                                   {
                                     addSuffix: true,
                                   }
@@ -456,14 +456,14 @@ const TimelineView = memo(function TimelineView({
                               .map(([url, items]) => ({
                                 url,
                                 items: items.sort((a, b) => 
-                                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
                                 ),
                                 mostRecent: items.reduce((latest, current) => 
-                                  new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+                                  new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
                                 )
                               }))
                               .sort((a, b) => 
-                                new Date(b.mostRecent.created_at).getTime() - new Date(a.mostRecent.created_at).getTime()
+                                new Date(b.mostRecent.updated_at).getTime() - new Date(a.mostRecent.updated_at).getTime()
                               );
 
                             return groupedItems.map((group, index) => {
@@ -520,7 +520,7 @@ const TimelineView = memo(function TimelineView({
                                   {/* Time */}
                                   <Text className="timeline-item-time">
                                     {formatDistanceToNow(
-                                      new Date(item.created_at),
+                                      new Date(item.updated_at),
                                       {
                                         addSuffix: true,
                                       }
@@ -604,7 +604,7 @@ const TimelineView = memo(function TimelineView({
 
                   {/* Time */}
                   <Text className="timeline-item-time">
-                    {formatDistanceToNow(new Date(item.created_at), {
+                    {formatDistanceToNow(new Date(item.updated_at), {
                       addSuffix: true,
                     })}
                   </Text>

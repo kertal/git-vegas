@@ -192,8 +192,8 @@ describe('TimelineView', () => {
     ).toBeInTheDocument();
   });
 
-  it('should sort items by date (newest first)', () => {
-    const itemsInWrongOrder = [mockItems[0], mockItems[1]]; // First item is older
+  it('should sort items by updated date (newest first)', () => {
+    const itemsInWrongOrder = [mockItems[0], mockItems[1]]; // First item is older by updated_at
     renderWithTheme(<TimelineView items={itemsInWrongOrder} />);
 
     const titles = screen
@@ -204,7 +204,7 @@ describe('TimelineView', () => {
           link.getAttribute('href')?.includes('/pull/')
       );
 
-    // Should show PR first (newer), then issue (older)
+    // Should show PR first (newer updated_at), then issue (older updated_at)
     expect(titles[0]).toHaveTextContent('Test Pull Request');
     expect(titles[1]).toHaveTextContent('Test Issue');
   });

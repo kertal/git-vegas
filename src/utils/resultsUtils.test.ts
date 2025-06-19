@@ -526,6 +526,26 @@ describe('resultsUtils', () => {
       const result = applyFiltersAndSort(null as any, filters, 'created');
       expect(result).toEqual([]);
     });
+
+    it('should default to updated date sorting when no sortOrder specified', () => {
+      const filters: ResultsFilter = {
+        filter: 'all',
+        statusFilter: 'all',
+        includedLabels: [],
+        excludedLabels: [],
+        repoFilters: [],
+        searchText: '',
+      };
+
+      const result = applyFiltersAndSort(mockGitHubItems, filters);
+
+      expect(result).toHaveLength(4);
+      // Should be sorted by updated date (newest first) - item 3 has most recent updated_at
+      expect(result[0].id).toBe(3);
+      expect(result[1].id).toBe(1);
+      expect(result[2].id).toBe(2);
+      expect(result[3].id).toBe(4);
+    });
   });
 
   describe('isMerged', () => {
