@@ -376,13 +376,13 @@ function App() {
   );
 
   const setSelectedItems = useCallback(
-    (selectedItems: Set<number> | ((prev: Set<number>) => Set<number>)) => {
+    (selectedItems: Set<string | number> | ((prev: Set<string | number>) => Set<string | number>)) => {
       setItemUIState(prev => {
         // Ensure prev.selectedItems is always a Set
         const currentSelectedItems =
           prev.selectedItems instanceof Set
             ? prev.selectedItems
-            : new Set<number>();
+            : new Set<string | number>();
 
         return {
           ...prev,
@@ -784,7 +784,7 @@ function App() {
       // Only consider items that are both selected and in the filtered results
       const visibleSelectedItems =
         selectedItems.size > 0
-          ? filteredResults.filter(item => selectedItems.has(item.id))
+          ? filteredResults.filter(item => selectedItems.has(item.event_id || item.id))
           : filteredResults;
 
       const result = await copyToClipboard(visibleSelectedItems, {
@@ -806,7 +806,7 @@ function App() {
 
   // Selection handlers
   const toggleItemSelection = useCallback(
-    (id: number) => {
+    (id: string | number) => {
       setSelectedItems(prev => {
         const newSet = new Set(prev);
         if (newSet.has(id)) {
@@ -821,7 +821,7 @@ function App() {
   );
 
   const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(filteredResults.map(item => item.id)));
+    setSelectedItems(new Set(filteredResults.map(item => item.event_id || item.id)));
   }, [filteredResults, setSelectedItems]);
 
   const clearSelection = useCallback(() => {
@@ -967,6 +967,12 @@ function App() {
                   rawEvents={indexedDBEvents}
                   viewMode={timelineViewMode}
                   setViewMode={setTimelineViewMode}
+                  selectedItems={selectedItems}
+                  toggleItemSelection={toggleItemSelection}
+                  selectAllItems={selectAllItems}
+                  clearSelection={clearSelection}
+                  copyResultsToClipboard={copyResultsToClipboard}
+                  clipboardMessage={clipboardMessage}
                 />
               ) : (
                 <ResultsList

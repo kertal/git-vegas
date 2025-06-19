@@ -28,6 +28,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const issue = payload.issue;
     return {
       id: issue.id,
+      event_id: event.id,
       html_url: issue.html_url,
       title: issue.title,
       created_at: event.created_at, // Use event timestamp, not issue timestamp
@@ -49,6 +50,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const pr = payload.pull_request;
     return {
       id: pr.id,
+      event_id: event.id,
       html_url: pr.html_url,
       title: pr.title,
       created_at: event.created_at, // Use event timestamp, not PR timestamp
@@ -75,8 +77,9 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const pr = payload.pull_request;
     return {
       id: pr.id,
+      event_id: event.id,
       html_url: pr.html_url,
-      title: `Reviewed: ${pr.title}`,
+      title: `Review on: ${pr.title}`,
       created_at: event.created_at, // Use event timestamp, not PR timestamp
       updated_at: pr.updated_at,
       state: pr.state,
@@ -102,6 +105,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const issue = payload.issue;
     return {
       id: comment.id,
+      event_id: event.id,
       html_url: comment.html_url,
       title: `Comment on: ${issue.title}`,
       created_at: event.created_at, // Use event timestamp, not comment timestamp

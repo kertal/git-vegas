@@ -61,10 +61,10 @@ interface UseResultsContextHookType {
   clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: (compact: boolean) => void;
-  selectedItems: Set<number>;
+  selectedItems: Set<string | number>;
   selectAllItems: () => void;
   clearSelection: () => void;
-  toggleItemSelection: (id: number) => void;
+  toggleItemSelection: (id: string | number) => void;
   setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
   setUserFilter: React.Dispatch<React.SetStateAction<string>>;
 }
@@ -476,7 +476,7 @@ const ResultsList = memo(function ResultsList({
                   const displayResults = areFiltersActive ? filteredResults : results;
                   const visibleSelectedCount = displayResults.filter(
                     item =>
-                      selectedItems instanceof Set && selectedItems.has(item.id)
+                      selectedItems instanceof Set && selectedItems.has(item.event_id || item.id)
                   ).length;
                   return visibleSelectedCount > 0
                     ? visibleSelectedCount
@@ -645,9 +645,9 @@ const ResultsList = memo(function ResultsList({
                   <Checkbox
                     checked={
                       selectedItems instanceof Set &&
-                      selectedItems.has(item.id)
+                      selectedItems.has(item.event_id || item.id)
                     }
-                    onChange={() => toggleItemSelection(item.id)}
+                    onChange={() => toggleItemSelection(item.event_id || item.id)}
                   />
                   {item.pull_request ? (
                     item.pull_request.merged_at || item.merged ? (
@@ -755,9 +755,9 @@ const ResultsList = memo(function ResultsList({
                       <Checkbox
                         checked={
                           selectedItems instanceof Set &&
-                          selectedItems.has(item.id)
+                          selectedItems.has(item.event_id || item.id)
                         }
-                        onChange={() => toggleItemSelection(item.id)}
+                        onChange={() => toggleItemSelection(item.event_id || item.id)}
                       />
                     </Box>
                     <Avatar

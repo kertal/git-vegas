@@ -540,7 +540,7 @@ describe('TimelineView', () => {
       },
     ];
 
-    it('should show "Issues & Pull Requests" section in grouped view', () => {
+    it('should show action type sections in grouped view', () => {
       const mockSetViewMode = vi.fn();
       const mockItemsWithDuplicates = createMockItemsWithDuplicates();
       
@@ -552,12 +552,12 @@ describe('TimelineView', () => {
         />
       );
 
-      // Should show the main Issues & PRs section
-      expect(screen.getByText('Issues & Pull Requests')).toBeInTheDocument();
+      // Should show action type sections
+      expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+      expect(screen.getByText('PRs - merged')).toBeInTheDocument();
       
-             // Should show count of unique issues/PRs (2: one issue, one PR)
-       const countBadges = screen.getAllByText('2');
-       expect(countBadges.length).toBeGreaterThanOrEqual(1);
+      // Should show count of events
+      expect(screen.getByText('6 events')).toBeInTheDocument();
     });
 
     it('should group multiple events for the same issue/PR in main section', () => {
@@ -599,6 +599,192 @@ describe('TimelineView', () => {
       // Each should appear once in the main section, and possibly in action sections
       expect(issueLinks.length).toBeGreaterThanOrEqual(1);
       expect(prLinks.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should properly categorize review events in PRs - reviewed section', () => {
+      const mockSetViewMode = vi.fn();
+      
+      // Create mock items including review events
+      const mockItemsWithReviews = [
+        // Regular PR event
+        {
+          id: 1,
+          event_id: 'pr-event-1',
+          number: 123,
+          title: 'Test Pull Request',
+          body: 'This is a test PR',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T12:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'author', avatar_url: 'https://github.com/author.png', html_url: 'https://github.com/author' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        // Review events with correct title pattern
+        {
+          id: 2,
+          event_id: 'review-event-1',
+          number: 123,
+          title: 'Review on: Test Pull Request',
+          body: 'This looks good',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-16T10:00:00Z',
+          updated_at: '2024-01-16T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer1', avatar_url: 'https://github.com/reviewer1.png', html_url: 'https://github.com/reviewer1' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        {
+          id: 3,
+          event_id: 'review-event-2',
+          number: 123,
+          title: 'Review on: Test Pull Request',
+          body: 'Needs changes',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-17T10:00:00Z',
+          updated_at: '2024-01-17T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer2', avatar_url: 'https://github.com/reviewer2.png', html_url: 'https://github.com/reviewer2' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        // Another PR with a review
+        {
+          id: 4,
+          event_id: 'review-event-3',
+          number: 456,
+          title: 'Review on: Another Pull Request',
+          body: 'LGTM',
+          html_url: 'https://github.com/test/repo/pull/456',
+          state: 'open',
+          created_at: '2024-01-18T10:00:00Z',
+          updated_at: '2024-01-18T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer3', avatar_url: 'https://github.com/reviewer3.png', html_url: 'https://github.com/reviewer3' },
+          pull_request: { url: 'https://github.com/test/repo/pull/456' },
+        },
+      ];
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithReviews} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show both sections
+      expect(screen.getByText('PRs - opened')).toBeInTheDocument();
+      expect(screen.getByText('PRs - reviewed')).toBeInTheDocument();
+      
+      // PRs - reviewed section should have correct count
+      const reviewSection = screen.getByText('PRs - reviewed').closest('.timeline-section');
+      expect(reviewSection).toBeInTheDocument();
+      
+      // Should show count of review events (3 total reviews)
+      const reviewCountElement = reviewSection?.querySelector('.timeline-section-count');
+      expect(reviewCountElement).toHaveTextContent('3');
+      
+      // Should show review events grouped by PR with count badges
+      const reviewTitles = screen.getAllByText(/Review on:/);
+      expect(reviewTitles.length).toBeGreaterThanOrEqual(2); // At least 2 PRs were reviewed
+      
+      // Should show reviewers in the review section
+      expect(screen.getByText('reviewer2')).toBeInTheDocument(); // Most recent reviewer for PR 123
+      expect(screen.getByText('reviewer3')).toBeInTheDocument(); // Reviewer for PR 456
+      
+      // Review events should NOT appear in PRs - opened section
+      const openedSection = screen.getByText('PRs - opened').closest('.timeline-section');
+      expect(openedSection).toBeInTheDocument();
+      const openedCountElement = openedSection?.querySelector('.timeline-section-count');
+      expect(openedCountElement).toHaveTextContent('1'); // Only the original PR, not the reviews
+    });
+
+    it('should show count badges for multiple reviews on the same PR', () => {
+      const mockSetViewMode = vi.fn();
+      
+      const mockItemsWithMultipleReviews = [
+        {
+          id: 1,
+          event_id: 'review-1',
+          number: 123,
+          title: 'Review on: Test PR',
+          body: 'First review',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer1', avatar_url: 'https://github.com/reviewer1.png', html_url: 'https://github.com/reviewer1' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        {
+          id: 2,
+          event_id: 'review-2',
+          number: 123,
+          title: 'Review on: Test PR',
+          body: 'Second review',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-16T10:00:00Z',
+          updated_at: '2024-01-16T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer2', avatar_url: 'https://github.com/reviewer2.png', html_url: 'https://github.com/reviewer2' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        {
+          id: 3,
+          event_id: 'review-3',
+          number: 123,
+          title: 'Review on: Test PR',
+          body: 'Third review',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-17T10:00:00Z',
+          updated_at: '2024-01-17T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer3', avatar_url: 'https://github.com/reviewer3.png', html_url: 'https://github.com/reviewer3' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+      ];
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithMultipleReviews} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show PRs - reviewed section
+      expect(screen.getByText('PRs - reviewed')).toBeInTheDocument();
+      
+      // Should show count badge of 3 for the single PR that was reviewed 3 times
+      const countBadges = screen.getAllByText('3');
+      expect(countBadges.length).toBeGreaterThanOrEqual(1);
+      
+      // Should show only the most recent reviewer (reviewer3) 
+      expect(screen.getByText('reviewer3')).toBeInTheDocument();
+      
+      // Should show only one instance of the PR title despite 3 reviews
+      const reviewTitles = screen.getAllByText('Review on: Test PR');
+      expect(reviewTitles).toHaveLength(1);
     });
 
     it('should group events by action type in action sections', () => {
@@ -829,8 +1015,7 @@ describe('TimelineView', () => {
        expect(screen.getByText('PRs - merged')).toBeInTheDocument();
        expect(screen.getByText('Issues - commented')).toBeInTheDocument();
        
-       // Should show the main section with both types
-       expect(screen.getByText('Issues & Pull Requests')).toBeInTheDocument();
+       // Action sections should show both issue and PR types
        
        // Should show both issue and PR titles (may appear multiple times in different sections)
        const issueLinks = screen.getAllByText('Test Issue');
@@ -838,5 +1023,409 @@ describe('TimelineView', () => {
        expect(issueLinks.length).toBeGreaterThanOrEqual(1);
        expect(prLinks.length).toBeGreaterThanOrEqual(1);
      });
+  });
+
+  describe('Selection functionality', () => {
+    const mockSetViewMode = vi.fn();
+    const mockToggleItemSelection = vi.fn();
+    const mockSelectAllItems = vi.fn();
+    const mockClearSelection = vi.fn();
+    const mockSelectedItems = new Set<number>();
+    
+    const createMockItemsForSelection = () => [
+      {
+        id: 1,
+        number: 101,
+        title: 'First Issue',
+        html_url: 'https://github.com/test/repo/issues/101',
+        state: 'open',
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'user1', avatar_url: 'https://github.com/user1.png', html_url: 'https://github.com/user1' },
+      },
+      {
+        id: 2,
+        number: 102,
+        title: 'Second Issue',
+        html_url: 'https://github.com/test/repo/issues/102',
+        state: 'closed',
+        created_at: '2024-01-16T10:00:00Z',
+        updated_at: '2024-01-16T11:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'user2', avatar_url: 'https://github.com/user2.png', html_url: 'https://github.com/user2' },
+      },
+      {
+        id: 3,
+        number: 201,
+        title: 'First PR',
+        html_url: 'https://github.com/test/repo/pull/201',
+        state: 'open',
+        created_at: '2024-01-17T10:00:00Z',
+        updated_at: '2024-01-17T12:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'user3', avatar_url: 'https://github.com/user3.png', html_url: 'https://github.com/user3' },
+      }
+    ];
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should render checkboxes for each grouped section when in grouped mode', () => {
+      const mockItems = createMockItemsForSelection();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
+
+      // Should have checkboxes for each section
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes.length).toBeGreaterThan(0);
+      
+      // Should have labels for the sections
+      expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+      expect(screen.getByText('Issues - closed')).toBeInTheDocument();
+      expect(screen.getByText('PRs - opened')).toBeInTheDocument();
+    });
+
+         it('should render checkboxes for each individual item when in standard mode', () => {
+       const mockItems = createMockItemsForSelection();
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="standard"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+       // Should have checkboxes for each individual item
+       const checkboxes = screen.getAllByRole('checkbox');
+       expect(checkboxes.length).toBe(mockItems.length);
+     });
+
+         it('should maintain independent selection state for different event types', () => {
+       const mockItems = createMockItemsForSelection();
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+       // Get checkboxes for different sections
+       const checkboxes = screen.getAllByRole('checkbox');
+       expect(checkboxes.length).toBeGreaterThan(2);
+
+       // Select the first section (Issues - opened)
+       fireEvent.click(checkboxes[0]);
+       expect(checkboxes[0]).toBeChecked();
+       
+       // Other sections should remain unselected
+       for (let i = 1; i < checkboxes.length; i++) {
+         expect(checkboxes[i]).not.toBeChecked();
+       }
+
+       // Select another section (Issues - closed)
+       fireEvent.click(checkboxes[1]);
+       expect(checkboxes[1]).toBeChecked();
+       
+       // First section should still be selected
+       expect(checkboxes[0]).toBeChecked();
+     });
+
+         it('should allow toggling selection state', () => {
+       const mockItems = createMockItemsForSelection();
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+       const checkbox = screen.getAllByRole('checkbox')[0];
+       
+       // Initially unselected
+       expect(checkbox).not.toBeChecked();
+       
+       // Select
+       fireEvent.click(checkbox);
+       expect(checkbox).toBeChecked();
+       
+       // Deselect
+       fireEvent.click(checkbox);
+       expect(checkbox).not.toBeChecked();
+     });
+
+     it('should maintain selection state when switching between view modes', () => {
+       const mockItems = createMockItemsForSelection();
+       
+       const { rerender } = renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+       // Select some items in grouped mode
+       const groupedCheckboxes = screen.getAllByRole('checkbox');
+       fireEvent.click(groupedCheckboxes[0]);
+       expect(groupedCheckboxes[0]).toBeChecked();
+
+       // Switch to standard mode
+       rerender(
+         <ThemeProvider>
+           <TimelineView 
+             items={mockItems} 
+             viewMode="standard"
+             setViewMode={mockSetViewMode}
+             selectedItems={mockSelectedItems}
+             toggleItemSelection={mockToggleItemSelection}
+             selectAllItems={mockSelectAllItems}
+             clearSelection={mockClearSelection}
+           />
+         </ThemeProvider>
+       );
+
+       // Selection state should be maintained (items from the selected group should be selected)
+       const individualCheckboxes = screen.getAllByRole('checkbox');
+       expect(individualCheckboxes.length).toBe(mockItems.length);
+       
+       // At least one checkbox should be checked (the item from the selected group)
+       const checkedBoxes = individualCheckboxes.filter(cb => (cb as HTMLInputElement).checked);
+       expect(checkedBoxes.length).toBeGreaterThan(0);
+     });
+
+         it('should handle selection with duplicate events correctly', () => {
+       // Create items with duplicates that should be grouped
+       const mockItems = [
+         {
+           id: 1,
+           number: 123,
+           title: 'Duplicate Issue 1',
+           html_url: 'https://github.com/test/repo/issues/123',
+           state: 'open',
+           created_at: '2024-01-15T10:00:00Z',
+           updated_at: '2024-01-15T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+         },
+         {
+           id: 2,
+           number: 123,
+           title: 'Duplicate Issue 2',
+           html_url: 'https://github.com/test/repo/issues/123',
+           state: 'open',
+           created_at: '2024-01-16T10:00:00Z',
+           updated_at: '2024-01-16T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+         }
+       ];
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+       // Should have checkboxes for the grouped section
+       const checkboxes = screen.getAllByRole('checkbox');
+       expect(checkboxes.length).toBeGreaterThan(0);
+
+       // Select the grouped section
+       fireEvent.click(checkboxes[0]);
+       expect(checkboxes[0]).toBeChecked();
+       
+       // Should show count badge for multiple events
+       expect(screen.getByText('2')).toBeInTheDocument();
+     });
+
+         it('should preserve selection state across re-renders', () => {
+       const mockItems = createMockItemsForSelection();
+       
+       const { rerender } = renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+       // Select a checkbox
+       const checkbox = screen.getAllByRole('checkbox')[0];
+       fireEvent.click(checkbox);
+       expect(checkbox).toBeChecked();
+
+       // Re-render with same props
+       rerender(
+         <ThemeProvider>
+           <TimelineView 
+             items={mockItems} 
+             viewMode="grouped"
+             setViewMode={mockSetViewMode}
+             selectedItems={mockSelectedItems}
+             toggleItemSelection={mockToggleItemSelection}
+             selectAllItems={mockSelectAllItems}
+             clearSelection={mockClearSelection}
+           />
+         </ThemeProvider>
+       );
+
+       // Selection should be preserved
+       const newCheckbox = screen.getAllByRole('checkbox')[0];
+       expect(newCheckbox).toBeChecked();
+     });
+
+         it('should handle empty selection state correctly', () => {
+       const mockItems = createMockItemsForSelection();
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+      // All checkboxes should be unchecked initially
+      const checkboxes = screen.getAllByRole('checkbox');
+      checkboxes.forEach(checkbox => {
+        expect(checkbox).not.toBeChecked();
+      });
+    });
+
+              it('should handle selection state for mixed event types correctly', () => {
+       const mockMixedItems = [
+         // Issue
+         {
+           id: 1,
+           number: 101,
+           title: 'Test Issue',
+           html_url: 'https://github.com/test/repo/issues/101',
+           state: 'open',
+           created_at: '2024-01-15T10:00:00Z',
+           updated_at: '2024-01-15T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'user1', avatar_url: 'https://github.com/user1.png', html_url: 'https://github.com/user1' },
+         },
+         // PR
+         {
+           id: 2,
+           number: 201,
+           title: 'Test PR',
+           html_url: 'https://github.com/test/repo/pull/201',
+           state: 'open',
+           created_at: '2024-01-16T10:00:00Z',
+           updated_at: '2024-01-16T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'user2', avatar_url: 'https://github.com/user2.png', html_url: 'https://github.com/user2' },
+         },
+         // Comment
+         {
+           id: 3,
+           number: 101,
+           title: 'Comment on: Test Issue',
+           body: 'This is a comment',
+           html_url: 'https://github.com/test/repo/issues/101#issuecomment-1',
+           state: 'open',
+           created_at: '2024-01-17T10:00:00Z',
+           updated_at: '2024-01-17T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'user3', avatar_url: 'https://github.com/user3.png', html_url: 'https://github.com/user3' },
+         }
+       ];
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockMixedItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+           selectAllItems={mockSelectAllItems}
+           clearSelection={mockClearSelection}
+         />
+       );
+
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes.length).toBeGreaterThan(2);
+
+             // Select Issues - opened
+       fireEvent.click(checkboxes[0]);
+       expect(checkboxes[0]).toBeChecked();
+
+       // Select PRs - opened (should be independent)
+       if (checkboxes.length > 1) {
+         fireEvent.click(checkboxes[1]);
+         expect(checkboxes[1]).toBeChecked();
+       }
+
+      // Both selections should be maintained independently
+      expect(checkboxes[0]).toBeChecked();
+      if (checkboxes.length > 1) {
+        expect(checkboxes[1]).toBeChecked();
+      }
+    });
   });
 });

@@ -1,6 +1,7 @@
 // GitHub API Types
 export interface GitHubItem {
   id: number;
+  event_id?: string;
   html_url: string;
   title: string;
   pull_request?: {
@@ -168,8 +169,8 @@ export interface ResultsContextType {
   clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: React.Dispatch<React.SetStateAction<boolean>>;
-  selectedItems: Set<number>;
-  toggleItemSelection: (id: number) => void;
+  selectedItems: Set<string | number>;
+  toggleItemSelection: (id: string | number) => void;
   selectAllItems: () => void;
   clearSelection: () => void;
   setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
@@ -211,7 +212,7 @@ export interface UISettings {
 export interface ItemUIState {
   descriptionVisible: { [id: number]: boolean };
   expanded: { [id: number]: boolean };
-  selectedItems: Set<number>;
+  selectedItems: Set<string | number>;
 }
 
 // Username validation cache for API optimization

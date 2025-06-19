@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Text, Avatar, Link, Button, ButtonGroup } from '@primer/react';
+import { Text, Avatar, Link, Button, ButtonGroup, ActionMenu, ActionList, Flash, Checkbox, Box } from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -9,6 +9,7 @@ import {
   CommentIcon,
   RepoIcon,
   EyeIcon,
+  PasteIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -22,6 +23,13 @@ interface TimelineViewProps {
   rawEvents?: GitHubEvent[];
   viewMode?: ViewMode;
   setViewMode?: (viewMode: ViewMode) => void;
+  // Selection functionality
+  selectedItems?: Set<string | number>;
+  toggleItemSelection?: (id: string | number) => void;
+  selectAllItems?: () => void;
+  clearSelection?: () => void;
+  copyResultsToClipboard?: (format: 'detailed' | 'compact') => void;
+  clipboardMessage?: string | null;
 }
 
 const TimelineView = memo(function TimelineView({
@@ -29,6 +37,12 @@ const TimelineView = memo(function TimelineView({
   rawEvents = [],
   viewMode = 'standard',
   setViewMode,
+  selectedItems = new Set(),
+  toggleItemSelection,
+  selectAllItems,
+  clearSelection,
+  copyResultsToClipboard,
+  clipboardMessage,
 }: TimelineViewProps) {
   // Sort items by updated date (newest first)
   const sortedItems = [...items].sort(
@@ -39,8 +53,8 @@ const TimelineView = memo(function TimelineView({
   const getEventType = (
     item: GitHubItem
   ): 'issue' | 'pull_request' | 'comment' => {
-    // Check if this is a pull request review (title starts with "Reviewed:")
-    if (item.title.startsWith('Reviewed:')) {
+    // Check if this is a pull request review (title starts with "Review on:")
+    if (item.title.startsWith('Review on:')) {
       return 'pull_request';
     }
     // Check if this is a comment event (title starts with "Comment on:")
@@ -78,7 +92,7 @@ const TimelineView = memo(function TimelineView({
       }
     } else if (type === 'pull_request') {
       // Check if this is a pull request review
-      if (item.title.startsWith('Reviewed:')) {
+      if (item.title.startsWith('Review on:')) {
         return 'reviewed pull request';
       }
       if (item.merged_at) return 'merged pull request';
@@ -112,17 +126,83 @@ const TimelineView = memo(function TimelineView({
 
   // Header left content
   const headerLeft = (
-    <Text className="timeline-header-left">
-      Activity Timeline
-    </Text>
+    <>
+      <Text className="timeline-header-left">
+        Activity Timeline
+      </Text>
+      <Text className="timeline-event-count">
+        {selectedItems.size > 0 
+          ? `${selectedItems.size} selected / ${sortedItems.length} events`
+          : `${sortedItems.length} events`}
+      </Text>
+      {clipboardMessage && (
+        <Flash variant="success" sx={{ py: 1, px: 2 }}>
+          {clipboardMessage}
+        </Flash>
+      )}
+    </>
   );
 
   // Header right content
   const headerRight = (
     <div className="timeline-header-right">
-      <Text className="timeline-event-count">
-        {sortedItems.length} events
-      </Text>
+      {copyResultsToClipboard && (
+        <ActionMenu>
+          <ActionMenu.Button
+            variant="default"
+            size="small"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              fontSize: 0,
+              borderColor: 'border.default',
+            }}
+          >
+            <PasteIcon size={14} />
+            {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
+          </ActionMenu.Button>
+
+          <ActionMenu.Overlay>
+            <ActionList>
+              <ActionList.Item
+                onSelect={() => copyResultsToClipboard('detailed')}
+              >
+                Detailed Format
+              </ActionList.Item>
+              <ActionList.Item
+                onSelect={() => copyResultsToClipboard('compact')}
+              >
+                Compact Format
+              </ActionList.Item>
+            </ActionList>
+          </ActionMenu.Overlay>
+        </ActionMenu>
+      )}
+
+      {/* Selection controls */}
+      {toggleItemSelection && selectAllItems && clearSelection && (
+        <div className="timeline-view-controls">
+          <Text className="timeline-view-label">Selection:</Text>
+          <ButtonGroup>
+            <Button
+              size="small"
+              variant="default"
+              onClick={selectAllItems}
+            >
+              All
+            </Button>
+            <Button
+              size="small"
+              variant="default"
+              onClick={clearSelection}
+            >
+              None
+            </Button>
+          </ButtonGroup>
+        </div>
+      )}
+      
       {setViewMode && (
         <div className="timeline-view-controls">
           <Text className="timeline-view-label">View:</Text>
@@ -245,7 +325,7 @@ const TimelineView = memo(function TimelineView({
               // Add to action groups
               if (
                 type === 'pull_request' &&
-                item.title.startsWith('Reviewed:')
+                item.title.startsWith('Review on:')
               ) {
                 actionGroups['PRs - reviewed'].push(item);
               } else if (type === 'comment') {
@@ -268,7 +348,7 @@ const TimelineView = memo(function TimelineView({
               }
 
               // Add to individual issue/PR groups (include comments now that we can group them properly)
-              if (!item.title.startsWith('Reviewed:')) {
+              if (!item.title.startsWith('Review on:')) {
                 let groupingUrl = item.html_url;
                 if (type === 'comment') {
                   // For comments, extract the issue/PR URL from the comment URL
@@ -282,114 +362,11 @@ const TimelineView = memo(function TimelineView({
               }
             });
 
-            // Convert individual groups to array and sort by most recent activity
-            const individualGroups = Object.entries(issuesPRsGroups)
-              .map(([url, items]) => ({
-                url,
-                items: items.sort((a, b) => 
-                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-                ),
-                mostRecent: items.reduce((latest, current) => 
-                  new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-                )
-              }))
-              .sort((a, b) => 
-                new Date(b.mostRecent.updated_at).getTime() - new Date(a.mostRecent.updated_at).getTime()
-              );
+
 
             return (
               <div className="timeline-grouped-container">
-                {/* Individual Issues & PRs Section */}
-                {individualGroups.length > 0 && (
-                  <div>
-                    <div className="timeline-section">
-                      {/* Section Header */}
-                      <div className="timeline-section-header timeline-section-header--accent">
-                        <div className="timeline-section-icon timeline-section-icon--accent">
-                          <RepoIcon size={20} />
-                        </div>
-                        <Text className="timeline-section-title timeline-section-title--accent">
-                          Issues & Pull Requests
-                        </Text>
-                        <div className="timeline-section-count timeline-section-count--accent">
-                          {individualGroups.length}
-                        </div>
-                      </div>
 
-                      {/* Individual Items List */}
-                      <div className="timeline-section-content">
-                        {individualGroups.map((group, index) => {
-                          const item = group.mostRecent;
-                          const repoName = formatRepoName(item.repository_url);
-
-                          return (
-                            <div
-                              key={group.url}
-                              className={`timeline-item timeline-item--large ${
-                                index < individualGroups.length - 1 ? '' : 'timeline-item--no-border'
-                              }`}
-                            >
-                              {/* Icon */}
-                              <div className="timeline-item-icon">
-                                {getEventIcon(item)}
-                              </div>
-
-                              {/* Avatar */}
-                              <Avatar
-                                src={item.user.avatar_url}
-                                size={16}
-                                alt={item.user.login}
-                                className="timeline-item-avatar"
-                              />
-
-                              {/* User */}
-                              <Link
-                                href={item.user.html_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="timeline-item-user"
-                              >
-                                {item.user.login}
-                              </Link>
-
-                              {/* Title (truncated) */}
-                              <Link
-                                href={item.html_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="timeline-item-title"
-                              >
-                                {item.title}
-                              </Link>
-
-                              {/* Event count badge */}
-                              {group.items.length > 1 && (
-                                <div className="timeline-item-count-badge">
-                                  {group.items.length} events
-                                </div>
-                              )}
-
-                              {/* Repo */}
-                              <Text className="timeline-item-repo">
-                                {repoName.split('/')[1] || repoName}
-                              </Text>
-
-                              {/* Time */}
-                              <Text className="timeline-item-time">
-                                {formatDistanceToNow(
-                                  new Date(item.updated_at),
-                                  {
-                                    addSuffix: true,
-                                  }
-                                )}
-                              </Text>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Action Type Groups Section */}
                 <div className="timeline-action-groups">
@@ -434,7 +411,7 @@ const TimelineView = memo(function TimelineView({
                         {/* Events List */}
                         <div className="timeline-section-content">
                           {(() => {
-                            // Group items within this action type by URL
+                            // Group items within this action type by URL for display grouping
                             const itemGroups: { [url: string]: GitHubItem[] } = {};
                             groupItems.forEach(item => {
                               // For comments, extract the issue/PR URL from the comment URL
@@ -466,66 +443,95 @@ const TimelineView = memo(function TimelineView({
                                 new Date(b.mostRecent.updated_at).getTime() - new Date(a.mostRecent.updated_at).getTime()
                               );
 
-                            return groupedItems.map((group, index) => {
-                              const item = group.mostRecent;
-                              const repoName = formatRepoName(item.repository_url);
+                            // Show grouped items with count badges but individual checkboxes for each event using event_id
+                            return groupedItems.map((group, groupIndex) => {
+                              const repoName = formatRepoName(group.mostRecent.repository_url);
+                              const isLastGroup = groupIndex === groupedItems.length - 1;
 
                               return (
-                                <div
-                                  key={group.url}
-                                  className={`timeline-item ${
-                                    index < groupedItems.length - 1 ? '' : 'timeline-item--no-border'
-                                  }`}
-                                >
-                                  {/* Avatar */}
-                                  <Avatar
-                                    src={item.user.avatar_url}
-                                    size={14}
-                                    alt={item.user.login}
-                                    className="timeline-item-avatar"
-                                  />
-
-                                  {/* User */}
-                                  <Link
-                                    href={item.user.html_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="timeline-item-user"
+                                <div key={group.url} className="timeline-group">
+                                  {/* Group Header with Most Recent Item */}
+                                  <div
+                                    className={`timeline-item ${
+                                      !isLastGroup ? '' : 'timeline-item--no-border'
+                                    }`}
                                   >
-                                    {item.user.login}
-                                  </Link>
-
-                                  {/* Title (truncated) */}
-                                  <Link
-                                    href={item.html_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="timeline-item-title"
-                                  >
-                                    {item.title}
-                                  </Link>
-
-                                  {/* Event count badge */}
-                                  {group.items.length > 1 && (
-                                    <div className="timeline-item-count-badge">
-                                      {group.items.length}
-                                    </div>
-                                  )}
-
-                                  {/* Repo */}
-                                  <Text className="timeline-item-repo">
-                                    {repoName.split('/')[1] || repoName}
-                                  </Text>
-
-                                  {/* Time */}
-                                  <Text className="timeline-item-time">
-                                    {formatDistanceToNow(
-                                      new Date(item.updated_at),
-                                      {
-                                        addSuffix: true,
-                                      }
+                                    {/* Checkbox for most recent item */}
+                                    {toggleItemSelection && (
+                                      <Checkbox
+                                        checked={selectedItems.has(group.mostRecent.event_id || group.mostRecent.id)}
+                                        onChange={() => toggleItemSelection(group.mostRecent.event_id || group.mostRecent.id)}
+                                        sx={{ flexShrink: 0 }}
+                                      />
                                     )}
-                                  </Text>
+                                    
+                                    {/* Avatar */}
+                                    <Avatar
+                                      src={group.mostRecent.user.avatar_url}
+                                      size={14}
+                                      alt={group.mostRecent.user.login}
+                                      className="timeline-item-avatar"
+                                    />
+
+                                    {/* User */}
+                                    <Link
+                                      href={group.mostRecent.user.html_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="timeline-item-user"
+                                    >
+                                      {group.mostRecent.user.login}
+                                    </Link>
+
+                                    {/* Title (truncated) */}
+                                    <Link
+                                      href={group.mostRecent.html_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="timeline-item-title"
+                                    >
+                                      {group.mostRecent.title}
+                                    </Link>
+
+                                    {/* Repo */}
+                                    <Text className="timeline-item-repo">
+                                      {repoName.split('/')[1] || repoName}
+                                    </Text>
+
+                                    {/* Time */}
+                                    <Text className="timeline-item-time">
+                                      {formatDistanceToNow(
+                                        new Date(group.mostRecent.updated_at),
+                                        {
+                                          addSuffix: true,
+                                        }
+                                      )}
+                                    </Text>
+
+                                    {/* Count Badge */}
+                                    {group.items.length > 1 && (
+                                      <Box
+                                        sx={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          minWidth: '20px',
+                                          height: '20px',
+                                          bg: 'accent.emphasis',
+                                          color: 'fg.onEmphasis',
+                                          borderRadius: '10px',
+                                          fontSize: '12px',
+                                          fontWeight: 'bold',
+                                          px: 1,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {group.items.length}
+                                      </Box>
+                                    )}
+                                  </div>
+
+
                                 </div>
                               );
                             });
@@ -547,14 +553,23 @@ const TimelineView = memo(function TimelineView({
               const eventDescription = getEventDescription(item);
 
               return (
-                <div
-                  key={`${item.id}-${index}`}
-                  className="timeline-item timeline-item--standard"
-                >
-                  {/* Icon */}
-                  <div className="timeline-item-icon">
-                    {getEventIcon(item)}
-                  </div>
+                                  <div
+                    key={`${item.id}-${index}`}
+                    className="timeline-item timeline-item--standard"
+                  >
+                    {/* Checkbox */}
+                    {toggleItemSelection && (
+                      <Checkbox
+                        checked={selectedItems.has(item.event_id || item.id)}
+                        onChange={() => toggleItemSelection(item.event_id || item.id)}
+                        sx={{ flexShrink: 0 }}
+                      />
+                    )}
+                    
+                    {/* Icon */}
+                    <div className="timeline-item-icon">
+                      {getEventIcon(item)}
+                    </div>
 
                   {/* Avatar */}
                   <Avatar
