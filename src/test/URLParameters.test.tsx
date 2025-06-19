@@ -131,7 +131,7 @@ describe('URL Parameters', () => {
     expect(mockFetch).not.toHaveBeenCalled();
 
     // Manually trigger search by clicking button
-    const searchButton = screen.getByRole('button', { name: /fetch all data/i });
+    const searchButton = screen.getByRole('button', { name: /update/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });

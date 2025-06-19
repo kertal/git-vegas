@@ -366,20 +366,21 @@ const TimelineView = memo(function TimelineView({
         <div className="timeline-view-controls">
           <Text className="timeline-view-label">View:</Text>
           <ButtonGroup>
-            <Button
-              size="small"
-              variant={viewMode === 'standard' ? 'primary' : 'default'}
-              onClick={() => setViewMode('standard')}
-            >
-              Standard
-            </Button>
-            <Button
+          <Button
               size="small"
               variant={viewMode === 'grouped' ? 'primary' : 'default'}
               onClick={() => setViewMode('grouped')}
             >
               Grouped
             </Button>
+            <Button
+              size="small"
+              variant={viewMode === 'standard' ? 'primary' : 'default'}
+              onClick={() => setViewMode('standard')}
+            >
+              Single
+            </Button>
+            
             <Button
               size="small"
               variant={viewMode === 'raw' ? 'primary' : 'default'}

@@ -509,14 +509,14 @@ const ResultsList = memo(function ResultsList({
                 <ActionMenu.Overlay>
                   <ActionList>
                     <ActionList.Item
-                      onSelect={() => copyResultsToClipboard('detailed')}
-                    >
-                      Detailed (Containing the content)
-                    </ActionList.Item>
-                    <ActionList.Item
                       onSelect={() => copyResultsToClipboard('compact')}
                     >
                       Compact (Links with Titles)
+                    </ActionList.Item>
+                    <ActionList.Item
+                      onSelect={() => copyResultsToClipboard('detailed')}
+                    >
+                      Detailed (Containing the content)
                     </ActionList.Item>
                   </ActionList>
                 </ActionMenu.Overlay>
@@ -566,14 +566,7 @@ const ResultsList = memo(function ResultsList({
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
               <ButtonGroup>
-                <Button
-                  size="small"
-                  variant={!isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(false)}
-                  sx={buttonStyles}
-                >
-                  Detailed
-                </Button>
+              
                 <Button
                   size="small"
                   variant={isCompactView ? 'primary' : 'default'}
@@ -581,6 +574,14 @@ const ResultsList = memo(function ResultsList({
                   sx={buttonStyles}
                 >
                   Compact
+                </Button>
+                <Button
+                  size="small"
+                  variant={!isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(false)}
+                  sx={buttonStyles}
+                >
+                  Detailed
                 </Button>
               </ButtonGroup>
             </Box>

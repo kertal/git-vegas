@@ -262,7 +262,7 @@ describe('TimelineView', () => {
       );
 
       expect(screen.getByText('View:')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Standard' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Single' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Grouped' })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Raw' })).toBeInTheDocument();
     });
@@ -271,7 +271,7 @@ describe('TimelineView', () => {
       renderWithTheme(<TimelineView items={mockItems} />);
 
       expect(screen.queryByText('View:')).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Standard' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Single' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Grouped' })).not.toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Raw' })).not.toBeInTheDocument();
     });
@@ -291,8 +291,8 @@ describe('TimelineView', () => {
       fireEvent.click(rawButton);
       expect(mockSetViewMode).toHaveBeenCalledWith('raw');
 
-      const standardButton = screen.getByRole('button', { name: 'Standard' });
-      fireEvent.click(standardButton);
+      const singleButton = screen.getByRole('button', { name: 'Single' });
+      fireEvent.click(singleButton);
       expect(mockSetViewMode).toHaveBeenCalledWith('standard');
       
       const groupedButton = screen.getByRole('button', { name: 'Grouped' });

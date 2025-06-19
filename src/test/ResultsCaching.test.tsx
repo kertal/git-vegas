@@ -5,10 +5,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import App from '../App';
 import { GitHubItem } from '../types';
 import { fireEvent } from '@testing-library/dom';
+import { useIndexedDBStorage } from '../hooks/useIndexedDBStorage';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
+
+// Mock the useIndexedDBStorage hook
+vi.mock('../hooks/useIndexedDBStorage');
 
 describe('Results Caching', () => {
   const mockResults: GitHubItem[] = [
@@ -27,39 +31,62 @@ describe('Results Caching', () => {
     },
   ];
 
+  // Mock for useIndexedDBStorage hook
+  const mockUseIndexedDBStorage = vi.fn();
+
   beforeEach(() => {
     localStorage.clear();
     window.history.replaceState({}, '', 'http://localhost:3000');
     mockFetch.mockReset();
+    
+    // Reset the IndexedDB mock
+    mockUseIndexedDBStorage.mockReturnValue({
+      events: [],
+      metadata: null,
+      isLoading: false,
+      error: null,
+      storeEvents: vi.fn(),
+      clearEvents: vi.fn(),
+      refreshEvents: vi.fn(),
+    });
+    
+    // Mock the hook implementation
+    vi.mocked(useIndexedDBStorage).mockImplementation(mockUseIndexedDBStorage);
   });
 
   it('should load cached results on mount if available and not expired', async () => {
-    // Set up cached results with new data structure
-    const cachedData = {
-      rawSearchItems: mockResults,
-      rawEvents: [],
-      metadata: {
-        lastFetch: Date.now(),
-        usernames: ['testuser'],
-        apiMode: 'search',
-        startDate: '2024-01-01',
-        endDate: '2024-01-31',
-      },
-    };
-    localStorage.setItem('github-raw-data-storage', JSON.stringify(cachedData));
-
-    // Also set the last search params to match
-    const lastSearchParams = {
-      username: 'testuser',
-      startDate: '2024-01-01',
-      endDate: '2024-01-31',
-      apiMode: 'search',
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(
-      'github-last-search-params',
-      JSON.stringify(lastSearchParams)
-    );
+    // Mock the IndexedDB hook to return cached search items
+    mockUseIndexedDBStorage.mockImplementation((key: string) => {
+      if (key === 'github-search-items-indexeddb') {
+        return {
+          events: mockResults, // Cast as GitHubEvent[] but contains GitHubItem data
+          metadata: {
+            lastFetch: Date.now(),
+            usernames: ['testuser'],
+            apiMode: 'search',
+            startDate: '2024-01-01',
+            endDate: '2024-01-31',
+          },
+          isLoading: false,
+          error: null,
+          storeEvents: vi.fn(),
+          clearEvents: vi.fn(),
+          refreshEvents: vi.fn(),
+        };
+      }
+      // Return empty for events storage
+      return {
+        events: [],
+        metadata: null,
+        isLoading: false,
+        error: null,
+        storeEvents: vi.fn(),
+        clearEvents: vi.fn(),
+        refreshEvents: vi.fn(),
+      };
+    });
+    
+    vi.mocked(useIndexedDBStorage).mockImplementation(mockUseIndexedDBStorage);
 
     // Set URL parameters to match the cached data
     window.history.replaceState(
@@ -114,7 +141,7 @@ describe('Results Caching', () => {
     });
 
     // Manually click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /fetch all data/i });
+    const searchButton = screen.getByRole('button', { name: /update/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -160,7 +187,7 @@ describe('Results Caching', () => {
     });
 
     // Manually click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /fetch all data/i });
+    const searchButton = screen.getByRole('button', { name: /update/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -191,7 +218,7 @@ describe('Results Caching', () => {
     });
 
     // Click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /fetch all data/i });
+    const searchButton = screen.getByRole('button', { name: /update/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });
@@ -236,7 +263,7 @@ describe('Results Caching', () => {
     });
 
     // Click the search button to trigger the search
-    const searchButton = screen.getByRole('button', { name: /fetch all data/i });
+    const searchButton = screen.getByRole('button', { name: /update/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });

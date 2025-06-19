@@ -104,8 +104,8 @@ function App() {
   const [uiSettings, setUISettings] = useLocalStorage<UISettings>(
     'github-ui-settings',
     {
-      isCompactView: false,
-      timelineViewMode: 'standard',
+      isCompactView: true,
+      timelineViewMode: 'grouped',
     }
   );
 
@@ -839,8 +839,8 @@ function App() {
 
   return (
     <ThemeProvider>
-      <PageLayout sx={{ '--spacing': '0 !important' }}>
-        <PageLayout.Header className='border-bottom'>
+      <PageLayout sx={{ '--spacing': '4 !important' }}>
+        <PageLayout.Header className='border-bottom' divider="line">
           <PageHeader role="banner" aria-label="Title">
             <PageHeader.TitleArea>
             <PageHeader.Title>Git Vegas</PageHeader.Title>
@@ -1014,6 +1014,7 @@ function App() {
         <PageLayout.Footer
           padding="condensed"
         >
+          <small>v0.0.7.7.7, prompted by <a href="https://github.com/kertal">@kertal</a></small>
           <Box
             sx={{
               display: 'flex',
