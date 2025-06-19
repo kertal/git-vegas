@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { Text, Avatar, Link, Button, ButtonGroup, ActionMenu, ActionList, Flash, Checkbox, Box } from '@primer/react';
+import { Text, Avatar, Link, Button, ButtonGroup, ActionMenu, ActionList, Flash, Checkbox, Box, Token } from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -463,11 +463,12 @@ const TimelineView = memo(function TimelineView({
                           
                           <div className="timeline-section-icon timeline-section-icon--muted">{getGroupIcon()}</div>
                           <Text className="timeline-section-title timeline-section-title--default">
-                            {groupName}
+                            {groupName} <Token 
+                              text={groupItems.length.toString()} 
+                              size="small"
+                              sx={{ ml: 1 }}
+                            />
                           </Text>
-                          <div className="timeline-section-count timeline-section-count--subtle">
-                            {groupItems.length}
-                          </div>
                         </div>
 
                         {/* Events List */}
@@ -552,7 +553,13 @@ const TimelineView = memo(function TimelineView({
                                       rel="noopener noreferrer"
                                       className="timeline-item-title"
                                     >
-                                      {group.mostRecent.title}
+                                      {group.mostRecent.title} {group.items.length > 1 && (
+                                        <Token 
+                                          text={group.items.length.toString()} 
+                                          size="small"
+                                          sx={{ ml: 1, flexShrink: 0 }}
+                                        />
+                                      )}
                                     </Link>
 
                                     {/* Repo */}
@@ -569,28 +576,6 @@ const TimelineView = memo(function TimelineView({
                                         }
                                       )}
                                     </Text>
-
-                                    {/* Count Badge */}
-                                    {group.items.length > 1 && (
-                                      <Box
-                                        sx={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          justifyContent: 'center',
-                                          minWidth: '20px',
-                                          height: '20px',
-                                          bg: 'accent.emphasis',
-                                          color: 'fg.onEmphasis',
-                                          borderRadius: '10px',
-                                          fontSize: '12px',
-                                          fontWeight: 'bold',
-                                          px: 1,
-                                          flexShrink: 0,
-                                        }}
-                                      >
-                                        {group.items.length}
-                                      </Box>
-                                    )}
                                   </div>
 
 
