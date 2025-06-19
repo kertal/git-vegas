@@ -240,10 +240,13 @@ const TimelineView = memo(function TimelineView({
             )}
           </Box>
         ) : viewMode === 'grouped' ? (
-          // Grouped view - organize events by type
+          // Grouped view - organize events by individual issues/PRs and by type
           (() => {
-            // Group items by event type and action
-            const groups: {
+            // Group by individual issue/PR URL (exclude comments and reviews)
+            const issuesPRsGroups: { [url: string]: GitHubItem[] } = {};
+            
+            // Group by action type
+            const actionGroups: {
               'PRs - opened': GitHubItem[];
               'PRs - merged': GitHubItem[];
               'PRs - closed': GitHubItem[];
@@ -263,59 +266,68 @@ const TimelineView = memo(function TimelineView({
 
             sortedItems.forEach(item => {
               const type = getEventType(item);
-              // Add to reviewed if it's a PR review (title starts with "Reviewed:")
+              
+              // Add to action groups
               if (
                 type === 'pull_request' &&
                 item.title.startsWith('Reviewed:')
               ) {
-                groups['PRs - reviewed'].push(item);
+                actionGroups['PRs - reviewed'].push(item);
               } else if (type === 'comment') {
-                groups['Issues - commented'].push(item);
+                actionGroups['Issues - commented'].push(item);
               } else if (type === 'pull_request') {
                 if (item.merged_at) {
-                  groups['PRs - merged'].push(item);
+                  actionGroups['PRs - merged'].push(item);
                 } else if (item.state === 'closed') {
-                  groups['PRs - closed'].push(item);
+                  actionGroups['PRs - closed'].push(item);
                 } else {
-                  groups['PRs - opened'].push(item);
+                  actionGroups['PRs - opened'].push(item);
                 }
               } else {
                 // issue
                 if (item.state === 'closed') {
-                  groups['Issues - closed'].push(item);
+                  actionGroups['Issues - closed'].push(item);
                 } else {
-                  groups['Issues - opened'].push(item);
+                  actionGroups['Issues - opened'].push(item);
                 }
+              }
+
+              // Add to individual issue/PR groups (include comments now that we can group them properly)
+              if (!item.title.startsWith('Reviewed:')) {
+                let groupingUrl = item.html_url;
+                if (type === 'comment') {
+                  // For comments, extract the issue/PR URL from the comment URL
+                  groupingUrl = groupingUrl.split('#')[0];
+                }
+                
+                if (!issuesPRsGroups[groupingUrl]) {
+                  issuesPRsGroups[groupingUrl] = [];
+                }
+                issuesPRsGroups[groupingUrl].push(item);
               }
             });
 
+            // Convert individual groups to array and sort by most recent activity
+            const individualGroups = Object.entries(issuesPRsGroups)
+              .map(([url, items]) => ({
+                url,
+                items: items.sort((a, b) => 
+                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                ),
+                mostRecent: items.reduce((latest, current) => 
+                  new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+                )
+              }))
+              .sort((a, b) => 
+                new Date(b.mostRecent.created_at).getTime() - new Date(a.mostRecent.created_at).getTime()
+              );
+
             return (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {Object.entries(groups).map(([groupName, groupItems]) => {
-                  if (groupItems.length === 0) return null;
-
-                  // Get the appropriate icon for the group
-                  const getGroupIcon = () => {
-                    if (groupName === 'PRs - opened')
-                      return <GitPullRequestIcon size={20} />;
-                    if (groupName === 'PRs - merged')
-                      return <GitMergeIcon size={20} />;
-                    if (groupName === 'PRs - closed')
-                      return <GitPullRequestClosedIcon size={20} />;
-                    if (groupName === 'PRs - reviewed')
-                      return <EyeIcon size={20} />;
-                    if (groupName === 'Issues - opened')
-                      return <IssueOpenedIcon size={20} />;
-                    if (groupName === 'Issues - closed')
-                      return <IssueClosedIcon size={20} />;
-                    if (groupName === 'Issues - commented')
-                      return <CommentIcon size={20} />;
-                    return <IssueOpenedIcon size={20} />;
-                  };
-
-                  return (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Individual Issues & PRs Section */}
+                {individualGroups.length > 0 && (
+                  <Box>
                     <Box
-                      key={groupName}
                       sx={{
                         border: '1px solid',
                         borderColor: 'border.default',
@@ -323,60 +335,63 @@ const TimelineView = memo(function TimelineView({
                         overflow: 'hidden',
                       }}
                     >
-                      {/* Group Header */}
+                      {/* Section Header */}
                       <Box
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: 2,
                           p: 2,
-                          bg: 'canvas.subtle',
+                          bg: 'accent.subtle',
                           borderBottom: '1px solid',
                           borderColor: 'border.default',
                         }}
                       >
-                        <Box sx={{ color: 'fg.muted' }}>{getGroupIcon()}</Box>
+                        <Box sx={{ color: 'accent.fg' }}>
+                          <RepoIcon size={20} />
+                        </Box>
                         <Text
                           sx={{
                             fontSize: 1,
                             fontWeight: 'semibold',
-                            color: 'fg.default',
+                            color: 'accent.fg',
                             flex: 1,
                           }}
                         >
-                          {groupName}
+                          Issues & Pull Requests
                         </Text>
                         <Box
                           sx={{
                             px: 2,
                             py: 1,
-                            bg: 'accent.subtle',
-                            color: 'accent.fg',
+                            bg: 'accent.emphasis',
+                            color: 'fg.onEmphasis',
                             borderRadius: 1,
                             fontSize: 0,
                             fontWeight: 'semibold',
                           }}
                         >
-                          {groupItems.length}
+                          {individualGroups.length}
                         </Box>
                       </Box>
 
-                      {/* Events List */}
+                      {/* Individual Items List */}
                       <Box sx={{ bg: 'canvas.default' }}>
-                        {groupItems.map((item, index) => {
+                        {individualGroups.map((group, index) => {
+                          const item = group.mostRecent;
                           const repoName = formatRepoName(item.repository_url);
 
                           return (
                             <Box
-                              key={`${item.id}-${index}`}
+                              key={group.url}
                               sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 2,
-                                py: 1,
+                                py: 2,
                                 px: 2,
                                 borderBottom:
-                                  index < groupItems.length - 1
+                                  index < individualGroups.length - 1
                                     ? '1px solid'
                                     : 'none',
                                 borderColor: 'border.muted',
@@ -386,10 +401,15 @@ const TimelineView = memo(function TimelineView({
                                 fontSize: 0,
                               }}
                             >
+                              {/* Icon */}
+                              <Box sx={{ color: 'fg.muted', flexShrink: 0 }}>
+                                {getEventIcon(item)}
+                              </Box>
+
                               {/* Avatar */}
                               <Avatar
                                 src={item.user.avatar_url}
-                                size={14}
+                                size={16}
                                 alt={item.user.login}
                                 sx={{ flexShrink: 0 }}
                               />
@@ -431,6 +451,24 @@ const TimelineView = memo(function TimelineView({
                                 {item.title}
                               </Link>
 
+                              {/* Event count badge */}
+                              {group.items.length > 1 && (
+                                <Box
+                                  sx={{
+                                    px: 2,
+                                    py: 1,
+                                    bg: 'neutral.subtle',
+                                    color: 'neutral.fg',
+                                    borderRadius: 1,
+                                    fontSize: 0,
+                                    fontWeight: 'semibold',
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {group.items.length} events
+                                </Box>
+                              )}
+
                               {/* Repo */}
                               <Text
                                 color="fg.muted"
@@ -456,8 +494,232 @@ const TimelineView = memo(function TimelineView({
                         })}
                       </Box>
                     </Box>
-                  );
-                })}
+                  </Box>
+                )}
+
+                {/* Action Type Groups Section */}
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {Object.entries(actionGroups).map(([groupName, groupItems]) => {
+                    if (groupItems.length === 0) return null;
+
+                    // Get the appropriate icon for the group
+                    const getGroupIcon = () => {
+                      if (groupName === 'PRs - opened')
+                        return <GitPullRequestIcon size={20} />;
+                      if (groupName === 'PRs - merged')
+                        return <GitMergeIcon size={20} />;
+                      if (groupName === 'PRs - closed')
+                        return <GitPullRequestClosedIcon size={20} />;
+                      if (groupName === 'PRs - reviewed')
+                        return <EyeIcon size={20} />;
+                      if (groupName === 'Issues - opened')
+                        return <IssueOpenedIcon size={20} />;
+                      if (groupName === 'Issues - closed')
+                        return <IssueClosedIcon size={20} />;
+                      if (groupName === 'Issues - commented')
+                        return <CommentIcon size={20} />;
+                      return <IssueOpenedIcon size={20} />;
+                    };
+
+                    return (
+                      <Box
+                        key={groupName}
+                        sx={{
+                          border: '1px solid',
+                          borderColor: 'border.default',
+                          borderRadius: 1,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {/* Group Header */}
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            p: 2,
+                            bg: 'canvas.subtle',
+                            borderBottom: '1px solid',
+                            borderColor: 'border.default',
+                          }}
+                        >
+                          <Box sx={{ color: 'fg.muted' }}>{getGroupIcon()}</Box>
+                          <Text
+                            sx={{
+                              fontSize: 1,
+                              fontWeight: 'semibold',
+                              color: 'fg.default',
+                              flex: 1,
+                            }}
+                          >
+                            {groupName}
+                          </Text>
+                          <Box
+                            sx={{
+                              px: 2,
+                              py: 1,
+                              bg: 'accent.subtle',
+                              color: 'accent.fg',
+                              borderRadius: 1,
+                              fontSize: 0,
+                              fontWeight: 'semibold',
+                            }}
+                          >
+                            {groupItems.length}
+                          </Box>
+                        </Box>
+
+                        {/* Events List */}
+                        <Box sx={{ bg: 'canvas.default' }}>
+                          {(() => {
+                            // Group items within this action type by URL
+                            const itemGroups: { [url: string]: GitHubItem[] } = {};
+                            groupItems.forEach(item => {
+                              // For comments, extract the issue/PR URL from the comment URL
+                              let groupingUrl = item.html_url;
+                              if (getEventType(item) === 'comment') {
+                                // Comment URLs typically end with #issuecomment-123456 or #discussion_r123456
+                                // Remove the comment hash part to group by the issue/PR URL
+                                groupingUrl = groupingUrl.split('#')[0];
+                              }
+                              
+                              if (!itemGroups[groupingUrl]) {
+                                itemGroups[groupingUrl] = [];
+                              }
+                              itemGroups[groupingUrl].push(item);
+                            });
+
+                            // Convert to array and sort by most recent
+                            const groupedItems = Object.entries(itemGroups)
+                              .map(([url, items]) => ({
+                                url,
+                                items: items.sort((a, b) => 
+                                  new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                                ),
+                                mostRecent: items.reduce((latest, current) => 
+                                  new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+                                )
+                              }))
+                              .sort((a, b) => 
+                                new Date(b.mostRecent.created_at).getTime() - new Date(a.mostRecent.created_at).getTime()
+                              );
+
+                            return groupedItems.map((group, index) => {
+                              const item = group.mostRecent;
+                              const repoName = formatRepoName(item.repository_url);
+
+                              return (
+                                <Box
+                                  key={group.url}
+                                  sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    py: 1,
+                                    px: 2,
+                                    borderBottom:
+                                      index < groupedItems.length - 1
+                                        ? '1px solid'
+                                        : 'none',
+                                    borderColor: 'border.muted',
+                                    '&:hover': {
+                                      bg: 'canvas.subtle',
+                                    },
+                                    fontSize: 0,
+                                  }}
+                                >
+                                  {/* Avatar */}
+                                  <Avatar
+                                    src={item.user.avatar_url}
+                                    size={14}
+                                    alt={item.user.login}
+                                    sx={{ flexShrink: 0 }}
+                                  />
+
+                                  {/* User */}
+                                  <Link
+                                    href={item.user.html_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      fontWeight: 'semibold',
+                                      flexShrink: 0,
+                                      color: 'fg.default',
+                                      textDecoration: 'none',
+                                      '&:hover': { textDecoration: 'underline' },
+                                    }}
+                                  >
+                                    {item.user.login}
+                                  </Link>
+
+                                  {/* Title (truncated) */}
+                                  <Link
+                                    href={item.html_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    sx={{
+                                      color: 'fg.default',
+                                      textDecoration: 'none',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap',
+                                      minWidth: 0,
+                                      flex: 1,
+                                      '&:hover': {
+                                        textDecoration: 'underline',
+                                      },
+                                    }}
+                                  >
+                                    {item.title}
+                                  </Link>
+
+                                  {/* Event count badge */}
+                                  {group.items.length > 1 && (
+                                    <Box
+                                      sx={{
+                                        px: 2,
+                                        py: 1,
+                                        bg: 'neutral.subtle',
+                                        color: 'neutral.fg',
+                                        borderRadius: 1,
+                                        fontSize: 0,
+                                        fontWeight: 'semibold',
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {group.items.length}
+                                    </Box>
+                                  )}
+
+                                  {/* Repo */}
+                                  <Text
+                                    color="fg.muted"
+                                    sx={{ flexShrink: 0, fontSize: 0 }}
+                                  >
+                                    {repoName.split('/')[1] || repoName}
+                                  </Text>
+
+                                  {/* Time */}
+                                  <Text
+                                    color="fg.muted"
+                                    sx={{ flexShrink: 0, fontSize: 0 }}
+                                  >
+                                    {formatDistanceToNow(
+                                      new Date(item.created_at),
+                                      {
+                                        addSuffix: true,
+                                      }
+                                    )}
+                                  </Text>
+                                </Box>
+                              );
+                            });
+                          })()}
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
               </Box>
             );
           })()

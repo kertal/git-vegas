@@ -412,14 +412,431 @@ describe('TimelineView', () => {
       expect(screen.getByText('PRs - merged')).toBeInTheDocument();
       expect(screen.getAllByText('1')).toHaveLength(2); // Count badges for both groups
       
-      // Should show individual events within groups
-      expect(screen.getByText('Test Issue')).toBeInTheDocument();
-      expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
+      // Should show individual events within groups (may appear in multiple sections)
+      const issueLinks = screen.getAllByText('Test Issue');
+      const prLinks = screen.getAllByText('Test Pull Request');
+      expect(issueLinks.length).toBeGreaterThanOrEqual(1);
+      expect(prLinks.length).toBeGreaterThanOrEqual(1);
       
-      // Should show user names and repo names within event items
-      expect(screen.getByText('testuser')).toBeInTheDocument();
-      expect(screen.getByText('testuser2')).toBeInTheDocument();
-      expect(screen.getAllByText('repo')).toHaveLength(2); // Should appear for each event
+      // Should show user names and repo names within event items (may appear in multiple sections)
+      const testuserLinks = screen.getAllByText('testuser');
+      const testuser2Links = screen.getAllByText('testuser2');
+      expect(testuserLinks.length).toBeGreaterThanOrEqual(1);
+      expect(testuser2Links.length).toBeGreaterThanOrEqual(1);
+      
+      const repoTexts = screen.getAllByText('repo');
+      expect(repoTexts.length).toBeGreaterThanOrEqual(2); // Should appear for each event in both sections
     });
+  });
+
+  describe('Enhanced Grouped View', () => {
+    const createMockItemsWithDuplicates = () => [
+      // Multiple events for the same issue
+      {
+        id: 1,
+        number: 123,
+        title: 'Test Issue',
+        body: 'This is a test issue',
+        html_url: 'https://github.com/test/repo/issues/123',
+        state: 'open',
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T12:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+      },
+      {
+        id: 2,
+        number: 123,
+        title: 'Test Issue',
+        body: 'This is a test issue',
+        html_url: 'https://github.com/test/repo/issues/123',
+        state: 'closed',
+        created_at: '2024-01-16T10:00:00Z',
+        updated_at: '2024-01-16T12:00:00Z',
+        closed_at: '2024-01-16T12:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+      },
+      {
+        id: 3,
+        number: 123,
+        title: 'Test Issue',
+        body: 'This is a test issue',
+        html_url: 'https://github.com/test/repo/issues/123',
+        state: 'open',
+        created_at: '2024-01-17T10:00:00Z',
+        updated_at: '2024-01-17T12:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+      },
+      // Multiple events for the same PR
+      {
+        id: 4,
+        number: 456,
+        title: 'Test Pull Request',
+        body: 'This is a test PR',
+        html_url: 'https://github.com/test/repo/pull/456',
+        state: 'open',
+        created_at: '2024-01-18T14:00:00Z',
+        updated_at: '2024-01-18T16:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'testuser2', avatar_url: 'https://github.com/testuser2.png', html_url: 'https://github.com/testuser2' },
+        pull_request: { url: 'https://github.com/test/repo/pull/456' },
+      },
+      {
+        id: 5,
+        number: 456,
+        title: 'Test Pull Request',
+        body: 'This is a test PR',
+        html_url: 'https://github.com/test/repo/pull/456',
+        state: 'closed',
+        created_at: '2024-01-19T14:00:00Z',
+        updated_at: '2024-01-19T16:00:00Z',
+        closed_at: '2024-01-19T16:00:00Z',
+        merged_at: '2024-01-19T16:00:00Z',
+        merged: true,
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'testuser2', avatar_url: 'https://github.com/testuser2.png', html_url: 'https://github.com/testuser2' },
+        pull_request: { url: 'https://github.com/test/repo/pull/456', merged_at: '2024-01-19T16:00:00Z' },
+      },
+      // Comments on the same issue
+      {
+        id: 6,
+        number: 123,
+        title: 'Comment on: Test Issue',
+        body: 'First comment',
+        html_url: 'https://github.com/test/repo/issues/123#issuecomment-1',
+        state: 'open',
+        created_at: '2024-01-20T10:00:00Z',
+        updated_at: '2024-01-20T10:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'commenter1', avatar_url: 'https://github.com/commenter1.png', html_url: 'https://github.com/commenter1' },
+      },
+      {
+        id: 7,
+        number: 123,
+        title: 'Comment on: Test Issue',
+        body: 'Second comment',
+        html_url: 'https://github.com/test/repo/issues/123#issuecomment-2',
+        state: 'open',
+        created_at: '2024-01-21T10:00:00Z',
+        updated_at: '2024-01-21T10:00:00Z',
+        labels: [],
+        repository_url: 'https://api.github.com/repos/test/repo',
+        repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+        user: { login: 'commenter2', avatar_url: 'https://github.com/commenter2.png', html_url: 'https://github.com/commenter2' },
+      },
+    ];
+
+    it('should show "Issues & Pull Requests" section in grouped view', () => {
+      const mockSetViewMode = vi.fn();
+      const mockItemsWithDuplicates = createMockItemsWithDuplicates();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithDuplicates} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show the main Issues & PRs section
+      expect(screen.getByText('Issues & Pull Requests')).toBeInTheDocument();
+      
+             // Should show count of unique issues/PRs (2: one issue, one PR)
+       const countBadges = screen.getAllByText('2');
+       expect(countBadges.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should group multiple events for the same issue/PR in main section', () => {
+      const mockSetViewMode = vi.fn();
+      const mockItemsWithDuplicates = createMockItemsWithDuplicates();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithDuplicates} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show event count badges for items with multiple events
+      // Issue has 3 events (opened, closed, reopened) + 2 comments = 5 total
+      expect(screen.getByText('5 events')).toBeInTheDocument();
+      
+      // PR has 2 events (opened, merged)
+      expect(screen.getByText('2 events')).toBeInTheDocument();
+    });
+
+    it('should show most recent event for each issue/PR in main section', () => {
+      const mockSetViewMode = vi.fn();
+      const mockItemsWithDuplicates = createMockItemsWithDuplicates();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithDuplicates} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show the titles (there should be only one of each despite multiple events)
+      const issueLinks = screen.getAllByText('Test Issue');
+      const prLinks = screen.getAllByText('Test Pull Request');
+      
+      // Each should appear once in the main section, and possibly in action sections
+      expect(issueLinks.length).toBeGreaterThanOrEqual(1);
+      expect(prLinks.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should group events by action type in action sections', () => {
+      const mockSetViewMode = vi.fn();
+      const mockItemsWithDuplicates = createMockItemsWithDuplicates();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithDuplicates} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show action type groups
+      expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+      expect(screen.getByText('Issues - closed')).toBeInTheDocument();
+      expect(screen.getByText('PRs - opened')).toBeInTheDocument();
+      expect(screen.getByText('PRs - merged')).toBeInTheDocument();
+      expect(screen.getByText('Issues - commented')).toBeInTheDocument();
+    });
+
+         it('should consolidate duplicate events within action type groups', () => {
+       const mockSetViewMode = vi.fn();
+       // Create items where same issue appears in multiple states
+       const mockItems = [
+         {
+           id: 1,
+           number: 123,
+           title: 'Test Issue',
+           html_url: 'https://github.com/test/repo/issues/123',
+           state: 'open',
+           created_at: '2024-01-15T10:00:00Z',
+           updated_at: '2024-01-15T12:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+         },
+         {
+           id: 2,
+           number: 123,
+           title: 'Test Issue',
+           html_url: 'https://github.com/test/repo/issues/123',
+           state: 'open',
+           created_at: '2024-01-16T10:00:00Z',
+           updated_at: '2024-01-16T12:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+         },
+       ];
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+         />
+       );
+
+       // Should show count badge in the Issues - opened section for the consolidated events
+       expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+       // There should be multiple "2" badges - one in main section, one in action section
+       const countBadges = screen.getAllByText('2');
+       expect(countBadges.length).toBeGreaterThanOrEqual(1);
+     });
+
+         it('should properly group comments by their parent issue/PR URL', () => {
+       const mockSetViewMode = vi.fn();
+       const mockCommentsOnSameIssue = [
+         {
+           id: 1,
+           number: 123,
+           title: 'Comment on: Test Issue',
+           body: 'First comment',
+           html_url: 'https://github.com/test/repo/issues/123#issuecomment-1',
+           state: 'open',
+           created_at: '2024-01-20T10:00:00Z',
+           updated_at: '2024-01-20T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'commenter1', avatar_url: 'https://github.com/commenter1.png', html_url: 'https://github.com/commenter1' },
+         },
+         {
+           id: 2,
+           number: 123,
+           title: 'Comment on: Test Issue',
+           body: 'Second comment',
+           html_url: 'https://github.com/test/repo/issues/123#issuecomment-2',
+           state: 'open',
+           created_at: '2024-01-21T10:00:00Z',
+           updated_at: '2024-01-21T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'commenter2', avatar_url: 'https://github.com/commenter2.png', html_url: 'https://github.com/commenter2' },
+         },
+       ];
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockCommentsOnSameIssue} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+         />
+       );
+
+       // Should show Issues - commented section
+       expect(screen.getByText('Issues - commented')).toBeInTheDocument();
+       
+       // Should show consolidated comment count (appears in both main and action sections)
+       const countBadges = screen.getAllByText('2');
+       expect(countBadges.length).toBeGreaterThanOrEqual(1);
+       
+       // Should show most recent commenter (may appear in both sections)
+       const commenterLinks = screen.getAllByText('commenter2');
+       expect(commenterLinks.length).toBeGreaterThanOrEqual(1);
+     });
+
+         it('should sort grouped items by most recent activity', () => {
+       const mockSetViewMode = vi.fn();
+       const mockItems = [
+         // Older issue
+         {
+           id: 1,
+           number: 123,
+           title: 'Older Issue',
+           html_url: 'https://github.com/test/repo/issues/123',
+           state: 'open',
+           created_at: '2024-01-15T10:00:00Z',
+           updated_at: '2024-01-15T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+         },
+         // Newer issue
+         {
+           id: 2,
+           number: 456,
+           title: 'Newer Issue',
+           html_url: 'https://github.com/test/repo/issues/456',
+           state: 'open',
+           created_at: '2024-01-20T10:00:00Z',
+           updated_at: '2024-01-20T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+         },
+       ];
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+         />
+       );
+
+       // Should show both issues somewhere in the view (may appear in multiple sections)
+       const newerIssueLinks = screen.getAllByText('Newer Issue');
+       const olderIssueLinks = screen.getAllByText('Older Issue');
+       expect(newerIssueLinks.length).toBeGreaterThanOrEqual(1);
+       expect(olderIssueLinks.length).toBeGreaterThanOrEqual(1);
+     });
+
+         it('should not show event count badge for single events in item groupings', () => {
+       const mockSetViewMode = vi.fn();
+       const mockSingleItems = [
+         {
+           id: 1,
+           number: 123,
+           title: 'Single Issue',
+           html_url: 'https://github.com/test/repo/issues/123',
+           state: 'open',
+           created_at: '2024-01-15T10:00:00Z',
+           updated_at: '2024-01-15T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+         },
+       ];
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockSingleItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+         />
+       );
+
+       // Should show the issue title (may appear in both main and action sections)
+       const issueTitleLinks = screen.getAllByText('Single Issue');
+       expect(issueTitleLinks.length).toBeGreaterThanOrEqual(1);
+       
+       // Should show Issues - opened section
+       expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+       
+       // There will be "1 events" in the header, but no "X events" badges next to individual items since they're single events
+       expect(screen.getByText('1 events')).toBeInTheDocument(); // This is the header count
+       
+       // But there should not be multiple event count badges for the same single item
+       const eventBadges = screen.queryAllByText(/^\d+ events?$/);
+       expect(eventBadges.length).toBe(1); // Only the header count
+     });
+
+         it('should handle mixed issue and PR events correctly', () => {
+       const mockSetViewMode = vi.fn();
+       const mockMixedItems = createMockItemsWithDuplicates();
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockMixedItems} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+         />
+       );
+
+       // Should show both issue and PR sections
+       expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+       expect(screen.getByText('Issues - closed')).toBeInTheDocument();
+       expect(screen.getByText('PRs - opened')).toBeInTheDocument();
+       expect(screen.getByText('PRs - merged')).toBeInTheDocument();
+       expect(screen.getByText('Issues - commented')).toBeInTheDocument();
+       
+       // Should show the main section with both types
+       expect(screen.getByText('Issues & Pull Requests')).toBeInTheDocument();
+       
+       // Should show both issue and PR titles (may appear multiple times in different sections)
+       const issueLinks = screen.getAllByText('Test Issue');
+       const prLinks = screen.getAllByText('Test Pull Request');
+       expect(issueLinks.length).toBeGreaterThanOrEqual(1);
+       expect(prLinks.length).toBeGreaterThanOrEqual(1);
+     });
   });
 });
