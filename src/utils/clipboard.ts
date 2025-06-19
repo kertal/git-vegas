@@ -5,6 +5,11 @@ export interface ClipboardOptions {
   isCompactView: boolean;
   onSuccess?: (message: string) => void;
   onError?: (error: Error) => void;
+  isGroupedView?: boolean;
+  groupedData?: Array<{
+    groupName: string;
+    items: GitHubItem[];
+  }>;
 }
 
 export interface ClipboardResult {
@@ -25,8 +30,63 @@ export const formatDateForClipboard = (dateString: string): string => {
  */
 export const generatePlainTextFormat = (
   items: GitHubItem[],
-  isCompactView: boolean
+  isCompactView: boolean,
+  options?: { isGroupedView?: boolean; groupedData?: Array<{ groupName: string; items: GitHubItem[] }> }
 ): string => {
+  // Handle grouped view
+  if (options?.isGroupedView && options?.groupedData) {
+    if (isCompactView) {
+      return options.groupedData
+        .map(group => {
+          const groupHeader = `${group.groupName}`;
+          const groupItems = group.items
+            .map(item => {
+              const status = item.pull_request
+                ? item.pull_request.merged_at || item.merged
+                  ? 'merged'
+                  : item.state
+                : item.state;
+              return `- ${item.title} (${status}) - ${item.html_url}`;
+            })
+            .join('\n');
+          return `${groupHeader}\n${groupItems}`;
+        })
+        .join('\n\n');
+    } else {
+      // Detailed grouped format
+      let plainText = '';
+      options.groupedData.forEach((group, groupIndex) => {
+        plainText += `${group.groupName}\n`;
+        plainText += '='.repeat(group.groupName.length) + '\n\n';
+        
+        group.items.forEach((item, index) => {
+          plainText += `${index + 1}. ${item.title}\n`;
+          plainText += `   Link: ${item.html_url}\n`;
+          plainText += `   Type: ${item.pull_request ? 'Pull Request' : 'Issue'}\n`;
+          plainText += `   Status: ${item.state}${item.merged ? ' (merged)' : ''}\n`;
+          plainText += `   Created: ${formatDateForClipboard(item.created_at)}\n`;
+          plainText += `   Updated: ${formatDateForClipboard(item.updated_at)}\n`;
+          if (item.labels?.length) {
+            plainText += `   Labels: ${item.labels.map(l => l.name).join(', ')}\n`;
+          }
+          if (item.body) {
+            plainText += `   Description:\n${item.body
+              .split('\n')
+              .map(line => `     ${line}`)
+              .join('\n')}\n`;
+          }
+          plainText += '\n';
+        });
+        
+        if (groupIndex < options.groupedData!.length - 1) {
+          plainText += '\n';
+        }
+      });
+      return plainText;
+    }
+  }
+
+  // Handle regular view
   if (isCompactView) {
     return items
       .map(item => {
@@ -69,8 +129,55 @@ export const generatePlainTextFormat = (
  */
 export const generateHtmlFormat = (
   items: GitHubItem[],
-  isCompactView: boolean
+  isCompactView: boolean,
+  options?: { isGroupedView?: boolean; groupedData?: Array<{ groupName: string; items: GitHubItem[] }> }
 ): string => {
+  // Handle grouped view
+  if (options?.isGroupedView && options?.groupedData) {
+    if (isCompactView) {
+      const groupedContent = options.groupedData
+        .map(group => {
+          const listItems = group.items
+            .map(item => {
+              const status = item.pull_request
+                ? item.pull_request.merged_at || item.merged
+                  ? 'merged'
+                  : item.state
+                : item.state;
+              const statusColor =
+                item.pull_request?.merged_at || item.merged
+                  ? '#8250df'
+                  : item.state === 'closed'
+                    ? '#cf222e'
+                    : '#1a7f37';
+
+              return `
+        <li>
+          <a href="${item.html_url}">${item.title}</a>
+          <span style="color: ${statusColor};">(${status})</span>
+        </li>`;
+            })
+            .join('');
+
+          return `
+    <div style="margin-bottom: 16px;">
+      <h3 style="margin-bottom: 8px; color: #1f2328;">${group.groupName}</h3>
+      <ul>
+        ${listItems}
+      </ul>
+    </div>`;
+        })
+        .join('');
+
+      return `
+<div>
+  ${groupedContent}
+</div>`;
+    }
+    // Detailed grouped format would go here if needed
+  }
+
+  // Handle regular view
   if (isCompactView) {
     const listItems = items
       .map(item => {
@@ -168,8 +275,12 @@ export const copyResultsToClipboard = async (
   options: ClipboardOptions
 ): Promise<ClipboardResult> => {
   try {
-    const plainText = generatePlainTextFormat(items, options.isCompactView);
-    const htmlContent = generateHtmlFormat(items, options.isCompactView);
+    const formatOptions = {
+      isGroupedView: options.isGroupedView,
+      groupedData: options.groupedData
+    };
+    const plainText = generatePlainTextFormat(items, options.isCompactView, formatOptions);
+    const htmlContent = generateHtmlFormat(items, options.isCompactView, formatOptions);
 
     // Check if ClipboardItem is available (modern browsers)
     if (typeof ClipboardItem !== 'undefined') {

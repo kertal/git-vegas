@@ -194,6 +194,88 @@ const TimelineView = memo(function TimelineView({
     );
   };
 
+  // Custom copy handler that supports grouped mode
+  const handleCopyResults = async (format: 'detailed' | 'compact') => {
+    if (!copyResultsToClipboard) return;
+
+    if (viewMode === 'grouped') {
+      // Prepare grouped data structure
+      const actionGroups: {
+        'PRs - opened': GitHubItem[];
+        'PRs - merged': GitHubItem[];
+        'PRs - closed': GitHubItem[];
+        'PRs - reviewed': GitHubItem[];
+        'Issues - opened': GitHubItem[];
+        'Issues - closed': GitHubItem[];
+        'Issues - commented': GitHubItem[];
+      } = {
+        'PRs - opened': [],
+        'PRs - merged': [],
+        'PRs - closed': [],
+        'PRs - reviewed': [],
+        'Issues - opened': [],
+        'Issues - closed': [],
+        'Issues - commented': [],
+      };
+
+      sortedItems.forEach(item => {
+        const type = getEventType(item);
+        
+        if (
+          type === 'pull_request' &&
+          item.title.startsWith('Review on:')
+        ) {
+          actionGroups['PRs - reviewed'].push(item);
+        } else if (type === 'comment') {
+          actionGroups['Issues - commented'].push(item);
+        } else if (type === 'pull_request') {
+          if (item.merged_at) {
+            actionGroups['PRs - merged'].push(item);
+          } else if (item.state === 'closed') {
+            actionGroups['PRs - closed'].push(item);
+          } else {
+            actionGroups['PRs - opened'].push(item);
+          }
+        } else {
+          // issue
+          if (item.state === 'closed') {
+            actionGroups['Issues - closed'].push(item);
+          } else {
+            actionGroups['Issues - opened'].push(item);
+          }
+        }
+      });
+
+      // Convert to the format expected by clipboard utility
+      const groupedData = Object.entries(actionGroups)
+        .filter(([, items]) => items.length > 0)
+        .map(([groupName, items]) => ({
+          groupName,
+          items
+        }));
+
+      // Use the enhanced clipboard utility with grouped data
+      const selectedItemsArray = selectedItems.size > 0 
+        ? sortedItems.filter(item => selectedItems.has(item.event_id || item.id))
+        : sortedItems;
+
+      await copyToClipboard(selectedItemsArray, {
+        isCompactView: format === 'compact',
+        isGroupedView: true,
+        groupedData,
+        onSuccess: () => {
+          // Success feedback is handled by the parent component
+        },
+        onError: (error: Error) => {
+          console.error('Failed to copy grouped results:', error);
+        },
+      });
+    } else {
+      // Regular copy for non-grouped modes
+      copyResultsToClipboard(format);
+    }
+  };
+
   if (sortedItems.length === 0) {
     // Check if we have raw events but they're filtered out
     const hasRawEvents = rawEvents && rawEvents.length > 0;
@@ -252,12 +334,12 @@ const TimelineView = memo(function TimelineView({
           <ActionMenu.Overlay>
             <ActionList>
               <ActionList.Item
-                onSelect={() => copyResultsToClipboard('detailed')}
+                onSelect={() => handleCopyResults('detailed')}
               >
                 Detailed Format
               </ActionList.Item>
               <ActionList.Item
-                onSelect={() => copyResultsToClipboard('compact')}
+                onSelect={() => handleCopyResults('compact')}
               >
                 Compact Format
               </ActionList.Item>
