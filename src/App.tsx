@@ -39,7 +39,7 @@ import { parseUrlParams, applyUrlOverrides, cleanupUrlParams } from './utils/url
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import { validateUsernameList } from './utils';
-import { performGitHubSearch, type GitHubSearchParams } from './utils/githubSearch';
+import { performCombinedGitHubSearch, type GitHubSearchParams } from './utils/githubSearch';
 import { 
   categorizeRawEvents, 
   categorizeRawSearchItems,
@@ -637,14 +637,15 @@ function App() {
     setError(null);
 
     try {
-      const result = await performGitHubSearch(searchParams, cache, {
+      // Always fetch both events and issues/PRs
+      const result = await performCombinedGitHubSearch(searchParams, cache, {
         onProgress,
         cacheCallbacks,
         requestDelay: 500,
       });
 
-      // Store raw data based on API mode
-      if (apiMode === 'events' && result.rawEvents) {
+      // Store both types of data
+      if (result.rawEvents && result.rawEvents.length > 0) {
         // Store events in IndexedDB
         await storeEvents('github-events-indexeddb', result.rawEvents, {
           lastFetch: Date.now(),
@@ -653,7 +654,9 @@ function App() {
           startDate,
           endDate,
         });
-      } else if (apiMode === 'search' && result.rawSearchItems) {
+      }
+      
+      if (result.rawSearchItems && result.rawSearchItems.length > 0) {
         // Store search items in IndexedDB (cast to GitHubEvent[] for storage)
         await storeSearchItems('github-search-items-indexeddb', result.rawSearchItems as unknown as GitHubEvent[], {
           lastFetch: Date.now(),

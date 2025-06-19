@@ -381,6 +381,112 @@ export const isCacheValid = (
 };
 
 /**
+ * Performs GitHub search for both events and issues/pull requests
+ *
+ * @param params - Search parameters
+ * @param cache - Username validation cache
+ * @param options - Search options
+ * @returns Promise with search results containing both data types
+ */
+export const performCombinedGitHubSearch = async (
+  params: GitHubSearchParams,
+  cache: UsernameCache,
+  options: GitHubSearchOptions = {}
+): Promise<GitHubSearchResult> => {
+  const { onProgress, cacheCallbacks, requestDelay = 500 } = options;
+
+  // Validate search parameters
+  const paramValidation = validateSearchParams(params);
+  if (!paramValidation.valid) {
+    throw new Error(paramValidation.errors.join('\n'));
+  }
+
+  // Validate username format and list
+  const validation = validateUsernameList(params.username);
+  if (validation.errors.length > 0) {
+    throw new Error(validation.errors.join('\n'));
+  }
+
+  const usernames = validation.usernames;
+
+  // Validate usernames and check cache
+  onProgress?.('Validating usernames...');
+  const usernameValidation = await validateAndCacheUsernames(
+    usernames,
+    cache,
+    params.githubToken,
+    cacheCallbacks
+  );
+
+  if (!usernameValidation.valid) {
+    throw new Error(usernameValidation.errors.join('\n'));
+  }
+
+  // Fetch both events and issues/PRs for all users
+  onProgress?.('Starting combined fetch (events + issues/PRs)...');
+  const allRawEvents: GitHubEvent[] = [];
+  const allRawSearchItems: GitHubItem[] = [];
+
+  for (const username of usernames) {
+    onProgress?.(`Fetching events for ${username}...`);
+
+    try {
+      // Fetch events
+      const eventsResult = await fetchUserEvents(
+        username,
+        params.startDate,
+        params.endDate,
+        params.githubToken,
+        cache,
+        cacheCallbacks
+      );
+      
+      allRawEvents.push(...eventsResult.rawEvents);
+      onProgress?.(`Found ${eventsResult.rawEvents.length} events for ${username}`);
+
+      // Add delay between requests to avoid rate limiting
+      if (requestDelay > 0) {
+        await new Promise(resolve => setTimeout(resolve, requestDelay));
+      }
+
+      // Fetch issues/PRs
+      onProgress?.(`Fetching issues/PRs for ${username}...`);
+      const searchItems = await fetchUserItems(
+        username,
+        params.startDate,
+        params.endDate,
+        params.githubToken,
+        cache,
+        cacheCallbacks
+      );
+      
+      allRawSearchItems.push(...searchItems);
+      onProgress?.(`Found ${searchItems.length} issues/PRs for ${username}`);
+
+      // Add delay between requests to avoid rate limiting
+      if (requestDelay > 0) {
+        await new Promise(resolve => setTimeout(resolve, requestDelay));
+      }
+    } catch (error) {
+      // Re-throw with context about which user failed
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Failed to fetch data for ${username}: ${errorMessage}`);
+    }
+  }
+
+  onProgress?.(`Successfully loaded ${allRawEvents.length} events and ${allRawSearchItems.length} issues/PRs!`);
+
+  return {
+    items: [], // Empty for now - will be processed in UI
+    totalCount: allRawEvents.length + allRawSearchItems.length,
+    processedUsernames: usernames,
+    rawEvents: allRawEvents,
+    rawSearchItems: allRawSearchItems,
+  };
+};
+
+/**
  * Performs GitHub search for issues and pull requests
  *
  * @param params - Search parameters
