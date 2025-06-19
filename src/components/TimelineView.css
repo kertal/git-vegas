@@ -246,8 +246,7 @@
 }
 
 .timeline-item-title {
-  color: var(--fgColor-default);
-  text-decoration: none;
+
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -755,7 +755,6 @@ const ResultsList = memo(function ResultsList({
                     target="_blank"
                     rel="noopener noreferrer"
                     sx={{
-                      color: 'accent.fg',
                       textDecoration: 'none',
                       fontSize: 1,
                       flexGrow: 1,
@@ -783,15 +782,9 @@ const ResultsList = memo(function ResultsList({
                     })}
                   </Text>
                   {item.body && (
-                    <div
-                    style={{
-                      width: '50xpx',
-                    }}
-                  >
-                    <ActionBar aria-label="Toolbar" size='small'>
-                      <ActionBar.IconButton icon={EyeIcon} aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)}></ActionBar.IconButton>
-                      <ActionBar.IconButton icon={PasteIcon} aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)}></ActionBar.IconButton>
-                    </ActionBar>
+                    <div>
+                      <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)}></IconButton>
+                      <IconButton icon={PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)}></IconButton>
                     </div>
                   )}
                 </Box>
