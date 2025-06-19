@@ -457,8 +457,6 @@ const ResultsList = memo(function ResultsList({
 
   return (
     <Box>
-
-
       {/* Results Section */}
       <ResultsContainer
       
@@ -481,7 +479,7 @@ const ResultsList = memo(function ResultsList({
                   m: 0,
                 }}
               >
-                Results
+                Issues and PRs
               </Heading>
             </Box>
             <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
