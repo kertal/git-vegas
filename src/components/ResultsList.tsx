@@ -35,6 +35,7 @@ import { GitHubItem } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import FiltersPanel from './FiltersPanel';
 import { ResultsContainer } from './ResultsContainer';
+import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -462,6 +463,21 @@ const ResultsList = memo(function ResultsList({
     );
   };
 
+  // Single item clipboard copy handler
+  const copySingleItemToClipboard = async (item: GitHubItem) => {
+    const result = await copyToClipboard([item], {
+      isCompactView: true, // Use compact format for single items
+      onSuccess: () => {
+        // Success feedback is handled by the clipboard utility
+      },
+      onError: (error: Error) => {
+        console.error('Failed to copy item:', error);
+      },
+    });
+
+    return result;
+  };
+
   return (
     <Box>
 
@@ -774,6 +790,7 @@ const ResultsList = memo(function ResultsList({
                   >
                     <ActionBar aria-label="Toolbar" size='small'>
                       <ActionBar.IconButton icon={EyeIcon} aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)}></ActionBar.IconButton>
+                      <ActionBar.IconButton icon={PasteIcon} aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)}></ActionBar.IconButton>
                     </ActionBar>
                     </div>
                   )}
