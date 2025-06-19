@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Box, Text, Avatar, Link, Button, ButtonGroup } from '@primer/react';
+import { Text, Avatar, Link, Button, ButtonGroup } from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -13,6 +13,7 @@ import {
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ResultsContainer } from './ResultsContainer';
+import './TimelineView.css';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
 
@@ -99,32 +100,32 @@ const TimelineView = memo(function TimelineView({
     const hasRawEvents = rawEvents && rawEvents.length > 0;
 
     return (
-      <Box sx={{ textAlign: 'center', py: 6 }}>
+      <div className="timeline-empty">
         <Text color="fg.muted">
           {!hasRawEvents
             ? 'No cached events found. Please perform a search in events mode to load events.'
             : 'No events found for the selected time period. Try adjusting your date range or filters.'}
         </Text>
-      </Box>
+      </div>
     );
   }
 
   // Header left content
   const headerLeft = (
-    <Text sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.default' }}>
+    <Text className="timeline-header-left">
       Activity Timeline
     </Text>
   );
 
   // Header right content
   const headerRight = (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-      <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+    <div className="timeline-header-right">
+      <Text className="timeline-event-count">
         {sortedItems.length} events
       </Text>
       {setViewMode && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
+        <div className="timeline-view-controls">
+          <Text className="timeline-view-label">View:</Text>
           <ButtonGroup>
             <Button
               size="small"
@@ -148,9 +149,9 @@ const TimelineView = memo(function TimelineView({
               Raw
             </Button>
           </ButtonGroup>
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 
   return (
@@ -160,10 +161,10 @@ const TimelineView = memo(function TimelineView({
       className="timeline-view"
     >
       {/* Timeline content */}
-      <Box sx={{ p: 2 }}>
+      <div className="timeline-content">
         {viewMode === 'raw' ? (
           // Raw JSON view - show actual GitHub API events
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div className="timeline-raw-container">
             {rawEvents.length > 0 ? (
               rawEvents
                 .sort(
@@ -172,52 +173,26 @@ const TimelineView = memo(function TimelineView({
                     new Date(a.created_at).getTime()
                 )
                 .map((event, index) => (
-                  <Box
+                  <div
                     key={`${event.id}-${index}`}
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'border.default',
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                    }}
+                    className="timeline-raw-event"
                   >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        p: 2,
-                        bg: 'canvas.subtle',
-                        borderBottom: '1px solid',
-                        borderColor: 'border.default',
-                      }}
-                    >
-                      <Box
-                        sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
-                      >
-                        <Text sx={{ fontSize: 1, fontWeight: 'semibold' }}>
+                    <div className="timeline-raw-event-header">
+                      <div className="timeline-raw-event-header-left">
+                        <Text className="timeline-raw-event-type">
                           {event.type}
                         </Text>
-                        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                        <Text className="timeline-raw-event-meta">
                           by {event.actor.login} in {event.repo.name}
                         </Text>
-                      </Box>
-                      <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+                      </div>
+                      <Text className="timeline-raw-event-time">
                         {formatDistanceToNow(new Date(event.created_at), {
                           addSuffix: true,
                         })}
                       </Text>
-                    </Box>
-                    <Box
-                      sx={{
-                        p: 2,
-                        bg: 'canvas.default',
-                        fontFamily: 'mono',
-                        fontSize: 0,
-                        overflow: 'auto',
-                        maxHeight: '400px',
-                      }}
-                    >
+                    </div>
+                    <div className="timeline-raw-event-content">
                       <pre
                         style={{
                           margin: 0,
@@ -227,18 +202,18 @@ const TimelineView = memo(function TimelineView({
                       >
                         {JSON.stringify(event, null, 2)}
                       </pre>
-                    </Box>
-                  </Box>
+                    </div>
+                  </div>
                 ))
             ) : (
-              <Box sx={{ textAlign: 'center', py: 6 }}>
+              <div className="timeline-raw-empty">
                 <Text color="fg.muted">
                   No raw events available. Raw events are only available after
                   performing a new search in events mode.
                 </Text>
-              </Box>
+              </div>
             )}
-          </Box>
+          </div>
         ) : viewMode === 'grouped' ? (
           // Grouped view - organize events by individual issues/PRs and by type
           (() => {
@@ -323,95 +298,48 @@ const TimelineView = memo(function TimelineView({
               );
 
             return (
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <div className="timeline-grouped-container">
                 {/* Individual Issues & PRs Section */}
                 {individualGroups.length > 0 && (
-                  <Box>
-                    <Box
-                      sx={{
-                        border: '1px solid',
-                        borderColor: 'border.default',
-                        borderRadius: 1,
-                        overflow: 'hidden',
-                      }}
-                    >
+                  <div>
+                    <div className="timeline-section">
                       {/* Section Header */}
-                      <Box
-                        sx={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 2,
-                          p: 2,
-                          bg: 'accent.subtle',
-                          borderBottom: '1px solid',
-                          borderColor: 'border.default',
-                        }}
-                      >
-                        <Box sx={{ color: 'accent.fg' }}>
+                      <div className="timeline-section-header timeline-section-header--accent">
+                        <div className="timeline-section-icon timeline-section-icon--accent">
                           <RepoIcon size={20} />
-                        </Box>
-                        <Text
-                          sx={{
-                            fontSize: 1,
-                            fontWeight: 'semibold',
-                            color: 'accent.fg',
-                            flex: 1,
-                          }}
-                        >
+                        </div>
+                        <Text className="timeline-section-title timeline-section-title--accent">
                           Issues & Pull Requests
                         </Text>
-                        <Box
-                          sx={{
-                            px: 2,
-                            py: 1,
-                            bg: 'accent.emphasis',
-                            color: 'fg.onEmphasis',
-                            borderRadius: 1,
-                            fontSize: 0,
-                            fontWeight: 'semibold',
-                          }}
-                        >
+                        <div className="timeline-section-count timeline-section-count--accent">
                           {individualGroups.length}
-                        </Box>
-                      </Box>
+                        </div>
+                      </div>
 
                       {/* Individual Items List */}
-                      <Box sx={{ bg: 'canvas.default' }}>
+                      <div className="timeline-section-content">
                         {individualGroups.map((group, index) => {
                           const item = group.mostRecent;
                           const repoName = formatRepoName(item.repository_url);
 
                           return (
-                            <Box
+                            <div
                               key={group.url}
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 2,
-                                py: 2,
-                                px: 2,
-                                borderBottom:
-                                  index < individualGroups.length - 1
-                                    ? '1px solid'
-                                    : 'none',
-                                borderColor: 'border.muted',
-                                '&:hover': {
-                                  bg: 'canvas.subtle',
-                                },
-                                fontSize: 0,
-                              }}
+                              className={`timeline-item timeline-item--large ${
+                                index < individualGroups.length - 1 ? '' : 'timeline-item--no-border'
+                              }`}
                             >
                               {/* Icon */}
-                              <Box sx={{ color: 'fg.muted', flexShrink: 0 }}>
+                              <div className="timeline-item-icon">
                                 {getEventIcon(item)}
-                              </Box>
+                              </div>
 
                               {/* Avatar */}
                               <Avatar
                                 src={item.user.avatar_url}
                                 size={16}
                                 alt={item.user.login}
-                                sx={{ flexShrink: 0 }}
+                                className="timeline-item-avatar"
                               />
 
                               {/* User */}
@@ -419,13 +347,7 @@ const TimelineView = memo(function TimelineView({
                                 href={item.user.html_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                sx={{
-                                  fontWeight: 'semibold',
-                                  flexShrink: 0,
-                                  color: 'fg.default',
-                                  textDecoration: 'none',
-                                  '&:hover': { textDecoration: 'underline' },
-                                }}
+                                className="timeline-item-user"
                               >
                                 {item.user.login}
                               </Link>
@@ -435,53 +357,25 @@ const TimelineView = memo(function TimelineView({
                                 href={item.html_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                sx={{
-                                  color: 'fg.default',
-                                  textDecoration: 'none',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                  minWidth: 0,
-                                  flex: 1,
-                                  '&:hover': {
-                                    textDecoration: 'underline',
-                                  },
-                                }}
+                                className="timeline-item-title"
                               >
                                 {item.title}
                               </Link>
 
                               {/* Event count badge */}
                               {group.items.length > 1 && (
-                                <Box
-                                  sx={{
-                                    px: 2,
-                                    py: 1,
-                                    bg: 'neutral.subtle',
-                                    color: 'neutral.fg',
-                                    borderRadius: 1,
-                                    fontSize: 0,
-                                    fontWeight: 'semibold',
-                                    flexShrink: 0,
-                                  }}
-                                >
+                                <div className="timeline-item-count-badge">
                                   {group.items.length} events
-                                </Box>
+                                </div>
                               )}
 
                               {/* Repo */}
-                              <Text
-                                color="fg.muted"
-                                sx={{ flexShrink: 0, fontSize: 0 }}
-                              >
+                              <Text className="timeline-item-repo">
                                 {repoName.split('/')[1] || repoName}
                               </Text>
 
                               {/* Time */}
-                              <Text
-                                color="fg.muted"
-                                sx={{ flexShrink: 0, fontSize: 0 }}
-                              >
+                              <Text className="timeline-item-time">
                                 {formatDistanceToNow(
                                   new Date(item.created_at),
                                   {
@@ -489,16 +383,16 @@ const TimelineView = memo(function TimelineView({
                                   }
                                 )}
                               </Text>
-                            </Box>
+                            </div>
                           );
                         })}
-                      </Box>
-                    </Box>
-                  </Box>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 {/* Action Type Groups Section */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div className="timeline-action-groups">
                   {Object.entries(actionGroups).map(([groupName, groupItems]) => {
                     if (groupItems.length === 0) return null;
 
@@ -522,55 +416,23 @@ const TimelineView = memo(function TimelineView({
                     };
 
                     return (
-                      <Box
+                      <div
                         key={groupName}
-                        sx={{
-                          border: '1px solid',
-                          borderColor: 'border.default',
-                          borderRadius: 1,
-                          overflow: 'hidden',
-                        }}
+                        className="timeline-section"
                       >
                         {/* Group Header */}
-                        <Box
-                          sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            p: 2,
-                            bg: 'canvas.subtle',
-                            borderBottom: '1px solid',
-                            borderColor: 'border.default',
-                          }}
-                        >
-                          <Box sx={{ color: 'fg.muted' }}>{getGroupIcon()}</Box>
-                          <Text
-                            sx={{
-                              fontSize: 1,
-                              fontWeight: 'semibold',
-                              color: 'fg.default',
-                              flex: 1,
-                            }}
-                          >
+                        <div className="timeline-section-header timeline-section-header--subtle">
+                          <div className="timeline-section-icon timeline-section-icon--muted">{getGroupIcon()}</div>
+                          <Text className="timeline-section-title timeline-section-title--default">
                             {groupName}
                           </Text>
-                          <Box
-                            sx={{
-                              px: 2,
-                              py: 1,
-                              bg: 'accent.subtle',
-                              color: 'accent.fg',
-                              borderRadius: 1,
-                              fontSize: 0,
-                              fontWeight: 'semibold',
-                            }}
-                          >
+                          <div className="timeline-section-count timeline-section-count--subtle">
                             {groupItems.length}
-                          </Box>
-                        </Box>
+                          </div>
+                        </div>
 
                         {/* Events List */}
-                        <Box sx={{ bg: 'canvas.default' }}>
+                        <div className="timeline-section-content">
                           {(() => {
                             // Group items within this action type by URL
                             const itemGroups: { [url: string]: GitHubItem[] } = {};
@@ -609,31 +471,18 @@ const TimelineView = memo(function TimelineView({
                               const repoName = formatRepoName(item.repository_url);
 
                               return (
-                                <Box
+                                <div
                                   key={group.url}
-                                  sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 2,
-                                    py: 1,
-                                    px: 2,
-                                    borderBottom:
-                                      index < groupedItems.length - 1
-                                        ? '1px solid'
-                                        : 'none',
-                                    borderColor: 'border.muted',
-                                    '&:hover': {
-                                      bg: 'canvas.subtle',
-                                    },
-                                    fontSize: 0,
-                                  }}
+                                  className={`timeline-item ${
+                                    index < groupedItems.length - 1 ? '' : 'timeline-item--no-border'
+                                  }`}
                                 >
                                   {/* Avatar */}
                                   <Avatar
                                     src={item.user.avatar_url}
                                     size={14}
                                     alt={item.user.login}
-                                    sx={{ flexShrink: 0 }}
+                                    className="timeline-item-avatar"
                                   />
 
                                   {/* User */}
@@ -641,13 +490,7 @@ const TimelineView = memo(function TimelineView({
                                     href={item.user.html_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    sx={{
-                                      fontWeight: 'semibold',
-                                      flexShrink: 0,
-                                      color: 'fg.default',
-                                      textDecoration: 'none',
-                                      '&:hover': { textDecoration: 'underline' },
-                                    }}
+                                    className="timeline-item-user"
                                   >
                                     {item.user.login}
                                   </Link>
@@ -657,53 +500,25 @@ const TimelineView = memo(function TimelineView({
                                     href={item.html_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    sx={{
-                                      color: 'fg.default',
-                                      textDecoration: 'none',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap',
-                                      minWidth: 0,
-                                      flex: 1,
-                                      '&:hover': {
-                                        textDecoration: 'underline',
-                                      },
-                                    }}
+                                    className="timeline-item-title"
                                   >
                                     {item.title}
                                   </Link>
 
                                   {/* Event count badge */}
                                   {group.items.length > 1 && (
-                                    <Box
-                                      sx={{
-                                        px: 2,
-                                        py: 1,
-                                        bg: 'neutral.subtle',
-                                        color: 'neutral.fg',
-                                        borderRadius: 1,
-                                        fontSize: 0,
-                                        fontWeight: 'semibold',
-                                        flexShrink: 0,
-                                      }}
-                                    >
+                                    <div className="timeline-item-count-badge">
                                       {group.items.length}
-                                    </Box>
+                                    </div>
                                   )}
 
                                   {/* Repo */}
-                                  <Text
-                                    color="fg.muted"
-                                    sx={{ flexShrink: 0, fontSize: 0 }}
-                                  >
+                                  <Text className="timeline-item-repo">
                                     {repoName.split('/')[1] || repoName}
                                   </Text>
 
                                   {/* Time */}
-                                  <Text
-                                    color="fg.muted"
-                                    sx={{ flexShrink: 0, fontSize: 0 }}
-                                  >
+                                  <Text className="timeline-item-time">
                                     {formatDistanceToNow(
                                       new Date(item.created_at),
                                       {
@@ -711,16 +526,16 @@ const TimelineView = memo(function TimelineView({
                                       }
                                     )}
                                   </Text>
-                                </Box>
+                                </div>
                               );
                             });
                           })()}
-                        </Box>
-                      </Box>
+                        </div>
+                      </div>
                     );
                   })}
-                </Box>
-              </Box>
+                </div>
+              </div>
             );
           })()
         ) : (
@@ -732,111 +547,73 @@ const TimelineView = memo(function TimelineView({
               const eventDescription = getEventDescription(item);
 
               return (
-                <Box
+                <div
                   key={`${item.id}-${index}`}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    py: 1,
-                    px: 1,
-                    mb: 1,
-                    borderRadius: 1,
-                    '&:hover': {
-                      bg: 'canvas.subtle',
-                    },
-                    fontSize: 0,
-                  }}
+                  className="timeline-item timeline-item--standard"
                 >
                   {/* Icon */}
-                  <Box sx={{ color: 'fg.muted', flexShrink: 0 }}>
+                  <div className="timeline-item-icon">
                     {getEventIcon(item)}
-                  </Box>
+                  </div>
 
                   {/* Avatar */}
                   <Avatar
                     src={item.user.avatar_url}
                     size={16}
                     alt={item.user.login}
-                    sx={{ flexShrink: 0 }}
+                    className="timeline-item-avatar"
                   />
 
                   {/* User and action */}
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      minWidth: 0,
-                    }}
-                  >
+                  <div className="timeline-item-action-container">
                     <Link
                       href={item.user.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      sx={{ fontWeight: 'semibold', flexShrink: 0 }}
+                      className="timeline-item-user"
                     >
                       {item.user.login}
                     </Link>
-                    <Text color="fg.muted" sx={{ flexShrink: 0 }}>
+                    <Text className="timeline-item-action">
                       {eventDescription}
                     </Text>
-                  </Box>
+                  </div>
 
                   {/* Title (truncated) */}
                   <Link
                     href={item.html_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    sx={{
-                      fontWeight: 'semibold',
-                      color: 'fg.default',
-                      textDecoration: 'none',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      minWidth: 0,
-                      flex: 1,
-                      '&:hover': {
-                        textDecoration: 'underline',
-                      },
-                    }}
+                    className="timeline-item-title timeline-item-title--bold"
                   >
                     {item.title}
                   </Link>
 
                   {/* Repo */}
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      flexShrink: 0,
-                    }}
-                  >
+                  <div className="timeline-item-repo-container">
                     <RepoIcon size={12} />
                     <Link
                       href={`https://github.com/${repoName}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      sx={{ color: 'fg.muted', textDecoration: 'none' }}
+                      className="timeline-item-repo"
                     >
                       {repoName.split('/')[1] || repoName}
                     </Link>
-                  </Box>
+                  </div>
 
                   {/* Time */}
-                  <Text color="fg.muted" sx={{ flexShrink: 0, fontSize: 0 }}>
+                  <Text className="timeline-item-time">
                     {formatDistanceToNow(new Date(item.created_at), {
                       addSuffix: true,
                     })}
                   </Text>
-                </Box>
+                </div>
               );
             })}
           </>
         )}
-      </Box>
+      </div>
     </ResultsContainer>
   );
 });
