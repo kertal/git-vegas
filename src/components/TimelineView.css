@@ -101,19 +101,17 @@
 .timeline-grouped-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .timeline-action-groups {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1em;
 }
 
 /* Section containers */
 .timeline-section {
-  border: 1px solid var(--borderColor-default);
-  border-radius: 0.375rem;
   overflow: hidden;
 }
 
@@ -122,16 +120,16 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 1rem;
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--borderColor-default);
 }
 
 .timeline-section-header--accent {
-  background-color: var(--bgColor-accent-muted);
+  
 }
 
 .timeline-section-header--subtle {
-  background-color: var(--bgColor-muted);
+ 
 }
 
 .timeline-section-icon {

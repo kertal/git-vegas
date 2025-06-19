@@ -399,6 +399,46 @@ const TimelineView = memo(function TimelineView({
                       >
                         {/* Group Header */}
                         <div className="timeline-section-header timeline-section-header--subtle">
+                          {/* Section Select All Checkbox */}
+                          {toggleItemSelection && (
+                            <Checkbox
+                              checked={(() => {
+                                // Check if all items in this section are selected
+                                const allItemIds = groupItems.map(item => item.event_id || item.id);
+                                return allItemIds.length > 0 && allItemIds.every(id => selectedItems.has(id));
+                              })()}
+                              indeterminate={(() => {
+                                // Check if some (but not all) items in this section are selected
+                                const allItemIds = groupItems.map(item => item.event_id || item.id);
+                                const selectedCount = allItemIds.filter(id => selectedItems.has(id)).length;
+                                return selectedCount > 0 && selectedCount < allItemIds.length;
+                              })()}
+                              onChange={() => {
+                                // Toggle all items in this section
+                                const allItemIds = groupItems.map(item => item.event_id || item.id);
+                                const allSelected = allItemIds.every(id => selectedItems.has(id));
+                                
+                                if (allSelected) {
+                                  // Deselect all items in this section
+                                  allItemIds.forEach(id => {
+                                    if (selectedItems.has(id)) {
+                                      toggleItemSelection(id);
+                                    }
+                                  });
+                                } else {
+                                  // Select all items in this section
+                                  allItemIds.forEach(id => {
+                                    if (!selectedItems.has(id)) {
+                                      toggleItemSelection(id);
+                                    }
+                                  });
+                                }
+                              }}
+                              sx={{ flexShrink: 0, mr: 2 }}
+                              aria-label={`Select all events in ${groupName} section`}
+                            />
+                          )}
+                          
                           <div className="timeline-section-icon timeline-section-icon--muted">{getGroupIcon()}</div>
                           <Text className="timeline-section-title timeline-section-title--default">
                             {groupName}

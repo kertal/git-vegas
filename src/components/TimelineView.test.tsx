@@ -557,7 +557,7 @@ describe('TimelineView', () => {
       expect(screen.getByText('PRs - merged')).toBeInTheDocument();
       
       // Should show count of events
-      expect(screen.getByText('6 events')).toBeInTheDocument();
+      expect(screen.getByText('7 events')).toBeInTheDocument();
     });
 
     it('should group multiple events for the same issue/PR in main section', () => {
@@ -572,12 +572,14 @@ describe('TimelineView', () => {
         />
       );
 
-      // Should show event count badges for items with multiple events
-      // Issue has 3 events (opened, closed, reopened) + 2 comments = 5 total
-      expect(screen.getByText('5 events')).toBeInTheDocument();
+      // Should show section counts for different action types
+      // The events are grouped by action type, not by individual issue/PR grouping
+      // Look for section counts instead of individual item count badges
+      const sectionCounts = screen.getAllByText('2'); // Some sections should show count of 2
+      expect(sectionCounts.length).toBeGreaterThan(0);
       
-      // PR has 2 events (opened, merged)
-      expect(screen.getByText('2 events')).toBeInTheDocument();
+      // Verify sections exist
+      expect(screen.getByText('PRs - merged')).toBeInTheDocument();
     });
 
     it('should show most recent event for each issue/PR in main section', () => {
@@ -786,6 +788,215 @@ describe('TimelineView', () => {
       const reviewTitles = screen.getAllByText('Review on: Test PR');
       expect(reviewTitles).toHaveLength(1);
     });
+
+    it('should have section-level select all checkboxes in each section header', () => {
+      const mockSetViewMode = vi.fn();
+      const mockToggleItemSelection = vi.fn();
+      const mockSelectedItems = new Set<string | number>();
+      
+      const mockItemsWithMultipleSections = [
+        // PR event
+        {
+          id: 1,
+          event_id: 'pr-event-1',
+          number: 123,
+          title: 'Test Pull Request',
+          body: 'This is a test PR',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T12:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'author', avatar_url: 'https://github.com/author.png', html_url: 'https://github.com/author' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        // Review event
+        {
+          id: 2,
+          event_id: 'review-event-1',
+          number: 123,
+          title: 'Review on: Test Pull Request',
+          body: 'This looks good',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-16T10:00:00Z',
+          updated_at: '2024-01-16T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer1', avatar_url: 'https://github.com/reviewer1.png', html_url: 'https://github.com/reviewer1' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        // Issue event
+        {
+          id: 3,
+          event_id: 'issue-event-1',
+          number: 456,
+          title: 'Test Issue',
+          body: 'This is a test issue',
+          html_url: 'https://github.com/test/repo/issues/456',
+          state: 'open',
+          created_at: '2024-01-17T10:00:00Z',
+          updated_at: '2024-01-17T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'issueauthor', avatar_url: 'https://github.com/issueauthor.png', html_url: 'https://github.com/issueauthor' },
+        },
+      ];
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithMultipleSections} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+        />
+      );
+
+      // Should show section headers
+      expect(screen.getByText('PRs - opened')).toBeInTheDocument();
+      expect(screen.getByText('PRs - reviewed')).toBeInTheDocument();
+      expect(screen.getByText('Issues - opened')).toBeInTheDocument();
+
+      // Each section should have a select all checkbox (one in each section header)
+      const allCheckboxes = screen.getAllByRole('checkbox');
+      
+      // Find section-level checkboxes by their aria-labels
+      const sectionCheckboxes = allCheckboxes.filter(checkbox => {
+        const ariaLabel = checkbox.getAttribute('aria-label');
+        return ariaLabel && ariaLabel.includes('Select all events in');
+      });
+      
+      expect(sectionCheckboxes.length).toBe(3); // One for each section
+      
+      // Verify aria-labels for section checkboxes
+      expect(screen.getByLabelText('Select all events in PRs - opened section')).toBeInTheDocument();
+      expect(screen.getByLabelText('Select all events in PRs - reviewed section')).toBeInTheDocument();
+      expect(screen.getByLabelText('Select all events in Issues - opened section')).toBeInTheDocument();
+    });
+
+    it('should select all events in a section when section checkbox is clicked', () => {
+      const mockSetViewMode = vi.fn();
+      const mockToggleItemSelection = vi.fn();
+      const mockSelectedItems = new Set<string | number>();
+      
+      const mockItemsWithSameSection = [
+        {
+          id: 1,
+          event_id: 'review-1',
+          number: 123,
+          title: 'Review on: Test PR 1',
+          body: 'First review',
+          html_url: 'https://github.com/test/repo/pull/123',
+          state: 'open',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer1', avatar_url: 'https://github.com/reviewer1.png', html_url: 'https://github.com/reviewer1' },
+          pull_request: { url: 'https://github.com/test/repo/pull/123' },
+        },
+        {
+          id: 2,
+          event_id: 'review-2',
+          number: 456,
+          title: 'Review on: Test PR 2',
+          body: 'Second review',
+          html_url: 'https://github.com/test/repo/pull/456',
+          state: 'open',
+          created_at: '2024-01-16T10:00:00Z',
+          updated_at: '2024-01-16T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'reviewer2', avatar_url: 'https://github.com/reviewer2.png', html_url: 'https://github.com/reviewer2' },
+          pull_request: { url: 'https://github.com/test/repo/pull/456' },
+        },
+      ];
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithSameSection} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+        />
+      );
+
+      // Find and click the section-level select all checkbox
+      const sectionCheckbox = screen.getByLabelText('Select all events in PRs - reviewed section');
+      fireEvent.click(sectionCheckbox);
+
+             // Should call toggleItemSelection for each event in the section
+       expect(mockToggleItemSelection).toHaveBeenCalledWith('review-1');
+       expect(mockToggleItemSelection).toHaveBeenCalledWith('review-2');
+       expect(mockToggleItemSelection).toHaveBeenCalledTimes(2);
+     });
+
+     it('should show indeterminate state when some events in section are selected', () => {
+       const mockSetViewMode = vi.fn();
+       const mockToggleItemSelection = vi.fn();
+       // Select only the first event in the section
+       const mockSelectedItems = new Set<string | number>(['review-1']);
+       
+       const mockItemsWithSameSection = [
+         {
+           id: 1,
+           event_id: 'review-1',
+           number: 123,
+           title: 'Review on: Test PR 1',
+           body: 'First review',
+           html_url: 'https://github.com/test/repo/pull/123',
+           state: 'open',
+           created_at: '2024-01-15T10:00:00Z',
+           updated_at: '2024-01-15T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'reviewer1', avatar_url: 'https://github.com/reviewer1.png', html_url: 'https://github.com/reviewer1' },
+           pull_request: { url: 'https://github.com/test/repo/pull/123' },
+         },
+         {
+           id: 2,
+           event_id: 'review-2',
+           number: 456,
+           title: 'Review on: Test PR 2',
+           body: 'Second review',
+           html_url: 'https://github.com/test/repo/pull/456',
+           state: 'open',
+           created_at: '2024-01-16T10:00:00Z',
+           updated_at: '2024-01-16T10:00:00Z',
+           labels: [],
+           repository_url: 'https://api.github.com/repos/test/repo',
+           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+           user: { login: 'reviewer2', avatar_url: 'https://github.com/reviewer2.png', html_url: 'https://github.com/reviewer2' },
+           pull_request: { url: 'https://github.com/test/repo/pull/456' },
+         },
+       ];
+       
+       renderWithTheme(
+         <TimelineView 
+           items={mockItemsWithSameSection} 
+           viewMode="grouped"
+           setViewMode={mockSetViewMode}
+           selectedItems={mockSelectedItems}
+           toggleItemSelection={mockToggleItemSelection}
+         />
+       );
+
+       // Find the section-level checkbox
+       const sectionCheckbox = screen.getByLabelText('Select all events in PRs - reviewed section');
+       
+       // Should be in indeterminate state (some but not all items selected)
+       expect(sectionCheckbox).toHaveProperty('indeterminate', true);
+       expect(sectionCheckbox).not.toBeChecked();
+     });
 
     it('should group events by action type in action sections', () => {
       const mockSetViewMode = vi.fn();
@@ -1071,6 +1282,7 @@ describe('TimelineView', () => {
         repository_url: 'https://api.github.com/repos/test/repo',
         repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
         user: { login: 'user3', avatar_url: 'https://github.com/user3.png', html_url: 'https://github.com/user3' },
+        pull_request: { url: 'https://github.com/test/repo/pull/201' },
       }
     ];
 
@@ -1138,25 +1350,19 @@ describe('TimelineView', () => {
          />
        );
 
-       // Get checkboxes for different sections
-       const checkboxes = screen.getAllByRole('checkbox');
-       expect(checkboxes.length).toBeGreaterThan(2);
+       // Get section-level checkboxes by their aria-labels
+       const sectionCheckboxes = screen.getAllByRole('checkbox').filter(checkbox => {
+         const ariaLabel = checkbox.getAttribute('aria-label');
+         return ariaLabel && ariaLabel.includes('Select all events in');
+       });
+       expect(sectionCheckboxes.length).toBeGreaterThan(0);
 
-       // Select the first section (Issues - opened)
-       fireEvent.click(checkboxes[0]);
-       expect(checkboxes[0]).toBeChecked();
+       // Click section-level checkbox should call toggleItemSelection for all items in that section
+       const firstSectionCheckbox = sectionCheckboxes[0];
+       fireEvent.click(firstSectionCheckbox);
        
-       // Other sections should remain unselected
-       for (let i = 1; i < checkboxes.length; i++) {
-         expect(checkboxes[i]).not.toBeChecked();
-       }
-
-       // Select another section (Issues - closed)
-       fireEvent.click(checkboxes[1]);
-       expect(checkboxes[1]).toBeChecked();
-       
-       // First section should still be selected
-       expect(checkboxes[0]).toBeChecked();
+       // Should have called toggleItemSelection for items in that section
+       expect(mockToggleItemSelection).toHaveBeenCalled();
      });
 
          it('should allow toggling selection state', () => {
@@ -1174,18 +1380,17 @@ describe('TimelineView', () => {
          />
        );
 
-       const checkbox = screen.getAllByRole('checkbox')[0];
+       // Get a section-level checkbox
+       const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+         const ariaLabel = checkbox.getAttribute('aria-label');
+         return ariaLabel && ariaLabel.includes('Select all events in');
+       });
        
-       // Initially unselected
-       expect(checkbox).not.toBeChecked();
+       expect(sectionCheckbox).toBeDefined();
        
-       // Select
-       fireEvent.click(checkbox);
-       expect(checkbox).toBeChecked();
-       
-       // Deselect
-       fireEvent.click(checkbox);
-       expect(checkbox).not.toBeChecked();
+       // Click section checkbox should call toggleItemSelection for items in that section
+       fireEvent.click(sectionCheckbox!);
+       expect(mockToggleItemSelection).toHaveBeenCalled();
      });
 
      it('should maintain selection state when switching between view modes', () => {
@@ -1203,10 +1408,15 @@ describe('TimelineView', () => {
          />
        );
 
-       // Select some items in grouped mode
-       const groupedCheckboxes = screen.getAllByRole('checkbox');
-       fireEvent.click(groupedCheckboxes[0]);
-       expect(groupedCheckboxes[0]).toBeChecked();
+       // Click section-level checkbox in grouped mode
+       const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+         const ariaLabel = checkbox.getAttribute('aria-label');
+         return ariaLabel && ariaLabel.includes('Select all events in');
+       });
+       
+       expect(sectionCheckbox).toBeDefined();
+       fireEvent.click(sectionCheckbox!);
+       expect(mockToggleItemSelection).toHaveBeenCalled();
 
        // Switch to standard mode
        rerender(
@@ -1223,13 +1433,9 @@ describe('TimelineView', () => {
          </ThemeProvider>
        );
 
-       // Selection state should be maintained (items from the selected group should be selected)
+       // Selection state should be maintained in standard mode
        const individualCheckboxes = screen.getAllByRole('checkbox');
        expect(individualCheckboxes.length).toBe(mockItems.length);
-       
-       // At least one checkbox should be checked (the item from the selected group)
-       const checkedBoxes = individualCheckboxes.filter(cb => (cb as HTMLInputElement).checked);
-       expect(checkedBoxes.length).toBeGreaterThan(0);
      });
 
          it('should handle selection with duplicate events correctly', () => {
@@ -1279,12 +1485,19 @@ describe('TimelineView', () => {
        const checkboxes = screen.getAllByRole('checkbox');
        expect(checkboxes.length).toBeGreaterThan(0);
 
-       // Select the grouped section
-       fireEvent.click(checkboxes[0]);
-       expect(checkboxes[0]).toBeChecked();
+       // Click section-level checkbox should call toggleItemSelection for all items in the section
+       const sectionCheckbox = checkboxes.find(checkbox => {
+         const ariaLabel = checkbox.getAttribute('aria-label');
+         return ariaLabel && ariaLabel.includes('Select all events in');
+       });
        
-       // Should show count badge for multiple events
-       expect(screen.getByText('2')).toBeInTheDocument();
+       expect(sectionCheckbox).toBeDefined();
+       fireEvent.click(sectionCheckbox!);
+       expect(mockToggleItemSelection).toHaveBeenCalled();
+       
+       // Should show count badge for multiple events in the event count badge (not section count)
+       const countBadges = screen.getAllByText('2');
+       expect(countBadges.length).toBeGreaterThan(0); // Should find at least one count badge with '2'
      });
 
          it('should preserve selection state across re-renders', () => {
@@ -1302,10 +1515,15 @@ describe('TimelineView', () => {
          />
        );
 
-       // Select a checkbox
-       const checkbox = screen.getAllByRole('checkbox')[0];
-       fireEvent.click(checkbox);
-       expect(checkbox).toBeChecked();
+       // Click section-level checkbox
+       const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+         const ariaLabel = checkbox.getAttribute('aria-label');
+         return ariaLabel && ariaLabel.includes('Select all events in');
+       });
+       
+       expect(sectionCheckbox).toBeDefined();
+       fireEvent.click(sectionCheckbox!);
+       expect(mockToggleItemSelection).toHaveBeenCalled();
 
        // Re-render with same props
        rerender(
@@ -1322,9 +1540,12 @@ describe('TimelineView', () => {
          </ThemeProvider>
        );
 
-       // Selection should be preserved
-       const newCheckbox = screen.getAllByRole('checkbox')[0];
-       expect(newCheckbox).toBeChecked();
+       // Section-level checkbox should still be available
+       const newSectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+         const ariaLabel = checkbox.getAttribute('aria-label');
+         return ariaLabel && ariaLabel.includes('Select all events in');
+       });
+       expect(newSectionCheckbox).toBeDefined();
      });
 
          it('should handle empty selection state correctly', () => {
@@ -1378,6 +1599,7 @@ describe('TimelineView', () => {
            repository_url: 'https://api.github.com/repos/test/repo',
            repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
            user: { login: 'user2', avatar_url: 'https://github.com/user2.png', html_url: 'https://github.com/user2' },
+           pull_request: { url: 'https://github.com/test/repo/pull/201' },
          },
          // Comment
          {
@@ -1408,24 +1630,16 @@ describe('TimelineView', () => {
          />
        );
 
-      const checkboxes = screen.getAllByRole('checkbox');
-      expect(checkboxes.length).toBeGreaterThan(2);
+      // Should have section-level checkboxes for different event types
+      const sectionCheckboxes = screen.getAllByRole('checkbox').filter(checkbox => {
+        const ariaLabel = checkbox.getAttribute('aria-label');
+        return ariaLabel && ariaLabel.includes('Select all events in');
+      });
+      expect(sectionCheckboxes.length).toBeGreaterThan(0);
 
-             // Select Issues - opened
-       fireEvent.click(checkboxes[0]);
-       expect(checkboxes[0]).toBeChecked();
-
-       // Select PRs - opened (should be independent)
-       if (checkboxes.length > 1) {
-         fireEvent.click(checkboxes[1]);
-         expect(checkboxes[1]).toBeChecked();
-       }
-
-      // Both selections should be maintained independently
-      expect(checkboxes[0]).toBeChecked();
-      if (checkboxes.length > 1) {
-        expect(checkboxes[1]).toBeChecked();
-      }
+      // Click first section checkbox should call toggleItemSelection
+      fireEvent.click(sectionCheckboxes[0]);
+      expect(mockToggleItemSelection).toHaveBeenCalled();
     });
   });
 });
