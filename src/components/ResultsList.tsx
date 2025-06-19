@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useMemo } from 'react';
 import {
   Box,
   Button,
@@ -328,6 +328,8 @@ const ResultsList = memo(function ResultsList({
     setIsCompactView,
     selectedItems,
     toggleItemSelection,
+    selectAllItems,
+    clearSelection,
     setRepoFilters,
     setUserFilter,
   } = useResultsContext();
@@ -364,6 +366,42 @@ const ResultsList = memo(function ResultsList({
 
   // Helper to check if any filters are active (configured AND enabled)
   const hasActiveFilters = areFiltersActive && hasConfiguredFilters;
+
+  // Calculate select all checkbox state
+  const selectAllState = useMemo(() => {
+    const displayResults = areFiltersActive ? filteredResults : results;
+    if (displayResults.length === 0) {
+      return { checked: false, indeterminate: false };
+    }
+    
+    const selectedCount = displayResults.filter(item => 
+      selectedItems.has(item.event_id || item.id)
+    ).length;
+    
+    if (selectedCount === 0) {
+      return { checked: false, indeterminate: false };
+    } else if (selectedCount === displayResults.length) {
+      return { checked: true, indeterminate: false };
+    } else {
+      return { checked: false, indeterminate: true };
+    }
+  }, [areFiltersActive, filteredResults, results, selectedItems]);
+
+  // Handle select all checkbox click
+  const handleSelectAllChange = () => {
+    const displayResults = areFiltersActive ? filteredResults : results;
+    const selectedCount = displayResults.filter(item => 
+      selectedItems.has(item.event_id || item.id)
+    ).length;
+    
+    if (selectedCount === displayResults.length) {
+      // All are selected, clear selection
+      clearSelection();
+    } else {
+      // Some or none are selected, select all
+      selectAllItems();
+    }
+  };
 
   // Function to generate filter summary text
   const getFilterSummary = () => {
@@ -433,17 +471,26 @@ const ResultsList = memo(function ResultsList({
       
         headerLeft={
           <>
-            <Heading
-              as="h2"
-              sx={{
-                fontSize: 2,
-                fontWeight: 'semibold',
-                color: 'fg.default',
-                m: 0,
-              }}
-            >
-              Results
-            </Heading>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Checkbox
+                checked={selectAllState.checked}
+                indeterminate={selectAllState.indeterminate}
+                onChange={handleSelectAllChange}
+                aria-label="Select all items"
+                disabled={(areFiltersActive ? filteredResults : results).length === 0}
+              />
+              <Heading
+                as="h2"
+                sx={{
+                  fontSize: 2,
+                  fontWeight: 'semibold',
+                  color: 'fg.default',
+                  m: 0,
+                }}
+              >
+                Results
+              </Heading>
+            </Box>
             <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
               {areFiltersActive && hasConfiguredFilters
                 ? `${filteredResults.length} filtered / ${results.length} total`

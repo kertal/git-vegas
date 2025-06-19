@@ -97,9 +97,9 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    // Check if checkboxes are rendered (one for each item)
+    // Check if checkboxes are rendered (one for each item + one select all checkbox)
     const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes.length).toBe(mockItems.length);
+    expect(checkboxes.length).toBe(mockItems.length + 1); // +1 for select all checkbox
   });
 
   it('should handle individual item selection', () => {
@@ -118,9 +118,9 @@ describe('ResultsList Selection Tests', () => {
       { wrapper: TestWrapper }
     );
 
-    // Find the checkbox for the first item
+    // Find the checkbox for the first item (skip the select all checkbox at index 0)
     const checkboxes = screen.getAllByRole('checkbox');
-    const firstItemCheckbox = checkboxes[0];
+    const firstItemCheckbox = checkboxes[1]; // Index 1 is the first item checkbox (index 0 is select all)
 
     // Click the checkbox
     fireEvent.click(firstItemCheckbox);

@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Text, Avatar, Link, Button, ButtonGroup, ActionMenu, ActionList, Flash, Checkbox, Box } from '@primer/react';
 import {
   IssueOpenedIcon,
@@ -109,6 +109,40 @@ const TimelineView = memo(function TimelineView({
     return match ? match[1] : url;
   };
 
+  // Calculate select all checkbox state
+  const selectAllState = useMemo(() => {
+    if (sortedItems.length === 0) {
+      return { checked: false, indeterminate: false };
+    }
+    
+    const selectedCount = sortedItems.filter(item => 
+      selectedItems.has(item.event_id || item.id)
+    ).length;
+    
+    if (selectedCount === 0) {
+      return { checked: false, indeterminate: false };
+    } else if (selectedCount === sortedItems.length) {
+      return { checked: true, indeterminate: false };
+    } else {
+      return { checked: false, indeterminate: true };
+    }
+  }, [sortedItems, selectedItems]);
+
+  // Handle select all checkbox click
+  const handleSelectAllChange = () => {
+    const selectedCount = sortedItems.filter(item => 
+      selectedItems.has(item.event_id || item.id)
+    ).length;
+    
+    if (selectedCount === sortedItems.length) {
+      // All are selected, clear selection
+      clearSelection?.();
+    } else {
+      // Some or none are selected, select all
+      selectAllItems?.();
+    }
+  };
+
   if (sortedItems.length === 0) {
     // Check if we have raw events but they're filtered out
     const hasRawEvents = rawEvents && rawEvents.length > 0;
@@ -127,9 +161,18 @@ const TimelineView = memo(function TimelineView({
   // Header left content
   const headerLeft = (
     <>
-      <Text className="timeline-header-left">
-        Activity Timeline
-      </Text>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Checkbox
+          checked={selectAllState.checked}
+          indeterminate={selectAllState.indeterminate}
+          onChange={handleSelectAllChange}
+          aria-label="Select all events"
+          disabled={sortedItems.length === 0}
+        />
+        <Text className="timeline-header-left">
+          Events
+        </Text>
+      </Box>
       <Text className="timeline-event-count">
         {selectedItems.size > 0 
           ? `${selectedItems.size} selected / ${sortedItems.length} events`
@@ -180,28 +223,7 @@ const TimelineView = memo(function TimelineView({
         </ActionMenu>
       )}
 
-      {/* Selection controls */}
-      {toggleItemSelection && selectAllItems && clearSelection && (
-        <div className="timeline-view-controls">
-          <Text className="timeline-view-label">Selection:</Text>
-          <ButtonGroup>
-            <Button
-              size="small"
-              variant="default"
-              onClick={selectAllItems}
-            >
-              All
-            </Button>
-            <Button
-              size="small"
-              variant="default"
-              onClick={clearSelection}
-            >
-              None
-            </Button>
-          </ButtonGroup>
-        </div>
-      )}
+
       
       {setViewMode && (
         <div className="timeline-view-controls">

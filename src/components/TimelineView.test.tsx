@@ -153,7 +153,7 @@ describe('TimelineView', () => {
   it('should render timeline with events', () => {
     renderWithTheme(<TimelineView items={mockItems} />);
 
-    expect(screen.getByText('Activity Timeline')).toBeInTheDocument();
+    expect(screen.getByText('Events')).toBeInTheDocument();
     expect(screen.getByText('2 events')).toBeInTheDocument();
     expect(screen.getByText('Test Issue')).toBeInTheDocument();
     expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
@@ -174,7 +174,7 @@ describe('TimelineView', () => {
 
     // Note: Labels no longer displayed in compact timeline view
     // This test could be updated to check that the basic structure is there
-    expect(screen.getByText('Activity Timeline')).toBeInTheDocument();
+    expect(screen.getByText('Events')).toBeInTheDocument();
   });
 
   it('should show repository names', () => {
@@ -1330,9 +1330,9 @@ describe('TimelineView', () => {
          />
        );
 
-       // Should have checkboxes for each individual item
+       // Should have checkboxes for each individual item + one select all checkbox
        const checkboxes = screen.getAllByRole('checkbox');
-       expect(checkboxes.length).toBe(mockItems.length);
+       expect(checkboxes.length).toBe(mockItems.length + 1); // +1 for select all checkbox
      });
 
          it('should maintain independent selection state for different event types', () => {
@@ -1433,9 +1433,9 @@ describe('TimelineView', () => {
          </ThemeProvider>
        );
 
-       // Selection state should be maintained in standard mode
+       // Selection state should be maintained in standard mode (individual checkboxes + select all)
        const individualCheckboxes = screen.getAllByRole('checkbox');
-       expect(individualCheckboxes.length).toBe(mockItems.length);
+       expect(individualCheckboxes.length).toBe(mockItems.length + 1); // +1 for select all checkbox
      });
 
          it('should handle selection with duplicate events correctly', () => {
