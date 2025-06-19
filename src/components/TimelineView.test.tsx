@@ -1637,4 +1637,228 @@ describe('TimelineView', () => {
       expect(mockToggleItemSelection).toHaveBeenCalled();
     });
   });
+
+  describe('Search functionality', () => {
+    const mockSetSearchText = vi.fn();
+
+    beforeEach(() => {
+      mockSetSearchText.mockClear();
+    });
+
+    it('should render search input when setSearchText is provided', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText=""
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search events...');
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('should not render search input when setSearchText is not provided', () => {
+      renderWithTheme(<TimelineView items={mockItems} />);
+
+      const searchInput = screen.queryByPlaceholderText('Search events...');
+      expect(searchInput).not.toBeInTheDocument();
+    });
+
+    it('should call setSearchText when typing in search input', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText=""
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search events...');
+      fireEvent.change(searchInput, { target: { value: 'test search' } });
+      
+      expect(mockSetSearchText).toHaveBeenCalledWith('test search');
+    });
+
+    it('should display current search text in input', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="current search"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText('Search events...');
+      expect(searchInput).toHaveValue('current search');
+    });
+
+    it('should filter items by title', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="Issue"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+      expect(screen.queryByText('Test Pull Request')).not.toBeInTheDocument();
+    });
+
+    it('should filter items by body content', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="test issue"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+      expect(screen.queryByText('Test Pull Request')).not.toBeInTheDocument();
+    });
+
+    it('should filter items by username', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="testuser2"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.queryByText('Test Issue')).not.toBeInTheDocument();
+      expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
+    });
+
+    it('should be case insensitive', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="ISSUE"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+      expect(screen.queryByText('Test Pull Request')).not.toBeInTheDocument();
+    });
+
+    it('should show empty state with search-specific message when no matches found', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="nonexistent"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(
+        screen.getByText('No events found matching "nonexistent". Try a different search term.')
+      ).toBeInTheDocument();
+    });
+
+    it('should show clear search button when there is search text', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="test search"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      const clearButton = screen.getByText('Clear search');
+      expect(clearButton).toBeInTheDocument();
+    });
+
+    it('should not show clear search button when there is no search text', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText=""
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      const clearButton = screen.queryByText('Clear search');
+      expect(clearButton).not.toBeInTheDocument();
+    });
+
+    it('should call setSearchText with empty string when clear search button is clicked', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={[]} // Empty items to trigger empty state
+          searchText="test search"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      const clearButton = screen.getByText('Clear search');
+      fireEvent.click(clearButton);
+      
+      expect(mockSetSearchText).toHaveBeenCalledWith('');
+    });
+
+    it('should maintain search functionality across different view modes', () => {
+      const mockSetViewMode = vi.fn();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="Issue"
+          setSearchText={mockSetSearchText}
+          viewMode="standard"
+          setViewMode={mockSetViewMode}
+        />
+      );
+
+      // Should show filtered results in standard view
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+      expect(screen.queryByText('Test Pull Request')).not.toBeInTheDocument();
+
+      // Switch to grouped view
+      const groupedButton = screen.getByText('Grouped');
+      fireEvent.click(groupedButton);
+      expect(mockSetViewMode).toHaveBeenCalledWith('grouped');
+    });
+
+    it('should show search input even when no results are found', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={[]} 
+          searchText="test"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      // Search input should still be visible
+      const searchInput = screen.getByPlaceholderText('Search events...');
+      expect(searchInput).toBeInTheDocument();
+      expect(searchInput).toHaveValue('test');
+
+      // Should show search-specific empty message
+      expect(
+        screen.getByText('No events found matching "test". Try a different search term.')
+      ).toBeInTheDocument();
+
+      // Should show clear search button
+      const clearButton = screen.getByText('Clear search');
+      expect(clearButton).toBeInTheDocument();
+    });
+
+    it('should handle whitespace-only search text correctly', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          searchText="   "
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      // Should show all items when search text is only whitespace
+      expect(screen.getByText('Test Issue')).toBeInTheDocument();
+      expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
+    });
+  });
 });

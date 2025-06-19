@@ -60,6 +60,7 @@ const mockUseResultsContext = () => ({
   setSortOrder: vi.fn(),
   setIncludedLabels: vi.fn(),
   setExcludedLabels: vi.fn(),
+  setSearchText: vi.fn(),
   toggleDescriptionVisibility: vi.fn(),
   toggleExpand: vi.fn(),
   copyResultsToClipboard: vi.fn(),
@@ -338,5 +339,146 @@ describe('ResultsList Undefined Arrays Handling', () => {
     
     // Clear All button should not be present when no filters are active
     expect(screen.queryByText('Clear All')).toBeNull();
+  });
+});
+
+describe('ResultsList Search Functionality', () => {
+  const mockSetSearchText = vi.fn();
+
+  beforeEach(() => {
+    mockSetSearchText.mockClear();
+  });
+
+  it('should render search input with correct placeholder', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    expect(searchInput).toBeInTheDocument();
+  });
+
+  it('should call setSearchText when typing in search input', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    fireEvent.change(searchInput, { target: { value: 'test search' } });
+    
+    expect(mockSetSearchText).toHaveBeenCalledWith('test search');
+  });
+
+  it('should display current search text in input', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          searchText: 'current search',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    expect(searchInput).toHaveValue('current search');
+  });
+
+  it('should show search-aware empty state message when no matches found', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          filteredResults: [],
+          searchText: 'nonexistent',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    expect(
+      screen.getByText('No items found matching "nonexistent". Try a different search term or adjust your filters.')
+    ).toBeInTheDocument();
+  });
+
+  it('should show clear search button when there is search text', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          filteredResults: [],
+          searchText: 'test search',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const clearButton = screen.getByText('Clear Search');
+    expect(clearButton).toBeInTheDocument();
+  });
+
+  it('should call setSearchText with empty string when clear search button is clicked', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          filteredResults: [],
+          searchText: 'test search',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    const clearButton = screen.getByText('Clear Search');
+    fireEvent.click(clearButton);
+    
+    expect(mockSetSearchText).toHaveBeenCalledWith('');
+  });
+
+  it('should show search input even when no results are found', () => {
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          filteredResults: [],
+          searchText: 'test',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Search input should still be visible
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    expect(searchInput).toBeInTheDocument();
+    expect(searchInput).toHaveValue('test');
+
+    // Should show search-specific empty message
+    expect(
+      screen.getByText('No items found matching "test". Try a different search term or adjust your filters.')
+    ).toBeInTheDocument();
   });
 });
