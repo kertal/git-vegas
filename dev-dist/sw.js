@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-9dc17825'], (function (workbox) { 'use strict';
+define(['./workbox-ef53e515'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -82,7 +82,7 @@ define(['./workbox-9dc17825'], (function (workbox) { 'use strict';
     "revision": "da327cddc6274f1493ea214b00d9941d"
   }, {
     "url": "index.html",
-    "revision": "0.00il10gggj"
+    "revision": "0.v0ebthnc8mo"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -96,12 +96,6 @@ define(['./workbox-9dc17825'], (function (workbox) { 'use strict';
       maxAgeSeconds: 86400
     })]
   }), 'GET');
-  workbox.registerRoute(/^https:\/\/avatars\.githubusercontent\.com\/.*/i, new workbox.CacheFirst({
-    "cacheName": "github-avatars-cache",
-    plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 200,
-      maxAgeSeconds: 604800
-    })]
-  }), 'GET');
+  workbox.registerRoute(/^https:\/\/avatars\.githubusercontent\.com\/.*/i, new workbox.NetworkOnly(), 'GET');
 
 }));
