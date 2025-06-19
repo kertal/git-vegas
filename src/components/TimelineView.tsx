@@ -12,6 +12,7 @@ import {
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
+import { ResultsContainer } from './ResultsContainer';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
 
@@ -109,68 +110,57 @@ const TimelineView = memo(function TimelineView({
     );
   }
 
-  return (
-    <Box
-      sx={{
-        maxWidth: '1200px',
-        margin: '16px auto',
-        bg: 'canvas.default',
-        borderRadius: 2,
-        border: '1px solid',
-        borderColor: 'border.default',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          p: 2,
-          bg: 'canvas.subtle',
-          borderBottom: '1px solid',
-          borderColor: 'border.default',
-        }}
-      >
-        <Text sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.default' }}>
-          Activity Timeline
-        </Text>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-            {sortedItems.length} events
-          </Text>
-          {setViewMode && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
-              <ButtonGroup>
-                <Button
-                  size="small"
-                  variant={viewMode === 'standard' ? 'primary' : 'default'}
-                  onClick={() => setViewMode('standard')}
-                >
-                  Standard
-                </Button>
-                <Button
-                  size="small"
-                  variant={viewMode === 'grouped' ? 'primary' : 'default'}
-                  onClick={() => setViewMode('grouped')}
-                >
-                  Grouped
-                </Button>
-                <Button
-                  size="small"
-                  variant={viewMode === 'raw' ? 'primary' : 'default'}
-                  onClick={() => setViewMode('raw')}
-                >
-                  Raw
-                </Button>
-              </ButtonGroup>
-            </Box>
-          )}
-        </Box>
-      </Box>
+  // Header left content
+  const headerLeft = (
+    <Text sx={{ fontSize: 1, fontWeight: 'semibold', color: 'fg.default' }}>
+      Activity Timeline
+    </Text>
+  );
 
+  // Header right content
+  const headerRight = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
+        {sortedItems.length} events
+      </Text>
+      {setViewMode && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
+          <ButtonGroup>
+            <Button
+              size="small"
+              variant={viewMode === 'standard' ? 'primary' : 'default'}
+              onClick={() => setViewMode('standard')}
+            >
+              Standard
+            </Button>
+            <Button
+              size="small"
+              variant={viewMode === 'grouped' ? 'primary' : 'default'}
+              onClick={() => setViewMode('grouped')}
+            >
+              Grouped
+            </Button>
+            <Button
+              size="small"
+              variant={viewMode === 'raw' ? 'primary' : 'default'}
+              onClick={() => setViewMode('raw')}
+            >
+              Raw
+            </Button>
+          </ButtonGroup>
+        </Box>
+      )}
+    </Box>
+  );
+
+  return (
+    <ResultsContainer
+      headerLeft={headerLeft}
+      headerRight={headerRight}
+      className="timeline-view"
+      sx={{ margin: '16px auto' }}
+    >
       {/* Timeline content */}
       <Box sx={{ p: 2 }}>
         {viewMode === 'raw' ? (
@@ -547,7 +537,7 @@ const TimelineView = memo(function TimelineView({
           </>
         )}
       </Box>
-    </Box>
+    </ResultsContainer>
   );
 });
 
