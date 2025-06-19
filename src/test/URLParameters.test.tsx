@@ -99,39 +99,9 @@ describe('URL Parameters', () => {
     });
   });
 
-  it('should clear URL parameters when form is reset', async () => {
-    // Set initial URL parameters
-    window.history.replaceState(
-      {},
-      '',
-      '?username=testuser&startDate=2024-01-01&endDate=2024-01-31'
-    );
-
-    render(<App />);
-
-    // First, we need to set some filters to make the Clear All button appear
-    // Click on a filter button to activate it
-    const issuesButton = screen.getByRole('button', {
-      name: 'Issues',
-    });
-    await act(async () => {
-      fireEvent.click(issuesButton);
-    });
-
-    // Now find and click clear button
-    const clearButton = screen.getByRole('button', { name: /clear all/i });
-    await act(async () => {
-      fireEvent.click(clearButton);
-    });
-
-    // Check if URL parameters are cleared (the form values should reset to defaults)
-    await waitFor(() => {
-      const usernameInput = screen.getByLabelText(
-        /github username/i
-      ) as HTMLInputElement;
-      expect(usernameInput.value).toBe('testuser'); // Username should remain from URL
-      // But filters should be cleared, which is what the Clear All button does
-    });
+  it.skip('should clear URL parameters when form is reset', async () => {
+    // SKIPPED: This test requires filter functionality which is now hidden from users
+    // The filter buttons and Clear All functionality are no longer accessible in the UI
   });
 
   it('should populate form fields from URL parameters without auto-search', async () => {
@@ -161,7 +131,7 @@ describe('URL Parameters', () => {
     expect(mockFetch).not.toHaveBeenCalled();
 
     // Manually trigger search by clicking button
-    const searchButton = screen.getByRole('button', { name: /^update$/i });
+    const searchButton = screen.getByRole('button', { name: /fetch all data/i });
     await act(async () => {
       fireEvent.click(searchButton);
     });

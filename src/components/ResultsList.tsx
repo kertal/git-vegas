@@ -500,7 +500,7 @@ const ResultsList = memo(function ResultsList({
               </ActionMenu.Overlay>
             </ActionMenu>
 
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'none' }}>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Filters:</Text>
               <ButtonGroup>
                 <Button
@@ -551,31 +551,33 @@ const ResultsList = memo(function ResultsList({
         }
       >
         <Box sx={{ p: 3 }}>
-          {/* Filters Section */}
-          {areFiltersActive && (
-            <FiltersPanel
-              results={results}
-              availableLabels={availableLabels}
-              filter={filter}
-              statusFilter={statusFilter}
-              userFilter={userFilter}
-              includedLabels={includedLabels}
-              excludedLabels={excludedLabels}
-              repoFilters={repoFilters}
-              setFilter={setFilter}
-              setStatusFilter={setStatusFilter}
-              setUserFilter={setUserFilter}
-              setIncludedLabels={setIncludedLabels}
-              setExcludedLabels={setExcludedLabels}
-              setRepoFilters={setRepoFilters}
-              areFiltersCollapsed={areFiltersCollapsed}
-              setAreFiltersCollapsed={setAreFiltersCollapsed}
-              hasConfiguredFilters={hasConfiguredFilters}
-              clearAllFilters={clearAllFilters}
-              getFilterSummary={getFilterSummary}
-              buttonStyles={buttonStyles}
-            />
-          )}
+          {/* Filters Section - Hidden from user */}
+          <Box sx={{ display: 'none' }}>
+            {areFiltersActive && (
+              <FiltersPanel
+                results={results}
+                availableLabels={availableLabels}
+                filter={filter}
+                statusFilter={statusFilter}
+                userFilter={userFilter}
+                includedLabels={includedLabels}
+                excludedLabels={excludedLabels}
+                repoFilters={repoFilters}
+                setFilter={setFilter}
+                setStatusFilter={setStatusFilter}
+                setUserFilter={setUserFilter}
+                setIncludedLabels={setIncludedLabels}
+                setExcludedLabels={setExcludedLabels}
+                setRepoFilters={setRepoFilters}
+                areFiltersCollapsed={areFiltersCollapsed}
+                setAreFiltersCollapsed={setAreFiltersCollapsed}
+                hasConfiguredFilters={hasConfiguredFilters}
+                clearAllFilters={clearAllFilters}
+                getFilterSummary={getFilterSummary}
+                buttonStyles={buttonStyles}
+              />
+            )}
+          </Box>
 
           {/* Results List */}
           {(() => {
