@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react';
-import { Text, Avatar, Link, Button, ButtonGroup, ActionMenu, ActionList, Flash, Checkbox, Box, Token, IconButton, Dialog } from '@primer/react';
+import { Text, Avatar, Link, Button, ButtonGroup, Heading,ActionMenu, ActionList, Flash, Checkbox, Box, Token, IconButton, Dialog } from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -220,26 +220,18 @@ const TimelineView = memo(function TimelineView({
           aria-label="Select all events"
           disabled={sortedItems.length === 0}
         />
-        <Text className="timeline-header-left">
+        <Heading
+                as="h2"
+                sx={{
+                  fontSize: 2,
+                  fontWeight: 'semibold',
+                  color: 'fg.default',
+                  m: 0,
+                }}
+              >
           Events
-        </Text>
+        </Heading>
       </Box>
-      <Text className="timeline-event-count">
-        {selectedItems.size > 0 
-          ? `${selectedItems.size} selected / ${sortedItems.length} events`
-          : `${sortedItems.length} events`}
-      </Text>
-      {clipboardMessage && (
-        <Flash variant="success" sx={{ py: 1, px: 2 }}>
-          {clipboardMessage}
-        </Flash>
-      )}
-    </>
-  );
-
-  // Header right content
-  const headerRight = (
-    <div className="timeline-header-right">
       {copyResultsToClipboard && (
         <ActionMenu>
           <ActionMenu.Button
@@ -273,6 +265,18 @@ const TimelineView = memo(function TimelineView({
           </ActionMenu.Overlay>
         </ActionMenu>
       )}
+      {clipboardMessage && (
+        <Flash variant="success" sx={{ py: 1, px: 2 }}>
+          {clipboardMessage}
+        </Flash>
+      )}
+    </>
+  );
+
+  // Header right content
+  const headerRight = (
+    <div className="timeline-header-right">
+    
 
 
       

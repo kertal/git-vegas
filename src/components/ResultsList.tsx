@@ -86,8 +86,6 @@ interface DescriptionDialogProps {
   hasNext: boolean;
 }
 
-
-
 const DescriptionDialog = memo(function DescriptionDialog({
   item,
   onClose,
@@ -99,7 +97,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
   // Add keyboard navigation
   React.useEffect(() => {
     if (!item) return;
-    
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft' && hasPrevious) {
         onPrevious();
@@ -117,41 +115,45 @@ const DescriptionDialog = memo(function DescriptionDialog({
   if (!item) return null;
 
   return (
-        <Dialog
+    <Dialog
       onClose={onClose}
-    
       role="dialog"
-
-      title={(
+      title={
         <Box
-        sx={{ display: 'flex', p: 2, alignItems: 'center', gap: 2, width: '100%' }}
-      >
-        {item.pull_request ? (
-          item.pull_request.merged_at ? (
-            <Box sx={{ color: 'done.fg' }}>
-              <GitMergeIcon size={16} />
-            </Box>
-          ) : item.state === 'closed' ? (
-            <Box sx={{ color: 'closed.fg' }}>
-              <GitPullRequestIcon size={16} />
-            </Box>
+          sx={{
+            display: 'flex',
+            p: 2,
+            alignItems: 'center',
+            gap: 2,
+            width: '100%',
+          }}
+        >
+          {item.pull_request ? (
+            item.pull_request.merged_at ? (
+              <Box sx={{ color: 'done.fg' }}>
+                <GitMergeIcon size={16} />
+              </Box>
+            ) : item.state === 'closed' ? (
+              <Box sx={{ color: 'closed.fg' }}>
+                <GitPullRequestIcon size={16} />
+              </Box>
+            ) : (
+              <Box sx={{ color: 'open.fg' }}>
+                <GitPullRequestIcon size={16} />
+              </Box>
+            )
           ) : (
-            <Box sx={{ color: 'open.fg' }}>
-              <GitPullRequestIcon size={16} />
+            <Box
+              sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}
+            >
+              <IssueOpenedIcon size={16} />
             </Box>
-          )
-        ) : (
-          <Box
-            sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}
-          >
-            <IssueOpenedIcon size={16} />
-          </Box>
-        )}
-        <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>
-          {item.title}
-        </Text>
-      </Box>
-      )}
+          )}
+          <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>
+            {item.title}
+          </Text>
+        </Box>
+      }
       renderFooter={() => (
         <div>
           <IconButton
@@ -171,7 +173,6 @@ const DescriptionDialog = memo(function DescriptionDialog({
         </div>
       )}
     >
-
       <Box
         sx={{
           p: 3,
@@ -328,10 +329,6 @@ const ResultsList = memo(function ResultsList({
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
 
-
-
-
-
   // Helper to check if any filters are configured
   const hasConfiguredFilters =
     filter !== 'all' ||
@@ -351,11 +348,11 @@ const ResultsList = memo(function ResultsList({
     if (displayResults.length === 0) {
       return { checked: false, indeterminate: false };
     }
-    
-    const selectedCount = displayResults.filter(item => 
+
+    const selectedCount = displayResults.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
-    
+
     if (selectedCount === 0) {
       return { checked: false, indeterminate: false };
     } else if (selectedCount === displayResults.length) {
@@ -368,10 +365,10 @@ const ResultsList = memo(function ResultsList({
   // Handle select all checkbox click
   const handleSelectAllChange = () => {
     const displayResults = areFiltersActive ? filteredResults : results;
-    const selectedCount = displayResults.filter(item => 
+    const selectedCount = displayResults.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
-    
+
     if (selectedCount === displayResults.length) {
       // All are selected, clear selection
       clearSelection();
@@ -409,8 +406,6 @@ const ResultsList = memo(function ResultsList({
 
     return summaryParts.join(' | ');
   };
-
-
 
   // Add navigation logic
   const handlePreviousItem = () => {
@@ -459,7 +454,6 @@ const ResultsList = memo(function ResultsList({
     <Box>
       {/* Results Section */}
       <ResultsContainer
-      
         headerLeft={
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -468,7 +462,9 @@ const ResultsList = memo(function ResultsList({
                 indeterminate={selectAllState.indeterminate}
                 onChange={handleSelectAllChange}
                 aria-label="Select all items"
-                disabled={(areFiltersActive ? filteredResults : results).length === 0}
+                disabled={
+                  (areFiltersActive ? filteredResults : results).length === 0
+                }
               />
               <Heading
                 as="h2"
@@ -481,12 +477,51 @@ const ResultsList = memo(function ResultsList({
               >
                 Issues and PRs
               </Heading>
+              <ActionMenu>
+                <ActionMenu.Button
+                  variant="default"
+                  size="small"
+                  sx={{
+                    ...buttonStyles,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    fontSize: 0,
+                    borderColor: 'border.default',
+                  }}
+                >
+                  <PasteIcon size={14} />
+                  {(() => {
+                    const displayResults = areFiltersActive
+                      ? filteredResults
+                      : results;
+                    const visibleSelectedCount = displayResults.filter(
+                      item =>
+                        selectedItems instanceof Set &&
+                        selectedItems.has(item.event_id || item.id)
+                    ).length;
+                    return visibleSelectedCount > 0
+                      ? visibleSelectedCount
+                      : displayResults.length;
+                  })()}
+                </ActionMenu.Button>
+
+                <ActionMenu.Overlay>
+                  <ActionList>
+                    <ActionList.Item
+                      onSelect={() => copyResultsToClipboard('detailed')}
+                    >
+                      Detailed (Containing the content)
+                    </ActionList.Item>
+                    <ActionList.Item
+                      onSelect={() => copyResultsToClipboard('compact')}
+                    >
+                      Compact (Links with Titles)
+                    </ActionList.Item>
+                  </ActionList>
+                </ActionMenu.Overlay>
+              </ActionMenu>
             </Box>
-            <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-              {areFiltersActive && hasConfiguredFilters
-                ? `${filteredResults.length} filtered / ${results.length} total`
-                : `${results.length} items`}
-            </Text>
             {clipboardMessage && (
               <Flash variant="success" sx={{ py: 1, px: 2 }}>
                 {clipboardMessage}
@@ -496,48 +531,6 @@ const ResultsList = memo(function ResultsList({
         }
         headerRight={
           <>
-            <ActionMenu>
-              <ActionMenu.Button
-                variant="default"
-                size="small"
-                sx={{
-                  ...buttonStyles,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontSize: 0,
-                  borderColor: 'border.default',
-                }}
-              >
-                <PasteIcon size={14} />
-                {(() => {
-                  const displayResults = areFiltersActive ? filteredResults : results;
-                  const visibleSelectedCount = displayResults.filter(
-                    item =>
-                      selectedItems instanceof Set && selectedItems.has(item.event_id || item.id)
-                  ).length;
-                  return visibleSelectedCount > 0
-                    ? visibleSelectedCount
-                    : displayResults.length;
-                })()}
-              </ActionMenu.Button>
-
-              <ActionMenu.Overlay>
-                <ActionList>
-                  <ActionList.Item
-                    onSelect={() => copyResultsToClipboard('detailed')}
-                  >
-                    Detailed Format
-                  </ActionList.Item>
-                  <ActionList.Item
-                    onSelect={() => copyResultsToClipboard('compact')}
-                  >
-                    Compact Format
-                  </ActionList.Item>
-                </ActionList>
-              </ActionMenu.Overlay>
-            </ActionMenu>
-
             <Box sx={{ display: 'none' }}>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Filters:</Text>
               <ButtonGroup>
@@ -547,8 +540,14 @@ const ResultsList = memo(function ResultsList({
                   onClick={() => setAreFiltersActive(true)}
                   sx={{
                     ...buttonStyles,
-                    border: areFiltersActive && hasConfiguredFilters ? '2px solid' : '1px solid',
-                    borderColor: areFiltersActive && hasConfiguredFilters ? 'success.emphasis' : 'border.default',
+                    border:
+                      areFiltersActive && hasConfiguredFilters
+                        ? '2px solid'
+                        : '1px solid',
+                    borderColor:
+                      areFiltersActive && hasConfiguredFilters
+                        ? 'success.emphasis'
+                        : 'border.default',
                   }}
                 >
                   Active
@@ -620,7 +619,7 @@ const ResultsList = memo(function ResultsList({
           {/* Results List */}
           {(() => {
             const displayResults = areFiltersActive ? filteredResults : results;
-            
+
             if (displayResults.length === 0) {
               return (
                 <Box
@@ -648,7 +647,8 @@ const ResultsList = memo(function ResultsList({
                         No matches found
                       </Text>
                       <Text sx={{ fontSize: 1, color: 'fg.muted', mb: 3 }}>
-                        Your current filters don't match any of the {results.length} available items.
+                        Your current filters don't match any of the{' '}
+                        {results.length} available items.
                       </Text>
                       {hasActiveFilters && (
                         <Button
@@ -668,46 +668,55 @@ const ResultsList = memo(function ResultsList({
             return isCompactView ? (
               <Box sx={{ gap: 1 }}>
                 {displayResults.map(item => (
-                <Box
-                  key={item.id}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    py: 1,
-                    px: 2,
-                    borderRadius: 1,
-                    ':hover': {
-                      bg: 'canvas.subtle',
-                    },
-                  }}
-                >
-                  <Checkbox
-                    checked={
-                      selectedItems instanceof Set &&
-                      selectedItems.has(item.event_id || item.id)
-                    }
-                    onChange={() => toggleItemSelection(item.event_id || item.id)}
-                  />
-                  {item.pull_request ? (
-                    item.pull_request.merged_at || item.merged ? (
-                      <Box sx={{ color: 'done.fg', display: 'flex' }}>
-                        <GitMergeIcon size={16} />
-                      </Box>
+                  <Box
+                    key={item.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 2,
+                      py: 1,
+                      px: 2,
+                      borderRadius: 1,
+                      ':hover': {
+                        bg: 'canvas.subtle',
+                      },
+                    }}
+                  >
+                    <Checkbox
+                      checked={
+                        selectedItems instanceof Set &&
+                        selectedItems.has(item.event_id || item.id)
+                      }
+                      onChange={() =>
+                        toggleItemSelection(item.event_id || item.id)
+                      }
+                    />
+                    {item.pull_request ? (
+                      item.pull_request.merged_at || item.merged ? (
+                        <Box sx={{ color: 'done.fg', display: 'flex' }}>
+                          <GitMergeIcon size={16} />
+                        </Box>
+                      ) : item.state === 'closed' ? (
+                        <Box sx={{ color: 'closed.fg', display: 'flex' }}>
+                          <GitPullRequestIcon size={16} />
+                        </Box>
+                      ) : (
+                        <Box sx={{ color: 'open.fg', display: 'flex' }}>
+                          <GitPullRequestIcon size={16} />
+                        </Box>
+                      )
                     ) : item.state === 'closed' ? (
-                      <Box sx={{ color: 'closed.fg', display: 'flex' }}>
-                        <GitPullRequestIcon size={16} />
-                      </Box>
-                    ) : (
-                      <Box sx={{ color: 'open.fg', display: 'flex' }}>
-                        <GitPullRequestIcon size={16} />
-                      </Box>
-                    )
-                  ) : (
-                    item.state === 'closed' ? (
-                      <Box sx={{ position: 'relative', display: 'inline-flex', color: 'closed.fg' }}>
+                      <Box
+                        sx={{
+                          position: 'relative',
+                          display: 'inline-flex',
+                          color: 'closed.fg',
+                        }}
+                      >
                         <IssueOpenedIcon size={16} />
-                        <Box sx={{ position: 'absolute', top: '3px', left: '3px' }}>
+                        <Box
+                          sx={{ position: 'absolute', top: '3px', left: '3px' }}
+                        >
                           <XIcon size={10} />
                         </Box>
                       </Box>
@@ -715,267 +724,300 @@ const ResultsList = memo(function ResultsList({
                       <Box sx={{ color: 'open.fg', display: 'flex' }}>
                         <IssueOpenedIcon size={16} />
                       </Box>
-                    )
-                  )}
-                  <Avatar
-                    src={item.user.avatar_url}
-                    alt={`${item.user.login}'s avatar`}
-                    size={16}
-                  />
-                  <Text sx={{ fontSize: 1, color: 'fg.muted', flexShrink: 0 }}>
-                    {item.user.login}
-                  </Text>
-                  <Link
-                    href={item.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{
-                      textDecoration: 'none',
-                      fontSize: 1,
-                      flexGrow: 1,
-                      minWidth: 0,
-                      ':hover': { textDecoration: 'underline' },
-                    }}
-                  >
-                    <Text
-                      sx={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {item.title}
-                    </Text>
-                  </Link>
-                  <Text sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}>
-                    {item.repository_url?.split('/').slice(-1)[0] || 'N/A'}
-                  </Text>
-                  <Text sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}>
-                    {new Date(item.updated_at).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    })}
-                  </Text>
-                  {item.body && (
-                    <div>
-                      <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)}></IconButton>
-                      <IconButton icon={PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)}></IconButton>
-                    </div>
-                  )}
-                </Box>
-              ))}
-            </Box>
-                        ) : (
-                <Stack sx={{ gap: 3 }}>
-                  {displayResults.map(item => (
-                <Box
-                  key={item.id}
-                  sx={{
-                    border: '1px solid',
-                    borderColor: 'border.default',
-                    borderRadius: 2,
-                    p: 3,
-                    bg: 'canvas.subtle',
-                    ':last-child': { mb: 0 },
-                  }}
-                >
-                  {/* Project info section */}
-                  <Stack
-                    direction="horizontal"
-                    alignItems="center"
-                    sx={{ mb: 2, gap: 2 }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Checkbox
-                        checked={
-                          selectedItems instanceof Set &&
-                          selectedItems.has(item.event_id || item.id)
-                        }
-                        onChange={() => toggleItemSelection(item.event_id || item.id)}
-                      />
-                    </Box>
+                    )}
                     <Avatar
                       src={item.user.avatar_url}
                       alt={`${item.user.login}'s avatar`}
-                      size={24}
+                      size={16}
                     />
+                    <Text
+                      sx={{ fontSize: 1, color: 'fg.muted', flexShrink: 0 }}
+                    >
+                      {item.user.login}
+                    </Text>
                     <Link
-                      href={item.user.html_url}
+                      href={item.html_url}
                       target="_blank"
                       rel="noopener noreferrer"
                       sx={{
-                        fontSize: 1,
-                        color: 'fg.muted',
                         textDecoration: 'none',
+                        fontSize: 1,
+                        flexGrow: 1,
+                        minWidth: 0,
                         ':hover': { textDecoration: 'underline' },
                       }}
                     >
-                      {item.user.login}
-                    </Link>
-                    {item.repository_url && (
-                      <>
-                        <Text sx={{ color: 'fg.muted' }}>/</Text>
-                        <Link
-                          href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ fontSize: 1, color: 'accent.fg' }}
-                        >
-                          {
-                            item.repository_url
-                              .replace('https://api.github.com/repos/', '')
-                              .split('/')[1]
-                          }
-                        </Link>
-                      </>
-                    )}
-                  </Stack>
-                  <Link
-                    href={item.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{ display: 'block', mb: 1 }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      {item.pull_request ? (
-                        item.pull_request.merged_at || item.merged ? (
-                          <Box
-                            as="span"
-                            aria-label="Merged Pull Request"
-                            sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              color: 'done.fg',
-                            }}
-                          >
-                            <GitMergeIcon size={16} />
-                          </Box>
-                        ) : item.state === 'closed' ? (
-                          <Box
-                            as="span"
-                            aria-label="Closed Pull Request"
-                            sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              color: 'closed.fg',
-                            }}
-                          >
-                            <GitPullRequestIcon size={16} />
-                          </Box>
-                        ) : (
-                          <Box
-                            as="span"
-                            aria-label="Open Pull Request"
-                            sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              color: 'open.fg',
-                            }}
-                          >
-                            <GitPullRequestIcon size={16} />
-                          </Box>
-                        )
-                      ) : (
-                        <Box
-                          as="span"
-                          aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
-                          sx={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            color:
-                              item.state === 'closed' ? 'closed.fg' : 'open.fg',
-                          }}
-                        >
-                          <IssueOpenedIcon size={16} />
-                          {item.state === 'closed' && (
-                            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                              <XIcon size={12} />
-                            </Box>
-                          )}
-                        </Box>
-                      )}
                       <Text
                         sx={{
-                          fontWeight: 'semibold',
-                          fontSize: 2,
-                          color: 'accent.fg',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {item.title}
                       </Text>
-                    </Box>
-                  </Link>
-                  <Stack
-                    direction="horizontal"
-                    alignItems="center"
-                    sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}
-                  >
-                    {/* Display labels */}
-                    {item.labels &&
-                      item.labels.map((l: { name: string; color?: string; description?: string }) => (
-                        <Label
-                          key={l.name}
-                          sx={{
-                            backgroundColor: l.color
-                              ? `#${l.color}`
-                              : undefined,
-                            color: l.color
-                              ? getContrastColor(l.color)
-                              : undefined,
-                            fontWeight: 'bold',
-                            fontSize: 0,
-                            cursor: 'pointer',
-                          }}
-                          title={l.description || l.name}
-                          onClick={() => setIncludedLabels(prev => [...prev, l.name])}
-                        >
-                          {l.name}
-                        </Label>
-                      ))}
-                  </Stack>
-                  <Stack
-                    direction="horizontal"
-                    alignItems="center"
+                    </Link>
+                    <Text
+                      sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}
+                    >
+                      {item.repository_url?.split('/').slice(-1)[0] || 'N/A'}
+                    </Text>
+                    <Text
+                      sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}
+                    >
+                      {new Date(item.updated_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </Text>
+                    {item.body && (
+                      <div>
+                        <IconButton
+                          icon={EyeIcon}
+                          variant="invisible"
+                          aria-label="Show description"
+                          size="small"
+                          onClick={() => setSelectedItemForDialog(item)}
+                        ></IconButton>
+                        <IconButton
+                          icon={PasteIcon}
+                          variant="invisible"
+                          aria-label="Copy to clipboard"
+                          size="small"
+                          onClick={() => copySingleItemToClipboard(item)}
+                        ></IconButton>
+                      </div>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Stack sx={{ gap: 3 }}>
+                {displayResults.map(item => (
+                  <Box
+                    key={item.id}
                     sx={{
-                      fontSize: 0,
-                      color: 'fg.muted',
-                      mt: 2,
-                      flexWrap: 'wrap',
-                      gap: 3,
+                      border: '1px solid',
+                      borderColor: 'border.default',
+                      borderRadius: 2,
+                      p: 3,
+                      bg: 'canvas.subtle',
+                      ':last-child': { mb: 0 },
                     }}
                   >
+                    {/* Project info section */}
                     <Stack
                       direction="horizontal"
-                      sx={{ flexWrap: 'wrap', gap: 2 }}
+                      alignItems="center"
+                      sx={{ mb: 2, gap: 2 }}
                     >
-                      <Text>
-                        Created:{' '}
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </Text>
-                      <Text>
-                        Updated:{' '}
-                        {new Date(item.updated_at).toLocaleDateString()}
-                      </Text>
-                      {item.pull_request?.merged_at && (
-                        <Text sx={{ color: 'done.fg', fontWeight: 'bold' }}>
-                          Merged:{' '}
-                          {new Date(
-                            item.pull_request.merged_at
-                          ).toLocaleDateString()}
-                        </Text>
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
+                      >
+                        <Checkbox
+                          checked={
+                            selectedItems instanceof Set &&
+                            selectedItems.has(item.event_id || item.id)
+                          }
+                          onChange={() =>
+                            toggleItemSelection(item.event_id || item.id)
+                          }
+                        />
+                      </Box>
+                      <Avatar
+                        src={item.user.avatar_url}
+                        alt={`${item.user.login}'s avatar`}
+                        size={24}
+                      />
+                      <Link
+                        href={item.user.html_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{
+                          fontSize: 1,
+                          color: 'fg.muted',
+                          textDecoration: 'none',
+                          ':hover': { textDecoration: 'underline' },
+                        }}
+                      >
+                        {item.user.login}
+                      </Link>
+                      {item.repository_url && (
+                        <>
+                          <Text sx={{ color: 'fg.muted' }}>/</Text>
+                          <Link
+                            href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{ fontSize: 1, color: 'accent.fg' }}
+                          >
+                            {
+                              item.repository_url
+                                .replace('https://api.github.com/repos/', '')
+                                .split('/')[1]
+                            }
+                          </Link>
+                        </>
                       )}
-                      {item.state === 'closed' &&
-                        !item.pull_request?.merged_at && (
-                          <Text sx={{ color: 'danger.fg' }}>
-                            Closed:{' '}
-                            {new Date(item.closed_at!).toLocaleDateString()}
-                          </Text>
+                    </Stack>
+                    <Link
+                      href={item.html_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ display: 'block', mb: 1 }}
+                    >
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
+                      >
+                        {item.pull_request ? (
+                          item.pull_request.merged_at || item.merged ? (
+                            <Box
+                              as="span"
+                              aria-label="Merged Pull Request"
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: 'done.fg',
+                              }}
+                            >
+                              <GitMergeIcon size={16} />
+                            </Box>
+                          ) : item.state === 'closed' ? (
+                            <Box
+                              as="span"
+                              aria-label="Closed Pull Request"
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: 'closed.fg',
+                              }}
+                            >
+                              <GitPullRequestIcon size={16} />
+                            </Box>
+                          ) : (
+                            <Box
+                              as="span"
+                              aria-label="Open Pull Request"
+                              sx={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                color: 'open.fg',
+                              }}
+                            >
+                              <GitPullRequestIcon size={16} />
+                            </Box>
+                          )
+                        ) : (
+                          <Box
+                            as="span"
+                            aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
+                            sx={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              color:
+                                item.state === 'closed'
+                                  ? 'closed.fg'
+                                  : 'open.fg',
+                            }}
+                          >
+                            <IssueOpenedIcon size={16} />
+                            {item.state === 'closed' && (
+                              <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
+                                <XIcon size={12} />
+                              </Box>
+                            )}
+                          </Box>
+                        )}
+                        <Text
+                          sx={{
+                            fontWeight: 'semibold',
+                            fontSize: 2,
+                            color: 'accent.fg',
+                          }}
+                        >
+                          {item.title}
+                        </Text>
+                      </Box>
+                    </Link>
+                    <Stack
+                      direction="horizontal"
+                      alignItems="center"
+                      sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}
+                    >
+                      {/* Display labels */}
+                      {item.labels &&
+                        item.labels.map(
+                          (l: {
+                            name: string;
+                            color?: string;
+                            description?: string;
+                          }) => (
+                            <Label
+                              key={l.name}
+                              sx={{
+                                backgroundColor: l.color
+                                  ? `#${l.color}`
+                                  : undefined,
+                                color: l.color
+                                  ? getContrastColor(l.color)
+                                  : undefined,
+                                fontWeight: 'bold',
+                                fontSize: 0,
+                                cursor: 'pointer',
+                              }}
+                              title={l.description || l.name}
+                              onClick={() =>
+                                setIncludedLabels(prev => [...prev, l.name])
+                              }
+                            >
+                              {l.name}
+                            </Label>
+                          )
                         )}
                     </Stack>
-                  </Stack>
-                </Box>
-              ))}
-            </Stack>
+                    <Stack
+                      direction="horizontal"
+                      alignItems="center"
+                      sx={{
+                        fontSize: 0,
+                        color: 'fg.muted',
+                        mt: 2,
+                        flexWrap: 'wrap',
+                        gap: 3,
+                      }}
+                    >
+                      <Stack
+                        direction="horizontal"
+                        sx={{ flexWrap: 'wrap', gap: 2 }}
+                      >
+                        <Text>
+                          Created:{' '}
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </Text>
+                        <Text>
+                          Updated:{' '}
+                          {new Date(item.updated_at).toLocaleDateString()}
+                        </Text>
+                        {item.pull_request?.merged_at && (
+                          <Text sx={{ color: 'done.fg', fontWeight: 'bold' }}>
+                            Merged:{' '}
+                            {new Date(
+                              item.pull_request.merged_at
+                            ).toLocaleDateString()}
+                          </Text>
+                        )}
+                        {item.state === 'closed' &&
+                          !item.pull_request?.merged_at && (
+                            <Text sx={{ color: 'danger.fg' }}>
+                              Closed:{' '}
+                              {new Date(item.closed_at!).toLocaleDateString()}
+                            </Text>
+                          )}
+                      </Stack>
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
             );
           })()}
         </Box>
