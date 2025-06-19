@@ -34,9 +34,9 @@ export interface GitHubItem {
 
 // Raw data storage types
 export interface RawDataStorage {
-  // Raw events from GitHub Events API
+  // Raw events from GitHub Events API (legacy - now stored in IndexedDB)
   rawEvents: GitHubEvent[];
-  // Raw items from GitHub Search API (already in GitHubItem format)
+  // Raw items from GitHub Search API (stored in localStorage)
   rawSearchItems: GitHubItem[];
   // Metadata about the raw data
   metadata: {

@@ -11,9 +11,15 @@ interface StorageManagerProps {
   isOpen: boolean;
   onClose: () => void;
   onClearEvents?: () => void;
+  onClearSearchItems?: () => void;
 }
 
-export const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose, onClearEvents }) => {
+export const StorageManager: React.FC<StorageManagerProps> = ({ 
+  isOpen, 
+  onClose, 
+  onClearEvents, 
+  onClearSearchItems 
+}) => {
   const [storageInfo, setStorageInfo] = useState<StorageInfo[]>([]);
   const [stats, setStats] = useState(getStorageStats());
   const [indexedDBInfo, setIndexedDBInfo] = useState<{ eventsCount: number; metadataCount: number; totalSize: number } | null>(null);
@@ -37,6 +43,7 @@ export const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose,
       clearAllGitHubData();
       eventsStorage.clear().catch(console.error);
       onClearEvents?.();
+      onClearSearchItems?.();
       setStorageInfo(getStorageInfo());
       setStats(getStorageStats());
       setIndexedDBInfo(null);
@@ -48,6 +55,12 @@ export const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose,
       eventsStorage.clear().catch(console.error);
       onClearEvents?.();
       setIndexedDBInfo(null);
+    }
+  };
+
+  const handleClearSearchItems = () => {
+    if (window.confirm('Are you sure you want to clear all search items data? This action cannot be undone.')) {
+      onClearSearchItems?.();
     }
   };
 
@@ -155,6 +168,12 @@ export const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose,
                 Clear Events
               </button>
               <button
+                onClick={handleClearSearchItems}
+                className="px-3 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600"
+              >
+                Clear Search Items
+              </button>
+              <button
                 onClick={handleClearAll}
                 className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
               >
@@ -192,8 +211,8 @@ export const StorageManager: React.FC<StorageManagerProps> = ({ isOpen, onClose,
         <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
           <p className="mb-2"><strong>About Storage:</strong></p>
           <ul className="list-disc list-inside space-y-1">
-            <li>Events are stored in IndexedDB for better performance and larger capacity</li>
-            <li>Other data uses localStorage (limited to ~5MB)</li>
+            <li>Events and search items are stored in IndexedDB for better performance and larger capacity</li>
+            <li>Other settings use localStorage (limited to ~5MB)</li>
             <li>Old data is automatically cleared when space is needed</li>
             <li>You can manually clear data to free up space</li>
           </ul>

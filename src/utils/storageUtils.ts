@@ -74,7 +74,7 @@ export const clearOldData = (targetKey: string, requiredSize: number): boolean =
         'github-search-results',
         'github-events-results', 
         'github-raw-events-results',
-        'github-raw-data-storage',
+        'github-raw-data-storage', // Legacy storage (now using IndexedDB for both events and search items)
         // Non-essential data (lower priority)
         'github-item-ui-state',
         'github-ui-settings'
@@ -132,7 +132,8 @@ export const clearAllGitHubData = (): void => {
     'github-search-results',
     'github-events-results',
     'github-raw-events-results',
-    'github-raw-data-storage',
+    'github-raw-data-storage', // Legacy storage (now using IndexedDB for both events and search items)
+    'github-last-search-params', // Legacy cache validation
     'github-item-ui-state',
     'github-ui-settings',
     'github-form-settings',

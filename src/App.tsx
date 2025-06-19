@@ -26,7 +26,8 @@ import {
   UsernameCache,
   FormContextType,
   ResultsContextType,
-  RawDataStorage,
+  GitHubItem,
+  GitHubEvent,
 } from './types';
 import {
   createDefaultFilter,
@@ -125,27 +126,20 @@ function App() {
     }
   );
 
-  // Raw data storage - use IndexedDB for events, localStorage for search items
-  const [rawDataStorage, setRawDataStorage] = useLocalStorage<RawDataStorage>(
-    'github-raw-data-storage',
-    {
-      rawEvents: [],
-      rawSearchItems: [],
-      metadata: {
-        lastFetch: 0,
-        usernames: [],
-        apiMode: 'search',
-      },
-    }
-  );
-
-  // IndexedDB storage for events (with localStorage fallback)
+  // IndexedDB storage for events
   const {
     events: indexedDBEvents,
     error: eventsError,
     storeEvents,
     clearEvents,
   } = useIndexedDBStorage('github-events-indexeddb');
+
+  // IndexedDB storage for search items (reusing the same hook with different key)
+  const {
+    events: indexedDBSearchItems,
+    storeEvents: storeSearchItems,
+    clearEvents: clearSearchItems,
+  } = useIndexedDBStorage('github-search-items-indexeddb');
 
   // Separate filter states for different API modes
   const [searchFilters, setSearchFilters] = useLocalStorage<ResultsFilter>(
@@ -156,13 +150,7 @@ function App() {
     'github-events-filters',
     createDefaultFilter()
   );
-  const [lastSearchParams, setLastSearchParams] = useLocalStorage<{
-    username: string;
-    startDate: string;
-    endDate: string;
-    apiMode: string;
-    timestamp: number;
-  } | null>('github-last-search-params', null);
+
 
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
@@ -170,24 +158,21 @@ function App() {
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
     if (apiMode === 'events') {
-      // Use IndexedDB events if available, fallback to localStorage
-      const eventsToUse = indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents;
-      return categorizeRawEvents(eventsToUse, startDate, endDate);
+      return categorizeRawEvents(indexedDBEvents, startDate, endDate);
     } else {
-      return categorizeRawSearchItems(rawDataStorage.rawSearchItems, startDate, endDate);
+      // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
+      return categorizeRawSearchItems(indexedDBSearchItems as unknown as GitHubItem[], startDate, endDate);
     }
-  }, [apiMode, indexedDBEvents, rawDataStorage.rawEvents, rawDataStorage.rawSearchItems, startDate, endDate]);
+  }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
   // Get available labels from raw data
   const availableLabels = useMemo(() => {
     if (apiMode === 'events') {
-      // Use IndexedDB events if available, fallback to localStorage
-      const eventsToUse = indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents;
-      return getAvailableLabelsFromRawEvents(eventsToUse);
+      return getAvailableLabelsFromRawEvents(indexedDBEvents);
     } else {
       return extractAvailableLabels(results);
     }
-  }, [apiMode, indexedDBEvents, rawDataStorage.rawEvents, results]);
+  }, [apiMode, indexedDBEvents, results]);
 
   const currentFilters = useMemo(() => {
     return apiMode === 'events' ? eventsFilters : searchFilters;
@@ -597,30 +582,7 @@ function App() {
     }
   }, [username]);
 
-  // Helper function to check if cached results are valid
-  const isCacheValid = useCallback(
-    (cacheExpiryMs: number = 3600000) => {
-      if (!lastSearchParams) return false;
 
-      // For events mode, be more permissive - show cached events even if parameters don't match exactly
-      if (apiMode === 'events') {
-        // Check if we have any cached events and they're not too old
-        const hasCachedEvents = rawDataStorage.rawEvents.length > 0;
-        const isNotTooOld = Date.now() - rawDataStorage.metadata.lastFetch < cacheExpiryMs;
-        return hasCachedEvents && isNotTooOld;
-      }
-
-      // For search mode, be strict about parameter matching
-      return (
-        lastSearchParams.username === username &&
-        lastSearchParams.startDate === startDate &&
-        lastSearchParams.endDate === endDate &&
-        lastSearchParams.apiMode === apiMode &&
-        Date.now() - lastSearchParams.timestamp < cacheExpiryMs
-      );
-    },
-    [lastSearchParams, username, startDate, endDate, apiMode, rawDataStorage.rawEvents.length, rawDataStorage.metadata.lastFetch]
-  );
 
   // Update handleSearch to check cache first
   const handleSearch = useCallback(async () => {
@@ -691,40 +653,18 @@ function App() {
           startDate,
           endDate,
         });
-        
-        // Also keep a copy in localStorage for backward compatibility
-        setRawDataStorage(prev => ({
-          ...prev,
-          rawEvents: result.rawEvents!,
-          metadata: {
-            lastFetch: Date.now(),
-            usernames: result.processedUsernames,
-            apiMode: 'events',
-            startDate,
-            endDate,
-          },
-        }));
       } else if (apiMode === 'search' && result.rawSearchItems) {
-        setRawDataStorage(prev => ({
-          ...prev,
-          rawSearchItems: result.rawSearchItems!,
-          metadata: {
-            lastFetch: Date.now(),
-            usernames: result.processedUsernames,
-            apiMode: 'search',
-            startDate,
-            endDate,
-          },
-        }));
+        // Store search items in IndexedDB (cast to GitHubEvent[] for storage)
+        await storeSearchItems('github-search-items-indexeddb', result.rawSearchItems as unknown as GitHubEvent[], {
+          lastFetch: Date.now(),
+          usernames: result.processedUsernames,
+          apiMode: 'search',
+          startDate,
+          endDate,
+        });
       }
 
-      setLastSearchParams({
-        username,
-        startDate,
-        endDate,
-        apiMode,
-        timestamp: Date.now(),
-      });
+
 
       // Show success message briefly
       setLoadingProgress(`Successfully loaded ${result.totalCount} raw items!`);
@@ -753,12 +693,11 @@ function App() {
     addToValidated,
     addToInvalid,
     removeFromValidated,
-    setRawDataStorage,
-    setLastSearchParams,
     setLoading,
     setLoadingProgress,
     setError,
     storeEvents,
+    storeSearchItems,
     results.length,
   ]);
 
@@ -772,33 +711,28 @@ function App() {
 
   // Auto-load cached results when switching API modes (if cache is valid)
   useEffect(() => {
-    // For events mode, always show cached events if available, regardless of cache validity
+    // For events mode, show IndexedDB events if available
     if (apiMode === 'events') {
-      const eventsToShow = indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents;
-      if (eventsToShow.length > 0 && results.length === 0) {
-        setLoadingProgress(`Loaded ${eventsToShow.length} cached events`);
+      if (indexedDBEvents.length > 0 && results.length === 0) {
+        setLoadingProgress(`Loaded ${indexedDBEvents.length} cached events`);
         setTimeout(() => setLoadingProgress(''), 1000);
         return;
       }
     }
 
-    // For search mode, use the existing cache validation logic
-    if (apiMode === 'search' && isCacheValid() && results.length === 0) {
-      // If we have cached results but current results array is empty,
-      // it means we switched API modes and should show the cached data immediately
-      const cachedResults = rawDataStorage.rawSearchItems;
-      if (cachedResults.length > 0) {
-        setLoadingProgress(`Loaded ${cachedResults.length} cached items`);
+    // For search mode, use IndexedDB search items
+    if (apiMode === 'search' && results.length === 0) {
+      // If we have cached search items, show them
+      if (indexedDBSearchItems.length > 0) {
+        setLoadingProgress(`Loaded ${indexedDBSearchItems.length} cached items`);
         setTimeout(() => setLoadingProgress(''), 1000);
       }
     }
   }, [
     apiMode,
-    isCacheValid,
     results,
     indexedDBEvents,
-    rawDataStorage.rawEvents,
-    rawDataStorage.rawSearchItems,
+    indexedDBSearchItems,
     setLoadingProgress,
   ]);
 
@@ -1025,7 +959,7 @@ function App() {
               {apiMode === 'events' ? (
                 <TimelineView
                   items={results}
-                  rawEvents={indexedDBEvents.length > 0 ? indexedDBEvents : rawDataStorage.rawEvents}
+                  rawEvents={indexedDBEvents}
                   viewMode={timelineViewMode}
                   setViewMode={setTimelineViewMode}
                 />
@@ -1044,11 +978,12 @@ function App() {
                 isOpen={isSettingsOpen}
                 onDismiss={() => setIsSettingsOpen(false)}
               />
-              <StorageManager
-                isOpen={isStorageManagerOpen}
-                onClose={() => setIsStorageManagerOpen(false)}
-                onClearEvents={clearEvents}
-              />
+                      <StorageManager
+          isOpen={isStorageManagerOpen}
+          onClose={() => setIsStorageManagerOpen(false)}
+          onClearEvents={clearEvents}
+          onClearSearchItems={clearSearchItems}
+        />
             </ResultsContext.Provider>
           </FormContext.Provider>
         </PageLayout.Content>
