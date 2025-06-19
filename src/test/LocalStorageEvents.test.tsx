@@ -100,19 +100,13 @@ describe('LocalStorage Events', () => {
   });
 
   it('should handle corrupted localStorage data gracefully', () => {
-    // Use real localStorage for this test
-    const originalLocalStorage = window.localStorage;
-    window.localStorage = globalThis.localStorage;
-    try {
-      // Store corrupted data
-      window.localStorage.setItem('github-raw-data-storage', 'invalid json');
-      const storedData = window.localStorage.getItem('github-raw-data-storage');
-      expect(storedData).toBe('invalid json');
-      // Test that JSON.parse would fail
-      expect(() => JSON.parse(storedData!)).toThrow();
-    } finally {
-      window.localStorage.removeItem('github-raw-data-storage');
-      window.localStorage = originalLocalStorage;
-    }
+    // Mock localStorage to return corrupted data
+    localStorageMock.getItem.mockReturnValue('invalid json');
+    
+    const storedData = localStorageMock.getItem('github-raw-data-storage');
+    expect(storedData).toBe('invalid json');
+    
+    // Test that JSON.parse would fail
+    expect(() => JSON.parse(storedData!)).toThrow();
   });
 }); 

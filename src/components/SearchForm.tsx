@@ -121,7 +121,7 @@ const SearchForm = memo(function SearchForm() {
               disabled={loading}
               loading={loading}
             >
-              {loading ? 'Loading...' : 'Fetch All Data'}
+              {loading ? 'Loading...' : 'Update'}
             </Button>
           </FormControl>
         </Box>

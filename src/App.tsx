@@ -843,7 +843,8 @@ function App() {
         <PageLayout.Header className='border-bottom'>
           <PageHeader role="banner" aria-label="Title">
             <PageHeader.TitleArea>
-              <PageHeader.LeadingVisual>
+            <PageHeader.Title>Git Vegas</PageHeader.Title>
+              <PageHeader.TrailingVisual>
                 <SlotMachineLoader
                   avatarUrls={(Array.isArray(results) ? results : [])
                     .map(item => item.user.avatar_url)
@@ -881,8 +882,8 @@ function App() {
                 >
                   🕹️
                 </Button>
-              </PageHeader.LeadingVisual>
-              <PageHeader.Title>Git Vegas</PageHeader.Title>
+              </PageHeader.TrailingVisual>
+             
             </PageHeader.TitleArea>
             <PageHeader.Actions>
               <LoadingIndicator
@@ -914,7 +915,7 @@ function App() {
           </PageHeader>
         </PageLayout.Header>
 
-        <PageLayout.Content sx={{ px: 3, py: 4 }}>
+        <PageLayout.Content sx={{ px: 3, py: 1 }}>
           <FormContext.Provider
             value={{
               username,

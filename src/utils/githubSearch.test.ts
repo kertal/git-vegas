@@ -671,12 +671,7 @@ describe('githubSearch utilities', () => {
   });
 
   describe('GitHub Events API', () => {
-    describe('transformEventToItem', () => {
-      // Commented out transformEventToItem tests as the function does not exist
-      // 711: const result = transformEventToItem(mockEvent);
-      // 790: const result = transformEventToItem(mockEvent);
-      // 838: const result = transformEventToItem(mockEvent);
-    });
+
 
     describe('performGitHubSearch with Events API', () => {
       it('should use Events API when apiMode is events', async () => {
