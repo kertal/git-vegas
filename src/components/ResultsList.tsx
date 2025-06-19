@@ -28,6 +28,7 @@ import {
   EyeIcon,
   PasteIcon,
   SearchIcon,
+  CheckIcon,
 } from '@primer/octicons-react';
 
 import ReactMarkdown from 'react-markdown';
@@ -36,6 +37,7 @@ import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import FiltersPanel from './FiltersPanel';
 import { ResultsContainer } from './ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
@@ -342,6 +344,9 @@ const ResultsList = memo(function ResultsList({
     300
   );
 
+  // Use copy feedback hook
+  const { isCopied, triggerCopy } = useCopyFeedback(2000);
+
   // Helper to check if any filters are configured
   const hasConfiguredFilters =
     filter !== 'all' ||
@@ -450,10 +455,12 @@ const ResultsList = memo(function ResultsList({
 
   // Single item clipboard copy handler
   const copySingleItemToClipboard = async (item: GitHubItem) => {
+    const itemId = item.event_id || item.id;
     const result = await copyToClipboard([item], {
       isCompactView: true, // Use compact format for single items
       onSuccess: () => {
-        // Success feedback is handled by the clipboard utility
+        // Trigger copy feedback animation
+        triggerCopy(itemId);
       },
       onError: (error: Error) => {
         console.error('Failed to copy item:', error);
@@ -817,7 +824,7 @@ const ResultsList = memo(function ResultsList({
                           onClick={() => setSelectedItemForDialog(item)}
                         ></IconButton>
                         <IconButton
-                          icon={PasteIcon}
+                          icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
                           variant="invisible"
                           aria-label="Copy to clipboard"
                           size="small"

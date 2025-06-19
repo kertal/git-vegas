@@ -1,16 +1,17 @@
 import { renderHook, act } from '@testing-library/react';
 import { useDebouncedSearch } from './useDebouncedSearch';
+import { vi } from 'vitest';
 
 // Mock timers for testing debouncing
-jest.useFakeTimers();
+vi.useFakeTimers();
 
 describe('useDebouncedSearch', () => {
   afterEach(() => {
-    jest.clearAllTimers();
+    vi.clearAllTimers();
   });
 
   it('should initialize with the initial value', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('initial', onSearchChange, 300)
     );
@@ -19,7 +20,7 @@ describe('useDebouncedSearch', () => {
   });
 
   it('should update inputValue immediately when setInputValue is called', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('', onSearchChange, 300)
     );
@@ -32,7 +33,7 @@ describe('useDebouncedSearch', () => {
   });
 
   it('should debounce the onSearchChange callback', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('', onSearchChange, 300)
     );
@@ -53,7 +54,7 @@ describe('useDebouncedSearch', () => {
 
     // Fast-forward time by 300ms
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
 
     // Now onSearchChange should be called with the final value
@@ -62,7 +63,7 @@ describe('useDebouncedSearch', () => {
   });
 
   it('should reset the timer when input changes before delay expires', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('', onSearchChange, 300)
     );
@@ -74,7 +75,7 @@ describe('useDebouncedSearch', () => {
 
     // Advance time partially
     act(() => {
-      jest.advanceTimersByTime(200);
+      vi.advanceTimersByTime(200);
     });
 
     // Second change before first timer expires
@@ -84,7 +85,7 @@ describe('useDebouncedSearch', () => {
 
     // Advance time by another 200ms (total 400ms from first change, but only 200ms from second)
     act(() => {
-      jest.advanceTimersByTime(200);
+      vi.advanceTimersByTime(200);
     });
 
     // onSearchChange should not be called yet
@@ -92,7 +93,7 @@ describe('useDebouncedSearch', () => {
 
     // Advance by another 100ms to complete the 300ms from second change
     act(() => {
-      jest.advanceTimersByTime(100);
+      vi.advanceTimersByTime(100);
     });
 
     // Now onSearchChange should be called with the second value
@@ -101,12 +102,12 @@ describe('useDebouncedSearch', () => {
   });
 
   it('should call onSearchChange immediately on initial render', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     renderHook(() => useDebouncedSearch('initial', onSearchChange, 300));
 
     // Fast-forward time by 300ms
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
 
     expect(onSearchChange).toHaveBeenCalledTimes(1);
@@ -114,7 +115,7 @@ describe('useDebouncedSearch', () => {
   });
 
   it('should clear search when clearSearch is called', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('test', onSearchChange, 300)
     );
@@ -127,7 +128,7 @@ describe('useDebouncedSearch', () => {
   });
 
   it('should update inputValue when initialValue changes', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     let initialValue = 'initial';
     const { result, rerender } = renderHook(() =>
       useDebouncedSearch(initialValue, onSearchChange, 300)
@@ -143,7 +144,7 @@ describe('useDebouncedSearch', () => {
   });
 
   it('should use custom delay when provided', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('', onSearchChange, 500) // 500ms delay
     );
@@ -154,19 +155,19 @@ describe('useDebouncedSearch', () => {
 
     // Advance by 300ms (default delay) - should not trigger
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
     expect(onSearchChange).not.toHaveBeenCalled();
 
     // Advance by another 200ms (total 500ms) - should trigger
     act(() => {
-      jest.advanceTimersByTime(200);
+      vi.advanceTimersByTime(200);
     });
     expect(onSearchChange).toHaveBeenCalledWith('test');
   });
 
   it('should handle empty string input correctly', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('initial', onSearchChange, 300)
     );
@@ -176,14 +177,14 @@ describe('useDebouncedSearch', () => {
     });
 
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
 
     expect(onSearchChange).toHaveBeenCalledWith('');
   });
 
   it('should handle rapid consecutive changes correctly', () => {
-    const onSearchChange = jest.fn();
+    const onSearchChange = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedSearch('', onSearchChange, 300)
     );
@@ -197,7 +198,7 @@ describe('useDebouncedSearch', () => {
       });
       // Advance time by a small amount between each keystroke
       act(() => {
-        jest.advanceTimersByTime(50);
+        vi.advanceTimersByTime(50);
       });
     });
 
@@ -206,7 +207,7 @@ describe('useDebouncedSearch', () => {
 
     // Advance time to complete the debounce delay
     act(() => {
-      jest.advanceTimersByTime(300);
+      vi.advanceTimersByTime(300);
     });
 
     // Should be called once with the final value

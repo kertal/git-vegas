@@ -13,6 +13,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   SearchIcon,
+  CheckIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +22,7 @@ import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import './TimelineView.css';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
@@ -62,6 +64,9 @@ const TimelineView = memo(function TimelineView({
     (value) => setSearchText?.(value),
     300
   );
+
+  // Use copy feedback hook
+  const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
   // Filter items by search text
   const filteredItems = useMemo(() => {
@@ -254,10 +259,12 @@ const TimelineView = memo(function TimelineView({
 
   // Single item clipboard copy handler
   const copySingleItemToClipboard = async (item: GitHubItem) => {
+    const itemId = item.event_id || item.id;
     const result = await copyToClipboard([item], {
       isCompactView: true, // Use compact format for single items
       onSuccess: () => {
-        // Success feedback is handled by the clipboard utility
+        // Trigger copy feedback animation
+        triggerCopy(itemId);
       },
       onError: (error: Error) => {
         console.error('Failed to copy item:', error);
@@ -851,7 +858,7 @@ const TimelineView = memo(function TimelineView({
                                     {group.mostRecent.body && (
                                       <div>
                                         <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(group.mostRecent)} />
-                                        <IconButton icon={PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(group.mostRecent)} />
+                                        <IconButton icon={isCopied(group.mostRecent.event_id || group.mostRecent.id) ? CheckIcon : PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(group.mostRecent)} />
                                       </div>
                                     )}
                                   </div>
@@ -953,7 +960,7 @@ const TimelineView = memo(function TimelineView({
                   {item.body && (
                     <div>
                       <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)} />
-                      <IconButton icon={PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)} />
+                      <IconButton icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)} />
                     </div>
                   )}
                 </div>
