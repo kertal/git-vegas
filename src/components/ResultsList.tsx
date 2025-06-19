@@ -15,7 +15,6 @@ import {
   ActionList,
   Dialog,
   IconButton,
-  ActionBar,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -118,53 +117,60 @@ const DescriptionDialog = memo(function DescriptionDialog({
   if (!item) return null;
 
   return (
-    <Dialog
+        <Dialog
       onClose={onClose}
-      sx={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: ['100%', '100%', '600px'],
-        maxWidth: '800px',
-        height: '100vh',
-        margin: 0,
-        borderRadius: 0,
-        borderLeft: '1px solid',
-        borderColor: 'border.default',
-      }}
+    
       role="dialog"
-    >
-      <Dialog.Header>
+
+      title={(
         <Box
-          sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}
-        >
-          {item.pull_request ? (
-            item.pull_request.merged_at ? (
-              <Box sx={{ color: 'done.fg' }}>
-                <GitMergeIcon size={16} />
-              </Box>
-            ) : item.state === 'closed' ? (
-              <Box sx={{ color: 'closed.fg' }}>
-                <GitPullRequestIcon size={16} />
-              </Box>
-            ) : (
-              <Box sx={{ color: 'open.fg' }}>
-                <GitPullRequestIcon size={16} />
-              </Box>
-            )
-          ) : (
-            <Box
-              sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}
-            >
-              <IssueOpenedIcon size={16} />
+        sx={{ display: 'flex', p: 2, alignItems: 'center', gap: 2, width: '100%' }}
+      >
+        {item.pull_request ? (
+          item.pull_request.merged_at ? (
+            <Box sx={{ color: 'done.fg' }}>
+              <GitMergeIcon size={16} />
             </Box>
-          )}
-          <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>
-            {item.title}
-          </Text>
-        </Box>
-      </Dialog.Header>
+          ) : item.state === 'closed' ? (
+            <Box sx={{ color: 'closed.fg' }}>
+              <GitPullRequestIcon size={16} />
+            </Box>
+          ) : (
+            <Box sx={{ color: 'open.fg' }}>
+              <GitPullRequestIcon size={16} />
+            </Box>
+          )
+        ) : (
+          <Box
+            sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}
+          >
+            <IssueOpenedIcon size={16} />
+          </Box>
+        )}
+        <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>
+          {item.title}
+        </Text>
+      </Box>
+      )}
+      renderFooter={() => (
+        <div>
+          <IconButton
+            icon={ChevronLeftIcon}
+            aria-label="Previous item"
+            onClick={onPrevious}
+            disabled={!hasPrevious}
+            sx={{ color: hasPrevious ? 'fg.default' : 'fg.muted' }}
+          />
+          <IconButton
+            icon={ChevronRightIcon}
+            aria-label="Next item"
+            onClick={onNext}
+            disabled={!hasNext}
+            sx={{ color: hasNext ? 'fg.default' : 'fg.muted' }}
+          />
+        </div>
+      )}
+    >
 
       <Box
         sx={{
@@ -269,35 +275,6 @@ const DescriptionDialog = memo(function DescriptionDialog({
             {item.body || '*No description provided*'}
           </ReactMarkdown>
         </Box>
-      </Box>
-
-      <Box
-        sx={{
-          position: 'sticky',
-          bottom: 0,
-          p: 3,
-          borderTop: '1px solid',
-          borderColor: 'border.default',
-          bg: 'canvas.default',
-          display: 'flex',
-          gap: 2,
-          justifyContent: 'space-between',
-        }}
-      >
-        <IconButton
-          icon={ChevronLeftIcon}
-          aria-label="Previous item"
-          onClick={onPrevious}
-          disabled={!hasPrevious}
-          sx={{ color: hasPrevious ? 'fg.default' : 'fg.muted' }}
-        />
-        <IconButton
-          icon={ChevronRightIcon}
-          aria-label="Next item"
-          onClick={onNext}
-          disabled={!hasNext}
-          sx={{ color: hasNext ? 'fg.default' : 'fg.muted' }}
-        />
       </Box>
     </Dialog>
   );
