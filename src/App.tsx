@@ -165,6 +165,15 @@ function App() {
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
+  // Calculate counts for navigation tabs
+  const searchItemsCount = useMemo(() => {
+    return categorizeRawSearchItems(indexedDBSearchItems as unknown as GitHubItem[], startDate, endDate).length;
+  }, [indexedDBSearchItems, startDate, endDate]);
+
+  const eventsCount = useMemo(() => {
+    return categorizeRawEvents(indexedDBEvents, startDate, endDate).length;
+  }, [indexedDBEvents, startDate, endDate]);
+
   // Get available labels from raw data
   const availableLabels = useMemo(() => {
     if (apiMode === 'events') {
@@ -924,6 +933,8 @@ function App() {
               loading,
               loadingProgress,
               error,
+              searchItemsCount,
+              eventsCount,
             }}
           >
             <ResultsContext.Provider

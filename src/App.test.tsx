@@ -207,7 +207,7 @@ describe('App Component', () => {
       fireEvent.change(startDateInput, { target: { value: '2024-01-01' } });
       fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
 
-      expect(screen.getByRole('button', { name: /^Update$/i })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /fetch all data/i })).toBeEnabled();
     });
 
     it('always makes fresh requests when search is clicked', async () => {
@@ -234,7 +234,7 @@ describe('App Component', () => {
       fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
 
       // First search
-      const searchButton = screen.getByRole('button', { name: /^Update$/i });
+      const searchButton = screen.getByRole('button', { name: /fetch all data/i });
       fireEvent.click(searchButton);
 
       await waitFor(() => {
@@ -274,7 +274,7 @@ describe('App Component', () => {
       fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
 
       // Perform search
-      const searchButton = screen.getByRole('button', { name: /^Update$/i });
+      const searchButton = screen.getByRole('button', { name: /fetch all data/i });
       fireEvent.click(searchButton);
 
       await waitFor(() => {
@@ -311,7 +311,7 @@ describe('App Component', () => {
       fireEvent.change(endDateInput, { target: { value: '2024-01-31' } });
 
       // First search
-      const searchButton = screen.getByRole('button', { name: /^Update$/i });
+      const searchButton = screen.getByRole('button', { name: /fetch all data/i });
       fireEvent.click(searchButton);
 
       await waitFor(() => {

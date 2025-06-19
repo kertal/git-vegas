@@ -142,6 +142,9 @@ export interface FormContextType {
   loading: boolean;
   loadingProgress: string;
   error: string | null;
+  // Counts for navigation tabs
+  searchItemsCount: number;
+  eventsCount: number;
 }
 
 export interface ResultsContextType {
