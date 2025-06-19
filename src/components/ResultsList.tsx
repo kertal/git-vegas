@@ -34,6 +34,7 @@ import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import FiltersPanel from './FiltersPanel';
+import { ResultsContainer } from './ResultsContainer';
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -428,147 +429,129 @@ const ResultsList = memo(function ResultsList({
 
 
       {/* Results Section */}
-      <Box
-          sx={{
-            margin: '24px auto 0',
-            bg: 'canvas.default',
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'border.default',
-            p: 3,
-          }}
-        >
-          {/* Results header */}
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              mb: 3,
-              pb: 3,
-              borderBottom: '1px solid',
-              borderColor: 'border.muted',
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Heading
-                as="h2"
+      <ResultsContainer
+      
+        headerLeft={
+          <>
+            <Heading
+              as="h2"
+              sx={{
+                fontSize: 2,
+                fontWeight: 'semibold',
+                color: 'fg.default',
+                m: 0,
+              }}
+            >
+              Results
+            </Heading>
+            <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
+              {areFiltersActive && hasConfiguredFilters
+                ? `${filteredResults.length} filtered / ${results.length} total`
+                : `${results.length} items`}
+            </Text>
+            {clipboardMessage && (
+              <Flash variant="success" sx={{ py: 1, px: 2 }}>
+                {clipboardMessage}
+              </Flash>
+            )}
+          </>
+        }
+        headerRight={
+          <>
+            <ActionMenu>
+              <ActionMenu.Button
+                variant="default"
+                size="small"
                 sx={{
-                  fontSize: 3,
-                  fontWeight: 'semibold',
-                  color: 'fg.default',
-                  m: 0,
+                  ...buttonStyles,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  fontSize: 0,
+                  borderColor: 'border.default',
                 }}
               >
-                Results
-              </Heading>
-              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-                {areFiltersActive && hasConfiguredFilters
-                  ? `${filteredResults.length} filtered / ${results.length} total`
-                  : `${results.length} items`}
-              </Text>
-              {clipboardMessage && (
-                <Flash variant="success" sx={{ py: 1, px: 2 }}>
-                  {clipboardMessage}
-                </Flash>
-              )}
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <ActionMenu>
-                <ActionMenu.Button
-                  variant="default"
+                <PasteIcon size={14} />
+                {(() => {
+                  const displayResults = areFiltersActive ? filteredResults : results;
+                  const visibleSelectedCount = displayResults.filter(
+                    item =>
+                      selectedItems instanceof Set && selectedItems.has(item.id)
+                  ).length;
+                  return visibleSelectedCount > 0
+                    ? visibleSelectedCount
+                    : displayResults.length;
+                })()}
+              </ActionMenu.Button>
+
+              <ActionMenu.Overlay>
+                <ActionList>
+                  <ActionList.Item
+                    onSelect={() => copyResultsToClipboard('detailed')}
+                  >
+                    Detailed Format
+                  </ActionList.Item>
+                  <ActionList.Item
+                    onSelect={() => copyResultsToClipboard('compact')}
+                  >
+                    Compact Format
+                  </ActionList.Item>
+                </ActionList>
+              </ActionMenu.Overlay>
+            </ActionMenu>
+
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Filters:</Text>
+              <ButtonGroup>
+                <Button
                   size="small"
+                  variant={areFiltersActive ? 'primary' : 'default'}
+                  onClick={() => setAreFiltersActive(true)}
                   sx={{
                     ...buttonStyles,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    fontSize: 0,
-                    borderColor: 'border.default',
+                    border: areFiltersActive && hasConfiguredFilters ? '2px solid' : '1px solid',
+                    borderColor: areFiltersActive && hasConfiguredFilters ? 'success.emphasis' : 'border.default',
                   }}
                 >
-                  <PasteIcon size={14} />
-                  {(() => {
-                    const displayResults = areFiltersActive ? filteredResults : results;
-                    const visibleSelectedCount = displayResults.filter(
-                      item =>
-                        selectedItems instanceof Set && selectedItems.has(item.id)
-                    ).length;
-                    return visibleSelectedCount > 0
-                      ? visibleSelectedCount
-                      : displayResults.length;
-                  })()}
-                </ActionMenu.Button>
-
-                <ActionMenu.Overlay>
-                  <ActionList>
-                    <ActionList.Item
-                      onSelect={() => copyResultsToClipboard('detailed')}
-                    >
-                      Detailed Format
-                    </ActionList.Item>
-                    <ActionList.Item
-                      onSelect={() => copyResultsToClipboard('compact')}
-                    >
-                      Compact Format
-                    </ActionList.Item>
-                  </ActionList>
-                </ActionMenu.Overlay>
-              </ActionMenu>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Filters:</Text>
-                <ButtonGroup>
-                  <Button
-                    size="small"
-                    variant={areFiltersActive ? 'primary' : 'default'}
-                    onClick={() => setAreFiltersActive(true)}
-                    sx={{
-                      ...buttonStyles,
-                      border: areFiltersActive && hasConfiguredFilters ? '2px solid' : '1px solid',
-                      borderColor: areFiltersActive && hasConfiguredFilters ? 'success.emphasis' : 'border.default',
-                    }}
-                  >
-                    Active
-                  </Button>
-                  <Button
-                    size="small"
-                    variant={!areFiltersActive ? 'primary' : 'default'}
-                    onClick={() => setAreFiltersActive(false)}
-                    sx={buttonStyles}
-                  >
-                    Off
-                  </Button>
-                </ButtonGroup>
-              </Box>
-
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
-                <ButtonGroup>
-                  <Button
-                    size="small"
-                    variant={!isCompactView ? 'primary' : 'default'}
-                    onClick={() => setIsCompactView(false)}
-                    sx={buttonStyles}
-                  >
-                    Detailed
-                  </Button>
-                  <Button
-                    size="small"
-                    variant={isCompactView ? 'primary' : 'default'}
-                    onClick={() => setIsCompactView(true)}
-                    sx={buttonStyles}
-                  >
-                    Compact
-                  </Button>
-                </ButtonGroup>
-              </Box>
+                  Active
+                </Button>
+                <Button
+                  size="small"
+                  variant={!areFiltersActive ? 'primary' : 'default'}
+                  onClick={() => setAreFiltersActive(false)}
+                  sx={buttonStyles}
+                >
+                  Off
+                </Button>
+              </ButtonGroup>
             </Box>
-          </Box>
 
-
-
-                    {/* Filters Section */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
+              <ButtonGroup>
+                <Button
+                  size="small"
+                  variant={!isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(false)}
+                  sx={buttonStyles}
+                >
+                  Detailed
+                </Button>
+                <Button
+                  size="small"
+                  variant={isCompactView ? 'primary' : 'default'}
+                  onClick={() => setIsCompactView(true)}
+                  sx={buttonStyles}
+                >
+                  Compact
+                </Button>
+              </ButtonGroup>
+            </Box>
+          </>
+        }
+      >
+        <Box sx={{ p: 3 }}>
+          {/* Filters Section */}
           {areFiltersActive && (
             <FiltersPanel
               results={results}
@@ -962,6 +945,7 @@ const ResultsList = memo(function ResultsList({
             );
           })()}
         </Box>
+      </ResultsContainer>
 
       {/* Description Dialog */}
       {selectedItemForDialog && (

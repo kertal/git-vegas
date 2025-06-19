@@ -23,11 +23,11 @@ interface TimelineViewProps {
   setViewMode?: (viewMode: ViewMode) => void;
 }
 
-const TimelineView = memo(function TimelineView({ 
-  items, 
+const TimelineView = memo(function TimelineView({
+  items,
   rawEvents = [],
-  viewMode = 'standard', 
-  setViewMode 
+  viewMode = 'standard',
+  setViewMode,
 }: TimelineViewProps) {
   // Sort items by created date (newest first)
   const sortedItems = [...items].sort(
@@ -97,14 +97,13 @@ const TimelineView = memo(function TimelineView({
   if (sortedItems.length === 0) {
     // Check if we have raw events but they're filtered out
     const hasRawEvents = rawEvents && rawEvents.length > 0;
-    
+
     return (
       <Box sx={{ textAlign: 'center', py: 6 }}>
         <Text color="fg.muted">
-          {!hasRawEvents 
+          {!hasRawEvents
             ? 'No cached events found. Please perform a search in events mode to load events.'
-            : 'No events found for the selected time period. Try adjusting your date range or filters.'
-          }
+            : 'No events found for the selected time period. Try adjusting your date range or filters.'}
         </Text>
       </Box>
     );
@@ -159,7 +158,6 @@ const TimelineView = memo(function TimelineView({
       headerLeft={headerLeft}
       headerRight={headerRight}
       className="timeline-view"
-      sx={{ margin: '16px auto' }}
     >
       {/* Timeline content */}
       <Box sx={{ p: 2 }}>
@@ -168,7 +166,11 @@ const TimelineView = memo(function TimelineView({
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {rawEvents.length > 0 ? (
               rawEvents
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .sort(
+                  (a, b) =>
+                    new Date(b.created_at).getTime() -
+                    new Date(a.created_at).getTime()
+                )
                 .map((event, index) => (
                   <Box
                     key={`${event.id}-${index}`}
@@ -190,7 +192,9 @@ const TimelineView = memo(function TimelineView({
                         borderColor: 'border.default',
                       }}
                     >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
+                      >
                         <Text sx={{ fontSize: 1, fontWeight: 'semibold' }}>
                           {event.type}
                         </Text>
@@ -229,7 +233,8 @@ const TimelineView = memo(function TimelineView({
             ) : (
               <Box sx={{ textAlign: 'center', py: 6 }}>
                 <Text color="fg.muted">
-                  No raw events available. Raw events are only available after performing a new search in events mode.
+                  No raw events available. Raw events are only available after
+                  performing a new search in events mode.
                 </Text>
               </Box>
             )}
@@ -259,7 +264,10 @@ const TimelineView = memo(function TimelineView({
             sortedItems.forEach(item => {
               const type = getEventType(item);
               // Add to reviewed if it's a PR review (title starts with "Reviewed:")
-              if (type === 'pull_request' && item.title.startsWith('Reviewed:')) {
+              if (
+                type === 'pull_request' &&
+                item.title.startsWith('Reviewed:')
+              ) {
                 groups['PRs - reviewed'].push(item);
               } else if (type === 'comment') {
                 groups['Issues - commented'].push(item);
@@ -271,7 +279,8 @@ const TimelineView = memo(function TimelineView({
                 } else {
                   groups['PRs - opened'].push(item);
                 }
-              } else { // issue
+              } else {
+                // issue
                 if (item.state === 'closed') {
                   groups['Issues - closed'].push(item);
                 } else {
@@ -284,155 +293,170 @@ const TimelineView = memo(function TimelineView({
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {Object.entries(groups).map(([groupName, groupItems]) => {
                   if (groupItems.length === 0) return null;
-                  
+
                   // Get the appropriate icon for the group
                   const getGroupIcon = () => {
-                    if (groupName === 'PRs - opened') return <GitPullRequestIcon size={20} />;
-                    if (groupName === 'PRs - merged') return <GitMergeIcon size={20} />;
-                    if (groupName === 'PRs - closed') return <GitPullRequestClosedIcon size={20} />;
-                    if (groupName === 'PRs - reviewed') return <EyeIcon size={20} />;
-                    if (groupName === 'Issues - opened') return <IssueOpenedIcon size={20} />;
-                    if (groupName === 'Issues - closed') return <IssueClosedIcon size={20} />;
-                    if (groupName === 'Issues - commented') return <CommentIcon size={20} />;
+                    if (groupName === 'PRs - opened')
+                      return <GitPullRequestIcon size={20} />;
+                    if (groupName === 'PRs - merged')
+                      return <GitMergeIcon size={20} />;
+                    if (groupName === 'PRs - closed')
+                      return <GitPullRequestClosedIcon size={20} />;
+                    if (groupName === 'PRs - reviewed')
+                      return <EyeIcon size={20} />;
+                    if (groupName === 'Issues - opened')
+                      return <IssueOpenedIcon size={20} />;
+                    if (groupName === 'Issues - closed')
+                      return <IssueClosedIcon size={20} />;
+                    if (groupName === 'Issues - commented')
+                      return <CommentIcon size={20} />;
                     return <IssueOpenedIcon size={20} />;
                   };
 
-
-                  
-                                      return (
-                      <Box 
-                        key={groupName}
+                  return (
+                    <Box
+                      key={groupName}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'border.default',
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {/* Group Header */}
+                      <Box
                         sx={{
-                          border: '1px solid',
-                          borderColor: 'border.default',
-                          borderRadius: 1,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {/* Group Header */}
-                        <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 2, 
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 2,
                           p: 2,
                           bg: 'canvas.subtle',
                           borderBottom: '1px solid',
-                          borderColor: 'border.default'
-                        }}>
-                          <Box sx={{ color: 'fg.muted' }}>
-                            {getGroupIcon()}
-                          </Box>
-                          <Text 
-                            sx={{ 
-                              fontSize: 1, 
-                              fontWeight: 'semibold', 
-                              color: 'fg.default',
-                              flex: 1,
-                            }}
-                          >
-                            {groupName}
-                          </Text>
-                          <Box
-                            sx={{
-                              px: 2,
-                              py: 1,
-                              bg: 'accent.subtle',
-                              color: 'accent.fg',
-                              borderRadius: 1,
-                              fontSize: 0,
-                              fontWeight: 'semibold',
-                            }}
-                          >
-                            {groupItems.length}
-                          </Box>
-                        </Box>
-
-
-                        
-                        {/* Events List */}
-                        <Box sx={{ bg: 'canvas.default' }}>
-                          {groupItems.map((item, index) => {
-                            const repoName = formatRepoName(item.repository_url);
-                            
-                            return (
-                              <Box
-                                key={`${item.id}-${index}`}
-                                sx={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 2,
-                                  py: 1,
-                                  px: 2,
-                                  borderBottom: index < groupItems.length - 1 ? '1px solid' : 'none',
-                                  borderColor: 'border.muted',
-                                  '&:hover': {
-                                    bg: 'canvas.subtle',
-                                  },
-                                  fontSize: 0,
-                                }}
-                              >
-                                {/* Avatar */}
-                                <Avatar
-                                  src={item.user.avatar_url}
-                                  size={14}
-                                  alt={item.user.login}
-                                  sx={{ flexShrink: 0 }}
-                                />
-
-                                {/* User */}
-                                <Link
-                                  href={item.user.html_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  sx={{ 
-                                    fontWeight: 'semibold', 
-                                    flexShrink: 0,
-                                    color: 'fg.default',
-                                    textDecoration: 'none',
-                                    '&:hover': { textDecoration: 'underline' }
-                                  }}
-                                >
-                                  {item.user.login}
-                                </Link>
-
-                                {/* Title (truncated) */}
-                                <Link
-                                  href={item.html_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  sx={{
-                                    color: 'fg.default',
-                                    textDecoration: 'none',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    minWidth: 0,
-                                    flex: 1,
-                                    '&:hover': {
-                                      textDecoration: 'underline',
-                                    },
-                                  }}
-                                >
-                                  {item.title}
-                                </Link>
-
-                                {/* Repo */}
-                                <Text color="fg.muted" sx={{ flexShrink: 0, fontSize: 0 }}>
-                                  {repoName.split('/')[1] || repoName}
-                                </Text>
-
-                                {/* Time */}
-                                <Text color="fg.muted" sx={{ flexShrink: 0, fontSize: 0 }}>
-                                  {formatDistanceToNow(new Date(item.created_at), {
-                                    addSuffix: true,
-                                  })}
-                                </Text>
-                              </Box>
-                            );
-                          })}
+                          borderColor: 'border.default',
+                        }}
+                      >
+                        <Box sx={{ color: 'fg.muted' }}>{getGroupIcon()}</Box>
+                        <Text
+                          sx={{
+                            fontSize: 1,
+                            fontWeight: 'semibold',
+                            color: 'fg.default',
+                            flex: 1,
+                          }}
+                        >
+                          {groupName}
+                        </Text>
+                        <Box
+                          sx={{
+                            px: 2,
+                            py: 1,
+                            bg: 'accent.subtle',
+                            color: 'accent.fg',
+                            borderRadius: 1,
+                            fontSize: 0,
+                            fontWeight: 'semibold',
+                          }}
+                        >
+                          {groupItems.length}
                         </Box>
                       </Box>
-                    );
+
+                      {/* Events List */}
+                      <Box sx={{ bg: 'canvas.default' }}>
+                        {groupItems.map((item, index) => {
+                          const repoName = formatRepoName(item.repository_url);
+
+                          return (
+                            <Box
+                              key={`${item.id}-${index}`}
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                py: 1,
+                                px: 2,
+                                borderBottom:
+                                  index < groupItems.length - 1
+                                    ? '1px solid'
+                                    : 'none',
+                                borderColor: 'border.muted',
+                                '&:hover': {
+                                  bg: 'canvas.subtle',
+                                },
+                                fontSize: 0,
+                              }}
+                            >
+                              {/* Avatar */}
+                              <Avatar
+                                src={item.user.avatar_url}
+                                size={14}
+                                alt={item.user.login}
+                                sx={{ flexShrink: 0 }}
+                              />
+
+                              {/* User */}
+                              <Link
+                                href={item.user.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                  fontWeight: 'semibold',
+                                  flexShrink: 0,
+                                  color: 'fg.default',
+                                  textDecoration: 'none',
+                                  '&:hover': { textDecoration: 'underline' },
+                                }}
+                              >
+                                {item.user.login}
+                              </Link>
+
+                              {/* Title (truncated) */}
+                              <Link
+                                href={item.html_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                  color: 'fg.default',
+                                  textDecoration: 'none',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  minWidth: 0,
+                                  flex: 1,
+                                  '&:hover': {
+                                    textDecoration: 'underline',
+                                  },
+                                }}
+                              >
+                                {item.title}
+                              </Link>
+
+                              {/* Repo */}
+                              <Text
+                                color="fg.muted"
+                                sx={{ flexShrink: 0, fontSize: 0 }}
+                              >
+                                {repoName.split('/')[1] || repoName}
+                              </Text>
+
+                              {/* Time */}
+                              <Text
+                                color="fg.muted"
+                                sx={{ flexShrink: 0, fontSize: 0 }}
+                              >
+                                {formatDistanceToNow(
+                                  new Date(item.created_at),
+                                  {
+                                    addSuffix: true,
+                                  }
+                                )}
+                              </Text>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    </Box>
+                  );
                 })}
               </Box>
             );
@@ -476,7 +500,14 @@ const TimelineView = memo(function TimelineView({
                   />
 
                   {/* User and action */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      minWidth: 0,
+                    }}
+                  >
                     <Link
                       href={item.user.html_url}
                       target="_blank"
@@ -513,7 +544,14 @@ const TimelineView = memo(function TimelineView({
                   </Link>
 
                   {/* Repo */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      flexShrink: 0,
+                    }}
+                  >
                     <RepoIcon size={12} />
                     <Link
                       href={`https://github.com/${repoName}`}
