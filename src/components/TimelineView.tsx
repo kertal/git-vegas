@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react';
-import { Text, Avatar, Link, Button, ButtonGroup, Heading,ActionMenu, ActionList, Flash, Checkbox, Box, Token, IconButton, Dialog } from '@primer/react';
+import { Text, Avatar, Link, Button, ButtonGroup, Heading,ActionMenu, ActionList, Flash, Checkbox, Box, Token, IconButton, Dialog, TextInput, FormControl } from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -12,6 +12,7 @@ import {
   PasteIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  SearchIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -35,6 +36,9 @@ interface TimelineViewProps {
   clearSelection?: () => void;
   copyResultsToClipboard?: (format: 'detailed' | 'compact') => void;
   clipboardMessage?: string | null;
+  // Search functionality
+  searchText?: string;
+  setSearchText?: (searchText: string) => void;
 }
 
 const TimelineView = memo(function TimelineView({
@@ -48,9 +52,26 @@ const TimelineView = memo(function TimelineView({
   clearSelection,
   copyResultsToClipboard,
   clipboardMessage,
+  searchText = '',
+  setSearchText,
 }: TimelineViewProps) {
-  // Sort items by updated date (newest first)
-  const sortedItems = [...items].sort(
+  // Filter items by search text
+  const filteredItems = useMemo(() => {
+    if (!searchText || !searchText.trim()) {
+      return items;
+    }
+    
+    const searchLower = searchText.toLowerCase();
+    return items.filter(item => {
+      const titleMatch = item.title.toLowerCase().includes(searchLower);
+      const bodyMatch = item.body?.toLowerCase().includes(searchLower);
+      const userMatch = item.user.login.toLowerCase().includes(searchLower);
+      return titleMatch || bodyMatch || userMatch;
+    });
+  }, [items, searchText]);
+
+  // Sort filtered items by updated date (newest first)
+  const sortedItems = [...filteredItems].sort(
     (a, b) =>
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
@@ -276,20 +297,9 @@ const TimelineView = memo(function TimelineView({
     }
   };
 
-  if (sortedItems.length === 0) {
-    // Check if we have raw events but they're filtered out
-    const hasRawEvents = rawEvents && rawEvents.length > 0;
-
-    return (
-      <div className="timeline-empty">
-        <Text color="fg.muted">
-          {!hasRawEvents
-            ? 'No cached events found. Please perform a search in events mode to load events.'
-            : 'No events found for the selected time period. Try adjusting your date range or filters.'}
-        </Text>
-      </div>
-    );
-  }
+  // Check if we have no results but should show different messages
+  const hasRawEvents = rawEvents && rawEvents.length > 0;
+  const hasSearchText = searchText && searchText.trim().length > 0;
 
   // Header left content
   const headerLeft = (
@@ -358,9 +368,21 @@ const TimelineView = memo(function TimelineView({
   // Header right content
   const headerRight = (
     <div className="timeline-header-right">
-    
-
-
+      {setSearchText && (
+        <FormControl>
+          <FormControl.Label visuallyHidden>
+            Search events
+          </FormControl.Label>
+          <TextInput
+            placeholder="Search events..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            leadingVisual={SearchIcon}
+            size="small"
+            sx={{ minWidth: '200px' }}
+          />
+        </FormControl>
+      )}
       
       {setViewMode && (
         <div className="timeline-view-controls">
@@ -410,7 +432,29 @@ const TimelineView = memo(function TimelineView({
 
       {/* Timeline content */}
       <div className="timeline-content">
-        {viewMode === 'raw' ? (
+        {sortedItems.length === 0 ? (
+          // Empty state - keep search box visible
+          <div className="timeline-empty">
+            <Text color="fg.muted">
+              {hasSearchText 
+                ? `No events found matching "${searchText}". Try a different search term.`
+                : !hasRawEvents
+                ? 'No cached events found. Please perform a search in events mode to load events.'
+                : 'No events found for the selected time period. Try adjusting your date range or filters.'}
+            </Text>
+            {hasSearchText && (
+              <Box sx={{ mt: 2, textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  variant="default"
+                  size="small"
+                  onClick={() => setSearchText?.('')}
+                >
+                  Clear search
+                </Button>
+              </Box>
+            )}
+          </div>
+        ) : viewMode === 'raw' ? (
           // Raw JSON view - show actual GitHub API events
           <div className="timeline-raw-container">
             {rawEvents.length > 0 ? (

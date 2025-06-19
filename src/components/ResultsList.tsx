@@ -15,6 +15,8 @@ import {
   ActionList,
   Dialog,
   IconButton,
+  TextInput,
+  FormControl,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -25,6 +27,7 @@ import {
   ChevronRightIcon,
   EyeIcon,
   PasteIcon,
+  SearchIcon,
 } from '@primer/octicons-react';
 
 import ReactMarkdown from 'react-markdown';
@@ -67,6 +70,7 @@ interface UseResultsContextHookType {
   toggleItemSelection: (id: string | number) => void;
   setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
   setUserFilter: React.Dispatch<React.SetStateAction<string>>;
+  setSearchText: (searchText: string) => void;
 }
 
 // Props interface
@@ -300,6 +304,7 @@ const ResultsList = memo(function ResultsList({
     setStatusFilter,
     setIncludedLabels,
     setExcludedLabels,
+    setSearchText,
     copyResultsToClipboard,
     clipboardMessage,
     clearAllFilters,
@@ -564,6 +569,19 @@ const ResultsList = memo(function ResultsList({
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <FormControl>
+                <FormControl.Label visuallyHidden>
+                  Search issues and PRs
+                </FormControl.Label>
+                <TextInput
+                  placeholder="Search issues and PRs..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  leadingVisual={SearchIcon}
+                  size="small"
+                  sx={{ minWidth: '200px' }}
+                />
+              </FormControl>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
               <ButtonGroup>
               
@@ -648,8 +666,9 @@ const ResultsList = memo(function ResultsList({
                         No matches found
                       </Text>
                       <Text sx={{ fontSize: 1, color: 'fg.muted', mb: 3 }}>
-                        Your current filters don't match any of the{' '}
-                        {results.length} available items.
+                        {searchText 
+                          ? `No items found matching "${searchText}". Try a different search term or adjust your filters.`
+                          : `Your current filters don't match any of the ${results.length} available items.`}
                       </Text>
                       {hasActiveFilters && (
                         <Button
@@ -658,6 +677,15 @@ const ResultsList = memo(function ResultsList({
                           sx={buttonStyles}
                         >
                           Clear All Filters
+                        </Button>
+                      )}
+                      {searchText && (
+                        <Button
+                          variant="default"
+                          onClick={() => setSearchText('')}
+                          sx={{ ...buttonStyles, ml: 2 }}
+                        >
+                          Clear Search
                         </Button>
                       )}
                     </Box>

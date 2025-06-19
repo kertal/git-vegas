@@ -985,6 +985,8 @@ function App() {
                   clearSelection={clearSelection}
                   copyResultsToClipboard={copyResultsToClipboard}
                   clipboardMessage={clipboardMessage}
+                  searchText={currentFilters.searchText}
+                  setSearchText={setSearchText}
                 />
               ) : (
                 <ResultsList
