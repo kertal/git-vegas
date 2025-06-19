@@ -15,6 +15,7 @@ import {
   getFilterSummary,
   getItemType,
   ResultsFilter,
+  parseSearchText,
 } from './resultsUtils';
 import type { GitHubItem } from '../types';
 
@@ -738,6 +739,214 @@ describe('resultsUtils', () => {
           );
         })
       ).toBe(true);
+    });
+  });
+
+  describe('parseSearchText', () => {
+    it('should return empty arrays and text for empty input', () => {
+      const result = parseSearchText('');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        cleanText: '',
+      });
+    });
+
+    it('should return empty arrays and text for whitespace-only input', () => {
+      const result = parseSearchText('   ');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        cleanText: '',
+      });
+    });
+
+    it('should parse single included label', () => {
+      const result = parseSearchText('label:bug');
+      expect(result).toEqual({
+        includedLabels: ['bug'],
+        excludedLabels: [],
+        cleanText: '',
+      });
+    });
+
+    it('should parse single excluded label', () => {
+      const result = parseSearchText('-label:wontfix');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: ['wontfix'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse multiple included labels', () => {
+      const result = parseSearchText('label:bug label:critical');
+      expect(result).toEqual({
+        includedLabels: ['bug', 'critical'],
+        excludedLabels: [],
+        cleanText: '',
+      });
+    });
+
+    it('should parse multiple excluded labels', () => {
+      const result = parseSearchText('-label:wontfix -label:duplicate');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: ['wontfix', 'duplicate'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse mixed included and excluded labels', () => {
+      const result = parseSearchText('label:bug -label:wontfix label:critical -label:duplicate');
+      expect(result).toEqual({
+        includedLabels: ['bug', 'critical'],
+        excludedLabels: ['wontfix', 'duplicate'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse labels with regular text', () => {
+      const result = parseSearchText('performance issue label:bug -label:wontfix');
+      expect(result).toEqual({
+        includedLabels: ['bug'],
+        excludedLabels: ['wontfix'],
+        cleanText: 'performance issue',
+      });
+    });
+
+    it('should clean up extra whitespace in text', () => {
+      const result = parseSearchText('  performance   issue   label:bug   -label:wontfix  ');
+      expect(result).toEqual({
+        includedLabels: ['bug'],
+        excludedLabels: ['wontfix'],
+        cleanText: 'performance issue',
+      });
+    });
+
+    it('should handle labels with underscores and hyphens', () => {
+      const result = parseSearchText('label:good_first_issue -label:help-wanted');
+      expect(result).toEqual({
+        includedLabels: ['good_first_issue'],
+        excludedLabels: ['help-wanted'],
+        cleanText: '',
+      });
+    });
+  });
+
+  describe('filterByText with label syntax', () => {
+    const mockItemsWithLabels: GitHubItem[] = [
+      {
+        ...mockGitHubItems[0],
+        title: 'Bug in authentication',
+        body: 'Authentication fails randomly',
+        labels: [
+          { name: 'bug', color: 'red' },
+          { name: 'critical', color: 'orange' },
+        ],
+      },
+      {
+        ...mockGitHubItems[1],
+        title: 'Feature request: dark mode',
+        body: 'Add dark mode support',
+        labels: [
+          { name: 'enhancement', color: 'blue' },
+          { name: 'good-first-issue', color: 'green' },
+        ],
+      },
+      {
+        ...mockGitHubItems[2],
+        title: 'Documentation update needed',
+        body: 'Update API documentation',
+        labels: [
+          { name: 'documentation', color: 'purple' },
+          { name: 'help-wanted', color: 'yellow' },
+        ],
+      },
+      {
+        ...mockGitHubItems[0],
+        title: 'Performance issue in search',
+        body: 'Search is slow with large datasets',
+        labels: [
+          { name: 'bug', color: 'red' },
+          { name: 'performance', color: 'orange' },
+          { name: 'wontfix', color: 'gray' },
+        ],
+      },
+    ];
+
+    it('should filter by single included label', () => {
+      const result = filterByText(mockItemsWithLabels, 'label:bug');
+      expect(result).toHaveLength(2);
+      expect(result[0].title).toBe('Bug in authentication');
+      expect(result[1].title).toBe('Performance issue in search');
+    });
+
+    it('should filter by single excluded label', () => {
+      const result = filterByText(mockItemsWithLabels, '-label:wontfix');
+      expect(result).toHaveLength(3);
+      expect(result.find(item => item.title === 'Performance issue in search')).toBeUndefined();
+    });
+
+    it('should filter by multiple included labels (AND logic)', () => {
+      const result = filterByText(mockItemsWithLabels, 'label:bug label:critical');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Bug in authentication');
+    });
+
+    it('should filter by multiple excluded labels', () => {
+      const result = filterByText(mockItemsWithLabels, '-label:wontfix -label:help-wanted');
+      expect(result).toHaveLength(2);
+      expect(result.find(item => item.title === 'Performance issue in search')).toBeUndefined();
+      expect(result.find(item => item.title === 'Documentation update needed')).toBeUndefined();
+    });
+
+    it('should filter by mixed included and excluded labels', () => {
+      const result = filterByText(mockItemsWithLabels, 'label:bug -label:wontfix');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Bug in authentication');
+    });
+
+    it('should combine label filters with text search', () => {
+      const result = filterByText(mockItemsWithLabels, 'authentication label:bug');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Bug in authentication');
+    });
+
+    it('should handle case-insensitive label matching', () => {
+      const result = filterByText(mockItemsWithLabels, 'label:BUG');
+      expect(result).toHaveLength(2);
+    });
+
+    it('should return all items when only text search and no matches', () => {
+      const result = filterByText(mockItemsWithLabels, 'nonexistent');
+      expect(result).toHaveLength(0);
+    });
+
+    it('should return items that pass label filters even without text match', () => {
+      const result = filterByText(mockItemsWithLabels, 'label:enhancement nonexistent');
+      expect(result).toHaveLength(0); // No items match both label:enhancement AND contain "nonexistent"
+    });
+
+    it('should handle items without labels', () => {
+      const itemsWithoutLabels = [
+        { ...mockGitHubItems[0], labels: [] },
+        { ...mockGitHubItems[1], labels: undefined },
+      ];
+      const result = filterByText(itemsWithoutLabels, 'label:bug');
+      expect(result).toHaveLength(0);
+    });
+
+    it('should handle hyphenated and underscored label names', () => {
+      const result = filterByText(mockItemsWithLabels, 'label:good-first-issue');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Feature request: dark mode');
+    });
+
+    it('should work with regular text search when no label syntax present', () => {
+      const result = filterByText(mockItemsWithLabels, 'authentication');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Bug in authentication');
     });
   });
 });

@@ -20,6 +20,7 @@ import { ResultsContainer } from './ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import './TimelineView.css';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
@@ -55,18 +56,97 @@ const TimelineView = memo(function TimelineView({
   searchText = '',
   setSearchText,
 }: TimelineViewProps) {
+  // Use debounced search hook
+  const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
+    searchText,
+    (value) => setSearchText?.(value),
+    300
+  );
+
   // Filter items by search text
   const filteredItems = useMemo(() => {
     if (!searchText || !searchText.trim()) {
       return items;
     }
     
-    const searchLower = searchText.toLowerCase();
+    // Parse search text for label filters
+    const parseSearchText = (searchText: string): {
+      includedLabels: string[];
+      excludedLabels: string[];
+      cleanText: string;
+    } => {
+      const includedLabels: string[] = [];
+      const excludedLabels: string[] = [];
+      let cleanText = searchText;
+
+      // First, find all -label:{labelname} patterns (excluded labels)
+      const excludeLabelRegex = /-label:([\w-]+)/g;
+      let match;
+      const excludeMatches: RegExpExecArray[] = [];
+      while ((match = excludeLabelRegex.exec(searchText)) !== null) {
+        excludedLabels.push(match[1]);
+        excludeMatches.push(match);
+      }
+
+      // Remove all excluded label matches from cleanText
+      excludeMatches.forEach(m => {
+        cleanText = cleanText.replace(m[0], ' ');
+      });
+
+      // Then find all label:{labelname} patterns (included labels) from the cleaned text
+      const includeLabelRegex = /\blabel:([\w-]+)/g;
+      const includeMatches: RegExpExecArray[] = [];
+      while ((match = includeLabelRegex.exec(cleanText)) !== null) {
+        includedLabels.push(match[1]);
+        includeMatches.push(match);
+      }
+
+      // Remove all included label matches from cleanText
+      includeMatches.forEach(m => {
+        cleanText = cleanText.replace(m[0], ' ');
+      });
+
+      // Clean up extra whitespace
+      cleanText = cleanText.replace(/\s+/g, ' ').trim();
+
+      return { includedLabels, excludedLabels, cleanText };
+    };
+    
+    const { includedLabels, excludedLabels, cleanText } = parseSearchText(searchText);
+    
     return items.filter(item => {
-      const titleMatch = item.title.toLowerCase().includes(searchLower);
-      const bodyMatch = item.body?.toLowerCase().includes(searchLower);
-      const userMatch = item.user.login.toLowerCase().includes(searchLower);
-      return titleMatch || bodyMatch || userMatch;
+      // Check label filters first
+      if (includedLabels.length > 0 || excludedLabels.length > 0) {
+        const itemLabels = (item.labels || []).map(label => label.name.toLowerCase());
+        
+        // Check if item has all required included labels
+        if (includedLabels.length > 0) {
+          const hasAllIncludedLabels = includedLabels.every(labelName =>
+            itemLabels.includes(labelName.toLowerCase())
+          );
+          if (!hasAllIncludedLabels) return false;
+        }
+        
+        // Check if item has any excluded labels
+        if (excludedLabels.length > 0) {
+          const hasExcludedLabel = excludedLabels.some(labelName =>
+            itemLabels.includes(labelName.toLowerCase())
+          );
+          if (hasExcludedLabel) return false;
+        }
+      }
+
+      // If there's clean text remaining, search in title, body, and username
+      if (cleanText) {
+        const searchLower = cleanText.toLowerCase();
+        const titleMatch = item.title.toLowerCase().includes(searchLower);
+        const bodyMatch = item.body?.toLowerCase().includes(searchLower);
+        const userMatch = item.user.login.toLowerCase().includes(searchLower);
+        return titleMatch || bodyMatch || userMatch;
+      }
+
+      // If only label filters were used, item passed label checks above
+      return true;
     });
   }, [items, searchText]);
 
@@ -374,9 +454,9 @@ const TimelineView = memo(function TimelineView({
             Search events
           </FormControl.Label>
           <TextInput
-            placeholder="Search events..."
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+                            placeholder="Search events... (try: label:bug or -label:wontfix)"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
             leadingVisual={SearchIcon}
             size="small"
             sx={{ minWidth: '200px' }}
@@ -437,7 +517,7 @@ const TimelineView = memo(function TimelineView({
           <div className="timeline-empty">
             <Text color="fg.muted">
               {hasSearchText 
-                ? `No events found matching "${searchText}". Try a different search term.`
+                ? `No events found matching "${searchText}". Try a different search term or use label:name / -label:name for label filtering.`
                 : !hasRawEvents
                 ? 'No cached events found. Please perform a search in events mode to load events.'
                 : 'No events found for the selected time period. Try adjusting your date range or filters.'}
@@ -447,7 +527,7 @@ const TimelineView = memo(function TimelineView({
                 <Button
                   variant="default"
                   size="small"
-                  onClick={() => setSearchText?.('')}
+                  onClick={clearSearch}
                 >
                   Clear search
                 </Button>

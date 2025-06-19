@@ -211,10 +211,62 @@ export const filterByUser = (
 };
 
 /**
- * Filters GitHub items based on text search in title and body
+ * Parses search text to extract label filters and regular text
+ * 
+ * @param searchText - The search text to parse
+ * @returns Object containing includedLabels, excludedLabels, and cleanText
+ */
+export const parseSearchText = (searchText: string): {
+  includedLabels: string[];
+  excludedLabels: string[];
+  cleanText: string;
+} => {
+  if (!searchText.trim()) {
+    return { includedLabels: [], excludedLabels: [], cleanText: '' };
+  }
+
+  const includedLabels: string[] = [];
+  const excludedLabels: string[] = [];
+  let cleanText = searchText;
+
+  // First, find all -label:{labelname} patterns (excluded labels)
+  const excludeLabelRegex = /-label:([\w-]+)/g;
+  let match;
+  const excludeMatches: RegExpExecArray[] = [];
+  while ((match = excludeLabelRegex.exec(searchText)) !== null) {
+    excludedLabels.push(match[1]);
+    excludeMatches.push(match);
+  }
+
+  // Remove all excluded label matches from cleanText
+  excludeMatches.forEach(m => {
+    cleanText = cleanText.replace(m[0], ' ');
+  });
+
+  // Then find all label:{labelname} patterns (included labels) from the cleaned text
+  const includeLabelRegex = /\blabel:([\w-]+)/g;
+  const includeMatches: RegExpExecArray[] = [];
+  while ((match = includeLabelRegex.exec(cleanText)) !== null) {
+    includedLabels.push(match[1]);
+    includeMatches.push(match);
+  }
+
+  // Remove all included label matches from cleanText
+  includeMatches.forEach(m => {
+    cleanText = cleanText.replace(m[0], ' ');
+  });
+
+  // Clean up extra whitespace
+  cleanText = cleanText.replace(/\s+/g, ' ').trim();
+
+  return { includedLabels, excludedLabels, cleanText };
+};
+
+/**
+ * Filters GitHub items based on text search in title and body, with support for label syntax
  *
  * @param items - Array of GitHub items to filter
- * @param searchText - Text to search for (case-insensitive)
+ * @param searchText - Text to search for, supporting label:{name} and -label:{name} syntax
  * @returns Filtered array of items
  */
 export const filterByText = (
@@ -223,12 +275,40 @@ export const filterByText = (
 ): GitHubItem[] => {
   if (!searchText.trim()) return items;
 
-  const searchLower = searchText.toLowerCase();
+  const { includedLabels, excludedLabels, cleanText } = parseSearchText(searchText);
 
   return items.filter(item => {
-    const titleMatch = item.title.toLowerCase().includes(searchLower);
-    const bodyMatch = item.body?.toLowerCase().includes(searchLower);
-    return titleMatch || bodyMatch;
+    // Check label filters first
+    if (includedLabels.length > 0 || excludedLabels.length > 0) {
+      const itemLabels = (item.labels || []).map(label => label.name.toLowerCase());
+      
+      // Check if item has all required included labels
+      if (includedLabels.length > 0) {
+        const hasAllIncludedLabels = includedLabels.every(labelName =>
+          itemLabels.includes(labelName.toLowerCase())
+        );
+        if (!hasAllIncludedLabels) return false;
+      }
+      
+      // Check if item has any excluded labels
+      if (excludedLabels.length > 0) {
+        const hasExcludedLabel = excludedLabels.some(labelName =>
+          itemLabels.includes(labelName.toLowerCase())
+        );
+        if (hasExcludedLabel) return false;
+      }
+    }
+
+    // If there's clean text remaining, search in title and body
+    if (cleanText) {
+      const searchLower = cleanText.toLowerCase();
+      const titleMatch = item.title.toLowerCase().includes(searchLower);
+      const bodyMatch = item.body?.toLowerCase().includes(searchLower);
+      return titleMatch || bodyMatch;
+    }
+
+    // If only label filters were used, item passed label checks above
+    return true;
   });
 };
 

@@ -1654,14 +1654,14 @@ describe('TimelineView', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('Search events...');
+      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
       expect(searchInput).toBeInTheDocument();
     });
 
     it('should not render search input when setSearchText is not provided', () => {
       renderWithTheme(<TimelineView items={mockItems} />);
 
-      const searchInput = screen.queryByPlaceholderText('Search events...');
+      const searchInput = screen.queryByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
       expect(searchInput).not.toBeInTheDocument();
     });
 
@@ -1674,7 +1674,7 @@ describe('TimelineView', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('Search events...');
+      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
       fireEvent.change(searchInput, { target: { value: 'test search' } });
       
       expect(mockSetSearchText).toHaveBeenCalledWith('test search');
@@ -1689,7 +1689,7 @@ describe('TimelineView', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('Search events...');
+      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
       expect(searchInput).toHaveValue('current search');
     });
 
@@ -1755,7 +1755,7 @@ describe('TimelineView', () => {
       );
 
       expect(
-        screen.getByText('No events found matching "nonexistent". Try a different search term.')
+        screen.getByText('No events found matching "nonexistent". Try a different search term or use label:name / -label:name for label filtering.')
       ).toBeInTheDocument();
     });
 
@@ -1833,13 +1833,13 @@ describe('TimelineView', () => {
       );
 
       // Search input should still be visible
-      const searchInput = screen.getByPlaceholderText('Search events...');
+      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
       expect(searchInput).toBeInTheDocument();
       expect(searchInput).toHaveValue('test');
 
       // Should show search-specific empty message
       expect(
-        screen.getByText('No events found matching "test". Try a different search term.')
+        screen.getByText('No events found matching "test". Try a different search term or use label:name / -label:name for label filtering.')
       ).toBeInTheDocument();
 
       // Should show clear search button
@@ -1860,5 +1860,136 @@ describe('TimelineView', () => {
       expect(screen.getByText('Test Issue')).toBeInTheDocument();
       expect(screen.getByText('Test Pull Request')).toBeInTheDocument();
     });
+
+    // Label search functionality tests
+    const mockItemsWithLabels: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        title: 'Bug in authentication',
+        body: 'Authentication fails randomly',
+        labels: [
+          { name: 'bug', color: 'red' },
+          { name: 'critical', color: 'orange' },
+        ],
+      },
+      {
+        ...mockItems[1],
+        title: 'Feature request: dark mode',
+        body: 'Add dark mode support',
+        labels: [
+          { name: 'enhancement', color: 'blue' },
+          { name: 'good-first-issue', color: 'green' },
+        ],
+      },
+      {
+        ...mockItems[0],
+        title: 'Performance issue in search',
+        body: 'Search is slow with large datasets',
+        labels: [
+          { name: 'bug', color: 'red' },
+          { name: 'performance', color: 'orange' },
+          { name: 'wontfix', color: 'gray' },
+        ],
+      },
+    ];
+
+    it('should filter items by included label', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithLabels} 
+          searchText="label:bug"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Bug in authentication')).toBeInTheDocument();
+      expect(screen.getByText('Performance issue in search')).toBeInTheDocument();
+      expect(screen.queryByText('Feature request: dark mode')).not.toBeInTheDocument();
+    });
+
+    it('should filter items by excluded label', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithLabels} 
+          searchText="-label:wontfix"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Bug in authentication')).toBeInTheDocument();
+      expect(screen.getByText('Feature request: dark mode')).toBeInTheDocument();
+      expect(screen.queryByText('Performance issue in search')).not.toBeInTheDocument();
+    });
+
+    it('should filter items by multiple included labels (AND logic)', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithLabels} 
+          searchText="label:bug label:critical"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Bug in authentication')).toBeInTheDocument();
+      expect(screen.queryByText('Performance issue in search')).not.toBeInTheDocument();
+      expect(screen.queryByText('Feature request: dark mode')).not.toBeInTheDocument();
+    });
+
+    it('should filter items by mixed included and excluded labels', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithLabels} 
+          searchText="label:bug -label:wontfix"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Bug in authentication')).toBeInTheDocument();
+      expect(screen.queryByText('Performance issue in search')).not.toBeInTheDocument();
+      expect(screen.queryByText('Feature request: dark mode')).not.toBeInTheDocument();
+    });
+
+    it('should combine label filters with text search', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithLabels} 
+          searchText="authentication label:bug"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Bug in authentication')).toBeInTheDocument();
+      expect(screen.queryByText('Performance issue in search')).not.toBeInTheDocument();
+      expect(screen.queryByText('Feature request: dark mode')).not.toBeInTheDocument();
+    });
+
+    it('should handle hyphenated label names', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithLabels} 
+          searchText="label:good-first-issue"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(screen.getByText('Feature request: dark mode')).toBeInTheDocument();
+      expect(screen.queryByText('Bug in authentication')).not.toBeInTheDocument();
+      expect(screen.queryByText('Performance issue in search')).not.toBeInTheDocument();
+    });
+
+    it('should show empty state with label syntax hint when no matches found', () => {
+      renderWithTheme(
+        <TimelineView 
+          items={mockItemsWithLabels} 
+          searchText="label:nonexistent"
+          setSearchText={mockSetSearchText}
+        />
+      );
+
+      expect(
+        screen.getByText('No events found matching "label:nonexistent". Try a different search term or use label:name / -label:name for label filtering.')
+      ).toBeInTheDocument();
+    });
   });
 });
+ 

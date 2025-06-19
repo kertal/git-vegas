@@ -35,6 +35,7 @@ import remarkGfm from 'remark-gfm';
 import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import FiltersPanel from './FiltersPanel';
 import { ResultsContainer } from './ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
@@ -334,6 +335,13 @@ const ResultsList = memo(function ResultsList({
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
 
+  // Use debounced search hook
+  const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
+    searchText,
+    setSearchText,
+    300
+  );
+
   // Helper to check if any filters are configured
   const hasConfiguredFilters =
     filter !== 'all' ||
@@ -574,9 +582,9 @@ const ResultsList = memo(function ResultsList({
                   Search issues and PRs
                 </FormControl.Label>
                 <TextInput
-                  placeholder="Search issues and PRs..."
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder="Search issues and PRs... (try: label:bug or -label:wontfix)"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
                   leadingVisual={SearchIcon}
                   size="small"
                   sx={{ minWidth: '200px' }}
@@ -667,7 +675,7 @@ const ResultsList = memo(function ResultsList({
                       </Text>
                       <Text sx={{ fontSize: 1, color: 'fg.muted', mb: 3 }}>
                         {searchText 
-                          ? `No items found matching "${searchText}". Try a different search term or adjust your filters.`
+                          ? `No items found matching "${searchText}". Try a different search term, use label:name or -label:name for label filtering, or adjust your filters.`
                           : `Your current filters don't match any of the ${results.length} available items.`}
                       </Text>
                       {hasActiveFilters && (
@@ -682,7 +690,7 @@ const ResultsList = memo(function ResultsList({
                       {searchText && (
                         <Button
                           variant="default"
-                          onClick={() => setSearchText('')}
+                          onClick={clearSearch}
                           sx={{ ...buttonStyles, ml: 2 }}
                         >
                           Clear Search

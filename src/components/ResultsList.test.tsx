@@ -361,7 +361,7 @@ describe('ResultsList Search Functionality', () => {
       { wrapper: TestWrapper }
     );
 
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
     expect(searchInput).toBeInTheDocument();
   });
 
@@ -377,7 +377,7 @@ describe('ResultsList Search Functionality', () => {
       { wrapper: TestWrapper }
     );
 
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
     fireEvent.change(searchInput, { target: { value: 'test search' } });
     
     expect(mockSetSearchText).toHaveBeenCalledWith('test search');
@@ -396,7 +396,7 @@ describe('ResultsList Search Functionality', () => {
       { wrapper: TestWrapper }
     );
 
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
     expect(searchInput).toHaveValue('current search');
   });
 
@@ -415,7 +415,7 @@ describe('ResultsList Search Functionality', () => {
     );
 
     expect(
-      screen.getByText('No items found matching "nonexistent". Try a different search term or adjust your filters.')
+      screen.getByText('No items found matching "nonexistent". Try a different search term, use label:name or -label:name for label filtering, or adjust your filters.')
     ).toBeInTheDocument();
   });
 
@@ -472,13 +472,13 @@ describe('ResultsList Search Functionality', () => {
     );
 
     // Search input should still be visible
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs...');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
     expect(searchInput).toBeInTheDocument();
     expect(searchInput).toHaveValue('test');
 
     // Should show search-specific empty message
     expect(
-      screen.getByText('No items found matching "test". Try a different search term or adjust your filters.')
+      screen.getByText('No items found matching "test". Try a different search term, use label:name or -label:name for label filtering, or adjust your filters.')
     ).toBeInTheDocument();
   });
 });
