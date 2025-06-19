@@ -95,6 +95,7 @@ export const StorageManager = memo(function StorageManager({
   return (
     <Dialog
       onClose={onClose}
+      title="Storage Manager"
       sx={{
         width: ['90%', '80%', '700px'],
         maxWidth: '900px',
@@ -103,7 +104,6 @@ export const StorageManager = memo(function StorageManager({
         overflow: 'hidden',
       }}
     >
-      <Dialog.Header>Storage Manager</Dialog.Header>
 
       <Box sx={{ p: 3, maxHeight: 'calc(80vh - 120px)', overflow: 'auto' }}>
         {/* Storage Statistics */}

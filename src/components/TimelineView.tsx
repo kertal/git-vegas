@@ -399,6 +399,14 @@ const TimelineView = memo(function TimelineView({
       headerRight={headerRight}
       className="timeline-view"
     >
+      {/* API Limitation Note */}
+      <Box sx={{ p: 2, mb: 2, bg: 'attention.subtle', borderRadius: 2 }}>
+        <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
+          <strong>Note:</strong> Timeline includes up to 300 events from the past 30 days. 
+          Event latency can be 30s to 6h depending on time of day.
+        </Text>
+      </Box>
+
       {/* Timeline content */}
       <div className="timeline-content">
         {viewMode === 'raw' ? (

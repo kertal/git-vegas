@@ -68,13 +68,13 @@ const SettingsDialog = memo(function SettingsDialog({
   return (
     <Dialog
       onClose={onDismiss}
+      title="Settings"
       sx={{
         width: ['90%', '80%', '600px'],
         maxWidth: '800px',
         margin: '0 auto',
       }}
     >
-      <Dialog.Header>Settings</Dialog.Header>
 
       <Box sx={{ p: 3 }}>
         <Box
