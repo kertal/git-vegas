@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useEffect } from 'react';
 import {
   Dialog,
   Box,
@@ -6,6 +6,7 @@ import {
   Text,
   FormControl,
   TextInput,
+  Button,
 } from '@primer/react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFormContext } from '../App';
@@ -21,53 +22,72 @@ const SettingsDialog = memo(function SettingsDialog({
     'session'
   );
 
-  const handleStorageChange = useCallback((newStorage: string) => {
-    setTokenStorage(newStorage);
+  // Local state for form values (before saving)
+  const [localToken, setLocalToken] = useState('');
+  const [localTokenStorage, setLocalTokenStorage] = useState('session');
 
-    // Move token to selected storage
-    if (newStorage === 'local') {
-      const sessionToken = sessionStorage.getItem('github-token');
-      if (sessionToken) {
-        localStorage.setItem('github-token', sessionToken);
-        sessionStorage.removeItem('github-token');
-      }
-    } else {
-      const localToken = localStorage.getItem('github-token');
-      if (localToken) {
-        sessionStorage.setItem('github-token', localToken);
-        localStorage.removeItem('github-token');
-      }
+  // Initialize local state when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalToken(githubToken);
+      setLocalTokenStorage(tokenStorage);
     }
-  }, [setTokenStorage]);
+  }, [isOpen, githubToken, tokenStorage]);
 
-  const handleTokenChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newToken = e.target.value;
-      setGithubToken(newToken);
+  const handleSave = useCallback(() => {
+    // Apply token changes
+    setGithubToken(localToken);
 
-      // Store in selected storage
-      if (tokenStorage === 'local') {
-        if (newToken) {
-          localStorage.setItem('github-token', newToken);
-        } else {
-          localStorage.removeItem('github-token');
-        }
-      } else {
-        if (newToken) {
-          sessionStorage.setItem('github-token', newToken);
-        } else {
+    // Apply storage changes
+    if (localTokenStorage !== tokenStorage) {
+      setTokenStorage(localTokenStorage);
+
+      // Move token to selected storage
+      if (localTokenStorage === 'local') {
+        const sessionToken = sessionStorage.getItem('github-token');
+        if (sessionToken) {
+          localStorage.setItem('github-token', sessionToken);
           sessionStorage.removeItem('github-token');
         }
+      } else {
+        const localToken = localStorage.getItem('github-token');
+        if (localToken) {
+          sessionStorage.setItem('github-token', localToken);
+          localStorage.removeItem('github-token');
+        }
       }
-    },
-    [setGithubToken, tokenStorage]
-  );
+    }
+
+    // Save token to the selected storage
+    if (localTokenStorage === 'local') {
+      if (localToken) {
+        localStorage.setItem('github-token', localToken);
+      } else {
+        localStorage.removeItem('github-token');
+      }
+    } else {
+      if (localToken) {
+        sessionStorage.setItem('github-token', localToken);
+      } else {
+        sessionStorage.removeItem('github-token');
+      }
+    }
+
+    onDismiss();
+  }, [localToken, localTokenStorage, tokenStorage, setGithubToken, setTokenStorage, onDismiss]);
+
+  const handleCancel = useCallback(() => {
+    // Reset local state to current values
+    setLocalToken(githubToken);
+    setLocalTokenStorage(tokenStorage);
+    onDismiss();
+  }, [githubToken, tokenStorage, onDismiss]);
 
   if (!isOpen) return null;
 
   return (
     <Dialog
-      onClose={onDismiss}
+      onClose={handleCancel}
       title="Settings"
       sx={{
         width: ['90%', '80%', '600px'],
@@ -106,8 +126,8 @@ const SettingsDialog = memo(function SettingsDialog({
           </FormControl.Label>
           <TextInput
             type="password"
-            value={githubToken}
-            onChange={handleTokenChange}
+            value={localToken}
+            onChange={(e) => setLocalToken(e.target.value)}
             placeholder="GitHub personal access token"
             block
             aria-describedby="token-help"
@@ -119,7 +139,7 @@ const SettingsDialog = memo(function SettingsDialog({
           </FormControl.Caption>
         </FormControl>
 
-        <FormControl>
+        <FormControl sx={{ mb: 4 }}>
           <FormControl.Label>Token Storage Location</FormControl.Label>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Box
@@ -135,8 +155,8 @@ const SettingsDialog = memo(function SettingsDialog({
                 type="radio"
                 name="storage"
                 value="session"
-                checked={tokenStorage === 'session'}
-                onChange={e => handleStorageChange(e.target.value)}
+                checked={localTokenStorage === 'session'}
+                onChange={(e) => setLocalTokenStorage(e.target.value)}
               />
               Browser Session (Recommended)
             </Box>
@@ -157,8 +177,8 @@ const SettingsDialog = memo(function SettingsDialog({
                 type="radio"
                 name="storage"
                 value="local"
-                checked={tokenStorage === 'local'}
-                onChange={e => handleStorageChange(e.target.value)}
+                checked={localTokenStorage === 'local'}
+                onChange={(e) => setLocalTokenStorage(e.target.value)}
               />
               Local Storage
             </Box>
@@ -168,6 +188,26 @@ const SettingsDialog = memo(function SettingsDialog({
             </Text>
           </Box>
         </FormControl>
+
+        {/* Action buttons */}
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: 2,
+            mb: 3,
+            pt: 3,
+            borderTop: '1px solid',
+            borderColor: 'border.default',
+          }}
+        >
+          <Button variant="default" onClick={handleCancel}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleSave}>
+            Save Settings
+          </Button>
+        </Box>
 
         <Box
           sx={{

@@ -394,7 +394,7 @@ describe('App Component', () => {
       });
     });
 
-    it('saves token when entered', async () => {
+    it('saves token when save button is clicked', async () => {
       // Mock sessionStorage as the default storage
       const sessionStorageMock = {
         getItem: vi.fn(),
@@ -415,8 +415,51 @@ describe('App Component', () => {
         );
         fireEvent.change(tokenInput, { target: { value: 'test-token' } });
 
-        // Token is saved to sessionStorage by default (not localStorage)
+        // Token should NOT be saved immediately when typing
+        expect(sessionStorageMock.setItem).not.toHaveBeenCalledWith(
+          'github-token',
+          'test-token'
+        );
+
+        // Click the Save Settings button
+        const saveButton = screen.getByText('Save Settings');
+        fireEvent.click(saveButton);
+
+        // Token is saved to sessionStorage after clicking save
         expect(sessionStorageMock.setItem).toHaveBeenCalledWith(
+          'github-token',
+          'test-token'
+        );
+      });
+    });
+
+    it('discards changes when cancel button is clicked', async () => {
+      // Mock sessionStorage as the default storage
+      const sessionStorageMock = {
+        getItem: vi.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+      };
+      Object.defineProperty(window, 'sessionStorage', {
+        value: sessionStorageMock,
+      });
+
+      render(<App />, { wrapper: TestWrapper });
+
+      fireEvent.click(screen.getByLabelText('Settings'));
+
+      await waitFor(() => {
+        const tokenInput = screen.getByLabelText(
+          'Personal Access Token (Optional)'
+        );
+        fireEvent.change(tokenInput, { target: { value: 'test-token' } });
+
+        // Click the Cancel button
+        const cancelButton = screen.getByText('Cancel');
+        fireEvent.click(cancelButton);
+
+        // Token should NOT be saved when canceling
+        expect(sessionStorageMock.setItem).not.toHaveBeenCalledWith(
           'github-token',
           'test-token'
         );
