@@ -1,5 +1,5 @@
-import { memo, useMemo } from 'react';
-import { Text, Avatar, Link, Button, ButtonGroup, ActionMenu, ActionList, Flash, Checkbox, Box, Token } from '@primer/react';
+import { memo, useMemo, useState } from 'react';
+import { Text, Avatar, Link, Button, ButtonGroup, ActionMenu, ActionList, Flash, Checkbox, Box, Token, IconButton, Dialog } from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -10,10 +10,15 @@ import {
   RepoIcon,
   EyeIcon,
   PasteIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { ResultsContainer } from './ResultsContainer';
+import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import './TimelineView.css';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
@@ -141,6 +146,52 @@ const TimelineView = memo(function TimelineView({
       // Some or none are selected, select all
       selectAllItems?.();
     }
+  };
+
+  // Description dialog state and handlers
+  const [selectedItemForDialog, setSelectedItemForDialog] = useState<GitHubItem | null>(null);
+
+  // Single item clipboard copy handler
+  const copySingleItemToClipboard = async (item: GitHubItem) => {
+    const result = await copyToClipboard([item], {
+      isCompactView: true, // Use compact format for single items
+      onSuccess: () => {
+        // Success feedback is handled by the clipboard utility
+      },
+      onError: (error: Error) => {
+        console.error('Failed to copy item:', error);
+      },
+    });
+
+    return result;
+  };
+
+  // Dialog navigation handlers
+  const handlePreviousItem = () => {
+    if (!selectedItemForDialog) return;
+    const currentIndex = sortedItems.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
+    if (currentIndex > 0) {
+      setSelectedItemForDialog(sortedItems[currentIndex - 1]);
+    }
+  };
+
+  const handleNextItem = () => {
+    if (!selectedItemForDialog) return;
+    const currentIndex = sortedItems.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
+    if (currentIndex < sortedItems.length - 1) {
+      setSelectedItemForDialog(sortedItems[currentIndex + 1]);
+    }
+  };
+
+  const getCurrentItemIndex = () => {
+    if (!selectedItemForDialog) return -1;
+    return sortedItems.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
   };
 
   if (sortedItems.length === 0) {
@@ -576,6 +627,14 @@ const TimelineView = memo(function TimelineView({
                                         }
                                       )}
                                     </Text>
+
+                                    {/* Action buttons */}
+                                    {group.mostRecent.body && (
+                                      <div>
+                                        <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(group.mostRecent)} />
+                                        <IconButton icon={PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(group.mostRecent)} />
+                                      </div>
+                                    )}
                                   </div>
 
 
@@ -670,12 +729,81 @@ const TimelineView = memo(function TimelineView({
                       addSuffix: true,
                     })}
                   </Text>
+
+                  {/* Action buttons */}
+                  {item.body && (
+                    <div>
+                      <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)} />
+                      <IconButton icon={PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)} />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </>
         )}
       </div>
+
+      {/* Description Dialog */}
+      {selectedItemForDialog && (
+        <Dialog
+          onClose={() => setSelectedItemForDialog(null)}
+          role="dialog"
+          title={(
+            <Box
+              sx={{ display: 'flex', p: 2, alignItems: 'center', gap: 2, width: '100%' }}
+            >
+              {selectedItemForDialog.pull_request ? (
+                <GitPullRequestIcon size={16} />
+              ) : (
+                <IssueOpenedIcon size={16} />
+              )}
+              <Text sx={{ fontWeight: 'bold', flex: 1 }}>
+                {selectedItemForDialog.title}
+              </Text>
+            </Box>
+          )}
+          renderFooter={() => (
+            <div>
+              <IconButton
+                icon={ChevronLeftIcon}
+                aria-label="Previous item"
+                onClick={handlePreviousItem}
+                disabled={getCurrentItemIndex() <= 0}
+                sx={{ color: getCurrentItemIndex() > 0 ? 'fg.default' : 'fg.muted' }}
+              />
+              <IconButton
+                icon={ChevronRightIcon}
+                aria-label="Next item"
+                onClick={handleNextItem}
+                disabled={getCurrentItemIndex() >= sortedItems.length - 1}
+                sx={{ color: getCurrentItemIndex() < sortedItems.length - 1 ? 'fg.default' : 'fg.muted' }}
+              />
+            </div>
+          )}
+        >
+          <Box
+            sx={{
+              p: 3,
+              maxHeight: '70vh',
+              overflow: 'auto',
+            }}
+          >
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ href, children }) => (
+                  <Link href={href} target="_blank" rel="noopener noreferrer">
+                    {children}
+                  </Link>
+                ),
+              }}
+            >
+              {selectedItemForDialog.body || 'No description available.'}
+            </ReactMarkdown>
+          </Box>
+        </Dialog>
+      )}
     </ResultsContainer>
   );
 });
