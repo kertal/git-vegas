@@ -832,6 +832,24 @@ describe('resultsUtils', () => {
         cleanText: '',
       });
     });
+
+    it('should handle labels with colons and periods', () => {
+      const result = parseSearchText('label:Team:DataDiscovery -label:v9.0.0');
+      expect(result).toEqual({
+        includedLabels: ['Team:DataDiscovery'],
+        excludedLabels: ['v9.0.0'],
+        cleanText: '',
+      });
+    });
+
+    it('should handle complex label names with multiple special characters', () => {
+      const result = parseSearchText('label:api.v2:experimental -label:config.json.deprecated');
+      expect(result).toEqual({
+        includedLabels: ['api.v2:experimental'],
+        excludedLabels: ['config.json.deprecated'],
+        cleanText: '',
+      });
+    });
   });
 
   describe('filterByText with label syntax', () => {
@@ -941,6 +959,41 @@ describe('resultsUtils', () => {
       const result = filterByText(mockItemsWithLabels, 'label:good-first-issue');
       expect(result).toHaveLength(1);
       expect(result[0].title).toBe('Feature request: dark mode');
+    });
+
+    it('should handle labels with colons and periods', () => {
+      const itemsWithComplexLabels: GitHubItem[] = [
+        {
+          ...mockGitHubItems[0],
+          title: 'Team DataDiscovery Issue',
+          body: 'Issue for team data discovery',
+          labels: [
+            { name: 'Team:DataDiscovery', color: 'blue' },
+            { name: 'priority:high', color: 'red' },
+          ],
+        },
+        {
+          ...mockGitHubItems[1],
+          title: 'Version 9.0.0 Release',
+          body: 'Release notes for version 9.0.0',
+          labels: [
+            { name: 'v9.0.0', color: 'green' },
+            { name: 'release.candidate', color: 'orange' },
+          ],
+        },
+      ];
+
+      const result = filterByText(itemsWithComplexLabels, 'label:Team:DataDiscovery');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Team DataDiscovery Issue');
+
+      const versionResult = filterByText(itemsWithComplexLabels, 'label:v9.0.0');
+      expect(versionResult).toHaveLength(1);
+      expect(versionResult[0].title).toBe('Version 9.0.0 Release');
+
+      const periodResult = filterByText(itemsWithComplexLabels, 'label:release.candidate');
+      expect(periodResult).toHaveLength(1);
+      expect(periodResult[0].title).toBe('Version 9.0.0 Release');
     });
 
     it('should work with regular text search when no label syntax present', () => {

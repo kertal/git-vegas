@@ -342,6 +342,190 @@ describe('ResultsList Undefined Arrays Handling', () => {
   });
 });
 
+describe('ResultsList Label Click Functionality', () => {
+  const mockSetSearchText = vi.fn();
+
+  beforeEach(() => {
+    mockSetSearchText.mockClear();
+  });
+
+  it('should add label to search text when label is clicked', () => {
+    const mockItemsWithLabels: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        labels: [
+          { name: 'bug', color: 'red' },
+          { name: 'enhancement', color: 'blue' },
+        ],
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithLabels,
+          filteredResults: mockItemsWithLabels,
+          searchText: '',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the 'bug' label
+    const bugLabel = screen.getByText('bug');
+    fireEvent.click(bugLabel);
+
+    // Verify setSearchText was called with the label syntax
+    expect(mockSetSearchText).toHaveBeenCalledWith('label:bug');
+  });
+
+  it('should append label to existing search text when label is clicked', () => {
+    const mockItemsWithLabels: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        labels: [
+          { name: 'bug', color: 'red' },
+          { name: 'enhancement', color: 'blue' },
+        ],
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithLabels,
+          filteredResults: mockItemsWithLabels,
+          searchText: 'existing search',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the 'bug' label
+    const bugLabel = screen.getByText('bug');
+    fireEvent.click(bugLabel);
+
+    // Verify setSearchText was called with the existing search plus the label
+    expect(mockSetSearchText).toHaveBeenCalledWith('existing search label:bug');
+  });
+
+  it('should not add duplicate label to search text', () => {
+    const mockItemsWithLabels: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        labels: [
+          { name: 'bug', color: 'red' },
+          { name: 'enhancement', color: 'blue' },
+        ],
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithLabels,
+          filteredResults: mockItemsWithLabels,
+          searchText: 'label:bug existing search',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the 'bug' label
+    const bugLabel = screen.getByText('bug');
+    fireEvent.click(bugLabel);
+
+    // Verify setSearchText was NOT called since the label already exists
+    expect(mockSetSearchText).not.toHaveBeenCalled();
+  });
+
+  it('should handle labels with special characters', () => {
+    const mockItemsWithLabels: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        labels: [
+          { name: 'good-first-issue', color: 'green' },
+          { name: 'help.wanted', color: 'yellow' },
+        ],
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithLabels,
+          filteredResults: mockItemsWithLabels,
+          searchText: '',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the 'good-first-issue' label
+    const goodFirstIssueLabel = screen.getByText('good-first-issue');
+    fireEvent.click(goodFirstIssueLabel);
+
+    // Verify setSearchText was called with the correct label syntax
+    expect(mockSetSearchText).toHaveBeenCalledWith('label:good-first-issue');
+  });
+
+  it('should handle labels with colons and periods', () => {
+    const mockItemsWithComplexLabels: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        labels: [
+          { name: 'Team:DataDiscovery', color: 'blue' },
+          { name: 'v9.0.0', color: 'green' },
+          { name: 'api.v2:experimental', color: 'orange' },
+        ],
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithComplexLabels,
+          filteredResults: mockItemsWithComplexLabels,
+          searchText: '',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Test clicking on Team:DataDiscovery label
+    const teamLabel = screen.getByText('Team:DataDiscovery');
+    fireEvent.click(teamLabel);
+    expect(mockSetSearchText).toHaveBeenCalledWith('label:Team:DataDiscovery');
+
+    // Reset mock and test version label
+    mockSetSearchText.mockClear();
+    const versionLabel = screen.getByText('v9.0.0');
+    fireEvent.click(versionLabel);
+    expect(mockSetSearchText).toHaveBeenCalledWith('label:v9.0.0');
+
+    // Reset mock and test complex label
+    mockSetSearchText.mockClear();
+    const apiLabel = screen.getByText('api.v2:experimental');
+    fireEvent.click(apiLabel);
+    expect(mockSetSearchText).toHaveBeenCalledWith('label:api.v2:experimental');
+  });
+});
+
 describe('ResultsList Search Functionality', () => {
   const mockSetSearchText = vi.fn();
 

@@ -230,7 +230,7 @@ export const parseSearchText = (searchText: string): {
   let cleanText = searchText;
 
   // First, find all -label:{labelname} patterns (excluded labels)
-  const excludeLabelRegex = /-label:([\w-]+)/g;
+  const excludeLabelRegex = /-label:([^\s]+)/g;
   let match;
   const excludeMatches: RegExpExecArray[] = [];
   while ((match = excludeLabelRegex.exec(searchText)) !== null) {
@@ -244,7 +244,7 @@ export const parseSearchText = (searchText: string): {
   });
 
   // Then find all label:{labelname} patterns (included labels) from the cleaned text
-  const includeLabelRegex = /\blabel:([\w-]+)/g;
+  const includeLabelRegex = /\blabel:([^\s]+)/g;
   const includeMatches: RegExpExecArray[] = [];
   while ((match = includeLabelRegex.exec(cleanText)) !== null) {
     includedLabels.push(match[1]);

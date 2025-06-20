@@ -1010,9 +1010,20 @@ const ResultsList = memo(function ResultsList({
                                 cursor: 'pointer',
                               }}
                               title={l.description || l.name}
-                              onClick={() =>
-                                setIncludedLabels(prev => [...prev, l.name])
-                              }
+                              onClick={() => {
+                                // Add label to search text in format label:{labelName}
+                                const labelSearchTerm = `label:${l.name}`;
+                                const currentSearch = searchText.trim();
+                                
+                                // Check if this label is already in the search text
+                                const labelRegex = new RegExp(`\\blabel:${l.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
+                                if (!labelRegex.test(currentSearch)) {
+                                  const newSearchText = currentSearch 
+                                    ? `${currentSearch} ${labelSearchTerm}`
+                                    : labelSearchTerm;
+                                  setSearchText(newSearchText);
+                                }
+                              }}
                             >
                               {l.name}
                             </Label>
