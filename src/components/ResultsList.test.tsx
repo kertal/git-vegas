@@ -361,11 +361,11 @@ describe('ResultsList Search Functionality', () => {
       { wrapper: TestWrapper }
     );
 
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs');
     expect(searchInput).toBeInTheDocument();
   });
 
-  it('should call setSearchText when typing in search input', () => {
+  it('should call setSearchText when typing in search input', async () => {
     render(
       <ResultsList
         useResultsContext={() => ({
@@ -377,10 +377,13 @@ describe('ResultsList Search Functionality', () => {
       { wrapper: TestWrapper }
     );
 
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs');
     fireEvent.change(searchInput, { target: { value: 'test search' } });
     
-    expect(mockSetSearchText).toHaveBeenCalledWith('test search');
+    // Wait for debounced search to trigger
+    await vi.waitFor(() => {
+      expect(mockSetSearchText).toHaveBeenCalledWith('test search');
+    });
   });
 
   it('should display current search text in input', () => {
@@ -396,7 +399,7 @@ describe('ResultsList Search Functionality', () => {
       { wrapper: TestWrapper }
     );
 
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs');
     expect(searchInput).toHaveValue('current search');
   });
 
@@ -472,7 +475,7 @@ describe('ResultsList Search Functionality', () => {
     );
 
     // Search input should still be visible
-    const searchInput = screen.getByPlaceholderText('Search issues and PRs... (try: label:bug or -label:wontfix)');
+    const searchInput = screen.getByPlaceholderText('Search issues and PRs');
     expect(searchInput).toBeInTheDocument();
     expect(searchInput).toHaveValue('test');
 

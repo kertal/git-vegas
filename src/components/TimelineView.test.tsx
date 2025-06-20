@@ -1654,18 +1654,18 @@ describe('TimelineView', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('Search events');
+      const searchInput = screen.getByPlaceholderText('Search events...');
       expect(searchInput).toBeInTheDocument();
     });
 
     it('should not render search input when setSearchText is not provided', () => {
       renderWithTheme(<TimelineView items={mockItems} />);
 
-      const searchInput = screen.queryByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
+      const searchInput = screen.queryByPlaceholderText('Search events...');
       expect(searchInput).not.toBeInTheDocument();
     });
 
-    it('should call setSearchText when typing in search input', () => {
+    it('should call setSearchText when typing in search input', async () => {
       renderWithTheme(
         <TimelineView 
           items={mockItems} 
@@ -1674,10 +1674,13 @@ describe('TimelineView', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
+      const searchInput = screen.getByPlaceholderText('Search events...');
       fireEvent.change(searchInput, { target: { value: 'test search' } });
       
-      expect(mockSetSearchText).toHaveBeenCalledWith('test search');
+      // Wait for debounced search to trigger
+      await vi.waitFor(() => {
+        expect(mockSetSearchText).toHaveBeenCalledWith('test search');
+      });
     });
 
     it('should display current search text in input', () => {
@@ -1689,7 +1692,7 @@ describe('TimelineView', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
+      const searchInput = screen.getByPlaceholderText('Search events...');
       expect(searchInput).toHaveValue('current search');
     });
 
@@ -1833,7 +1836,7 @@ describe('TimelineView', () => {
       );
 
       // Search input should still be visible
-      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
+      const searchInput = screen.getByPlaceholderText('Search events...');
       expect(searchInput).toBeInTheDocument();
       expect(searchInput).toHaveValue('test');
 

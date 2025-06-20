@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Git Vegas - GitHub Search Tool',
         short_name: 'Git Vegas',
-        description: 'A powerful tool for searching GitHub issues and pull requests',
+        description: 'A 777 tool for searching GitHub issues and pull requests',
         theme_color: '#0969da',
         background_color: '#ffffff',
         display: 'standalone',

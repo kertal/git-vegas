@@ -35,7 +35,8 @@ export const useDebouncedSearch = (
   // Function to clear the search
   const clearSearch = useCallback(() => {
     setInputValue('');
-  }, []);
+    onSearchChange(''); // Immediately clear the search without debounce
+  }, [onSearchChange]);
 
   // Function to handle input changes
   const handleInputChange = useCallback((value: string) => {
