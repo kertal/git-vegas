@@ -40,6 +40,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
+import { parseSearchText } from '../utils/resultsUtils';
 import './TimelineView.css';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
@@ -91,52 +92,7 @@ const TimelineView = memo(function TimelineView({
       return items;
     }
 
-    // Parse search text for label filters
-    const parseSearchText = (
-      searchText: string
-    ): {
-      includedLabels: string[];
-      excludedLabels: string[];
-      cleanText: string;
-    } => {
-      const includedLabels: string[] = [];
-      const excludedLabels: string[] = [];
-      let cleanText = searchText;
-
-      // First, find all -label:{labelname} patterns (excluded labels)
-      const excludeLabelRegex = /-label:([^\s]+)/g;
-      let match;
-      const excludeMatches: RegExpExecArray[] = [];
-      while ((match = excludeLabelRegex.exec(searchText)) !== null) {
-        excludedLabels.push(match[1]);
-        excludeMatches.push(match);
-      }
-
-      // Remove all excluded label matches from cleanText
-      excludeMatches.forEach(m => {
-        cleanText = cleanText.replace(m[0], ' ');
-      });
-
-      // Then find all label:{labelname} patterns (included labels) from the cleaned text
-      const includeLabelRegex = /\blabel:([^\s]+)/g;
-      const includeMatches: RegExpExecArray[] = [];
-      while ((match = includeLabelRegex.exec(cleanText)) !== null) {
-        includedLabels.push(match[1]);
-        includeMatches.push(match);
-      }
-
-      // Remove all included label matches from cleanText
-      includeMatches.forEach(m => {
-        cleanText = cleanText.replace(m[0], ' ');
-      });
-
-      // Clean up extra whitespace
-      cleanText = cleanText.replace(/\s+/g, ' ').trim();
-
-      return { includedLabels, excludedLabels, cleanText };
-    };
-
-    const { includedLabels, excludedLabels, cleanText } =
+    const { includedLabels, excludedLabels, userFilters, cleanText } =
       parseSearchText(searchText);
 
     return items.filter(item => {
@@ -163,6 +119,15 @@ const TimelineView = memo(function TimelineView({
         }
       }
 
+      // Check user filters
+      if (userFilters.length > 0) {
+        const itemUser = item.user.login.toLowerCase();
+        const matchesUser = userFilters.some(userFilter =>
+          itemUser === userFilter.toLowerCase()
+        );
+        if (!matchesUser) return false;
+      }
+
       // If there's clean text remaining, search in title, body, and username
       if (cleanText) {
         const searchLower = cleanText.toLowerCase();
@@ -172,7 +137,7 @@ const TimelineView = memo(function TimelineView({
         return titleMatch || bodyMatch || userMatch;
       }
 
-      // If only label filters were used, item passed label checks above
+      // If only label/user filters were used, item passed checks above
       return true;
     });
   }, [items, searchText]);
@@ -871,6 +836,21 @@ const TimelineView = memo(function TimelineView({
                                         size={14}
                                         alt={group.mostRecent.user.login}
                                         className="timeline-item-avatar"
+                                        sx={{ cursor: 'pointer' }}
+                                        onClick={() => {
+                                          // Add user to search text in format user:{username}
+                                          const userSearchTerm = `user:${group.mostRecent.user.login}`;
+                                          const currentSearch = searchText.trim();
+                                          
+                                          // Check if this user is already in the search text
+                                          const userRegex = new RegExp(`\\buser:${group.mostRecent.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
+                                          if (!userRegex.test(currentSearch)) {
+                                            const newSearchText = currentSearch 
+                                              ? `${currentSearch} ${userSearchTerm}`
+                                              : userSearchTerm;
+                                            setSearchText?.(newSearchText);
+                                          }
+                                        }}
                                       />
 
                                       {/* User */}
@@ -996,6 +976,21 @@ const TimelineView = memo(function TimelineView({
                     size={16}
                     alt={item.user.login}
                     className="timeline-item-avatar"
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      // Add user to search text in format user:{username}
+                      const userSearchTerm = `user:${item.user.login}`;
+                      const currentSearch = searchText.trim();
+                      
+                      // Check if this user is already in the search text
+                      const userRegex = new RegExp(`\\buser:${item.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
+                      if (!userRegex.test(currentSearch)) {
+                        const newSearchText = currentSearch 
+                          ? `${currentSearch} ${userSearchTerm}`
+                          : userSearchTerm;
+                        setSearchText?.(newSearchText);
+                      }
+                    }}
                   />
 
                   {/* User and action */}

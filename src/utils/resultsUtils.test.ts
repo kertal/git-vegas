@@ -748,6 +748,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: [],
         excludedLabels: [],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -757,6 +758,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: [],
         excludedLabels: [],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -766,6 +768,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['bug'],
         excludedLabels: [],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -775,6 +778,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: [],
         excludedLabels: ['wontfix'],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -784,6 +788,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['bug', 'critical'],
         excludedLabels: [],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -793,6 +798,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: [],
         excludedLabels: ['wontfix', 'duplicate'],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -802,6 +808,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['bug', 'critical'],
         excludedLabels: ['wontfix', 'duplicate'],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -811,6 +818,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['bug'],
         excludedLabels: ['wontfix'],
+        userFilters: [],
         cleanText: 'performance issue',
       });
     });
@@ -820,6 +828,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['bug'],
         excludedLabels: ['wontfix'],
+        userFilters: [],
         cleanText: 'performance issue',
       });
     });
@@ -829,6 +838,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['good_first_issue'],
         excludedLabels: ['help-wanted'],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -838,6 +848,7 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['Team:DataDiscovery'],
         excludedLabels: ['v9.0.0'],
+        userFilters: [],
         cleanText: '',
       });
     });
@@ -847,6 +858,57 @@ describe('resultsUtils', () => {
       expect(result).toEqual({
         includedLabels: ['api.v2:experimental'],
         excludedLabels: ['config.json.deprecated'],
+        userFilters: [],
+        cleanText: '',
+      });
+    });
+
+    it('should parse single user filter', () => {
+      const result = parseSearchText('user:octocat');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: ['octocat'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse multiple user filters', () => {
+      const result = parseSearchText('user:octocat user:github-user');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: ['octocat', 'github-user'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse mixed labels and user filters', () => {
+      const result = parseSearchText('label:bug user:octocat -label:wontfix');
+      expect(result).toEqual({
+        includedLabels: ['bug'],
+        excludedLabels: ['wontfix'],
+        userFilters: ['octocat'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse user filters with regular text', () => {
+      const result = parseSearchText('performance issue user:octocat label:bug');
+      expect(result).toEqual({
+        includedLabels: ['bug'],
+        excludedLabels: [],
+        userFilters: ['octocat'],
+        cleanText: 'performance issue',
+      });
+    });
+
+    it('should handle usernames with special characters', () => {
+      const result = parseSearchText('user:user-name user:user.name user:user_name');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: ['user-name', 'user.name', 'user_name'],
         cleanText: '',
       });
     });
@@ -858,6 +920,11 @@ describe('resultsUtils', () => {
         ...mockGitHubItems[0],
         title: 'Bug in authentication',
         body: 'Authentication fails randomly',
+        user: {
+          login: 'user1',
+          avatar_url: 'https://github.com/user1.png',
+          html_url: 'https://github.com/user1',
+        },
         labels: [
           { name: 'bug', color: 'red' },
           { name: 'critical', color: 'orange' },
@@ -867,6 +934,11 @@ describe('resultsUtils', () => {
         ...mockGitHubItems[1],
         title: 'Feature request: dark mode',
         body: 'Add dark mode support',
+        user: {
+          login: 'user2',
+          avatar_url: 'https://github.com/user2.png',
+          html_url: 'https://github.com/user2',
+        },
         labels: [
           { name: 'enhancement', color: 'blue' },
           { name: 'good-first-issue', color: 'green' },
@@ -876,6 +948,11 @@ describe('resultsUtils', () => {
         ...mockGitHubItems[2],
         title: 'Documentation update needed',
         body: 'Update API documentation',
+        user: {
+          login: 'user3',
+          avatar_url: 'https://github.com/user3.png',
+          html_url: 'https://github.com/user3',
+        },
         labels: [
           { name: 'documentation', color: 'purple' },
           { name: 'help-wanted', color: 'yellow' },
@@ -885,6 +962,11 @@ describe('resultsUtils', () => {
         ...mockGitHubItems[0],
         title: 'Performance issue in search',
         body: 'Search is slow with large datasets',
+        user: {
+          login: 'user4',
+          avatar_url: 'https://github.com/user4.png',
+          html_url: 'https://github.com/user4',
+        },
         labels: [
           { name: 'bug', color: 'red' },
           { name: 'performance', color: 'orange' },
@@ -1000,6 +1082,38 @@ describe('resultsUtils', () => {
       const result = filterByText(mockItemsWithLabels, 'authentication');
       expect(result).toHaveLength(1);
       expect(result[0].title).toBe('Bug in authentication');
+    });
+
+    it('should filter by user syntax', () => {
+      const result = filterByText(mockItemsWithLabels, 'user:user1');
+      expect(result).toHaveLength(1);
+      expect(result[0].user.login).toBe('user1');
+    });
+
+    it('should filter by multiple users (OR logic)', () => {
+      const result = filterByText(mockItemsWithLabels, 'user:user1 user:user2');
+      expect(result).toHaveLength(2);
+      expect(result.map(item => item.user.login).sort()).toEqual(['user1', 'user2']);
+    });
+
+    it('should combine user filters with label filters', () => {
+      const result = filterByText(mockItemsWithLabels, 'user:user1 label:bug');
+      expect(result).toHaveLength(1);
+      expect(result[0].user.login).toBe('user1');
+      expect(result[0].labels?.some(label => label.name === 'bug')).toBe(true);
+    });
+
+    it('should combine user filters with text search', () => {
+      const result = filterByText(mockItemsWithLabels, 'user:user1 authentication');
+      expect(result).toHaveLength(1);
+      expect(result[0].user.login).toBe('user1');
+      expect(result[0].title).toBe('Bug in authentication');
+    });
+
+    it('should handle case-insensitive user matching', () => {
+      const result = filterByText(mockItemsWithLabels, 'user:USER1');
+      expect(result).toHaveLength(1);
+      expect(result[0].user.login).toBe('user1');
     });
   });
 });

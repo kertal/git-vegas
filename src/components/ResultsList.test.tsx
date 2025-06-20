@@ -526,6 +526,134 @@ describe('ResultsList Label Click Functionality', () => {
   });
 });
 
+describe('ResultsList Avatar Click Functionality', () => {
+  const mockSetSearchText = vi.fn();
+
+  beforeEach(() => {
+    mockSetSearchText.mockClear();
+  });
+
+  it('should add user to search text when avatar is clicked', () => {
+    const mockItemsWithUsers: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        user: { login: 'octocat', avatar_url: 'https://github.com/octocat.png', html_url: 'https://github.com/octocat' },
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithUsers,
+          filteredResults: mockItemsWithUsers,
+          searchText: '',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the avatar
+    const avatar = screen.getByAltText("octocat's avatar");
+    fireEvent.click(avatar);
+
+    // Verify setSearchText was called with the correct user syntax
+    expect(mockSetSearchText).toHaveBeenCalledWith('user:octocat');
+  });
+
+  it('should append user to existing search text when avatar is clicked', () => {
+    const mockItemsWithUsers: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        user: { login: 'github-user', avatar_url: 'https://github.com/github-user.png', html_url: 'https://github.com/github-user' },
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithUsers,
+          filteredResults: mockItemsWithUsers,
+          searchText: 'label:bug',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the avatar
+    const avatar = screen.getByAltText("github-user's avatar");
+    fireEvent.click(avatar);
+
+    // Verify setSearchText was called with the correct combined syntax
+    expect(mockSetSearchText).toHaveBeenCalledWith('label:bug user:github-user');
+  });
+
+  it('should not add duplicate user to search text', () => {
+    const mockItemsWithUsers: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        user: { login: 'duplicate-user', avatar_url: 'https://github.com/duplicate-user.png', html_url: 'https://github.com/duplicate-user' },
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithUsers,
+          filteredResults: mockItemsWithUsers,
+          searchText: 'user:duplicate-user label:bug',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the avatar
+    const avatar = screen.getByAltText("duplicate-user's avatar");
+    fireEvent.click(avatar);
+
+    // Verify setSearchText was not called since user is already in search
+    expect(mockSetSearchText).not.toHaveBeenCalled();
+  });
+
+  it('should handle usernames with special characters', () => {
+    const mockItemsWithSpecialUsers: GitHubItem[] = [
+      {
+        ...mockItems[0],
+        user: { login: 'user-name.test', avatar_url: 'https://github.com/user-name.test.png', html_url: 'https://github.com/user-name.test' },
+      },
+    ];
+
+    render(
+      <ResultsList
+        useResultsContext={() => ({
+          ...mockUseResultsContext(),
+          results: mockItemsWithSpecialUsers,
+          filteredResults: mockItemsWithSpecialUsers,
+          searchText: '',
+          setSearchText: mockSetSearchText,
+        })}
+        buttonStyles={mockButtonStyles}
+      />,
+      { wrapper: TestWrapper }
+    );
+
+    // Find and click the avatar
+    const avatar = screen.getByAltText("user-name.test's avatar");
+    fireEvent.click(avatar);
+
+    // Verify setSearchText was called with the correct user syntax
+    expect(mockSetSearchText).toHaveBeenCalledWith('user:user-name.test');
+  });
+});
+
 describe('ResultsList Search Functionality', () => {
   const mockSetSearchText = vi.fn();
 

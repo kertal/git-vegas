@@ -211,22 +211,24 @@ export const filterByUser = (
 };
 
 /**
- * Parses search text to extract label filters and regular text
+ * Parses search text to extract label filters, user filters, and regular text
  * 
  * @param searchText - The search text to parse
- * @returns Object containing includedLabels, excludedLabels, and cleanText
+ * @returns Object containing includedLabels, excludedLabels, userFilters, and cleanText
  */
 export const parseSearchText = (searchText: string): {
   includedLabels: string[];
   excludedLabels: string[];
+  userFilters: string[];
   cleanText: string;
 } => {
   if (!searchText.trim()) {
-    return { includedLabels: [], excludedLabels: [], cleanText: '' };
+    return { includedLabels: [], excludedLabels: [], userFilters: [], cleanText: '' };
   }
 
   const includedLabels: string[] = [];
   const excludedLabels: string[] = [];
+  const userFilters: string[] = [];
   let cleanText = searchText;
 
   // First, find all -label:{labelname} patterns (excluded labels)
@@ -256,17 +258,30 @@ export const parseSearchText = (searchText: string): {
     cleanText = cleanText.replace(m[0], ' ');
   });
 
+  // Then find all user:{username} patterns from the cleaned text
+  const userRegex = /\buser:([^\s]+)/g;
+  const userMatches: RegExpExecArray[] = [];
+  while ((match = userRegex.exec(cleanText)) !== null) {
+    userFilters.push(match[1]);
+    userMatches.push(match);
+  }
+
+  // Remove all user matches from cleanText
+  userMatches.forEach(m => {
+    cleanText = cleanText.replace(m[0], ' ');
+  });
+
   // Clean up extra whitespace
   cleanText = cleanText.replace(/\s+/g, ' ').trim();
 
-  return { includedLabels, excludedLabels, cleanText };
+  return { includedLabels, excludedLabels, userFilters, cleanText };
 };
 
 /**
- * Filters GitHub items based on text search in title and body, with support for label syntax
+ * Filters GitHub items based on text search in title and body, with support for label and user syntax
  *
  * @param items - Array of GitHub items to filter
- * @param searchText - Text to search for, supporting label:{name} and -label:{name} syntax
+ * @param searchText - Text to search for, supporting label:{name}, -label:{name}, and user:{username} syntax
  * @returns Filtered array of items
  */
 export const filterByText = (
@@ -275,7 +290,7 @@ export const filterByText = (
 ): GitHubItem[] => {
   if (!searchText.trim()) return items;
 
-  const { includedLabels, excludedLabels, cleanText } = parseSearchText(searchText);
+  const { includedLabels, excludedLabels, userFilters, cleanText } = parseSearchText(searchText);
 
   return items.filter(item => {
     // Check label filters first
@@ -299,6 +314,15 @@ export const filterByText = (
       }
     }
 
+    // Check user filters
+    if (userFilters.length > 0) {
+      const itemUser = item.user.login.toLowerCase();
+      const matchesUser = userFilters.some(userFilter =>
+        itemUser === userFilter.toLowerCase()
+      );
+      if (!matchesUser) return false;
+    }
+
     // If there's clean text remaining, search in title and body
     if (cleanText) {
       const searchLower = cleanText.toLowerCase();
@@ -307,7 +331,7 @@ export const filterByText = (
       return titleMatch || bodyMatch;
     }
 
-    // If only label filters were used, item passed label checks above
+    // If only label/user filters were used, item passed checks above
     return true;
   });
 };

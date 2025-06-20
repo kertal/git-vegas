@@ -773,6 +773,21 @@ const ResultsList = memo(function ResultsList({
                       src={item.user.avatar_url}
                       alt={`${item.user.login}'s avatar`}
                       size={16}
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        // Add user to search text in format user:{username}
+                        const userSearchTerm = `user:${item.user.login}`;
+                        const currentSearch = searchText.trim();
+                        
+                        // Check if this user is already in the search text
+                        const userRegex = new RegExp(`\\buser:${item.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
+                        if (!userRegex.test(currentSearch)) {
+                          const newSearchText = currentSearch 
+                            ? `${currentSearch} ${userSearchTerm}`
+                            : userSearchTerm;
+                          setSearchText(newSearchText);
+                        }
+                      }}
                     />
                     <Text
                       sx={{ fontSize: 1, color: 'fg.muted', flexShrink: 0 }}
@@ -872,6 +887,21 @@ const ResultsList = memo(function ResultsList({
                         src={item.user.avatar_url}
                         alt={`${item.user.login}'s avatar`}
                         size={24}
+                        sx={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          // Add user to search text in format user:{username}
+                          const userSearchTerm = `user:${item.user.login}`;
+                          const currentSearch = searchText.trim();
+                          
+                          // Check if this user is already in the search text
+                          const userRegex = new RegExp(`\\buser:${item.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
+                          if (!userRegex.test(currentSearch)) {
+                            const newSearchText = currentSearch 
+                              ? `${currentSearch} ${userSearchTerm}`
+                              : userSearchTerm;
+                            setSearchText(newSearchText);
+                          }
+                        }}
                       />
                       <Link
                         href={item.user.html_url}
