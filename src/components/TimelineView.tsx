@@ -1,5 +1,22 @@
 import { memo, useMemo, useState } from 'react';
-import { Text, Avatar, Link, Button, ButtonGroup, Heading,ActionMenu, ActionList, Flash, Checkbox, Box, Token, IconButton, Dialog, TextInput, FormControl } from '@primer/react';
+import {
+  Text,
+  Avatar,
+  Link,
+  Button,
+  ButtonGroup,
+  Heading,
+  ActionMenu,
+  ActionList,
+  Flash,
+  Checkbox,
+  Box,
+  Token,
+  IconButton,
+  Dialog,
+  TextInput,
+  FormControl,
+} from '@primer/react';
 import {
   IssueOpenedIcon,
   IssueClosedIcon,
@@ -61,7 +78,7 @@ const TimelineView = memo(function TimelineView({
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
-    (value) => setSearchText?.(value),
+    value => setSearchText?.(value),
     300
   );
 
@@ -73,9 +90,11 @@ const TimelineView = memo(function TimelineView({
     if (!searchText || !searchText.trim()) {
       return items;
     }
-    
+
     // Parse search text for label filters
-    const parseSearchText = (searchText: string): {
+    const parseSearchText = (
+      searchText: string
+    ): {
       includedLabels: string[];
       excludedLabels: string[];
       cleanText: string;
@@ -116,14 +135,17 @@ const TimelineView = memo(function TimelineView({
 
       return { includedLabels, excludedLabels, cleanText };
     };
-    
-    const { includedLabels, excludedLabels, cleanText } = parseSearchText(searchText);
-    
+
+    const { includedLabels, excludedLabels, cleanText } =
+      parseSearchText(searchText);
+
     return items.filter(item => {
       // Check label filters first
       if (includedLabels.length > 0 || excludedLabels.length > 0) {
-        const itemLabels = (item.labels || []).map(label => label.name.toLowerCase());
-        
+        const itemLabels = (item.labels || []).map(label =>
+          label.name.toLowerCase()
+        );
+
         // Check if item has all required included labels
         if (includedLabels.length > 0) {
           const hasAllIncludedLabels = includedLabels.every(labelName =>
@@ -131,7 +153,7 @@ const TimelineView = memo(function TimelineView({
           );
           if (!hasAllIncludedLabels) return false;
         }
-        
+
         // Check if item has any excluded labels
         if (excludedLabels.length > 0) {
           const hasExcludedLabel = excludedLabels.some(labelName =>
@@ -225,11 +247,11 @@ const TimelineView = memo(function TimelineView({
     if (sortedItems.length === 0) {
       return { checked: false, indeterminate: false };
     }
-    
-    const selectedCount = sortedItems.filter(item => 
+
+    const selectedCount = sortedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
-    
+
     if (selectedCount === 0) {
       return { checked: false, indeterminate: false };
     } else if (selectedCount === sortedItems.length) {
@@ -241,10 +263,10 @@ const TimelineView = memo(function TimelineView({
 
   // Handle select all checkbox click
   const handleSelectAllChange = () => {
-    const selectedCount = sortedItems.filter(item => 
+    const selectedCount = sortedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
-    
+
     if (selectedCount === sortedItems.length) {
       // All are selected, clear selection
       clearSelection?.();
@@ -255,7 +277,8 @@ const TimelineView = memo(function TimelineView({
   };
 
   // Description dialog state and handlers
-  const [selectedItemForDialog, setSelectedItemForDialog] = useState<GitHubItem | null>(null);
+  const [selectedItemForDialog, setSelectedItemForDialog] =
+    useState<GitHubItem | null>(null);
 
   // Single item clipboard copy handler
   const copySingleItemToClipboard = async (item: GitHubItem) => {
@@ -297,9 +320,7 @@ const TimelineView = memo(function TimelineView({
 
   const getCurrentItemIndex = () => {
     if (!selectedItemForDialog) return -1;
-    return sortedItems.findIndex(
-      item => item.id === selectedItemForDialog.id
-    );
+    return sortedItems.findIndex(item => item.id === selectedItemForDialog.id);
   };
 
   // Custom copy handler that supports grouped mode
@@ -328,11 +349,8 @@ const TimelineView = memo(function TimelineView({
 
       sortedItems.forEach(item => {
         const type = getEventType(item);
-        
-        if (
-          type === 'pull_request' &&
-          item.title.startsWith('Review on:')
-        ) {
+
+        if (type === 'pull_request' && item.title.startsWith('Review on:')) {
           actionGroups['PRs - reviewed'].push(item);
         } else if (type === 'comment') {
           actionGroups['Issues - commented'].push(item);
@@ -359,13 +377,16 @@ const TimelineView = memo(function TimelineView({
         .filter(([, items]) => items.length > 0)
         .map(([groupName, items]) => ({
           groupName,
-          items
+          items,
         }));
 
       // Use the enhanced clipboard utility with grouped data
-      const selectedItemsArray = selectedItems.size > 0 
-        ? sortedItems.filter(item => selectedItems.has(item.event_id || item.id))
-        : sortedItems;
+      const selectedItemsArray =
+        selectedItems.size > 0
+          ? sortedItems.filter(item =>
+              selectedItems.has(item.event_id || item.id)
+            )
+          : sortedItems;
 
       await copyToClipboard(selectedItemsArray, {
         isCompactView: format === 'compact',
@@ -400,14 +421,14 @@ const TimelineView = memo(function TimelineView({
           disabled={sortedItems.length === 0}
         />
         <Heading
-                as="h2"
-                sx={{
-                  fontSize: 2,
-                  fontWeight: 'semibold',
-                  color: 'fg.default',
-                  m: 0,
-                }}
-              >
+          as="h2"
+          sx={{
+            fontSize: 2,
+            fontWeight: 'semibold',
+            color: 'fg.default',
+            m: 0,
+          }}
+        >
           Events
         </Heading>
       </Box>
@@ -430,14 +451,10 @@ const TimelineView = memo(function TimelineView({
 
           <ActionMenu.Overlay>
             <ActionList>
-              <ActionList.Item
-                onSelect={() => handleCopyResults('detailed')}
-              >
+              <ActionList.Item onSelect={() => handleCopyResults('detailed')}>
                 Detailed Format
               </ActionList.Item>
-              <ActionList.Item
-                onSelect={() => handleCopyResults('compact')}
-              >
+              <ActionList.Item onSelect={() => handleCopyResults('compact')}>
                 Compact Format
               </ActionList.Item>
             </ActionList>
@@ -457,25 +474,23 @@ const TimelineView = memo(function TimelineView({
     <div className="timeline-header-right">
       {setSearchText && (
         <FormControl>
-          <FormControl.Label visuallyHidden>
-            Search events
-          </FormControl.Label>
+          <FormControl.Label visuallyHidden>Search events</FormControl.Label>
           <TextInput
-                            placeholder="Search events... (try: label:bug or -label:wontfix)"
+            placeholder="Search events..."
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
+            onChange={e => setInputValue(e.target.value)}
             leadingVisual={SearchIcon}
             size="small"
-            sx={{ minWidth: '200px' }}
+            sx={{ minWidth: '300px' }}
           />
         </FormControl>
       )}
-      
+
       {setViewMode && (
         <div className="timeline-view-controls">
           <Text className="timeline-view-label">View:</Text>
           <ButtonGroup>
-          <Button
+            <Button
               size="small"
               variant={viewMode === 'grouped' ? 'primary' : 'default'}
               onClick={() => setViewMode('grouped')}
@@ -489,7 +504,7 @@ const TimelineView = memo(function TimelineView({
             >
               Single
             </Button>
-            
+
             <Button
               size="small"
               variant={viewMode === 'raw' ? 'primary' : 'default'}
@@ -512,8 +527,8 @@ const TimelineView = memo(function TimelineView({
       {/* API Limitation Note */}
       <Box sx={{ p: 2, mb: 2, bg: 'attention.subtle', borderRadius: 2 }}>
         <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-          <strong>Note:</strong> Timeline includes up to 300 events from the past 30 days. 
-          Event latency can be 30s to 6h depending on time of day.
+          <strong>Note:</strong> Timeline includes up to 300 events from the
+          past 30 days. Event latency can be 30s to 6h depending on time of day.
         </Text>
       </Box>
 
@@ -523,19 +538,22 @@ const TimelineView = memo(function TimelineView({
           // Empty state - keep search box visible
           <div className="timeline-empty">
             <Text color="fg.muted">
-              {hasSearchText 
+              {hasSearchText
                 ? `No events found matching "${searchText}". Try a different search term or use label:name / -label:name for label filtering.`
                 : !hasRawEvents
-                ? 'No cached events found. Please perform a search in events mode to load events.'
-                : 'No events found for the selected time period. Try adjusting your date range or filters.'}
+                  ? 'No cached events found. Please perform a search in events mode to load events.'
+                  : 'No events found for the selected time period. Try adjusting your date range or filters.'}
             </Text>
             {hasSearchText && (
-              <Box sx={{ mt: 2, textAlign: 'center', display: 'flex', justifyContent: 'center' }}>
-                <Button
-                  variant="default"
-                  size="small"
-                  onClick={clearSearch}
-                >
+              <Box
+                sx={{
+                  mt: 2,
+                  textAlign: 'center',
+                  display: 'flex',
+                  justifyContent: 'center',
+                }}
+              >
+                <Button variant="default" size="small" onClick={clearSearch}>
                   Clear search
                 </Button>
               </Box>
@@ -598,7 +616,7 @@ const TimelineView = memo(function TimelineView({
           (() => {
             // Group by individual issue/PR URL (exclude comments and reviews)
             const issuesPRsGroups: { [url: string]: GitHubItem[] } = {};
-            
+
             // Group by action type
             const actionGroups: {
               'PRs - opened': GitHubItem[];
@@ -620,7 +638,7 @@ const TimelineView = memo(function TimelineView({
 
             sortedItems.forEach(item => {
               const type = getEventType(item);
-              
+
               // Add to action groups
               if (
                 type === 'pull_request' &&
@@ -653,7 +671,7 @@ const TimelineView = memo(function TimelineView({
                   // For comments, extract the issue/PR URL from the comment URL
                   groupingUrl = groupingUrl.split('#')[0];
                 }
-                
+
                 if (!issuesPRsGroups[groupingUrl]) {
                   issuesPRsGroups[groupingUrl] = [];
                 }
@@ -661,217 +679,286 @@ const TimelineView = memo(function TimelineView({
               }
             });
 
-
-
             return (
               <div className="timeline-grouped-container">
-
-
                 {/* Action Type Groups Section */}
                 <div className="timeline-action-groups">
-                  {Object.entries(actionGroups).map(([groupName, groupItems]) => {
-                    if (groupItems.length === 0) return null;
+                  {Object.entries(actionGroups).map(
+                    ([groupName, groupItems]) => {
+                      if (groupItems.length === 0) return null;
 
-                    // Get the appropriate icon for the group
-                    const getGroupIcon = () => {
-                      if (groupName === 'PRs - opened')
-                        return <GitPullRequestIcon size={20} />;
-                      if (groupName === 'PRs - merged')
-                        return <GitMergeIcon size={20} />;
-                      if (groupName === 'PRs - closed')
-                        return <GitPullRequestClosedIcon size={20} />;
-                      if (groupName === 'PRs - reviewed')
-                        return <EyeIcon size={20} />;
-                      if (groupName === 'Issues - opened')
+                      // Get the appropriate icon for the group
+                      const getGroupIcon = () => {
+                        if (groupName === 'PRs - opened')
+                          return <GitPullRequestIcon size={20} />;
+                        if (groupName === 'PRs - merged')
+                          return <GitMergeIcon size={20} />;
+                        if (groupName === 'PRs - closed')
+                          return <GitPullRequestClosedIcon size={20} />;
+                        if (groupName === 'PRs - reviewed')
+                          return <EyeIcon size={20} />;
+                        if (groupName === 'Issues - opened')
+                          return <IssueOpenedIcon size={20} />;
+                        if (groupName === 'Issues - closed')
+                          return <IssueClosedIcon size={20} />;
+                        if (groupName === 'Issues - commented')
+                          return <CommentIcon size={20} />;
                         return <IssueOpenedIcon size={20} />;
-                      if (groupName === 'Issues - closed')
-                        return <IssueClosedIcon size={20} />;
-                      if (groupName === 'Issues - commented')
-                        return <CommentIcon size={20} />;
-                      return <IssueOpenedIcon size={20} />;
-                    };
+                      };
 
-                    return (
-                      <div
-                        key={groupName}
-                        className="timeline-section"
-                      >
-                        {/* Group Header */}
-                        <div className="timeline-section-header timeline-section-header--subtle">
-                          {/* Section Select All Checkbox */}
-                          {toggleItemSelection && (
-                            <Checkbox
-                              checked={(() => {
-                                // Check if all items in this section are selected
-                                const allItemIds = groupItems.map(item => item.event_id || item.id);
-                                return allItemIds.length > 0 && allItemIds.every(id => selectedItems.has(id));
-                              })()}
-                              indeterminate={(() => {
-                                // Check if some (but not all) items in this section are selected
-                                const allItemIds = groupItems.map(item => item.event_id || item.id);
-                                const selectedCount = allItemIds.filter(id => selectedItems.has(id)).length;
-                                return selectedCount > 0 && selectedCount < allItemIds.length;
-                              })()}
-                              onChange={() => {
-                                // Toggle all items in this section
-                                const allItemIds = groupItems.map(item => item.event_id || item.id);
-                                const allSelected = allItemIds.every(id => selectedItems.has(id));
-                                
-                                if (allSelected) {
-                                  // Deselect all items in this section
-                                  allItemIds.forEach(id => {
-                                    if (selectedItems.has(id)) {
-                                      toggleItemSelection(id);
-                                    }
-                                  });
-                                } else {
-                                  // Select all items in this section
-                                  allItemIds.forEach(id => {
-                                    if (!selectedItems.has(id)) {
-                                      toggleItemSelection(id);
-                                    }
-                                  });
+                      return (
+                        <div key={groupName} className="timeline-section">
+                          {/* Group Header */}
+                          <div className="timeline-section-header timeline-section-header--subtle">
+                            {/* Section Select All Checkbox */}
+                            {toggleItemSelection && (
+                              <Checkbox
+                                checked={(() => {
+                                  // Check if all items in this section are selected
+                                  const allItemIds = groupItems.map(
+                                    item => item.event_id || item.id
+                                  );
+                                  return (
+                                    allItemIds.length > 0 &&
+                                    allItemIds.every(id =>
+                                      selectedItems.has(id)
+                                    )
+                                  );
+                                })()}
+                                indeterminate={(() => {
+                                  // Check if some (but not all) items in this section are selected
+                                  const allItemIds = groupItems.map(
+                                    item => item.event_id || item.id
+                                  );
+                                  const selectedCount = allItemIds.filter(id =>
+                                    selectedItems.has(id)
+                                  ).length;
+                                  return (
+                                    selectedCount > 0 &&
+                                    selectedCount < allItemIds.length
+                                  );
+                                })()}
+                                onChange={() => {
+                                  // Toggle all items in this section
+                                  const allItemIds = groupItems.map(
+                                    item => item.event_id || item.id
+                                  );
+                                  const allSelected = allItemIds.every(id =>
+                                    selectedItems.has(id)
+                                  );
+
+                                  if (allSelected) {
+                                    // Deselect all items in this section
+                                    allItemIds.forEach(id => {
+                                      if (selectedItems.has(id)) {
+                                        toggleItemSelection(id);
+                                      }
+                                    });
+                                  } else {
+                                    // Select all items in this section
+                                    allItemIds.forEach(id => {
+                                      if (!selectedItems.has(id)) {
+                                        toggleItemSelection(id);
+                                      }
+                                    });
+                                  }
+                                }}
+                                sx={{ flexShrink: 0, mr: 2 }}
+                                aria-label={`Select all events in ${groupName} section`}
+                              />
+                            )}
+
+                            <div className="timeline-section-icon timeline-section-icon--muted">
+                              {getGroupIcon()}
+                            </div>
+                            <Text className="timeline-section-title timeline-section-title--default">
+                              {groupName}{' '}
+                              <Token
+                                text={groupItems.length.toString()}
+                                size="small"
+                                sx={{ ml: 1 }}
+                              />
+                            </Text>
+                          </div>
+
+                          {/* Events List */}
+                          <div className="timeline-section-content">
+                            {(() => {
+                              // Group items within this action type by URL for display grouping
+                              const itemGroups: {
+                                [url: string]: GitHubItem[];
+                              } = {};
+                              groupItems.forEach(item => {
+                                // For comments, extract the issue/PR URL from the comment URL
+                                let groupingUrl = item.html_url;
+                                if (getEventType(item) === 'comment') {
+                                  // Comment URLs typically end with #issuecomment-123456 or #discussion_r123456
+                                  // Remove the comment hash part to group by the issue/PR URL
+                                  groupingUrl = groupingUrl.split('#')[0];
                                 }
-                              }}
-                              sx={{ flexShrink: 0, mr: 2 }}
-                              aria-label={`Select all events in ${groupName} section`}
-                            />
-                          )}
-                          
-                          <div className="timeline-section-icon timeline-section-icon--muted">{getGroupIcon()}</div>
-                          <Text className="timeline-section-title timeline-section-title--default">
-                            {groupName} <Token 
-                              text={groupItems.length.toString()} 
-                              size="small"
-                              sx={{ ml: 1 }}
-                            />
-                          </Text>
-                        </div>
 
-                        {/* Events List */}
-                        <div className="timeline-section-content">
-                          {(() => {
-                            // Group items within this action type by URL for display grouping
-                            const itemGroups: { [url: string]: GitHubItem[] } = {};
-                            groupItems.forEach(item => {
-                              // For comments, extract the issue/PR URL from the comment URL
-                              let groupingUrl = item.html_url;
-                              if (getEventType(item) === 'comment') {
-                                // Comment URLs typically end with #issuecomment-123456 or #discussion_r123456
-                                // Remove the comment hash part to group by the issue/PR URL
-                                groupingUrl = groupingUrl.split('#')[0];
-                              }
-                              
-                              if (!itemGroups[groupingUrl]) {
-                                itemGroups[groupingUrl] = [];
-                              }
-                              itemGroups[groupingUrl].push(item);
-                            });
+                                if (!itemGroups[groupingUrl]) {
+                                  itemGroups[groupingUrl] = [];
+                                }
+                                itemGroups[groupingUrl].push(item);
+                              });
 
-                            // Convert to array and sort by most recent
-                            const groupedItems = Object.entries(itemGroups)
-                              .map(([url, items]) => ({
-                                url,
-                                items: items.sort((a, b) => 
-                                  new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-                                ),
-                                mostRecent: items.reduce((latest, current) => 
-                                  new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-                                )
-                              }))
-                              .sort((a, b) => 
-                                new Date(b.mostRecent.updated_at).getTime() - new Date(a.mostRecent.updated_at).getTime()
-                              );
+                              // Convert to array and sort by most recent
+                              const groupedItems = Object.entries(itemGroups)
+                                .map(([url, items]) => ({
+                                  url,
+                                  items: items.sort(
+                                    (a, b) =>
+                                      new Date(b.updated_at).getTime() -
+                                      new Date(a.updated_at).getTime()
+                                  ),
+                                  mostRecent: items.reduce((latest, current) =>
+                                    new Date(current.updated_at) >
+                                    new Date(latest.updated_at)
+                                      ? current
+                                      : latest
+                                  ),
+                                }))
+                                .sort(
+                                  (a, b) =>
+                                    new Date(
+                                      b.mostRecent.updated_at
+                                    ).getTime() -
+                                    new Date(a.mostRecent.updated_at).getTime()
+                                );
 
-                            // Show grouped items with count badges but individual checkboxes for each event using event_id
-                            return groupedItems.map((group, groupIndex) => {
-                              const repoName = formatRepoName(group.mostRecent.repository_url);
-                              const isLastGroup = groupIndex === groupedItems.length - 1;
+                              // Show grouped items with count badges but individual checkboxes for each event using event_id
+                              return groupedItems.map((group, groupIndex) => {
+                                const repoName = formatRepoName(
+                                  group.mostRecent.repository_url
+                                );
+                                const isLastGroup =
+                                  groupIndex === groupedItems.length - 1;
 
-                              return (
-                                <div key={group.url} className="timeline-group">
-                                  {/* Group Header with Most Recent Item */}
+                                return (
                                   <div
-                                    className={`timeline-item ${
-                                      !isLastGroup ? '' : 'timeline-item--no-border'
-                                    }`}
+                                    key={group.url}
+                                    className="timeline-group"
                                   >
-                                    {/* Checkbox for most recent item */}
-                                    {toggleItemSelection && (
-                                      <Checkbox
-                                        checked={selectedItems.has(group.mostRecent.event_id || group.mostRecent.id)}
-                                        onChange={() => toggleItemSelection(group.mostRecent.event_id || group.mostRecent.id)}
-                                        sx={{ flexShrink: 0 }}
-                                      />
-                                    )}
-                                    
-                                    {/* Avatar */}
-                                    <Avatar
-                                      src={group.mostRecent.user.avatar_url}
-                                      size={14}
-                                      alt={group.mostRecent.user.login}
-                                      className="timeline-item-avatar"
-                                    />
-
-                                    {/* User */}
-                                    <Link
-                                      href={group.mostRecent.user.html_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="timeline-item-user"
+                                    {/* Group Header with Most Recent Item */}
+                                    <div
+                                      className={`timeline-item ${
+                                        !isLastGroup
+                                          ? ''
+                                          : 'timeline-item--no-border'
+                                      }`}
                                     >
-                                      {group.mostRecent.user.login}
-                                    </Link>
-
-                                    {/* Title (truncated) */}
-                                    <Link
-                                      href={group.mostRecent.html_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="timeline-item-title"
-                                    >
-                                      {group.mostRecent.title} {group.items.length > 1 && (
-                                        <Token 
-                                          text={group.items.length.toString()} 
-                                          size="small"
-                                          sx={{ ml: 1, flexShrink: 0 }}
+                                      {/* Checkbox for most recent item */}
+                                      {toggleItemSelection && (
+                                        <Checkbox
+                                          checked={selectedItems.has(
+                                            group.mostRecent.event_id ||
+                                              group.mostRecent.id
+                                          )}
+                                          onChange={() =>
+                                            toggleItemSelection(
+                                              group.mostRecent.event_id ||
+                                                group.mostRecent.id
+                                            )
+                                          }
+                                          sx={{ flexShrink: 0 }}
                                         />
                                       )}
-                                    </Link>
 
-                                    {/* Repo */}
-                                    <Text className="timeline-item-repo">
-                                      {repoName.split('/')[1] || repoName}
-                                    </Text>
+                                      {/* Avatar */}
+                                      <Avatar
+                                        src={group.mostRecent.user.avatar_url}
+                                        size={14}
+                                        alt={group.mostRecent.user.login}
+                                        className="timeline-item-avatar"
+                                      />
 
-                                    {/* Time */}
-                                    <Text className="timeline-item-time">
-                                      {formatDistanceToNow(
-                                        new Date(group.mostRecent.updated_at),
-                                        {
-                                          addSuffix: true,
-                                        }
+                                      {/* User */}
+                                      <Link
+                                        href={group.mostRecent.user.html_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="timeline-item-user"
+                                      >
+                                        {group.mostRecent.user.login}
+                                      </Link>
+
+                                      {/* Title (truncated) */}
+                                      <Link
+                                        href={group.mostRecent.html_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="timeline-item-title"
+                                      >
+                                        {group.mostRecent.title}{' '}
+                                        {group.items.length > 1 && (
+                                          <Token
+                                            text={group.items.length.toString()}
+                                            size="small"
+                                            sx={{ ml: 1, flexShrink: 0 }}
+                                          />
+                                        )}
+                                      </Link>
+
+                                      {/* Repo */}
+                                      <Text className="timeline-item-repo">
+                                        {repoName.split('/')[1] || repoName}
+                                      </Text>
+
+                                      {/* Time */}
+                                      <Text className="timeline-item-time">
+                                        {formatDistanceToNow(
+                                          new Date(group.mostRecent.updated_at),
+                                          {
+                                            addSuffix: true,
+                                          }
+                                        )}
+                                      </Text>
+
+                                      {/* Action buttons */}
+                                      {group.mostRecent.body && (
+                                        <div>
+                                          <IconButton
+                                            icon={EyeIcon}
+                                            variant="invisible"
+                                            aria-label="Show description"
+                                            size="small"
+                                            onClick={() =>
+                                              setSelectedItemForDialog(
+                                                group.mostRecent
+                                              )
+                                            }
+                                          />
+                                          <IconButton
+                                            icon={
+                                              isCopied(
+                                                group.mostRecent.event_id ||
+                                                  group.mostRecent.id
+                                              )
+                                                ? CheckIcon
+                                                : PasteIcon
+                                            }
+                                            variant="invisible"
+                                            aria-label="Copy to clipboard"
+                                            size="small"
+                                            onClick={() =>
+                                              copySingleItemToClipboard(
+                                                group.mostRecent
+                                              )
+                                            }
+                                          />
+                                        </div>
                                       )}
-                                    </Text>
-
-                                    {/* Action buttons */}
-                                    {group.mostRecent.body && (
-                                      <div>
-                                        <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(group.mostRecent)} />
-                                        <IconButton icon={isCopied(group.mostRecent.event_id || group.mostRecent.id) ? CheckIcon : PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(group.mostRecent)} />
-                                      </div>
-                                    )}
+                                    </div>
                                   </div>
-
-
-                                </div>
-                              );
-                            });
-                          })()}
+                                );
+                              });
+                            })()}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    }
+                  )}
                 </div>
               </div>
             );
@@ -885,23 +972,23 @@ const TimelineView = memo(function TimelineView({
               const eventDescription = getEventDescription(item);
 
               return (
-                                  <div
-                    key={`${item.id}-${index}`}
-                    className="timeline-item timeline-item--standard"
-                  >
-                    {/* Checkbox */}
-                    {toggleItemSelection && (
-                      <Checkbox
-                        checked={selectedItems.has(item.event_id || item.id)}
-                        onChange={() => toggleItemSelection(item.event_id || item.id)}
-                        sx={{ flexShrink: 0 }}
-                      />
-                    )}
-                    
-                    {/* Icon */}
-                    <div className="timeline-item-icon">
-                      {getEventIcon(item)}
-                    </div>
+                <div
+                  key={`${item.id}-${index}`}
+                  className="timeline-item timeline-item--standard"
+                >
+                  {/* Checkbox */}
+                  {toggleItemSelection && (
+                    <Checkbox
+                      checked={selectedItems.has(item.event_id || item.id)}
+                      onChange={() =>
+                        toggleItemSelection(item.event_id || item.id)
+                      }
+                      sx={{ flexShrink: 0 }}
+                    />
+                  )}
+
+                  {/* Icon */}
+                  <div className="timeline-item-icon">{getEventIcon(item)}</div>
 
                   {/* Avatar */}
                   <Avatar
@@ -959,8 +1046,24 @@ const TimelineView = memo(function TimelineView({
                   {/* Action buttons */}
                   {item.body && (
                     <div>
-                      <IconButton icon={EyeIcon} variant="invisible" aria-label="Show description" size="small" onClick={() => setSelectedItemForDialog(item)} />
-                      <IconButton icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon} variant="invisible" aria-label="Copy to clipboard" size="small" onClick={() => copySingleItemToClipboard(item)} />
+                      <IconButton
+                        icon={EyeIcon}
+                        variant="invisible"
+                        aria-label="Show description"
+                        size="small"
+                        onClick={() => setSelectedItemForDialog(item)}
+                      />
+                      <IconButton
+                        icon={
+                          isCopied(item.event_id || item.id)
+                            ? CheckIcon
+                            : PasteIcon
+                        }
+                        variant="invisible"
+                        aria-label="Copy to clipboard"
+                        size="small"
+                        onClick={() => copySingleItemToClipboard(item)}
+                      />
                     </div>
                   )}
                 </div>
@@ -975,9 +1078,15 @@ const TimelineView = memo(function TimelineView({
         <Dialog
           onClose={() => setSelectedItemForDialog(null)}
           role="dialog"
-          title={(
+          title={
             <Box
-              sx={{ display: 'flex', p: 2, alignItems: 'center', gap: 2, width: '100%' }}
+              sx={{
+                display: 'flex',
+                p: 2,
+                alignItems: 'center',
+                gap: 2,
+                width: '100%',
+              }}
             >
               {selectedItemForDialog.pull_request ? (
                 <GitPullRequestIcon size={16} />
@@ -988,7 +1097,7 @@ const TimelineView = memo(function TimelineView({
                 {selectedItemForDialog.title}
               </Text>
             </Box>
-          )}
+          }
           renderFooter={() => (
             <div>
               <IconButton
@@ -996,14 +1105,21 @@ const TimelineView = memo(function TimelineView({
                 aria-label="Previous item"
                 onClick={handlePreviousItem}
                 disabled={getCurrentItemIndex() <= 0}
-                sx={{ color: getCurrentItemIndex() > 0 ? 'fg.default' : 'fg.muted' }}
+                sx={{
+                  color: getCurrentItemIndex() > 0 ? 'fg.default' : 'fg.muted',
+                }}
               />
               <IconButton
                 icon={ChevronRightIcon}
                 aria-label="Next item"
                 onClick={handleNextItem}
                 disabled={getCurrentItemIndex() >= sortedItems.length - 1}
-                sx={{ color: getCurrentItemIndex() < sortedItems.length - 1 ? 'fg.default' : 'fg.muted' }}
+                sx={{
+                  color:
+                    getCurrentItemIndex() < sortedItems.length - 1
+                      ? 'fg.default'
+                      : 'fg.muted',
+                }}
               />
             </div>
           )}

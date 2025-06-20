@@ -1654,7 +1654,7 @@ describe('TimelineView', () => {
         />
       );
 
-      const searchInput = screen.getByPlaceholderText('Search events... (try: label:bug or -label:wontfix)');
+      const searchInput = screen.getByPlaceholderText('Search events');
       expect(searchInput).toBeInTheDocument();
     });
 

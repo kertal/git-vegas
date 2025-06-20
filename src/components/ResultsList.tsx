@@ -589,12 +589,12 @@ const ResultsList = memo(function ResultsList({
                   Search issues and PRs
                 </FormControl.Label>
                 <TextInput
-                  placeholder="Search issues and PRs... (try: label:bug or -label:wontfix)"
+                  placeholder="Search issues and PRs"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   leadingVisual={SearchIcon}
                   size="small"
-                  sx={{ minWidth: '200px' }}
+                  sx={{ minWidth: '300px' }}
                 />
               </FormControl>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
