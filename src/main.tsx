@@ -6,19 +6,7 @@ import { ThemeProvider, BaseStyles } from '@primer/react';
 import '@primer/primitives/dist/css/primitives.css';
 import '@primer/primitives/dist/css/functional/themes/light.css';
 
-// Register service worker for PWA functionality
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-        .then(() => {
-    // Service worker registered successfully
-  })
-  .catch(() => {
-    // Service worker registration failed
-  });
-  });
-}
+// Service worker registration is handled by vite-plugin-pwa
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -16,8 +16,8 @@ export default defineConfig({
         theme_color: '#0969da',
         background_color: '#ffffff',
         display: 'standalone',
-        scope: '/',
-        start_url: '/',
+        scope: '/git-vegas/',
+        start_url: '/git-vegas/',
         icons: [
           {
             src: 'icon-192x192.png',
@@ -54,8 +54,14 @@ export default defineConfig({
           },
           {
             urlPattern: /^https:\/\/avatars\.githubusercontent\.com\/.*/i,
-            handler: 'NetworkOnly',
-            options: {}
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'github-avatars-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              }
+            }
           }
         ]
       },

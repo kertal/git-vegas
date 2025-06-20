@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Test - Git Vegas</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .online { background: #d4edda; color: #155724; }
+        .offline { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Git Vegas Offline Test</h1>
+    
+    <div id="status" class="status">Checking connection...</div>
+    
+    <div>
+        <button onclick="checkServiceWorker()">Check Service Worker</button>
+        <button onclick="testOfflineMode()">Test Offline Mode</button>
+        <button onclick="loadApp()">Load Git Vegas</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        function updateStatus() {
+            const statusEl = document.getElementById('status');
+            if (navigator.onLine) {
+                statusEl.textContent = '✅ Online - PWA features should work';
+                statusEl.className = 'status online';
+            } else {
+                statusEl.textContent = '❌ Offline - Testing cached functionality';
+                statusEl.className = 'status offline';
+            }
+        }
+        
+        function checkServiceWorker() {
+            const resultsEl = document.getElementById('results');
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    if (registrations.length > 0) {
+                        resultsEl.innerHTML = `
+                            <h3>Service Worker Status:</h3>
+                            <p>✅ ${registrations.length} service worker(s) registered</p>
+                            <p>Scope: ${registrations[0].scope}</p>
+                            <p>State: ${registrations[0].active ? registrations[0].active.state : 'inactive'}</p>
+                        `;
+                    } else {
+                        resultsEl.innerHTML = '<p>❌ No service workers registered</p>';
+                    }
+                });
+            } else {
+                resultsEl.innerHTML = '<p>❌ Service workers not supported</p>';
+            }
+        }
+        
+        function testOfflineMode() {
+            const resultsEl = document.getElementById('results');
+            resultsEl.innerHTML = `
+                <h3>Offline Test Instructions:</h3>
+                <ol>
+                    <li>Open browser DevTools (F12)</li>
+                    <li>Go to Application tab → Service Workers</li>
+                    <li>Check "Offline" checkbox</li>
+                    <li>Try loading Git Vegas</li>
+                    <li>Verify the app loads and shows offline banner</li>
+                </ol>
+                <p><strong>Expected behavior:</strong> App should load from cache and show offline indicator</p>
+            `;
+        }
+        
+        function loadApp() {
+            window.open('./dist/index.html', '_blank');
+        }
+        
+        // Update status on load and when online status changes
+        updateStatus();
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+    </script>
+</body>
+</html> 
