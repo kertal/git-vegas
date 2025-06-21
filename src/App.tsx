@@ -482,6 +482,18 @@ function App() {
     setSelectedItems(new Set());
   }, [setSelectedItems]);
 
+  const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
+    const newSelected = new Set(selectedItems);
+    itemIds.forEach(id => {
+      if (shouldSelect) {
+        newSelected.add(id);
+      } else {
+        newSelected.delete(id);
+      }
+    });
+    setSelectedItems(newSelected);
+  }, [selectedItems, setSelectedItems]);
+
   // Handle manual slot machine spin
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);
@@ -638,6 +650,7 @@ function App() {
                 toggleItemSelection={toggleItemSelection}
                 selectAllItems={selectAllItems}
                 clearSelection={clearSelection}
+                bulkSelectItems={bulkSelectItems}
                 copyResultsToClipboard={copyResultsToClipboard}
                 searchText={searchText}
                 setSearchText={setSearchText}

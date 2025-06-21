@@ -757,6 +757,8 @@ describe('App Component', () => {
       expect(searchButton).toHaveAttribute('aria-current', 'page');
     });
   });
+
+
 });
 
 // Helper function to simulate the filtering logic

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 import { ThemeProvider } from '@primer/react';
 import { vi } from 'vitest';
@@ -1232,11 +1232,12 @@ describe('TimelineView', () => {
   });
 
   describe('Selection functionality', () => {
-    const mockSetViewMode = vi.fn();
     const mockToggleItemSelection = vi.fn();
     const mockSelectAllItems = vi.fn();
     const mockClearSelection = vi.fn();
-    const mockSelectedItems = new Set<number>();
+    const mockBulkSelectItems = vi.fn();
+    const mockSelectedItems = new Set<string | number>();
+    const mockSetViewMode = vi.fn();
     
     const createMockItemsForSelection = () => [
       {
@@ -1285,6 +1286,253 @@ describe('TimelineView', () => {
       vi.clearAllMocks();
     });
 
+    describe('Bulk Selection', () => {
+      it('should use bulkSelectItems when available for section checkbox in grouped mode', () => {
+        const mockItems = createMockItemsForSelection();
+        
+        renderWithTheme(
+          <TimelineView 
+            items={mockItems} 
+            viewMode="grouped"
+            setViewMode={mockSetViewMode}
+            selectedItems={mockSelectedItems}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+            bulkSelectItems={mockBulkSelectItems}
+          />
+        );
+
+        // Get section-level checkbox
+        const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+          const ariaLabel = checkbox.getAttribute('aria-label');
+          return ariaLabel && ariaLabel.includes('Select all events in');
+        });
+        
+        expect(sectionCheckbox).toBeDefined();
+        
+        // Click section checkbox should call bulkSelectItems instead of toggleItemSelection
+        fireEvent.click(sectionCheckbox!);
+        
+        expect(mockBulkSelectItems).toHaveBeenCalled();
+        expect(mockToggleItemSelection).not.toHaveBeenCalled();
+      });
+
+      it('should pass correct parameters to bulkSelectItems when selecting all items in a section', () => {
+        const mockItems = createMockItemsForSelection();
+        
+        renderWithTheme(
+          <TimelineView 
+            items={mockItems} 
+            viewMode="grouped"
+            setViewMode={mockSetViewMode}
+            selectedItems={mockSelectedItems}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+            bulkSelectItems={mockBulkSelectItems}
+          />
+        );
+
+        // Get section-level checkbox for Issues - opened
+        const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+          const ariaLabel = checkbox.getAttribute('aria-label');
+          return ariaLabel && ariaLabel.includes('Select all events in Issues - opened');
+        });
+        
+        expect(sectionCheckbox).toBeDefined();
+        
+        // Click section checkbox
+        fireEvent.click(sectionCheckbox!);
+        
+        // Should call bulkSelectItems with the item ID and shouldSelect=true (since none are selected)
+        expect(mockBulkSelectItems).toHaveBeenCalledWith([1], true);
+      });
+
+      it('should pass correct parameters to bulkSelectItems when deselecting all items in a section', () => {
+        const mockItems = createMockItemsForSelection();
+        const selectedItemsWithSelection = new Set([1]); // First issue is selected
+        
+        renderWithTheme(
+          <TimelineView 
+            items={mockItems} 
+            viewMode="grouped"
+            setViewMode={mockSetViewMode}
+            selectedItems={selectedItemsWithSelection}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+            bulkSelectItems={mockBulkSelectItems}
+          />
+        );
+
+        // Get section-level checkbox for Issues - opened
+        const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+          const ariaLabel = checkbox.getAttribute('aria-label');
+          return ariaLabel && ariaLabel.includes('Select all events in Issues - opened');
+        });
+        
+        expect(sectionCheckbox).toBeDefined();
+        
+        // Click section checkbox
+        fireEvent.click(sectionCheckbox!);
+        
+        // Should call bulkSelectItems with the item ID and shouldSelect=false (since all are selected)
+        expect(mockBulkSelectItems).toHaveBeenCalledWith([1], false);
+      });
+
+      it('should fall back to toggleItemSelection when bulkSelectItems is not provided', () => {
+        const mockItems = createMockItemsForSelection();
+        
+        renderWithTheme(
+          <TimelineView 
+            items={mockItems} 
+            viewMode="grouped"
+            setViewMode={mockSetViewMode}
+            selectedItems={mockSelectedItems}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+            // bulkSelectItems not provided
+          />
+        );
+
+        // Get section-level checkbox
+        const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+          const ariaLabel = checkbox.getAttribute('aria-label');
+          return ariaLabel && ariaLabel.includes('Select all events in');
+        });
+        
+        expect(sectionCheckbox).toBeDefined();
+        
+        // Click section checkbox should fall back to toggleItemSelection
+        fireEvent.click(sectionCheckbox!);
+        
+        expect(mockToggleItemSelection).toHaveBeenCalled();
+      });
+
+      it('should handle multiple items in the same section correctly', () => {
+        // Create items with multiple events in the same section
+        const mockItems = [
+          {
+            id: 1,
+            number: 101,
+            title: 'First Issue',
+            html_url: 'https://github.com/test/repo/issues/101',
+            state: 'open',
+            created_at: '2024-01-15T10:00:00Z',
+            updated_at: '2024-01-15T10:00:00Z',
+            labels: [],
+            repository_url: 'https://api.github.com/repos/test/repo',
+            repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+            user: { login: 'user1', avatar_url: 'https://github.com/user1.png', html_url: 'https://github.com/user1' },
+          },
+          {
+            id: 2,
+            number: 102,
+            title: 'Second Issue',
+            html_url: 'https://github.com/test/repo/issues/102',
+            state: 'open', // Same state as first issue
+            created_at: '2024-01-16T10:00:00Z',
+            updated_at: '2024-01-16T11:00:00Z',
+            labels: [],
+            repository_url: 'https://api.github.com/repos/test/repo',
+            repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+            user: { login: 'user2', avatar_url: 'https://github.com/user2.png', html_url: 'https://github.com/user2' },
+          },
+        ];
+        
+        renderWithTheme(
+          <TimelineView 
+            items={mockItems} 
+            viewMode="grouped"
+            setViewMode={mockSetViewMode}
+            selectedItems={mockSelectedItems}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+            bulkSelectItems={mockBulkSelectItems}
+          />
+        );
+
+        // Get section-level checkbox for Issues - opened (both items should be in this section)
+        const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+          const ariaLabel = checkbox.getAttribute('aria-label');
+          return ariaLabel && ariaLabel.includes('Select all events in Issues - opened');
+        });
+        
+        expect(sectionCheckbox).toBeDefined();
+        
+        // Click section checkbox
+        fireEvent.click(sectionCheckbox!);
+        
+        // Should call bulkSelectItems with both item IDs
+        expect(mockBulkSelectItems).toHaveBeenCalledWith([2, 1], true); // Sorted by most recent first
+      });
+
+      it('should handle mixed selection state correctly (indeterminate state)', async () => {
+        const mockItems = [
+          {
+            id: 1,
+            number: 101,
+            title: 'First Issue',
+            html_url: 'https://github.com/test/repo/issues/101',
+            state: 'open',
+            created_at: '2024-01-15T10:00:00Z',
+            updated_at: '2024-01-15T10:00:00Z',
+            labels: [],
+            repository_url: 'https://api.github.com/repos/test/repo',
+            repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+            user: { login: 'user1', avatar_url: 'https://github.com/user1.png', html_url: 'https://github.com/user1' },
+          },
+          {
+            id: 2,
+            number: 102,
+            title: 'Second Issue',
+            html_url: 'https://github.com/test/repo/issues/102',
+            state: 'open',
+            created_at: '2024-01-16T10:00:00Z',
+            updated_at: '2024-01-16T11:00:00Z',
+            labels: [],
+            repository_url: 'https://api.github.com/repos/test/repo',
+            repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+            user: { login: 'user2', avatar_url: 'https://github.com/user2.png', html_url: 'https://github.com/user2' },
+          },
+        ];
+        
+        const partiallySelectedItems = new Set([1]); // Only first item selected
+        
+        renderWithTheme(
+          <TimelineView 
+            items={mockItems} 
+            viewMode="grouped"
+            setViewMode={mockSetViewMode}
+            selectedItems={partiallySelectedItems}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+            bulkSelectItems={mockBulkSelectItems}
+          />
+        );
+
+        // Wait for component to render and find section-level checkbox
+        await waitFor(() => {
+          const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+            const ariaLabel = checkbox.getAttribute('aria-label');
+            return ariaLabel && ariaLabel.includes('Select all events in Issues - opened');
+          });
+          
+          expect(sectionCheckbox).toBeDefined();
+          
+          // Click section checkbox - should select all remaining items
+          fireEvent.click(sectionCheckbox!);
+          
+          // Should call bulkSelectItems with shouldSelect=true since not all are selected
+          expect(mockBulkSelectItems).toHaveBeenCalledWith([2, 1], true);
+        });
+      });
+    });
+
     it('should render checkboxes for each grouped section when in grouped mode', () => {
       const mockItems = createMockItemsForSelection();
       
@@ -1310,332 +1558,332 @@ describe('TimelineView', () => {
       expect(screen.getByText('PRs - opened')).toBeInTheDocument();
     });
 
-         it('should render checkboxes for each individual item when in standard mode', () => {
-       const mockItems = createMockItemsForSelection();
-       
-       renderWithTheme(
-         <TimelineView 
-           items={mockItems} 
-           viewMode="standard"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
+    it('should render checkboxes for each individual item when in standard mode', () => {
+      const mockItems = createMockItemsForSelection();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="standard"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
 
-       // Should have checkboxes for each individual item + one select all checkbox
-       const checkboxes = screen.getAllByRole('checkbox');
-       expect(checkboxes.length).toBe(mockItems.length + 1); // +1 for select all checkbox
-     });
-
-         it('should maintain independent selection state for different event types', () => {
-       const mockItems = createMockItemsForSelection();
-       
-       renderWithTheme(
-         <TimelineView 
-           items={mockItems} 
-           viewMode="grouped"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
-
-       // Get section-level checkboxes by their aria-labels
-       const sectionCheckboxes = screen.getAllByRole('checkbox').filter(checkbox => {
-         const ariaLabel = checkbox.getAttribute('aria-label');
-         return ariaLabel && ariaLabel.includes('Select all events in');
-       });
-       expect(sectionCheckboxes.length).toBeGreaterThan(0);
-
-       // Click section-level checkbox should call toggleItemSelection for all items in that section
-       const firstSectionCheckbox = sectionCheckboxes[0];
-       fireEvent.click(firstSectionCheckbox);
-       
-       // Should have called toggleItemSelection for items in that section
-       expect(mockToggleItemSelection).toHaveBeenCalled();
-     });
-
-         it('should allow toggling selection state', () => {
-       const mockItems = createMockItemsForSelection();
-       
-       renderWithTheme(
-         <TimelineView 
-           items={mockItems} 
-           viewMode="grouped"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
-
-       // Get a section-level checkbox
-       const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
-         const ariaLabel = checkbox.getAttribute('aria-label');
-         return ariaLabel && ariaLabel.includes('Select all events in');
-       });
-       
-       expect(sectionCheckbox).toBeDefined();
-       
-       // Click section checkbox should call toggleItemSelection for items in that section
-       fireEvent.click(sectionCheckbox!);
-       expect(mockToggleItemSelection).toHaveBeenCalled();
-     });
-
-     it('should maintain selection state when switching between view modes', () => {
-       const mockItems = createMockItemsForSelection();
-       
-       const { rerender } = renderWithTheme(
-         <TimelineView 
-           items={mockItems} 
-           viewMode="grouped"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
-
-       // Click section-level checkbox in grouped mode
-       const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
-         const ariaLabel = checkbox.getAttribute('aria-label');
-         return ariaLabel && ariaLabel.includes('Select all events in');
-       });
-       
-       expect(sectionCheckbox).toBeDefined();
-       fireEvent.click(sectionCheckbox!);
-       expect(mockToggleItemSelection).toHaveBeenCalled();
-
-       // Switch to standard mode
-       rerender(
-         <ThemeProvider>
-           <TimelineView 
-             items={mockItems} 
-             viewMode="standard"
-             setViewMode={mockSetViewMode}
-             selectedItems={mockSelectedItems}
-             toggleItemSelection={mockToggleItemSelection}
-             selectAllItems={mockSelectAllItems}
-             clearSelection={mockClearSelection}
-           />
-         </ThemeProvider>
-       );
-
-       // Selection state should be maintained in standard mode (individual checkboxes + select all)
-       const individualCheckboxes = screen.getAllByRole('checkbox');
-       expect(individualCheckboxes.length).toBe(mockItems.length + 1); // +1 for select all checkbox
-     });
-
-         it('should handle selection with duplicate events correctly', () => {
-       // Create items with duplicates that should be grouped
-       const mockItems = [
-         {
-           id: 1,
-           number: 123,
-           title: 'Duplicate Issue 1',
-           html_url: 'https://github.com/test/repo/issues/123',
-           state: 'open',
-           created_at: '2024-01-15T10:00:00Z',
-           updated_at: '2024-01-15T10:00:00Z',
-           labels: [],
-           repository_url: 'https://api.github.com/repos/test/repo',
-           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
-           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
-         },
-         {
-           id: 2,
-           number: 123,
-           title: 'Duplicate Issue 2',
-           html_url: 'https://github.com/test/repo/issues/123',
-           state: 'open',
-           created_at: '2024-01-16T10:00:00Z',
-           updated_at: '2024-01-16T10:00:00Z',
-           labels: [],
-           repository_url: 'https://api.github.com/repos/test/repo',
-           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
-           user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
-         }
-       ];
-       
-       renderWithTheme(
-         <TimelineView 
-           items={mockItems} 
-           viewMode="grouped"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
-
-       // Should have checkboxes for the grouped section
-       const checkboxes = screen.getAllByRole('checkbox');
-       expect(checkboxes.length).toBeGreaterThan(0);
-
-       // Click section-level checkbox should call toggleItemSelection for all items in the section
-       const sectionCheckbox = checkboxes.find(checkbox => {
-         const ariaLabel = checkbox.getAttribute('aria-label');
-         return ariaLabel && ariaLabel.includes('Select all events in');
-       });
-       
-       expect(sectionCheckbox).toBeDefined();
-       fireEvent.click(sectionCheckbox!);
-       expect(mockToggleItemSelection).toHaveBeenCalled();
-       
-       // Should show count badge for multiple events in the event count badge (not section count)
-       const countBadges = screen.getAllByText('2');
-       expect(countBadges.length).toBeGreaterThan(0); // Should find at least one count badge with '2'
-     });
-
-         it('should preserve selection state across re-renders', () => {
-       const mockItems = createMockItemsForSelection();
-       
-       const { rerender } = renderWithTheme(
-         <TimelineView 
-           items={mockItems} 
-           viewMode="grouped"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
-
-       // Click section-level checkbox
-       const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
-         const ariaLabel = checkbox.getAttribute('aria-label');
-         return ariaLabel && ariaLabel.includes('Select all events in');
-       });
-       
-       expect(sectionCheckbox).toBeDefined();
-       fireEvent.click(sectionCheckbox!);
-       expect(mockToggleItemSelection).toHaveBeenCalled();
-
-       // Re-render with same props
-       rerender(
-         <ThemeProvider>
-           <TimelineView 
-             items={mockItems} 
-             viewMode="grouped"
-             setViewMode={mockSetViewMode}
-             selectedItems={mockSelectedItems}
-             toggleItemSelection={mockToggleItemSelection}
-             selectAllItems={mockSelectAllItems}
-             clearSelection={mockClearSelection}
-           />
-         </ThemeProvider>
-       );
-
-       // Section-level checkbox should still be available
-       const newSectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
-         const ariaLabel = checkbox.getAttribute('aria-label');
-         return ariaLabel && ariaLabel.includes('Select all events in');
-       });
-       expect(newSectionCheckbox).toBeDefined();
-     });
-
-         it('should handle empty selection state correctly', () => {
-       const mockItems = createMockItemsForSelection();
-       
-       renderWithTheme(
-         <TimelineView 
-           items={mockItems} 
-           viewMode="grouped"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
-
-      // All checkboxes should be unchecked initially
+      // Should have checkboxes for each individual item + one select all checkbox
       const checkboxes = screen.getAllByRole('checkbox');
-      checkboxes.forEach(checkbox => {
-        expect(checkbox).not.toBeChecked();
-      });
+      expect(checkboxes.length).toBe(mockItems.length + 1); // +1 for select all checkbox
     });
 
-              it('should handle selection state for mixed event types correctly', () => {
-       const mockMixedItems = [
-         // Issue
-         {
-           id: 1,
-           number: 101,
-           title: 'Test Issue',
-           html_url: 'https://github.com/test/repo/issues/101',
-           state: 'open',
-           created_at: '2024-01-15T10:00:00Z',
-           updated_at: '2024-01-15T10:00:00Z',
-           labels: [],
-           repository_url: 'https://api.github.com/repos/test/repo',
-           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
-           user: { login: 'user1', avatar_url: 'https://github.com/user1.png', html_url: 'https://github.com/user1' },
-         },
-         // PR
-         {
-           id: 2,
-           number: 201,
-           title: 'Test PR',
-           html_url: 'https://github.com/test/repo/pull/201',
-           state: 'open',
-           created_at: '2024-01-16T10:00:00Z',
-           updated_at: '2024-01-16T10:00:00Z',
-           labels: [],
-           repository_url: 'https://api.github.com/repos/test/repo',
-           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
-           user: { login: 'user2', avatar_url: 'https://github.com/user2.png', html_url: 'https://github.com/user2' },
-           pull_request: { url: 'https://github.com/test/repo/pull/201' },
-         },
-         // Comment
-         {
-           id: 3,
-           number: 101,
-           title: 'Comment on: Test Issue',
-           body: 'This is a comment',
-           html_url: 'https://github.com/test/repo/issues/101#issuecomment-1',
-           state: 'open',
-           created_at: '2024-01-17T10:00:00Z',
-           updated_at: '2024-01-17T10:00:00Z',
-           labels: [],
-           repository_url: 'https://api.github.com/repos/test/repo',
-           repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
-           user: { login: 'user3', avatar_url: 'https://github.com/user3.png', html_url: 'https://github.com/user3' },
-         }
-       ];
-       
-       renderWithTheme(
-         <TimelineView 
-           items={mockMixedItems} 
-           viewMode="grouped"
-           setViewMode={mockSetViewMode}
-           selectedItems={mockSelectedItems}
-           toggleItemSelection={mockToggleItemSelection}
-           selectAllItems={mockSelectAllItems}
-           clearSelection={mockClearSelection}
-         />
-       );
+    it('should maintain independent selection state for different event types', () => {
+      const mockItems = createMockItemsForSelection();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
 
-      // Should have section-level checkboxes for different event types
+      // Get section-level checkboxes by their aria-labels
       const sectionCheckboxes = screen.getAllByRole('checkbox').filter(checkbox => {
         const ariaLabel = checkbox.getAttribute('aria-label');
         return ariaLabel && ariaLabel.includes('Select all events in');
       });
       expect(sectionCheckboxes.length).toBeGreaterThan(0);
 
-      // Click first section checkbox should call toggleItemSelection
-      fireEvent.click(sectionCheckboxes[0]);
+      // Click section-level checkbox should call toggleItemSelection for all items in that section
+      const firstSectionCheckbox = sectionCheckboxes[0];
+      fireEvent.click(firstSectionCheckbox);
+      
+      // Should have called toggleItemSelection for items in that section
       expect(mockToggleItemSelection).toHaveBeenCalled();
     });
+
+    it('should allow toggling selection state', () => {
+      const mockItems = createMockItemsForSelection();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
+
+      // Get a section-level checkbox
+      const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+        const ariaLabel = checkbox.getAttribute('aria-label');
+        return ariaLabel && ariaLabel.includes('Select all events in');
+      });
+      
+      expect(sectionCheckbox).toBeDefined();
+      
+      // Click section checkbox should call toggleItemSelection for items in that section
+      fireEvent.click(sectionCheckbox!);
+      expect(mockToggleItemSelection).toHaveBeenCalled();
+    });
+
+    it('should maintain selection state when switching between view modes', () => {
+      const mockItems = createMockItemsForSelection();
+      
+      const { rerender } = renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
+
+      // Click section-level checkbox in grouped mode
+      const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+        const ariaLabel = checkbox.getAttribute('aria-label');
+        return ariaLabel && ariaLabel.includes('Select all events in');
+      });
+      
+      expect(sectionCheckbox).toBeDefined();
+      fireEvent.click(sectionCheckbox!);
+      expect(mockToggleItemSelection).toHaveBeenCalled();
+
+      // Switch to standard mode
+      rerender(
+        <ThemeProvider>
+          <TimelineView 
+            items={mockItems} 
+            viewMode="standard"
+            setViewMode={mockSetViewMode}
+            selectedItems={mockSelectedItems}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+          />
+        </ThemeProvider>
+      );
+
+      // Selection state should be maintained in standard mode (individual checkboxes + select all)
+      const individualCheckboxes = screen.getAllByRole('checkbox');
+      expect(individualCheckboxes.length).toBe(mockItems.length + 1); // +1 for select all checkbox
+    });
+
+    it('should handle selection with duplicate events correctly', () => {
+      // Create items with duplicates that should be grouped
+      const mockItems = [
+        {
+          id: 1,
+          number: 123,
+          title: 'Duplicate Issue 1',
+          html_url: 'https://github.com/test/repo/issues/123',
+          state: 'open',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+        },
+        {
+          id: 2,
+          number: 123,
+          title: 'Duplicate Issue 2',
+          html_url: 'https://github.com/test/repo/issues/123',
+          state: 'open',
+          created_at: '2024-01-16T10:00:00Z',
+          updated_at: '2024-01-16T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+        }
+      ];
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
+
+      // Should have checkboxes for the grouped section
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes.length).toBeGreaterThan(0);
+
+      // Click section-level checkbox should call toggleItemSelection for all items in the section
+      const sectionCheckbox = checkboxes.find(checkbox => {
+        const ariaLabel = checkbox.getAttribute('aria-label');
+        return ariaLabel && ariaLabel.includes('Select all events in');
+      });
+      
+      expect(sectionCheckbox).toBeDefined();
+      fireEvent.click(sectionCheckbox!);
+      expect(mockToggleItemSelection).toHaveBeenCalled();
+      
+      // Should show count badge for multiple events in the event count badge (not section count)
+      const countBadges = screen.getAllByText('2');
+      expect(countBadges.length).toBeGreaterThan(0); // Should find at least one count badge with '2'
+    });
+
+    it('should preserve selection state across re-renders', () => {
+      const mockItems = createMockItemsForSelection();
+      
+      const { rerender } = renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
+
+      // Click section-level checkbox
+      const sectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+        const ariaLabel = checkbox.getAttribute('aria-label');
+        return ariaLabel && ariaLabel.includes('Select all events in');
+      });
+      
+      expect(sectionCheckbox).toBeDefined();
+      fireEvent.click(sectionCheckbox!);
+      expect(mockToggleItemSelection).toHaveBeenCalled();
+
+      // Re-render with same props
+      rerender(
+        <ThemeProvider>
+          <TimelineView 
+            items={mockItems} 
+            viewMode="grouped"
+            setViewMode={mockSetViewMode}
+            selectedItems={mockSelectedItems}
+            toggleItemSelection={mockToggleItemSelection}
+            selectAllItems={mockSelectAllItems}
+            clearSelection={mockClearSelection}
+          />
+        </ThemeProvider>
+      );
+
+      // Section-level checkbox should still be available
+      const newSectionCheckbox = screen.getAllByRole('checkbox').find(checkbox => {
+        const ariaLabel = checkbox.getAttribute('aria-label');
+        return ariaLabel && ariaLabel.includes('Select all events in');
+      });
+      expect(newSectionCheckbox).toBeDefined();
+    });
+
+    it('should handle empty selection state correctly', () => {
+      const mockItems = createMockItemsForSelection();
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
+
+     // All checkboxes should be unchecked initially
+     const checkboxes = screen.getAllByRole('checkbox');
+     checkboxes.forEach(checkbox => {
+       expect(checkbox).not.toBeChecked();
+     });
+   });
+
+    it('should handle selection state for mixed event types correctly', () => {
+      const mockMixedItems = [
+        // Issue
+        {
+          id: 1,
+          number: 101,
+          title: 'Test Issue',
+          html_url: 'https://github.com/test/repo/issues/101',
+          state: 'open',
+          created_at: '2024-01-15T10:00:00Z',
+          updated_at: '2024-01-15T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'user1', avatar_url: 'https://github.com/user1.png', html_url: 'https://github.com/user1' },
+        },
+        // PR
+        {
+          id: 2,
+          number: 201,
+          title: 'Test PR',
+          html_url: 'https://github.com/test/repo/pull/201',
+          state: 'open',
+          created_at: '2024-01-16T10:00:00Z',
+          updated_at: '2024-01-16T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'user2', avatar_url: 'https://github.com/user2.png', html_url: 'https://github.com/user2' },
+          pull_request: { url: 'https://github.com/test/repo/pull/201' },
+        },
+        // Comment
+        {
+          id: 3,
+          number: 101,
+          title: 'Comment on: Test Issue',
+          body: 'This is a comment',
+          html_url: 'https://github.com/test/repo/issues/101#issuecomment-1',
+          state: 'open',
+          created_at: '2024-01-17T10:00:00Z',
+          updated_at: '2024-01-17T10:00:00Z',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: { full_name: 'test/repo', html_url: 'https://github.com/test/repo' },
+          user: { login: 'user3', avatar_url: 'https://github.com/user3.png', html_url: 'https://github.com/user3' },
+        }
+      ];
+      
+      renderWithTheme(
+        <TimelineView 
+          items={mockMixedItems} 
+          viewMode="grouped"
+          setViewMode={mockSetViewMode}
+          selectedItems={mockSelectedItems}
+          toggleItemSelection={mockToggleItemSelection}
+          selectAllItems={mockSelectAllItems}
+          clearSelection={mockClearSelection}
+        />
+      );
+
+     // Should have section-level checkboxes for different event types
+     const sectionCheckboxes = screen.getAllByRole('checkbox').filter(checkbox => {
+       const ariaLabel = checkbox.getAttribute('aria-label');
+       return ariaLabel && ariaLabel.includes('Select all events in');
+     });
+     expect(sectionCheckboxes.length).toBeGreaterThan(0);
+
+     // Click first section checkbox should call toggleItemSelection
+     fireEvent.click(sectionCheckboxes[0]);
+     expect(mockToggleItemSelection).toHaveBeenCalled();
+   });
   });
 
   describe('Search functionality', () => {

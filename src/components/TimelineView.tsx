@@ -55,6 +55,7 @@ interface TimelineViewProps {
   toggleItemSelection?: (id: string | number) => void;
   selectAllItems?: () => void;
   clearSelection?: () => void;
+  bulkSelectItems?: (itemIds: (string | number)[], shouldSelect: boolean) => void;
   copyResultsToClipboard?: (format: 'detailed' | 'compact') => void;
   // Search functionality
   searchText?: string;
@@ -73,6 +74,7 @@ const TimelineView = memo(function TimelineView({
   toggleItemSelection,
   selectAllItems,
   clearSelection,
+  bulkSelectItems,
   copyResultsToClipboard,
   searchText = '',
   setSearchText,
@@ -687,53 +689,135 @@ const TimelineView = memo(function TimelineView({
                             {toggleItemSelection && (
                               <Checkbox
                                 checked={(() => {
-                                  // Check if all items in this section are selected
-                                  const allItemIds = groupItems.map(
+                                  // In grouped view, we only work with the most recent items from each URL group
+                                  // since those are the only ones that have individual checkboxes
+                                  
+                                  // Group items by URL first to get the actual structure
+                                  const itemGroups: { [url: string]: GitHubItem[] } = {};
+                                  groupItems.forEach(item => {
+                                    let groupingUrl = item.html_url;
+                                    if (getEventType(item) === 'comment') {
+                                      groupingUrl = groupingUrl.split('#')[0];
+                                    }
+                                    if (!itemGroups[groupingUrl]) {
+                                      itemGroups[groupingUrl] = [];
+                                    }
+                                    itemGroups[groupingUrl].push(item);
+                                  });
+                                  
+                                  // Get only the most recent item from each URL group (these have checkboxes)
+                                  const displayedItems = Object.values(itemGroups).map(urlGroupItems => {
+                                    return urlGroupItems.reduce((latest, current) =>
+                                      new Date(current.updated_at) > new Date(latest.updated_at)
+                                        ? current
+                                        : latest
+                                    );
+                                  });
+                                  
+                                  const displayedItemIds = displayedItems.map(
                                     item => item.event_id || item.id
                                   );
                                   return (
-                                    allItemIds.length > 0 &&
-                                    allItemIds.every(id =>
+                                    displayedItemIds.length > 0 &&
+                                    displayedItemIds.every(id =>
                                       selectedItems.has(id)
                                     )
                                   );
                                 })()}
                                 indeterminate={(() => {
-                                  // Check if some (but not all) items in this section are selected
-                                  const allItemIds = groupItems.map(
+                                  // In grouped view, we only work with the most recent items from each URL group
+                                  // since those are the only ones that have individual checkboxes
+                                  
+                                  // Group items by URL first to get the actual structure
+                                  const itemGroups: { [url: string]: GitHubItem[] } = {};
+                                  groupItems.forEach(item => {
+                                    let groupingUrl = item.html_url;
+                                    if (getEventType(item) === 'comment') {
+                                      groupingUrl = groupingUrl.split('#')[0];
+                                    }
+                                    if (!itemGroups[groupingUrl]) {
+                                      itemGroups[groupingUrl] = [];
+                                    }
+                                    itemGroups[groupingUrl].push(item);
+                                  });
+                                  
+                                  // Get only the most recent item from each URL group (these have checkboxes)
+                                  const displayedItems = Object.values(itemGroups).map(urlGroupItems => {
+                                    return urlGroupItems.reduce((latest, current) =>
+                                      new Date(current.updated_at) > new Date(latest.updated_at)
+                                        ? current
+                                        : latest
+                                    );
+                                  });
+                                  
+                                  const displayedItemIds = displayedItems.map(
                                     item => item.event_id || item.id
                                   );
-                                  const selectedCount = allItemIds.filter(id =>
+                                  const selectedCount = displayedItemIds.filter(id =>
                                     selectedItems.has(id)
                                   ).length;
                                   return (
                                     selectedCount > 0 &&
-                                    selectedCount < allItemIds.length
+                                    selectedCount < displayedItemIds.length
                                   );
                                 })()}
                                 onChange={() => {
-                                  // Toggle all items in this section
-                                  const allItemIds = groupItems.map(
+                                  // In grouped view, we only work with the most recent items from each URL group
+                                  // since those are the only ones that have individual checkboxes
+                                  
+                                  // Group items by URL first to get the actual structure
+                                  const itemGroups: { [url: string]: GitHubItem[] } = {};
+                                  groupItems.forEach(item => {
+                                    let groupingUrl = item.html_url;
+                                    if (getEventType(item) === 'comment') {
+                                      groupingUrl = groupingUrl.split('#')[0];
+                                    }
+                                    if (!itemGroups[groupingUrl]) {
+                                      itemGroups[groupingUrl] = [];
+                                    }
+                                    itemGroups[groupingUrl].push(item);
+                                  });
+                                  
+                                  // Get only the most recent item from each URL group (these have checkboxes)
+                                  const displayedItems = Object.values(itemGroups).map(urlGroupItems => {
+                                    return urlGroupItems.reduce((latest, current) =>
+                                      new Date(current.updated_at) > new Date(latest.updated_at)
+                                        ? current
+                                        : latest
+                                    );
+                                  });
+                                  
+                                  const displayedItemIds = displayedItems.map(
                                     item => item.event_id || item.id
                                   );
-                                  const allSelected = allItemIds.every(id =>
+                                  
+                                  // Check current selection state
+                                  const selectedCount = displayedItemIds.filter(id =>
                                     selectedItems.has(id)
-                                  );
-
-                                  if (allSelected) {
-                                    // Deselect all items in this section
-                                    allItemIds.forEach(id => {
-                                      if (selectedItems.has(id)) {
-                                        toggleItemSelection(id);
-                                      }
-                                    });
+                                  ).length;
+                                  const allSelected = selectedCount === displayedItemIds.length;
+                                  
+                                  // Use bulkSelectItems if available, otherwise fall back to individual toggles
+                                  if (bulkSelectItems) {
+                                    // Efficient bulk selection
+                                    bulkSelectItems(displayedItemIds, !allSelected);
                                   } else {
-                                    // Select all items in this section
-                                    allItemIds.forEach(id => {
-                                      if (!selectedItems.has(id)) {
-                                        toggleItemSelection(id);
-                                      }
-                                    });
+                                    // Fallback to individual toggles (less efficient but still works)
+                                    if (allSelected) {
+                                      // Deselect all displayed items in this section
+                                      displayedItemIds.forEach(id => {
+                                        if (selectedItems.has(id)) {
+                                          toggleItemSelection(id);
+                                        }
+                                      });
+                                    } else {
+                                      // Select all unselected displayed items in this section
+                                      displayedItemIds.forEach(id => {
+                                        if (!selectedItems.has(id)) {
+                                          toggleItemSelection(id);
+                                        }
+                                      });
+                                    }
                                   }
                                 }}
                                 sx={{ flexShrink: 0, mr: 2 }}
