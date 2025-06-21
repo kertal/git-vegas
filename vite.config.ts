@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'safari-pinned-tab.svg'],
       manifest: {
-        name: 'Git Vegas - GitHub Search Tool',
-        short_name: 'Git Vegas',
+        name: 'GitVegas - GitHub Search Tool',
+        short_name: 'GitVegas',
         description: 'A 777 tool for searching GitHub issues and pull requests',
         theme_color: '#0969da',
         background_color: '#ffffff',

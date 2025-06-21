@@ -2,7 +2,7 @@
 
 ## 📱 Progressive Web App Capabilities
 
-Git Vegas is now a **Progressive Web App (PWA)** that works offline and can be installed as a native app on any device!
+GitVegas is now a **Progressive Web App (PWA)** that works offline and can be installed as a native app on any device!
 
 ### 🔧 **Local-First Features**
 
@@ -40,8 +40,8 @@ Git Vegas is now a **Progressive Web App (PWA)** that works offline and can be i
 ### **PWA Manifest**
 ```json
 {
-  "name": "Git Vegas - GitHub Search Tool",
-  "short_name": "Git Vegas",
+  "name": "GitVegas - GitHub Search Tool",
+  "short_name": "GitVegas",
   "display": "standalone",
   "theme_color": "#0969da",
   "background_color": "#ffffff"
@@ -70,7 +70,7 @@ npm run build  # Generates PWA-ready build
 #### **Desktop (Chrome/Edge)**
 1. Visit the GitHub Pages site
 2. Look for install icon in address bar
-3. Click "Install Git Vegas"
+3. Click "Install GitVegas"
 4. App opens in standalone window
 
 #### **Mobile (iOS/Android)**
@@ -149,7 +149,7 @@ npm run build  # Generates PWA-ready build
 - **Enhanced Storage**: IndexedDB for larger cache capacity
 
 ### **Advanced PWA Features**
-- **Share Target**: Share URLs directly to Git Vegas
+- **Share Target**: Share URLs directly to GitVegas
 - **File Handling**: Import/export search configurations
 - **Shortcuts**: App shortcut menu for quick actions
 - **Badging**: Unread notification badges
@@ -171,4 +171,4 @@ npm run build  # Generates PWA-ready build
 
 ---
 
-This PWA implementation makes Git Vegas a true **local-first application** that works reliably offline while providing an app-like experience across all devices! 🎉 
+This PWA implementation makes GitVegas a true **local-first application** that works reliably offline while providing an app-like experience across all devices! 🎉 

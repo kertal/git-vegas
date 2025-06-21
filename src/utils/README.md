@@ -1,6 +1,6 @@
 # Utils Documentation
 
-This directory contains utility modules that provide reusable functions for the GitHub Git Vegas application. Each module has comprehensive unit tests and is designed to be modular and maintainable.
+This directory contains utility modules that provide reusable functions for the GitHub GitVegas application. Each module has comprehensive unit tests and is designed to be modular and maintainable.
 
 ## Modules Overview
 

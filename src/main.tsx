@@ -3,8 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css'; // Should be empty or contain only truly global, non-conflicting styles
 import { ThemeProvider, BaseStyles } from '@primer/react';
-import '@primer/primitives/dist/css/primitives.css';
-import '@primer/primitives/dist/css/functional/themes/light.css';
+import '@primer/css/dist/primer.css';
 
 // Service worker registration is handled by vite-plugin-pwa
 

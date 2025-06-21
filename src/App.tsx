@@ -509,11 +509,11 @@ function App() {
   }, []);
 
   return (
-    <PageLayout sx={{ '--spacing': '4 !important' }}>
-      <PageLayout.Header className="border-bottom" divider="line">
-        <PageHeader role="banner" aria-label="Title">
+    <PageLayout sx={{ '--spacing': '4 !important' }} containerWidth='full'>
+      <PageLayout.Header className="border-bottom bgColor-inset">
+        <PageHeader role="banner" aria-label="Title" sx={{ 'p': '2'}}>
           <PageHeader.TitleArea>
-            <PageHeader.Title>Git Vegas</PageHeader.Title>
+            <PageHeader.Title>GitVegas</PageHeader.Title>
             <PageHeader.TrailingVisual>
               <SlotMachineLoader
                 avatarUrls={avatarUrls}
