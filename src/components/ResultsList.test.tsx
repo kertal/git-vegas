@@ -226,8 +226,8 @@ describe('ResultsList Repository Filter Tests', () => {
   });
 });
 
-describe('ResultsList Filter Integration', () => {
-  it('should render and integrate with FiltersPanel', async () => {
+describe('ResultsList Basic Rendering', () => {
+  it('should render without filters functionality', async () => {
     const mockContext = mockUseResultsContext();
 
     render(
@@ -244,23 +244,19 @@ describe('ResultsList Filter Integration', () => {
               repository_url: 'https://api.github.com/repos/test/repo2',
             },
           ],
-          includedLabels: ['test'], // Active filters to show FiltersPanel
+          includedLabels: [],
         })}
         buttonStyles={mockButtonStyles}
       />,
       { wrapper: TestWrapper }
     );
 
-    // Verify FiltersPanel is rendered
-    expect(screen.getByText('Filters')).toBeInTheDocument();
+    // Verify basic results display
+    expect(screen.getByText('Issues and PRs')).toBeInTheDocument();
     
-    // Verify basic filter types are present
-    expect(screen.getByText('Issues')).toBeInTheDocument();
-    expect(screen.getByText('PRs')).toBeInTheDocument();
-    expect(screen.getByText('Comments')).toBeInTheDocument();
-    expect(screen.getByText('Open')).toBeInTheDocument();
-    expect(screen.getByText('Closed')).toBeInTheDocument();
-    expect(screen.getByText('Merged')).toBeInTheDocument();
+    // Verify results are shown
+    expect(screen.getByText('Test Issue 1')).toBeInTheDocument();
+    expect(screen.getByText('Test Issue 2')).toBeInTheDocument();
   });
 });
 
@@ -280,7 +276,7 @@ describe('ResultsList Undefined Arrays Handling', () => {
     );
 
     // Should render without crashing
-    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
+    expect(screen.getByText('Issues and PRs')).toBeInTheDocument();
   });
 
   it('should handle undefined excludedLabels without crashing', () => {
@@ -298,7 +294,7 @@ describe('ResultsList Undefined Arrays Handling', () => {
     );
 
     // Should render without crashing
-    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
+    expect(screen.getByText('Issues and PRs')).toBeInTheDocument();
   });
 
   it('should handle undefined repoFilters without crashing', () => {
@@ -316,7 +312,7 @@ describe('ResultsList Undefined Arrays Handling', () => {
     );
 
     // Should render without crashing
-    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
+    expect(screen.getByText('Issues and PRs')).toBeInTheDocument();
   });
 
   it('should handle all undefined arrays without crashing', () => {
@@ -335,10 +331,10 @@ describe('ResultsList Undefined Arrays Handling', () => {
       { wrapper: TestWrapper }
     );
 
-    // Should render without crashing and show no active filters
-    expect(screen.getAllByText('Filters')[0]).toBeInTheDocument();
+    // Should render without crashing
+    expect(screen.getByText('Issues and PRs')).toBeInTheDocument();
     
-    // Clear All button should not be present when no filters are active
+    // No filters functionality should be present
     expect(screen.queryByText('Clear All')).toBeNull();
   });
 });

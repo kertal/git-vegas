@@ -1,10 +1,10 @@
 import {
   useState,
-  useCallback,
-  useContext,
-  createContext,
   useEffect,
+  useCallback,
   useMemo,
+  createContext,
+  useContext,
 } from 'react';
 import {
   Box,
@@ -37,19 +37,8 @@ import {
   GitHubItem,
   GitHubEvent,
 } from './types';
-import {
-  createDefaultFilter,
-  applyFiltersAndSort,
-  extractAvailableLabels,
-  type ResultsFilter,
-} from './utils/resultsUtils';
-import {
-  parseUrlParams,
-  applyUrlOverrides,
-  cleanupUrlParams,
-} from './utils/urlState';
+import { extractAvailableLabels } from './utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
-import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import { validateUsernameList } from './utils';
 import {
   performCombinedGitHubSearch,
@@ -133,7 +122,7 @@ function App() {
     }
   );
 
-  const [usernameCache, setUsernameCache] = useLocalStorage<UsernameCache>(
+  const [usernameCache] = useLocalStorage<UsernameCache>(
     'github-username-cache',
     {
       validatedUsernames: new Set(),
@@ -156,18 +145,11 @@ function App() {
     clearEvents: clearSearchItems,
   } = useIndexedDBStorage('github-search-items-indexeddb');
 
-  // Separate filter states for different API modes
-  const [searchFilters, setSearchFilters] = useLocalStorage<ResultsFilter>(
-    'github-search-filters',
-    createDefaultFilter()
-  );
-  const [eventsFilters, setEventsFilters] = useLocalStorage<ResultsFilter>(
-    'github-events-filters',
-    createDefaultFilter()
-  );
-
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
+  const { isCompactView, timelineViewMode } = uiSettings;
+  const { descriptionVisible, expanded, selectedItems } = itemUIState;
+  const { validatedUsernames, invalidUsernames } = usernameCache;
 
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
@@ -201,67 +183,11 @@ function App() {
     if (apiMode === 'events') {
       return getAvailableLabelsFromRawEvents(indexedDBEvents);
     } else {
-      return extractAvailableLabels(results);
+      return extractAvailableLabels(
+        indexedDBSearchItems as unknown as GitHubItem[]
+      );
     }
-  }, [apiMode, indexedDBEvents, results]);
-
-  const currentFilters = useMemo(() => {
-    return apiMode === 'events' ? eventsFilters : searchFilters;
-  }, [apiMode, eventsFilters, searchFilters]);
-
-  const setCurrentFilters = useMemo(() => {
-    return apiMode === 'events' ? setEventsFilters : setSearchFilters;
-  }, [apiMode, setEventsFilters, setSearchFilters]);
-
-  const { isCompactView, timelineViewMode } = uiSettings;
-  const {
-    descriptionVisible,
-    expanded,
-    selectedItems: rawSelectedItems,
-  } = itemUIState;
-  const {
-    validatedUsernames: rawValidatedUsernames,
-    invalidUsernames: rawInvalidUsernames,
-  } = usernameCache;
-
-  // Ensure selectedItems is always a Set instance (defensive programming)
-  const selectedItems = useMemo(() => {
-    if (rawSelectedItems instanceof Set) {
-      return rawSelectedItems;
-    }
-    // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
-    console.warn(
-      'selectedItems is not a Set instance, creating new empty Set:',
-      rawSelectedItems
-    );
-    return new Set<number>();
-  }, [rawSelectedItems]);
-
-  // Ensure validatedUsernames is always a Set instance (defensive programming)
-  const validatedUsernames = useMemo(() => {
-    if (rawValidatedUsernames instanceof Set) {
-      return rawValidatedUsernames;
-    }
-    // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
-    console.warn(
-      'validatedUsernames is not a Set instance, creating new empty Set:',
-      rawValidatedUsernames
-    );
-    return new Set<string>();
-  }, [rawValidatedUsernames]);
-
-  // Ensure invalidUsernames is always a Set instance (defensive programming)
-  const invalidUsernames = useMemo(() => {
-    if (rawInvalidUsernames instanceof Set) {
-      return rawInvalidUsernames;
-    }
-    // If it's not a Set (corrupted data or deserialization issue), create a new empty Set
-    console.warn(
-      'invalidUsernames is not a Set instance, creating new empty Set:',
-      rawInvalidUsernames
-    );
-    return new Set<string>();
-  }, [rawInvalidUsernames]);
+  }, [apiMode, indexedDBEvents, indexedDBSearchItems]);
 
   // Additional component state (not persisted)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -274,328 +200,11 @@ function App() {
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState('');
 
-  // Copy feedback for clipboard operations
+  // Clipboard feedback
   const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
 
-  // URL state initialization - apply URL overrides on mount if present
-  useEffect(() => {
-    const urlState = parseUrlParams();
-
-    if (Object.keys(urlState).length > 0) {
-      // Apply URL overrides to current state
-      const overrides = applyUrlOverrides(
-        urlState,
-        formSettings,
-        uiSettings,
-        currentFilters
-      );
-
-      // Update state with URL overrides
-      if (
-        JSON.stringify(overrides.formSettings) !== JSON.stringify(formSettings)
-      ) {
-        setFormSettings(overrides.formSettings);
-      }
-      if (JSON.stringify(overrides.uiSettings) !== JSON.stringify(uiSettings)) {
-        setUISettings(overrides.uiSettings);
-      }
-      if (
-        JSON.stringify(overrides.currentFilters) !==
-        JSON.stringify(currentFilters)
-      ) {
-        setCurrentFilters(overrides.currentFilters);
-      }
-
-      // Clean up URL after applying overrides (only when URL params were actually used)
-      cleanupUrlParams();
-    }
-    // This effect should only run on mount to apply URL overrides
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
-
-  // Individual setters for form settings
-  const setUsername = useCallback(
-    (username: string) => {
-      setFormSettings(prev => ({ ...prev, username }));
-    },
-    [setFormSettings]
-  );
-
-  const setStartDate = useCallback(
-    (startDate: string) => {
-      setFormSettings(prev => ({ ...prev, startDate }));
-    },
-    [setFormSettings]
-  );
-
-  const setEndDate = useCallback(
-    (endDate: string) => {
-      setFormSettings(prev => ({ ...prev, endDate }));
-    },
-    [setFormSettings]
-  );
-
-  const setGithubToken = useCallback(
-    (githubToken: string) => {
-      setFormSettings(prev => ({ ...prev, githubToken }));
-    },
-    [setFormSettings]
-  );
-
-  const setApiMode = useCallback(
-    (apiMode: 'search' | 'events') => {
-      setFormSettings(prev => ({ ...prev, apiMode }));
-    },
-    [setFormSettings]
-  );
-
-  // Individual setters for UI settings
-  const setIsCompactView = useCallback(
-    (isCompactView: boolean | ((prev: boolean) => boolean)) => {
-      setUISettings(prev => ({
-        ...prev,
-        isCompactView:
-          typeof isCompactView === 'function'
-            ? isCompactView(prev.isCompactView)
-            : isCompactView,
-      }));
-    },
-    [setUISettings]
-  );
-
-  const setTimelineViewMode = useCallback(
-    (
-      viewMode:
-        | 'standard'
-        | 'raw'
-        | 'grouped'
-        | ((
-            prev: 'standard' | 'raw' | 'grouped'
-          ) => 'standard' | 'raw' | 'grouped')
-    ) => {
-      setUISettings(prev => ({
-        ...prev,
-        timelineViewMode:
-          typeof viewMode === 'function'
-            ? viewMode(prev.timelineViewMode)
-            : viewMode,
-      }));
-    },
-    [setUISettings]
-  );
-
-  // Individual setters for item UI state
-  const setDescriptionVisible = useCallback(
-    (
-      descriptionVisible:
-        | { [id: number]: boolean }
-        | ((prev: { [id: number]: boolean }) => { [id: number]: boolean })
-    ) => {
-      setItemUIState(prev => ({
-        ...prev,
-        descriptionVisible:
-          typeof descriptionVisible === 'function'
-            ? descriptionVisible(prev.descriptionVisible)
-            : descriptionVisible,
-      }));
-    },
-    [setItemUIState]
-  );
-
-  const setExpanded = useCallback(
-    (
-      expanded:
-        | { [id: number]: boolean }
-        | ((prev: { [id: number]: boolean }) => { [id: number]: boolean })
-    ) => {
-      setItemUIState(prev => ({
-        ...prev,
-        expanded:
-          typeof expanded === 'function' ? expanded(prev.expanded) : expanded,
-      }));
-    },
-    [setItemUIState]
-  );
-
-  const setSelectedItems = useCallback(
-    (
-      selectedItems:
-        | Set<string | number>
-        | ((prev: Set<string | number>) => Set<string | number>)
-    ) => {
-      setItemUIState(prev => {
-        // Ensure prev.selectedItems is always a Set
-        const currentSelectedItems =
-          prev.selectedItems instanceof Set
-            ? prev.selectedItems
-            : new Set<string | number>();
-
-        return {
-          ...prev,
-          selectedItems:
-            typeof selectedItems === 'function'
-              ? selectedItems(currentSelectedItems)
-              : selectedItems,
-        };
-      });
-    },
-    [setItemUIState]
-  );
-
-  // Individual setters for username cache
-  const setValidatedUsernames = useCallback(
-    (
-      validatedUsernames: Set<string> | ((prev: Set<string>) => Set<string>)
-    ) => {
-      setUsernameCache(prev => {
-        // Ensure prev.validatedUsernames is always a Set
-        const currentValidatedUsernames =
-          prev.validatedUsernames instanceof Set
-            ? prev.validatedUsernames
-            : new Set<string>();
-
-        return {
-          ...prev,
-          validatedUsernames:
-            typeof validatedUsernames === 'function'
-              ? validatedUsernames(currentValidatedUsernames)
-              : validatedUsernames,
-        };
-      });
-    },
-    [setUsernameCache]
-  );
-
-  const setInvalidUsernames = useCallback(
-    (invalidUsernames: Set<string> | ((prev: Set<string>) => Set<string>)) => {
-      setUsernameCache(prev => {
-        // Ensure prev.invalidUsernames is always a Set
-        const currentInvalidUsernames =
-          prev.invalidUsernames instanceof Set
-            ? prev.invalidUsernames
-            : new Set<string>();
-
-        return {
-          ...prev,
-          invalidUsernames:
-            typeof invalidUsernames === 'function'
-              ? invalidUsernames(currentInvalidUsernames)
-              : invalidUsernames,
-        };
-      });
-    },
-    [setUsernameCache]
-  );
-
-  // Individual filter setters for convenience
-  const setFilter = useCallback(
-    (filter: 'all' | 'issue' | 'pr' | 'comment') => {
-      setCurrentFilters(prev => ({ ...prev, filter }));
-    },
-    [setCurrentFilters]
-  );
-
-  const setStatusFilter = useCallback(
-    (statusFilter: 'all' | 'open' | 'closed' | 'merged') => {
-      setCurrentFilters(prev => ({ ...prev, statusFilter }));
-    },
-    [setCurrentFilters]
-  );
-
-  const setIncludedLabels = useCallback(
-    (includedLabels: string[] | ((prev: string[]) => string[])) => {
-      setCurrentFilters(prev => ({
-        ...prev,
-        includedLabels:
-          typeof includedLabels === 'function'
-            ? includedLabels(prev.includedLabels || [])
-            : includedLabels,
-      }));
-    },
-    [setCurrentFilters]
-  );
-
-  const setExcludedLabels = useCallback(
-    (excludedLabels: string[] | ((prev: string[]) => string[])) => {
-      setCurrentFilters(prev => ({
-        ...prev,
-        excludedLabels:
-          typeof excludedLabels === 'function'
-            ? excludedLabels(prev.excludedLabels || [])
-            : excludedLabels,
-      }));
-    },
-    [setCurrentFilters]
-  );
-
-  const setRepoFilters = useCallback(
-    (repoFilters: string[] | ((prev: string[]) => string[])) => {
-      setCurrentFilters(prev => ({
-        ...prev,
-        repoFilters:
-          typeof repoFilters === 'function'
-            ? repoFilters(prev.repoFilters || [])
-            : repoFilters,
-      }));
-    },
-    [setCurrentFilters]
-  );
-
-  const setSearchText = useCallback(
-    (searchText: string) => {
-      setCurrentFilters(prev => ({ ...prev, searchText }));
-    },
-    [setCurrentFilters]
-  );
-
-  const setUserFilter = useCallback(
-    (userFilter: string | ((prev: string) => string)) => {
-      setCurrentFilters(prev => ({
-        ...prev,
-        userFilter:
-          typeof userFilter === 'function'
-            ? userFilter(prev.userFilter || '')
-            : userFilter,
-      }));
-    },
-    [setCurrentFilters]
-  );
-
-  // Extract individual filter values for convenience
-  const {
-    filter,
-    statusFilter,
-    includedLabels,
-    excludedLabels,
-    searchText,
-    repoFilters,
-    userFilter,
-  } = currentFilters;
-
-  // Helper functions for Set operations using the new utilities
-  // These functions are created by utility functions and don't need dependencies
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const addToValidated = useCallback(createAddToCache(setValidatedUsernames), [
-    setValidatedUsernames,
-  ]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const addToInvalid = useCallback(createAddToCache(setInvalidUsernames), [
-    setInvalidUsernames,
-  ]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const removeFromValidated = useCallback(
-    createRemoveFromCache(setValidatedUsernames),
-    [setValidatedUsernames]
-  );
-
-  // Derived state using new utilities
-  const filteredResults = useMemo(() => {
-    return applyFiltersAndSort(
-      Array.isArray(results) ? results : [],
-      currentFilters,
-      'updated'
-    );
-  }, [results, currentFilters]);
+  // Simple search text state (no complex filtering)
+  const [searchText, setSearchText] = useState('');
 
   // Memoize avatar URLs extraction to avoid recalculating on every render
   const avatarUrls = useMemo(() => {
@@ -635,20 +244,10 @@ function App() {
     }
   }, [username]);
 
+
+
   // Update handleSearch to check cache first
   const handleSearch = useCallback(async () => {
-    // Never use cache for repeated searches - if user clicks search again, they want fresh data
-    const shouldUseCache = false;
-
-    // Check if we have valid cached results for the current parameters
-    if (shouldUseCache) {
-      setLoadingProgress(`Using cached results (${results.length} items)`);
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setLoadingProgress('');
-
-      return;
-    }
-
     // Create search parameters
     const searchParams: GitHubSearchParams = {
       username,
@@ -662,13 +261,6 @@ function App() {
     const cache: UsernameCache = {
       validatedUsernames,
       invalidUsernames,
-    };
-
-    // Create cache callbacks
-    const cacheCallbacks = {
-      addToValidated,
-      addToInvalid,
-      removeFromValidated,
     };
 
     // Set up progress callback
@@ -694,7 +286,6 @@ function App() {
       // Always fetch both events and issues/PRs
       const result = await performCombinedGitHubSearch(searchParams, cache, {
         onProgress,
-        cacheCallbacks,
         requestDelay: 500,
       });
 
@@ -737,11 +328,8 @@ function App() {
       setLoading(false);
       setLoadingProgress('');
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'An error occurred while fetching data'
-      );
+      console.error('Search failed:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
       setLoading(false);
       setLoadingProgress('');
     }
@@ -753,90 +341,94 @@ function App() {
     apiMode,
     validatedUsernames,
     invalidUsernames,
-    addToValidated,
-    addToInvalid,
-    removeFromValidated,
-    setLoading,
-    setLoadingProgress,
-    setError,
     storeEvents,
     storeSearchItems,
-    results.length,
   ]);
 
-  // Show initial loading animation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setInitialLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+  // Handle form settings changes
+  const setUsername = useCallback(
+    (username: string) => {
+      setFormSettings(prev => ({ ...prev, username }));
+    },
+    [setFormSettings]
+  );
 
-  // Auto-load cached results when switching API modes (if cache is valid)
-  useEffect(() => {
-    // For events mode, show IndexedDB events if available
-    if (apiMode === 'events') {
-      if (indexedDBEvents.length > 0 && results.length === 0) {
-        setLoadingProgress(`Loaded ${indexedDBEvents.length} cached events`);
-        setTimeout(() => setLoadingProgress(''), 1000);
-        return;
-      }
-    }
+  const setStartDate = useCallback(
+    (startDate: string) => {
+      setFormSettings(prev => ({ ...prev, startDate }));
+    },
+    [setFormSettings]
+  );
 
-    // For search mode, use IndexedDB search items
-    if (apiMode === 'search' && results.length === 0) {
-      // If we have cached search items, show them
-      if (indexedDBSearchItems.length > 0) {
-        setLoadingProgress(
-          `Loaded ${indexedDBSearchItems.length} cached items`
-        );
-        setTimeout(() => setLoadingProgress(''), 1000);
-      }
-    }
-  }, [
-    apiMode,
-    results,
-    indexedDBEvents,
-    indexedDBSearchItems,
-    setLoadingProgress,
-  ]);
+  const setEndDate = useCallback(
+    (endDate: string) => {
+      setFormSettings(prev => ({ ...prev, endDate }));
+    },
+    [setFormSettings]
+  );
 
-  // Handle manual spin
-  const handleManualSpin = useCallback(() => {
-    if (!isManuallySpinning) {
-      setIsManuallySpinning(true);
-      setTimeout(() => {
-        setIsManuallySpinning(false);
-      }, 3000);
-    }
-  }, [isManuallySpinning]);
+  const setGithubToken = useCallback(
+    (githubToken: string) => {
+      setFormSettings(prev => ({ ...prev, githubToken }));
+    },
+    [setFormSettings]
+  );
 
-  // Toggle description visibility
+  const setApiMode = useCallback(
+    (apiMode: 'search' | 'events') => {
+      setFormSettings(prev => ({ ...prev, apiMode }));
+    },
+    [setFormSettings]
+  );
+
+  // Handle UI settings changes
+  const setIsCompactView = useCallback(
+    (isCompactView: boolean) => {
+      setUISettings(prev => ({ ...prev, isCompactView }));
+    },
+    [setUISettings]
+  );
+
+  const setTimelineViewMode = useCallback(
+    (timelineViewMode: 'standard' | 'raw' | 'grouped') => {
+      setUISettings(prev => ({ ...prev, timelineViewMode }));
+    },
+    [setUISettings]
+  );
+
+  // Handle item UI state changes
+  const setSelectedItems = useCallback(
+    (selectedItems: Set<string | number>) => {
+      setItemUIState(prev => ({ ...prev, selectedItems }));
+    },
+    [setItemUIState]
+  );
+
   const toggleDescriptionVisibility = useCallback(
     (id: number) => {
-      setDescriptionVisible(prev => ({
+      setItemUIState(prev => ({
         ...prev,
-        [id]: !prev[id],
+        descriptionVisible: {
+          ...prev.descriptionVisible,
+          [id]: !prev.descriptionVisible[id],
+        },
       }));
     },
-    [setDescriptionVisible]
+    [setItemUIState]
   );
 
-  // Toggle expanded state
   const toggleExpand = useCallback(
     (id: number) => {
-      setExpanded(prev => ({
+      setItemUIState(prev => ({
         ...prev,
-        [id]: !prev[id],
+        expanded: {
+          ...prev.expanded,
+          [id]: !prev.expanded[id],
+        },
       }));
     },
-    [setExpanded]
+    [setItemUIState]
   );
-
-  // Clear all filters for current mode only (preserves filters for other mode)
-  const clearAllFilters = useCallback(() => {
-    setCurrentFilters(createDefaultFilter());
-  }, [setCurrentFilters]);
 
   // Clipboard handler
   const copyResultsToClipboard = useCallback(
@@ -844,10 +436,10 @@ function App() {
       // Only consider items that are both selected and in the filtered results
       const visibleSelectedItems =
         selectedItems.size > 0
-          ? filteredResults.filter(item =>
+          ? results.filter(item =>
               selectedItems.has(item.event_id || item.id)
             )
-          : filteredResults;
+          : results;
 
       const result = await copyToClipboard(visibleSelectedItems, {
         isCompactView: format === 'compact',
@@ -863,34 +455,46 @@ function App() {
 
       return result;
     },
-    [filteredResults, selectedItems]
+    [results, selectedItems, triggerClipboardCopy]
   );
 
   // Selection handlers
   const toggleItemSelection = useCallback(
     (id: string | number) => {
-      setSelectedItems(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(id)) {
-          newSet.delete(id);
-        } else {
-          newSet.add(id);
-        }
-        return newSet;
-      });
+      const newSet = new Set(selectedItems);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      setSelectedItems(newSet);
     },
-    [setSelectedItems]
+    [selectedItems, setSelectedItems]
   );
 
   const selectAllItems = useCallback(() => {
     setSelectedItems(
-      new Set(filteredResults.map(item => item.event_id || item.id))
+      new Set(results.map(item => item.event_id || item.id))
     );
-  }, [filteredResults, setSelectedItems]);
+  }, [results, setSelectedItems]);
 
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
   }, [setSelectedItems]);
+
+  // Handle manual slot machine spin
+  const handleManualSpin = useCallback(() => {
+    setIsManuallySpinning(true);
+    setTimeout(() => setIsManuallySpinning(false), 2000);
+  }, []);
+
+
+
+  // Mark initial loading as complete
+  useEffect(() => {
+    const timer = setTimeout(() => setInitialLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <PageLayout sx={{ '--spacing': '4 !important' }}>
@@ -945,8 +549,7 @@ function App() {
             <ShareButton
               formSettings={formSettings}
               uiSettings={uiSettings}
-              currentFilters={currentFilters}
-              searchText={currentFilters.searchText}
+              searchText={searchText}
               size="medium"
               variant="invisible"
             />
@@ -992,19 +595,19 @@ function App() {
           <ResultsContext.Provider
             value={{
               results,
-              filteredResults,
-              filter,
-              statusFilter,
-              includedLabels: includedLabels || [],
-              excludedLabels: excludedLabels || [],
+              filteredResults: results, // No filtering, just use results directly
+              filter: 'all',
+              statusFilter: 'all',
+              includedLabels: [],
+              excludedLabels: [],
               searchText,
-              repoFilters: repoFilters || [],
-              userFilter: userFilter || '',
+              repoFilters: [],
+              userFilter: '',
               availableLabels,
-              setFilter,
-              setStatusFilter,
-              setIncludedLabels,
-              setExcludedLabels,
+              setFilter: () => {}, // No-op functions since we removed filtering
+              setStatusFilter: () => {},
+              setIncludedLabels: () => {},
+              setExcludedLabels: () => {},
               setSearchText,
               toggleDescriptionVisibility,
               toggleExpand,
@@ -1012,15 +615,15 @@ function App() {
               descriptionVisible,
               expanded,
               clipboardMessage,
-              clearAllFilters,
+              clearAllFilters: () => {},
               isCompactView,
               setIsCompactView,
               selectedItems,
               toggleItemSelection,
               selectAllItems,
               clearSelection,
-              setRepoFilters,
-              setUserFilter,
+              setRepoFilters: () => {},
+              setUserFilter: () => {},
               isClipboardCopied,
             }}
           >
@@ -1036,7 +639,7 @@ function App() {
                 selectAllItems={selectAllItems}
                 clearSelection={clearSelection}
                 copyResultsToClipboard={copyResultsToClipboard}
-                searchText={currentFilters.searchText}
+                searchText={searchText}
                 setSearchText={setSearchText}
                 isClipboardCopied={isClipboardCopied}
                 triggerClipboardCopy={triggerClipboardCopy}

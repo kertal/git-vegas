@@ -4,7 +4,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { ThemeProvider } from '@primer/react';
 import ShareButton from './ShareButton';
 import { FormSettings, UISettings } from '../types';
-import { createDefaultFilter } from '../utils/resultsUtils';
+
 import * as urlState from '../utils/urlState';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -34,7 +34,7 @@ describe('ShareButton', () => {
     timelineViewMode: 'standard',
   };
 
-  const defaultFilters = createDefaultFilter();
+
 
   const renderShareButton = (props = {}) => {
     return render(
@@ -42,7 +42,7 @@ describe('ShareButton', () => {
         <ShareButton
           formSettings={defaultFormSettings}
           uiSettings={defaultUISettings}
-          currentFilters={defaultFilters}
+
           searchText=""
           {...props}
         />
@@ -107,7 +107,6 @@ describe('ShareButton', () => {
       expect(mockExtractShareableState).toHaveBeenCalledWith(
         defaultFormSettings,
         defaultUISettings,
-        defaultFilters,
         ''
       );
       expect(mockGenerateShareableUrl).toHaveBeenCalled();
@@ -207,7 +206,6 @@ describe('ShareButton', () => {
       expect(mockExtractShareableState).toHaveBeenCalledWith(
         defaultFormSettings,
         defaultUISettings,
-        defaultFilters,
         'custom search'
       );
     });
@@ -245,19 +243,12 @@ describe('ShareButton', () => {
       timelineViewMode: 'grouped',
     };
 
-    const complexFilters = {
-      filter: 'issue' as const,
-      statusFilter: 'open' as const,
-      labelFilter: 'bug',
-      excludedLabels: ['wontfix', 'duplicate'],
-      repoFilters: ['repo1', 'repo2'],
-      searchText: 'complex search',
-    };
+
 
     renderShareButton({
       formSettings: complexFormSettings,
       uiSettings: complexUISettings,
-      currentFilters: complexFilters,
+      
       searchText: 'override search',
     });
 
@@ -268,7 +259,6 @@ describe('ShareButton', () => {
       expect(mockExtractShareableState).toHaveBeenCalledWith(
         complexFormSettings,
         complexUISettings,
-        complexFilters,
         'override search'
       );
     });

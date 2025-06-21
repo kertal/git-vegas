@@ -244,7 +244,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 export function extractShareableState(
   formSettings: FormSettings,
   uiSettings: UISettings,
-  currentFilters: ResultsFilter,
   searchText: string = ''
 ): ShareableState {
   return {
@@ -254,10 +253,10 @@ export function extractShareableState(
     apiMode: formSettings.apiMode,
     isCompactView: uiSettings.isCompactView,
     timelineViewMode: uiSettings.timelineViewMode,
-    filter: currentFilters.filter,
-    statusFilter: currentFilters.statusFilter,
-    excludedLabels: currentFilters.excludedLabels || [],
-    repoFilters: currentFilters.repoFilters || [],
+    filter: 'all',
+    statusFilter: 'all',
+    excludedLabels: [],
+    repoFilters: [],
     searchText: searchText,
   };
 }

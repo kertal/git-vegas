@@ -7,12 +7,10 @@ import {
   copyToClipboard as copyTextToClipboard,
 } from '../utils/urlState';
 import { FormSettings, UISettings } from '../types';
-import { ResultsFilter } from '../utils/resultsUtils';
 
 interface ShareButtonProps {
   formSettings: FormSettings;
   uiSettings: UISettings;
-  currentFilters: ResultsFilter;
   searchText?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'default' | 'invisible';
@@ -22,7 +20,6 @@ interface ShareButtonProps {
 export const ShareButton: React.FC<ShareButtonProps> = ({
   formSettings,
   uiSettings,
-  currentFilters,
   searchText = '',
   size = 'medium',
   variant = 'invisible',
@@ -39,7 +36,6 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       const shareableState = extractShareableState(
         formSettings,
         uiSettings,
-        currentFilters,
         searchText
       );
 
@@ -62,7 +58,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       setError('Failed to generate share link');
       setTimeout(() => setError(null), 3000);
     }
-  }, [formSettings, uiSettings, currentFilters, searchText]);
+  }, [formSettings, uiSettings, searchText]);
 
   const tooltipText = error
     ? error

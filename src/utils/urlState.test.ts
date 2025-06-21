@@ -12,7 +12,7 @@ import {
   ShareableState,
 } from './urlState';
 import { FormSettings, UISettings } from '../types';
-import { createDefaultFilter, ResultsFilter } from './resultsUtils';
+import { createDefaultFilter } from './resultsUtils';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -375,18 +375,11 @@ describe('urlState utilities', () => {
         timelineViewMode: 'standard',
       };
 
-      const currentFilters: ResultsFilter = {
-        filter: 'issue',
-        statusFilter: 'open',
-        excludedLabels: ['wontfix'],
-        repoFilters: ['repo1'],
-        searchText: 'search term',
-      };
+
 
       const result = extractShareableState(
         formSettings,
         uiSettings,
-        currentFilters,
         'custom search'
       );
 
@@ -396,10 +389,10 @@ describe('urlState utilities', () => {
         endDate: '2024-01-31',
         apiMode: 'events',
         isCompactView: true,
-        filter: 'issue',
-        statusFilter: 'open',
-        excludedLabels: ['wontfix'],
-        repoFilters: ['repo1'],
+        filter: 'all',
+        statusFilter: 'all',
+        excludedLabels: [],
+        repoFilters: [],
         searchText: 'custom search',
         timelineViewMode: 'standard',
       });

@@ -37,7 +37,7 @@ import { GitHubItem } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import FiltersPanel from './FiltersPanel';
+
 import { ResultsContainer } from './ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
@@ -302,11 +302,6 @@ const ResultsList = memo(function ResultsList({
     searchText,
     repoFilters = [],
     userFilter = '',
-    availableLabels = [],
-    setFilter,
-    setStatusFilter,
-    setIncludedLabels,
-    setExcludedLabels,
     setSearchText,
     copyResultsToClipboard,
     clearAllFilters,
@@ -316,16 +311,10 @@ const ResultsList = memo(function ResultsList({
     toggleItemSelection,
     selectAllItems,
     clearSelection,
-    setRepoFilters,
-    setUserFilter,
     isClipboardCopied,
   } = useResultsContext();
 
-  // Add state for filter collapse with localStorage persistence
-  const [areFiltersCollapsed, setAreFiltersCollapsed] = useLocalStorage(
-    'github-filters-collapsed',
-    false // Force expanded for debugging
-  );
+
 
   // Add state for filters active/inactive toggle
   const [areFiltersActive, setAreFiltersActive] = useLocalStorage(
@@ -396,34 +385,7 @@ const ResultsList = memo(function ResultsList({
     }
   };
 
-  // Function to generate filter summary text
-  const getFilterSummary = () => {
-    const summaryParts = [];
 
-    if (filter !== 'all') {
-      summaryParts.push(`Type: ${filter === 'pr' ? 'PRs' : 'Issues'}`);
-    }
-    if (statusFilter !== 'all') {
-      summaryParts.push(`Status: ${statusFilter}`);
-    }
-    if (userFilter) {
-      summaryParts.push(`User: ${userFilter}`);
-    }
-    if (includedLabels.length > 0) {
-      summaryParts.push(`Include: ${includedLabels.join(', ')}`);
-    }
-    if (excludedLabels.length > 0) {
-      summaryParts.push(`Excluded labels: ${excludedLabels.join(', ')}`);
-    }
-    if (searchText) {
-      summaryParts.push(`Search: "${searchText}"`);
-    }
-    if (repoFilters.length > 0) {
-      summaryParts.push(`Repos: ${repoFilters.join(', ')}`);
-    }
-
-    return summaryParts.join(' | ');
-  };
 
   // Add navigation logic
   const handlePreviousItem = () => {
@@ -622,33 +584,7 @@ const ResultsList = memo(function ResultsList({
         }
       >
         <Box sx={{ p: 3 }}>
-          {/* Filters Section - Hidden from user */}
-          <Box sx={{ display: 'none' }}>
-            {areFiltersActive && (
-              <FiltersPanel
-                results={results}
-                availableLabels={availableLabels}
-                filter={filter}
-                statusFilter={statusFilter}
-                userFilter={userFilter}
-                includedLabels={includedLabels}
-                excludedLabels={excludedLabels}
-                repoFilters={repoFilters}
-                setFilter={setFilter}
-                setStatusFilter={setStatusFilter}
-                setUserFilter={setUserFilter}
-                setIncludedLabels={setIncludedLabels}
-                setExcludedLabels={setExcludedLabels}
-                setRepoFilters={setRepoFilters}
-                areFiltersCollapsed={areFiltersCollapsed}
-                setAreFiltersCollapsed={setAreFiltersCollapsed}
-                hasConfiguredFilters={hasConfiguredFilters}
-                clearAllFilters={clearAllFilters}
-                getFilterSummary={getFilterSummary}
-                buttonStyles={buttonStyles}
-              />
-            )}
-          </Box>
+
 
           {/* Results List */}
           {(() => {

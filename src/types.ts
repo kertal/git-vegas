@@ -171,7 +171,7 @@ export interface ResultsContextType {
   clipboardMessage: string | null;
   clearAllFilters: () => void;
   isCompactView: boolean;
-  setIsCompactView: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsCompactView: (value: boolean) => void;
   selectedItems: Set<string | number>;
   toggleItemSelection: (id: string | number) => void;
   selectAllItems: () => void;
