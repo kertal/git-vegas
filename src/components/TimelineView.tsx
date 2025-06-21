@@ -86,14 +86,18 @@ const TimelineView = memo(function TimelineView({
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
+  // Memoize search text parsing to avoid repeated regex operations
+  const parsedSearchText = useMemo(() => {
+    return parseSearchText(searchText || '');
+  }, [searchText]);
+
   // Filter items by search text
   const filteredItems = useMemo(() => {
     if (!searchText || !searchText.trim()) {
       return items;
     }
 
-    const { includedLabels, excludedLabels, userFilters, cleanText } =
-      parseSearchText(searchText);
+    const { includedLabels, excludedLabels, userFilters, cleanText } = parsedSearchText;
 
     return items.filter(item => {
       // Check label filters first
@@ -140,7 +144,7 @@ const TimelineView = memo(function TimelineView({
       // If only label/user filters were used, item passed checks above
       return true;
     });
-  }, [items, searchText]);
+  }, [items, parsedSearchText]);
 
   // Sort filtered items by updated date (newest first)
   const sortedItems = [...filteredItems].sort(

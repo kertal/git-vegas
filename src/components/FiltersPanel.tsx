@@ -96,8 +96,8 @@ const FiltersPanel = memo(function FiltersPanel({
     [setRepoFilters]
   );
 
-  // Get unique repositories
-  const getUniqueRepositories = useMemo(() => {
+  // Get unique repositories (memoized for performance)
+  const uniqueRepositories = useMemo(() => {
     const repos = Array.from(
       new Set(
         results
@@ -117,8 +117,8 @@ const FiltersPanel = memo(function FiltersPanel({
     return repos;
   }, [results]);
 
-  // Get unique users
-  const getUniqueUsers = useMemo(() => {
+  // Get unique users (memoized for performance)
+  const uniqueUsers = useMemo(() => {
     const users = Array.from(
       new Set(
         results
@@ -359,7 +359,7 @@ const FiltersPanel = memo(function FiltersPanel({
             </Box>
 
             {/* User Filter */}
-            {getUniqueUsers.length > 1 && (
+            {uniqueUsers.length > 1 && (
               <Box>
                 <Heading
                   as="h4"
@@ -395,7 +395,7 @@ const FiltersPanel = memo(function FiltersPanel({
                         All Users
                       </ActionList.Item>
                       <ActionList.Divider />
-                      {getUniqueUsers.map(user => (
+                      {uniqueUsers.map((user: string) => (
                         <ActionList.Item
                           key={user}
                           selected={userFilter === user}
@@ -411,7 +411,7 @@ const FiltersPanel = memo(function FiltersPanel({
             )}
 
             {/* Repository Filter */}
-            {getUniqueRepositories.length > 0 && (
+            {uniqueRepositories.length > 0 && (
               <Box>
                 <Heading
                   as="h4"
@@ -452,7 +452,7 @@ const FiltersPanel = memo(function FiltersPanel({
                         All Repositories
                       </ActionList.Item>
                       <ActionList.Divider />
-                      {getUniqueRepositories.map(repo => (
+                      {uniqueRepositories.map((repo: string) => (
                         <ActionList.Item
                           key={repo}
                           selected={repoFilters.includes(repo)}

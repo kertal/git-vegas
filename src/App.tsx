@@ -6,7 +6,14 @@ import {
   useEffect,
   useMemo,
 } from 'react';
-import { Box, Button, IconButton, PageLayout, PageHeader, ThemeProvider, Text } from '@primer/react';
+import {
+  Box,
+  Button,
+  IconButton,
+  PageLayout,
+  PageHeader,
+  Text,
+} from '@primer/react';
 import { GearIcon, DatabaseIcon } from '@primer/octicons-react';
 import './App.css';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
@@ -35,13 +42,20 @@ import {
   extractAvailableLabels,
   type ResultsFilter,
 } from './utils/resultsUtils';
-import { parseUrlParams, applyUrlOverrides, cleanupUrlParams } from './utils/urlState';
+import {
+  parseUrlParams,
+  applyUrlOverrides,
+  cleanupUrlParams,
+} from './utils/urlState';
 import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
 import { createAddToCache, createRemoveFromCache } from './utils/usernameCache';
 import { validateUsernameList } from './utils';
-import { performCombinedGitHubSearch, type GitHubSearchParams } from './utils/githubSearch';
-import { 
-  categorizeRawEvents, 
+import {
+  performCombinedGitHubSearch,
+  type GitHubSearchParams,
+} from './utils/githubSearch';
+import {
+  categorizeRawEvents,
   categorizeRawSearchItems,
   getAvailableLabelsFromRawEvents,
 } from './utils/rawDataUtils';
@@ -151,7 +165,6 @@ function App() {
     createDefaultFilter()
   );
 
-
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
@@ -161,13 +174,21 @@ function App() {
       return categorizeRawEvents(indexedDBEvents, startDate, endDate);
     } else {
       // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
-      return categorizeRawSearchItems(indexedDBSearchItems as unknown as GitHubItem[], startDate, endDate);
+      return categorizeRawSearchItems(
+        indexedDBSearchItems as unknown as GitHubItem[],
+        startDate,
+        endDate
+      );
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
   // Calculate counts for navigation tabs
   const searchItemsCount = useMemo(() => {
-    return categorizeRawSearchItems(indexedDBSearchItems as unknown as GitHubItem[], startDate, endDate).length;
+    return categorizeRawSearchItems(
+      indexedDBSearchItems as unknown as GitHubItem[],
+      startDate,
+      endDate
+    ).length;
   }, [indexedDBSearchItems, startDate, endDate]);
 
   const eventsCount = useMemo(() => {
@@ -339,7 +360,15 @@ function App() {
   );
 
   const setTimelineViewMode = useCallback(
-    (viewMode: 'standard' | 'raw' | 'grouped' | ((prev: 'standard' | 'raw' | 'grouped') => 'standard' | 'raw' | 'grouped')) => {
+    (
+      viewMode:
+        | 'standard'
+        | 'raw'
+        | 'grouped'
+        | ((
+            prev: 'standard' | 'raw' | 'grouped'
+          ) => 'standard' | 'raw' | 'grouped')
+    ) => {
       setUISettings(prev => ({
         ...prev,
         timelineViewMode:
@@ -385,7 +414,11 @@ function App() {
   );
 
   const setSelectedItems = useCallback(
-    (selectedItems: Set<string | number> | ((prev: Set<string | number>) => Set<string | number>)) => {
+    (
+      selectedItems:
+        | Set<string | number>
+        | ((prev: Set<string | number>) => Set<string | number>)
+    ) => {
       setItemUIState(prev => {
         // Ensure prev.selectedItems is always a Set
         const currentSelectedItems =
@@ -560,6 +593,13 @@ function App() {
     );
   }, [results, currentFilters]);
 
+  // Memoize avatar URLs extraction to avoid recalculating on every render
+  const avatarUrls = useMemo(() => {
+    return (Array.isArray(results) ? results : [])
+      .map(item => item.user.avatar_url)
+      .filter(Boolean);
+  }, [results]);
+
   // Real-time username format validation
   const validateUsernameFormat = useCallback((usernameString: string) => {
     if (!usernameString.trim()) {
@@ -590,8 +630,6 @@ function App() {
       setError(null);
     }
   }, [username]);
-
-
 
   // Update handleSearch to check cache first
   const handleSearch = useCallback(async () => {
@@ -632,12 +670,15 @@ function App() {
     // Set up progress callback
     const onProgress = (message: string) => {
       setLoadingProgress(message);
-      
+
       // Extract username from progress message
       const usernameMatch = message.match(/for\s+([a-zA-Z0-9_-]+)/);
       if (usernameMatch) {
         setCurrentUsername(usernameMatch[1]);
-      } else if (message.includes('Successfully loaded') || message.includes('Validating usernames')) {
+      } else if (
+        message.includes('Successfully loaded') ||
+        message.includes('Validating usernames')
+      ) {
         setCurrentUsername('');
       }
     };
@@ -664,24 +705,28 @@ function App() {
           endDate,
         });
       }
-      
+
       if (result.rawSearchItems && result.rawSearchItems.length > 0) {
         // Store search items in IndexedDB (cast to GitHubEvent[] for storage)
-        await storeSearchItems('github-search-items-indexeddb', result.rawSearchItems as unknown as GitHubEvent[], {
-          lastFetch: Date.now(),
-          usernames: result.processedUsernames,
-          apiMode: 'search',
-          startDate,
-          endDate,
-        });
+        await storeSearchItems(
+          'github-search-items-indexeddb',
+          result.rawSearchItems as unknown as GitHubEvent[],
+          {
+            lastFetch: Date.now(),
+            usernames: result.processedUsernames,
+            apiMode: 'search',
+            startDate,
+            endDate,
+          }
+        );
       }
-
-
 
       // Show success message briefly
       const eventsCount = result.rawEvents?.length || 0;
       const itemsCount = result.rawSearchItems?.length || 0;
-      setLoadingProgress(`Successfully loaded ${eventsCount} events and ${itemsCount} issues/PRs!`);
+      setLoadingProgress(
+        `Successfully loaded ${eventsCount} events and ${itemsCount} issues/PRs!`
+      );
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Clear loading state
@@ -738,7 +783,9 @@ function App() {
     if (apiMode === 'search' && results.length === 0) {
       // If we have cached search items, show them
       if (indexedDBSearchItems.length > 0) {
-        setLoadingProgress(`Loaded ${indexedDBSearchItems.length} cached items`);
+        setLoadingProgress(
+          `Loaded ${indexedDBSearchItems.length} cached items`
+        );
         setTimeout(() => setLoadingProgress(''), 1000);
       }
     }
@@ -793,7 +840,9 @@ function App() {
       // Only consider items that are both selected and in the filtered results
       const visibleSelectedItems =
         selectedItems.size > 0
-          ? filteredResults.filter(item => selectedItems.has(item.event_id || item.id))
+          ? filteredResults.filter(item =>
+              selectedItems.has(item.event_id || item.id)
+            )
           : filteredResults;
 
       const result = await copyToClipboard(visibleSelectedItems, {
@@ -830,7 +879,9 @@ function App() {
   );
 
   const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(filteredResults.map(item => item.event_id || item.id)));
+    setSelectedItems(
+      new Set(filteredResults.map(item => item.event_id || item.id))
+    );
   }, [filteredResults, setSelectedItems]);
 
   const clearSelection = useCallback(() => {
@@ -838,201 +889,205 @@ function App() {
   }, [setSelectedItems]);
 
   return (
-    <ThemeProvider>
-      <PageLayout sx={{ '--spacing': '4 !important' }}>
-        <PageLayout.Header className='border-bottom' divider="line">
-          <PageHeader role="banner" aria-label="Title">
-            <PageHeader.TitleArea>
+    <PageLayout sx={{ '--spacing': '4 !important' }}>
+      <PageLayout.Header className="border-bottom" divider="line">
+        <PageHeader role="banner" aria-label="Title">
+          <PageHeader.TitleArea>
             <PageHeader.Title>Git Vegas</PageHeader.Title>
-              <PageHeader.TrailingVisual>
-                <SlotMachineLoader
-                  avatarUrls={(Array.isArray(results) ? results : [])
-                    .map(item => item.user.avatar_url)
-                    .filter(Boolean)}
-                  isLoading={loading || initialLoading}
-                  isManuallySpinning={isManuallySpinning}
-                />
-                <Button
-                  variant="invisible"
-                  onClick={handleManualSpin}
-                  disabled={isManuallySpinning || loading || initialLoading}
-                  sx={{
-                    p: 1,
-                    color: 'fg.default',
-                    opacity:
-                      isManuallySpinning || loading || initialLoading ? 0.5 : 1,
-                    '&:hover:not(:disabled)': {
-                      color: 'accent.fg',
-                      transform: 'scale(1.1)',
-                      transition: 'transform 0.2s ease-in-out',
-                    },
-                    '&:disabled': {
-                      cursor: 'not-allowed',
-                    },
-                    '&:focus': {
-                      outline: 'none',
-                      boxShadow: 'none',
-                    },
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    lineHeight: 1,
-                    height: 'auto',
-                    minWidth: 'auto',
-                  }}
-                >
-                  🕹️
-                </Button>
-              </PageHeader.TrailingVisual>
-             
-            </PageHeader.TitleArea>
-            <PageHeader.Actions>
-              <LoadingIndicator
-                loadingProgress={loadingProgress}
+            <PageHeader.TrailingVisual>
+              <SlotMachineLoader
+                avatarUrls={avatarUrls}
                 isLoading={loading || initialLoading}
-                currentUsername={currentUsername}
+                isManuallySpinning={isManuallySpinning}
               />
-              <ShareButton
-                formSettings={formSettings}
-                uiSettings={uiSettings}
-                currentFilters={currentFilters}
-                searchText={currentFilters.searchText}
-                size="medium"
+              <Button
                 variant="invisible"
-              />
-              <IconButton
-                icon={DatabaseIcon}
-                aria-label="Storage Manager"
-                onClick={() => setIsStorageManagerOpen(true)}
-                variant="invisible"
-              />
-              <IconButton
-                icon={GearIcon}
-                aria-label="Settings"
-                onClick={() => setIsSettingsOpen(true)}
-                variant="invisible"
-              />
-            </PageHeader.Actions>
-          </PageHeader>
-        </PageLayout.Header>
+                onClick={handleManualSpin}
+                disabled={isManuallySpinning || loading || initialLoading}
+                sx={{
+                  p: 1,
+                  color: 'fg.default',
+                  opacity:
+                    isManuallySpinning || loading || initialLoading ? 0.5 : 1,
+                  '&:hover:not(:disabled)': {
+                    color: 'accent.fg',
+                    transform: 'scale(1.1)',
+                    transition: 'transform 0.2s ease-in-out',
+                  },
+                  '&:disabled': {
+                    cursor: 'not-allowed',
+                  },
+                  '&:focus': {
+                    outline: 'none',
+                    boxShadow: 'none',
+                  },
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  lineHeight: 1,
+                  height: 'auto',
+                  minWidth: 'auto',
+                }}
+              >
+                🕹️
+              </Button>
+            </PageHeader.TrailingVisual>
+          </PageHeader.TitleArea>
+          <PageHeader.Actions>
+            <LoadingIndicator
+              loadingProgress={loadingProgress}
+              isLoading={loading || initialLoading}
+              currentUsername={currentUsername}
+            />
+            <ShareButton
+              formSettings={formSettings}
+              uiSettings={uiSettings}
+              currentFilters={currentFilters}
+              searchText={currentFilters.searchText}
+              size="medium"
+              variant="invisible"
+            />
+            <IconButton
+              icon={DatabaseIcon}
+              aria-label="Storage Manager"
+              onClick={() => setIsStorageManagerOpen(true)}
+              variant="invisible"
+            />
+            <IconButton
+              icon={GearIcon}
+              aria-label="Settings"
+              onClick={() => setIsSettingsOpen(true)}
+              variant="invisible"
+            />
+          </PageHeader.Actions>
+        </PageHeader>
+      </PageLayout.Header>
 
-        <PageLayout.Content sx={{ px: 3, py: 1 }}>
-          <FormContext.Provider
-            value={{
-              username,
-              startDate,
-              endDate,
-              githubToken,
-              apiMode,
-              setUsername,
-              setStartDate,
-              setEndDate,
-              setGithubToken,
-              setApiMode,
-              handleSearch,
-              handleUsernameBlur,
-              validateUsernameFormat,
-              loading,
-              loadingProgress,
-              error,
-              searchItemsCount,
-              eventsCount,
-            }}
-          >
-            <ResultsContext.Provider
-              value={{
-                results,
-                filteredResults,
-                filter,
-                statusFilter,
-                includedLabels: includedLabels || [],
-                excludedLabels: excludedLabels || [],
-                searchText,
-                repoFilters: repoFilters || [],
-                userFilter: userFilter || '',
-                availableLabels,
-                setFilter,
-                setStatusFilter,
-                setIncludedLabels,
-                setExcludedLabels,
-                setSearchText,
-                toggleDescriptionVisibility,
-                toggleExpand,
-                copyResultsToClipboard,
-                descriptionVisible,
-                expanded,
-                clipboardMessage,
-                clearAllFilters,
-                isCompactView,
-                setIsCompactView,
-                selectedItems,
-                toggleItemSelection,
-                selectAllItems,
-                clearSelection,
-                setRepoFilters,
-                setUserFilter,
-              }}
-            >
-              <SearchForm />
-              {apiMode === 'events' ? (
-                <TimelineView
-                  items={results}
-                  rawEvents={indexedDBEvents}
-                  viewMode={timelineViewMode}
-                  setViewMode={setTimelineViewMode}
-                  selectedItems={selectedItems}
-                  toggleItemSelection={toggleItemSelection}
-                  selectAllItems={selectAllItems}
-                  clearSelection={clearSelection}
-                  copyResultsToClipboard={copyResultsToClipboard}
-                  clipboardMessage={clipboardMessage}
-                  searchText={currentFilters.searchText}
-                  setSearchText={setSearchText}
-                />
-              ) : (
-                <ResultsList
-                  useResultsContext={useResultsContext}
-                  buttonStyles={buttonStyles}
-                />
-              )}
-              {eventsError && (
-                <Box sx={{ p: 2, bg: 'danger.subtle', color: 'danger.fg', borderRadius: 2, mb: 2 }}>
-                  <Text>Error loading events: {eventsError}</Text>
-                </Box>
-              )}
-              <SettingsDialog
-                isOpen={isSettingsOpen}
-                onDismiss={() => setIsSettingsOpen(false)}
-              />
-                      <StorageManager
-          isOpen={isStorageManagerOpen}
-          onClose={() => setIsStorageManagerOpen(false)}
-          onClearEvents={clearEvents}
-          onClearSearchItems={clearSearchItems}
-        />
-            </ResultsContext.Provider>
-          </FormContext.Provider>
-        </PageLayout.Content>
-
-        <PageLayout.Footer
-          padding="condensed"
+      <PageLayout.Content sx={{ px: 3, py: 1 }}>
+        <FormContext.Provider
+          value={{
+            username,
+            startDate,
+            endDate,
+            githubToken,
+            apiMode,
+            setUsername,
+            setStartDate,
+            setEndDate,
+            setGithubToken,
+            setApiMode,
+            handleSearch,
+            handleUsernameBlur,
+            validateUsernameFormat,
+            loading,
+            loadingProgress,
+            error,
+            searchItemsCount,
+            eventsCount,
+          }}
         >
-          <small>v0.0.7.7.7, prompted by <a href="https://github.com/kertal">@kertal</a></small>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              py: 1,
-              minHeight: '40px',
+          <ResultsContext.Provider
+            value={{
+              results,
+              filteredResults,
+              filter,
+              statusFilter,
+              includedLabels: includedLabels || [],
+              excludedLabels: excludedLabels || [],
+              searchText,
+              repoFilters: repoFilters || [],
+              userFilter: userFilter || '',
+              availableLabels,
+              setFilter,
+              setStatusFilter,
+              setIncludedLabels,
+              setExcludedLabels,
+              setSearchText,
+              toggleDescriptionVisibility,
+              toggleExpand,
+              copyResultsToClipboard,
+              descriptionVisible,
+              expanded,
+              clipboardMessage,
+              clearAllFilters,
+              isCompactView,
+              setIsCompactView,
+              selectedItems,
+              toggleItemSelection,
+              selectAllItems,
+              clearSelection,
+              setRepoFilters,
+              setUserFilter,
             }}
           >
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <OfflineBanner />
-            </Box>
+            <SearchForm />
+            {apiMode === 'events' ? (
+              <TimelineView
+                items={results}
+                rawEvents={indexedDBEvents}
+                viewMode={timelineViewMode}
+                setViewMode={setTimelineViewMode}
+                selectedItems={selectedItems}
+                toggleItemSelection={toggleItemSelection}
+                selectAllItems={selectAllItems}
+                clearSelection={clearSelection}
+                copyResultsToClipboard={copyResultsToClipboard}
+                clipboardMessage={clipboardMessage}
+                searchText={currentFilters.searchText}
+                setSearchText={setSearchText}
+              />
+            ) : (
+              <ResultsList
+                useResultsContext={useResultsContext}
+                buttonStyles={buttonStyles}
+              />
+            )}
+            {eventsError && (
+              <Box
+                sx={{
+                  p: 2,
+                  bg: 'danger.subtle',
+                  color: 'danger.fg',
+                  borderRadius: 2,
+                  mb: 2,
+                }}
+              >
+                <Text>Error loading events: {eventsError}</Text>
+              </Box>
+            )}
+            <SettingsDialog
+              isOpen={isSettingsOpen}
+              onDismiss={() => setIsSettingsOpen(false)}
+            />
+            <StorageManager
+              isOpen={isStorageManagerOpen}
+              onClose={() => setIsStorageManagerOpen(false)}
+              onClearEvents={clearEvents}
+              onClearSearchItems={clearSearchItems}
+            />
+          </ResultsContext.Provider>
+        </FormContext.Provider>
+      </PageLayout.Content>
+
+      <PageLayout.Footer padding="condensed">
+        <small>
+          v0.0.7.7.7, prompted by{' '}
+          <a href="https://github.com/kertal">@kertal</a>
+        </small>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            py: 1,
+            minHeight: '40px',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <OfflineBanner />
           </Box>
-        </PageLayout.Footer>
-      </PageLayout>
-    </ThemeProvider>
+        </Box>
+      </PageLayout.Footer>
+    </PageLayout>
   );
 }
 

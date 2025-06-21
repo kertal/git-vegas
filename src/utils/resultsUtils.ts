@@ -6,6 +6,17 @@ import { GitHubItem } from '../types';
  * Provides functions for filtering, sorting, and manipulating GitHub items results.
  */
 
+// Cache for parseSearchText to avoid repeated regex parsing
+const parseSearchTextCache = new Map<string, {
+  includedLabels: string[];
+  excludedLabels: string[];
+  userFilters: string[];
+  cleanText: string;
+}>();
+
+// Limit cache size to prevent memory leaks
+const MAX_CACHE_SIZE = 100;
+
 /**
  * Filter configuration for GitHub items
  */
@@ -226,6 +237,12 @@ export const parseSearchText = (searchText: string): {
     return { includedLabels: [], excludedLabels: [], userFilters: [], cleanText: '' };
   }
 
+  // Check cache first
+  const cached = parseSearchTextCache.get(searchText);
+  if (cached) {
+    return cached;
+  }
+
   const includedLabels: string[] = [];
   const excludedLabels: string[] = [];
   const userFilters: string[] = [];
@@ -274,7 +291,19 @@ export const parseSearchText = (searchText: string): {
   // Clean up extra whitespace
   cleanText = cleanText.replace(/\s+/g, ' ').trim();
 
-  return { includedLabels, excludedLabels, userFilters, cleanText };
+  const result = { includedLabels, excludedLabels, userFilters, cleanText };
+
+  // Cache the result
+  if (parseSearchTextCache.size >= MAX_CACHE_SIZE) {
+    // Remove oldest entry (first in Map)
+    const firstKey = parseSearchTextCache.keys().next().value;
+    if (firstKey !== undefined) {
+      parseSearchTextCache.delete(firstKey);
+    }
+  }
+  parseSearchTextCache.set(searchText, result);
+
+  return result;
 };
 
 /**
