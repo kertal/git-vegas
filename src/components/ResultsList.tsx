@@ -2,7 +2,6 @@ import React, { memo, useState, useMemo } from 'react';
 import {
   Box,
   Button,
-  Flash,
   Text,
   Heading,
   Link,
@@ -74,6 +73,7 @@ interface UseResultsContextHookType {
   setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
   setUserFilter: React.Dispatch<React.SetStateAction<string>>;
   setSearchText: (searchText: string) => void;
+  isClipboardCopied: (itemId: string | number) => boolean;
 }
 
 // Props interface
@@ -309,7 +309,6 @@ const ResultsList = memo(function ResultsList({
     setExcludedLabels,
     setSearchText,
     copyResultsToClipboard,
-    clipboardMessage,
     clearAllFilters,
     isCompactView,
     setIsCompactView,
@@ -319,6 +318,7 @@ const ResultsList = memo(function ResultsList({
     clearSelection,
     setRepoFilters,
     setUserFilter,
+    isClipboardCopied,
   } = useResultsContext();
 
   // Add state for filter collapse with localStorage persistence
@@ -510,7 +510,11 @@ const ResultsList = memo(function ResultsList({
                     borderColor: 'border.default',
                   }}
                 >
-                  <PasteIcon size={14} />
+                  {(isClipboardCopied('compact') || isClipboardCopied('detailed')) ? (
+                    <CheckIcon size={14} />
+                  ) : (
+                    <PasteIcon size={14} />
+                  )}
                   {(() => {
                     const displayResults = areFiltersActive
                       ? filteredResults
@@ -542,11 +546,7 @@ const ResultsList = memo(function ResultsList({
                 </ActionMenu.Overlay>
               </ActionMenu>
             </Box>
-            {clipboardMessage && (
-              <Flash variant="success" sx={{ py: 1, px: 2 }}>
-                {clipboardMessage}
-              </Flash>
-            )}
+
           </>
         }
         headerRight={

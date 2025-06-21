@@ -76,6 +76,7 @@ const mockUseResultsContext = () => ({
   toggleItemSelection: vi.fn(),
   setRepoFilters: vi.fn(),
   setUserFilter: vi.fn(),
+  isClipboardCopied: vi.fn().mockReturnValue(false),
 });
 
 

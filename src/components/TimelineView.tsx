@@ -8,7 +8,7 @@ import {
   Heading,
   ActionMenu,
   ActionList,
-  Flash,
+
   Checkbox,
   Box,
   Token,
@@ -56,10 +56,12 @@ interface TimelineViewProps {
   selectAllItems?: () => void;
   clearSelection?: () => void;
   copyResultsToClipboard?: (format: 'detailed' | 'compact') => void;
-  clipboardMessage?: string | null;
   // Search functionality
   searchText?: string;
   setSearchText?: (searchText: string) => void;
+  // Clipboard feedback
+  isClipboardCopied?: (itemId: string | number) => boolean;
+  triggerClipboardCopy?: (itemId: string | number) => void;
 }
 
 const TimelineView = memo(function TimelineView({
@@ -72,9 +74,10 @@ const TimelineView = memo(function TimelineView({
   selectAllItems,
   clearSelection,
   copyResultsToClipboard,
-  clipboardMessage,
   searchText = '',
   setSearchText,
+  isClipboardCopied,
+  triggerClipboardCopy,
 }: TimelineViewProps) {
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
@@ -362,7 +365,8 @@ const TimelineView = memo(function TimelineView({
         isGroupedView: true,
         groupedData,
         onSuccess: () => {
-          // Success feedback is handled by the parent component
+          // Trigger visual feedback via copy feedback system
+          triggerClipboardCopy?.(format);
         },
         onError: (error: Error) => {
           console.error('Failed to copy grouped results:', error);
@@ -414,7 +418,11 @@ const TimelineView = memo(function TimelineView({
               borderColor: 'border.default',
             }}
           >
-            <PasteIcon size={14} />
+            {(isClipboardCopied?.('compact') || isClipboardCopied?.('detailed')) ? (
+              <CheckIcon size={14} />
+            ) : (
+              <PasteIcon size={14} />
+            )}
             {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
           </ActionMenu.Button>
 
@@ -430,11 +438,7 @@ const TimelineView = memo(function TimelineView({
           </ActionMenu.Overlay>
         </ActionMenu>
       )}
-      {clipboardMessage && (
-        <Flash variant="success" sx={{ py: 1, px: 2 }}>
-          {clipboardMessage}
-        </Flash>
-      )}
+
     </>
   );
 

@@ -317,9 +317,7 @@ describe('copyResultsToClipboard', () => {
 
     expect(result.success).toBe(true);
     expect(result.message).toBe('Results copied to clipboard with formatting!');
-    expect(onSuccess).toHaveBeenCalledWith(
-      'Results copied to clipboard with formatting!'
-    );
+    expect(onSuccess).toHaveBeenCalledWith();
     expect(onError).not.toHaveBeenCalled();
 
     expect(MockClipboardItem).toHaveBeenCalledWith({
@@ -350,9 +348,7 @@ describe('copyResultsToClipboard', () => {
     expect(result.message).toBe(
       'Results copied to clipboard (plain text only)'
     );
-    expect(onSuccess).toHaveBeenCalledWith(
-      'Results copied to clipboard (plain text only)'
-    );
+    expect(onSuccess).toHaveBeenCalledWith();
     expect(onError).not.toHaveBeenCalled();
 
     expect(mockClipboard.writeText).toHaveBeenCalledWith(

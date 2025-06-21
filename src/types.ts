@@ -178,6 +178,7 @@ export interface ResultsContextType {
   clearSelection: () => void;
   setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
   setUserFilter: React.Dispatch<React.SetStateAction<string>>;
+  isClipboardCopied: (itemId: string | number) => boolean;
 }
 
 // Component Props Types

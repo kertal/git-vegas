@@ -3,7 +3,7 @@ import { getContrastColor } from '../utils';
 
 export interface ClipboardOptions {
   isCompactView: boolean;
-  onSuccess?: (message: string) => void;
+  onSuccess?: () => void;
   onError?: (error: Error) => void;
   isGroupedView?: boolean;
   groupedData?: Array<{
@@ -291,13 +291,13 @@ export const copyResultsToClipboard = async (
 
       await navigator.clipboard.write([clipboardItem]);
       const message = 'Results copied to clipboard with formatting!';
-      options.onSuccess?.(message);
+      options.onSuccess?.();
       return { success: true, message };
     } else {
       // Fallback to basic text clipboard for older browsers
       await navigator.clipboard.writeText(plainText);
       const message = 'Results copied to clipboard (plain text only)';
-      options.onSuccess?.(message);
+      options.onSuccess?.();
       return { success: true, message };
     }
   } catch (error) {

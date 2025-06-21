@@ -27,6 +27,7 @@ import TimelineView from './components/TimelineView';
 import { LoadingIndicator } from './components/LoadingIndicator';
 import { useLocalStorage, useFormSettings } from './hooks/useLocalStorage';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
+import { useCopyFeedback } from './hooks/useCopyFeedback';
 import {
   UISettings,
   ItemUIState,
@@ -272,6 +273,9 @@ function App() {
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState('');
+
+  // Copy feedback for clipboard operations
+  const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
 
   // URL state initialization - apply URL overrides on mount if present
   useEffect(() => {
@@ -847,9 +851,9 @@ function App() {
 
       const result = await copyToClipboard(visibleSelectedItems, {
         isCompactView: format === 'compact',
-        onSuccess: (message: string) => {
-          setClipboardMessage(message);
-          setTimeout(() => setClipboardMessage(null), 3000);
+        onSuccess: () => {
+          // Trigger visual feedback via copy feedback system
+          triggerClipboardCopy(format);
         },
         onError: (error: Error) => {
           setClipboardMessage(`Error: ${error.message}`);
@@ -1017,6 +1021,7 @@ function App() {
               clearSelection,
               setRepoFilters,
               setUserFilter,
+              isClipboardCopied,
             }}
           >
             <SearchForm />
@@ -1031,9 +1036,10 @@ function App() {
                 selectAllItems={selectAllItems}
                 clearSelection={clearSelection}
                 copyResultsToClipboard={copyResultsToClipboard}
-                clipboardMessage={clipboardMessage}
                 searchText={currentFilters.searchText}
                 setSearchText={setSearchText}
+                isClipboardCopied={isClipboardCopied}
+                triggerClipboardCopy={triggerClipboardCopy}
               />
             ) : (
               <ResultsList
