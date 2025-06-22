@@ -22,7 +22,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
   uiSettings,
   searchText = '',
   size = 'medium',
-  variant = 'invisible',
+  variant = 'default',
   className,
 }) => {
   const [copied, setCopied] = useState(false);

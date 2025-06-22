@@ -16,6 +16,7 @@ import {
 } from '@primer/react';
 import { GearIcon, DatabaseIcon } from '@primer/octicons-react';
 import './App.css';
+import GitVegasLogo from './assets/GitVegas.svg?react';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
 import SearchForm from './components/SearchForm';
 import ResultsList from './components/ResultsList';
@@ -513,44 +514,10 @@ function App() {
       <PageLayout.Header className="border-bottom bgColor-inset">
         <PageHeader role="banner" aria-label="Title" sx={{ 'p': '2'}}>
           <PageHeader.TitleArea>
+            <PageHeader.LeadingVisual>
+            <GitVegasLogo width={32} height={32}  onClick={handleManualSpin}/>
+            </PageHeader.LeadingVisual>
             <PageHeader.Title>GitVegas</PageHeader.Title>
-            <PageHeader.TrailingVisual>
-              <SlotMachineLoader
-                avatarUrls={avatarUrls}
-                isLoading={loading || initialLoading}
-                isManuallySpinning={isManuallySpinning}
-              />
-              <Button
-                variant="invisible"
-                onClick={handleManualSpin}
-                disabled={isManuallySpinning || loading || initialLoading}
-                sx={{
-                  p: 1,
-                  color: 'fg.default',
-                  opacity:
-                    isManuallySpinning || loading || initialLoading ? 0.5 : 1,
-                  '&:hover:not(:disabled)': {
-                    color: 'accent.fg',
-                    transform: 'scale(1.1)',
-                    transition: 'transform 0.2s ease-in-out',
-                  },
-                  '&:disabled': {
-                    cursor: 'not-allowed',
-                  },
-                  '&:focus': {
-                    outline: 'none',
-                    boxShadow: 'none',
-                  },
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  lineHeight: 1,
-                  height: 'auto',
-                  minWidth: 'auto',
-                }}
-              >
-                🕹️
-              </Button>
-            </PageHeader.TrailingVisual>
           </PageHeader.TitleArea>
           <PageHeader.Actions>
             <LoadingIndicator
@@ -563,20 +530,22 @@ function App() {
               uiSettings={uiSettings}
               searchText={searchText}
               size="medium"
-              variant="invisible"
             />
             <IconButton
               icon={DatabaseIcon}
               aria-label="Storage Manager"
               onClick={() => setIsStorageManagerOpen(true)}
-              variant="invisible"
             />
             <IconButton
               icon={GearIcon}
               aria-label="Settings"
               onClick={() => setIsSettingsOpen(true)}
-              variant="invisible"
             />
+            <SlotMachineLoader
+                avatarUrls={avatarUrls}
+                isLoading={loading || initialLoading}
+                isManuallySpinning={isManuallySpinning}
+              />
           </PageHeader.Actions>
         </PageHeader>
       </PageLayout.Header>

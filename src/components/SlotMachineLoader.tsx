@@ -160,10 +160,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
                     ? 'scale(1.1)'
                     : 'scale(1)',
                 transition: 'all 0.5s ease',
-                bg:
-                  i === visibleItemIndex && !isSpinning
-                    ? 'accent.subtle'
-                    : 'transparent',
+            
                 borderRadius: '2px',
                 position: 'relative',
                 zIndex: i === visibleItemIndex ? 2 : 0,
@@ -196,7 +193,6 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
           display: 'flex',
           gap: 1,
           padding: '2px',
-          bg: 'canvas.default',
 
           transition: 'all 0.5s ease',
         }}
