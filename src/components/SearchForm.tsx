@@ -130,6 +130,16 @@ const SearchForm = memo(function SearchForm() {
           <UnderlineNav aria-label="GitHub API Mode">
             <UnderlineNav.Item
               href="#"
+              aria-current={apiMode === 'overview' ? 'page' : undefined}
+              onSelect={e => {
+                e.preventDefault();
+                setApiMode('overview');
+              }}
+            >
+              Overview
+            </UnderlineNav.Item>
+            <UnderlineNav.Item
+              href="#"
               aria-current={apiMode === 'search' ? 'page' : undefined}
               counter={searchItemsCount > 0 ? searchItemsCount : undefined}
               onSelect={e => {

@@ -24,6 +24,7 @@ import { StorageManager } from './components/StorageManager';
 import { OfflineBanner } from './components/OfflineBanner';
 import ShareButton from './components/ShareButton';
 import TimelineView from './components/TimelineView';
+import OverviewTab from './components/OverviewTab';
 import { LoadingIndicator } from './components/LoadingIndicator';
 import { useLocalStorage, useFormSettings } from './hooks/useLocalStorage';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
@@ -101,7 +102,7 @@ function App() {
       })(),
       endDate: new Date().toISOString().split('T')[0],
       githubToken: '',
-      apiMode: 'search',
+      apiMode: 'overview',
     }
   );
 
@@ -155,13 +156,16 @@ function App() {
   const results = useMemo(() => {
     if (apiMode === 'events') {
       return categorizeRawEvents(indexedDBEvents, startDate, endDate);
-    } else {
+    } else if (apiMode === 'search') {
       // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
       return categorizeRawSearchItems(
         indexedDBSearchItems as unknown as GitHubItem[],
         startDate,
         endDate
       );
+    } else {
+      // For 'overview' mode, return empty array as it handles its own data
+      return [];
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
@@ -182,10 +186,13 @@ function App() {
   const availableLabels = useMemo(() => {
     if (apiMode === 'events') {
       return getAvailableLabelsFromRawEvents(indexedDBEvents);
-    } else {
+    } else if (apiMode === 'search') {
       return extractAvailableLabels(
         indexedDBSearchItems as unknown as GitHubItem[]
       );
+    } else {
+      // For 'overview' mode, return empty array as it handles its own data
+      return [];
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems]);
 
@@ -243,8 +250,6 @@ function App() {
       setError(null);
     }
   }, [username]);
-
-
 
   // Update handleSearch to check cache first
   const handleSearch = useCallback(async () => {
@@ -375,7 +380,7 @@ function App() {
   );
 
   const setApiMode = useCallback(
-    (apiMode: 'search' | 'events') => {
+    (apiMode: 'search' | 'events' | 'overview') => {
       setFormSettings(prev => ({ ...prev, apiMode }));
     },
     [setFormSettings]
@@ -500,8 +505,6 @@ function App() {
     setTimeout(() => setIsManuallySpinning(false), 2000);
   }, []);
 
-
-
   // Mark initial loading as complete
   useEffect(() => {
     const timer = setTimeout(() => setInitialLoading(false), 100);
@@ -624,6 +627,11 @@ function App() {
                 setSearchText={setSearchText}
                 isClipboardCopied={isClipboardCopied}
                 triggerClipboardCopy={triggerClipboardCopy}
+              />
+            ) : apiMode === 'overview' ? (
+              <OverviewTab 
+                indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+                indexedDBEvents={indexedDBEvents}
               />
             ) : (
               <ResultsList

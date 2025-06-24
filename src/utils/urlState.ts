@@ -7,7 +7,7 @@ export interface ShareableState {
   username: string;
   startDate: string;
   endDate: string;
-  apiMode: 'search' | 'events';
+  apiMode: 'search' | 'events' | 'overview';
 
   // UI settings
   isCompactView: boolean;
@@ -41,7 +41,7 @@ const urlParamTypes: Record<
 
 // Valid values for enum-like parameters
 const validValues: Partial<Record<keyof ShareableState, string[]>> = {
-  apiMode: ['search', 'events'],
+  apiMode: ['search', 'events', 'overview'],
   filter: ['all', 'issue', 'pr', 'comment'],
   statusFilter: ['all', 'open', 'closed', 'merged'],
 };
@@ -149,7 +149,7 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
       return date.toISOString().split('T')[0];
     })(),
     endDate: new Date().toISOString().split('T')[0],
-    apiMode: 'search',
+    apiMode: 'overview',
     isCompactView: false,
     timelineViewMode: 'standard',
     filter: 'all',
