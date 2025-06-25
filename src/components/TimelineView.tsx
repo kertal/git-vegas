@@ -41,6 +41,7 @@ import remarkGfm from 'remark-gfm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
+import { truncateMiddle } from '../utils/textUtils';
 import './TimelineView.css';
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
@@ -961,8 +962,9 @@ const TimelineView = memo(function TimelineView({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="timeline-item-title"
+                                        title={group.mostRecent.title}
                                       >
-                                        {group.mostRecent.title}{' '}
+                                        {truncateMiddle(group.mostRecent.title, 100)}{' '}
                                         {group.items.length > 1 && (
                                           <Token
                                             text={group.items.length.toString()}
@@ -1106,8 +1108,9 @@ const TimelineView = memo(function TimelineView({
                     target="_blank"
                     rel="noopener noreferrer"
                     className="timeline-item-title timeline-item-title--bold"
+                    title={item.title}
                   >
-                    {item.title}
+                    {truncateMiddle(item.title, 100)}
                   </Link>
 
                   {/* Repo */}

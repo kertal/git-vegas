@@ -4,6 +4,7 @@ import {
   generatePlainTextFormat,
   generateHtmlFormat,
   copyResultsToClipboard,
+  deduplicateByTitle,
   ClipboardOptions,
 } from './clipboard';
 import { GitHubItem } from '../types';
@@ -111,13 +112,13 @@ describe('generatePlainTextFormat', () => {
     const result = generatePlainTextFormat(mockGitHubItems, true);
 
     expect(result).toContain(
-      'Fix critical bug in authentication (open) - https://github.com/user/repo/issues/1'
+      'Fix critical bug in authentication - https://github.com/user/repo/issues/1'
     );
     expect(result).toContain(
-      'Add new feature for data export (merged) - https://github.com/user/repo/pull/2'
+      'Add new feature for data export - https://github.com/user/repo/pull/2'
     );
     expect(result).toContain(
-      'Update documentation (closed) - https://github.com/user/repo/pull/3'
+      'Update documentation - https://github.com/user/repo/pull/3'
     );
 
     // Should be joined with newlines
@@ -182,15 +183,13 @@ describe('generateHtmlFormat', () => {
       '<a href="https://github.com/user/repo/issues/1">Fix critical bug in authentication</a>'
     );
 
-    // Should contain status with proper colors
-    expect(result).toContain('color: #1a7f37'); // Open status color
-    expect(result).toContain('color: #8250df'); // Merged status color
-    expect(result).toContain('color: #cf222e'); // Closed status color
-
-    // Should contain status text
-    expect(result).toContain('(open)');
-    expect(result).toContain('(merged)');
-    expect(result).toContain('(closed)');
+    // Should contain links without status indicators
+    expect(result).toContain(
+      '<a href="https://github.com/user/repo/pull/2">Add new feature for data export</a>'
+    );
+    expect(result).toContain(
+      '<a href="https://github.com/user/repo/pull/3">Update documentation</a>'
+    );
   });
 
   it('should generate detailed HTML format correctly', () => {
@@ -467,7 +466,7 @@ describe('copyResultsToClipboard', () => {
 
     let clipboardCall = MockClipboardItem.mock.calls[0][0];
     expect(clipboardCall['text/plain'].content).toEqual([
-      expect.stringContaining('(open) - https://github.com'),
+      expect.stringContaining('- https://github.com'),
     ]);
 
     MockClipboardItem.mockClear();
@@ -483,5 +482,358 @@ describe('copyResultsToClipboard', () => {
     expect(clipboardCall['text/plain'].content).toEqual([
       expect.stringContaining('Type: Issue'),
     ]);
+  });
+});
+
+describe('deduplicateByTitle', () => {
+  const createMockItem = (title: string, updatedAt: string, id: number = Math.random()): any => ({
+    id,
+    title,
+    html_url: `https://github.com/test/repo/issues/${id}`,
+    state: 'open',
+    user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+    created_at: '2023-01-01T10:00:00Z',
+    updated_at: updatedAt,
+    body: 'Test body',
+    number: id,
+    labels: [],
+  });
+
+  it('should return original array if no duplicates', () => {
+    const items = [
+      createMockItem('Unique Title 1', '2023-01-01T10:00:00Z', 1),
+      createMockItem('Unique Title 2', '2023-01-01T11:00:00Z', 2),
+      createMockItem('Unique Title 3', '2023-01-01T12:00:00Z', 3),
+    ];
+
+    const result = deduplicateByTitle(items);
+    
+    expect(result).toHaveLength(3);
+    expect(result.map(item => item.title)).toEqual([
+      'Unique Title 1',
+      'Unique Title 2', 
+      'Unique Title 3'
+    ]);
+  });
+
+  it('should deduplicate items with same title, keeping the most recent', () => {
+    const items = [
+      createMockItem('Duplicate Title', '2023-01-01T10:00:00Z', 1), // older
+      createMockItem('Unique Title', '2023-01-01T11:00:00Z', 2),
+      createMockItem('Duplicate Title', '2023-01-01T12:00:00Z', 3), // newer - should be kept
+    ];
+
+    const result = deduplicateByTitle(items);
+    
+    expect(result).toHaveLength(2);
+    expect(result.find(item => item.title === 'Duplicate Title')?.id).toBe(3);
+    expect(result.find(item => item.title === 'Unique Title')?.id).toBe(2);
+  });
+
+  it('should handle multiple duplicates, keeping the most recent', () => {
+    const items = [
+      createMockItem('Title A', '2023-01-01T10:00:00Z', 1),
+      createMockItem('Title B', '2023-01-01T11:00:00Z', 2),
+      createMockItem('Title A', '2023-01-01T12:00:00Z', 3), // newer Title A
+      createMockItem('Title B', '2023-01-01T13:00:00Z', 4), // newer Title B
+      createMockItem('Title A', '2023-01-01T09:00:00Z', 5), // older Title A
+    ];
+
+    const result = deduplicateByTitle(items);
+    
+    expect(result).toHaveLength(2);
+    expect(result.find(item => item.title === 'Title A')?.id).toBe(3);
+    expect(result.find(item => item.title === 'Title B')?.id).toBe(4);
+  });
+
+  it('should return empty array for empty input', () => {
+    const result = deduplicateByTitle([]);
+    expect(result).toEqual([]);
+  });
+
+  it('should handle single item', () => {
+    const items = [createMockItem('Single Title', '2023-01-01T10:00:00Z', 1)];
+    const result = deduplicateByTitle(items);
+    
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Single Title');
+  });
+
+  it('should preserve item order for unique titles', () => {
+    const items = [
+      createMockItem('Title C', '2023-01-01T10:00:00Z', 3),
+      createMockItem('Title A', '2023-01-01T11:00:00Z', 1),
+      createMockItem('Title B', '2023-01-01T12:00:00Z', 2),
+    ];
+
+    const result = deduplicateByTitle(items);
+    
+    expect(result).toHaveLength(3);
+    // Order should be based on insertion order into Map (first occurrence)
+    expect(result.map(item => item.title)).toEqual(['Title C', 'Title A', 'Title B']);
+  });
+});
+
+describe('generatePlainTextFormat with grouped deduplication', () => {
+  const createMockItem = (title: string, updatedAt: string, id: number = Math.random()): any => ({
+    id,
+    title,
+    html_url: `https://github.com/test/repo/issues/${id}`,
+    state: 'open',
+    user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+    created_at: '2023-01-01T10:00:00Z',
+    updated_at: updatedAt,
+    body: 'Test body',
+    number: id,
+    labels: [],
+  });
+
+  it('should deduplicate items within groups in compact view', () => {
+    const groupedData = [
+      {
+        groupName: 'Issues - opened',
+        items: [
+          createMockItem('Duplicate Issue', '2023-01-01T10:00:00Z', 1),
+          createMockItem('Unique Issue', '2023-01-01T11:00:00Z', 2),
+          createMockItem('Duplicate Issue', '2023-01-01T12:00:00Z', 3), // newer - should be kept
+        ]
+      },
+      {
+        groupName: 'PRs - opened',
+        items: [
+          createMockItem('Duplicate PR', '2023-01-01T10:00:00Z', 4),
+          createMockItem('Duplicate PR', '2023-01-01T14:00:00Z', 5), // newer - should be kept
+        ]
+      }
+    ];
+
+    const result = generatePlainTextFormat([], true, { 
+      isGroupedView: true, 
+      groupedData 
+    });
+
+    // Should contain each unique title only once per group
+    expect(result).toContain('Issues - opened');
+    expect(result).toContain('PRs - opened');
+    expect(result).toContain('- Duplicate Issue - ');
+    expect(result).toContain('- Unique Issue - ');
+    expect(result).toContain('- Duplicate PR - ');
+
+    // Count occurrences - each title should appear only once per group
+    const duplicateIssueMatches = (result.match(/Duplicate Issue/g) || []).length;
+    const duplicatePRMatches = (result.match(/Duplicate PR/g) || []).length;
+    
+    expect(duplicateIssueMatches).toBe(1);
+    expect(duplicatePRMatches).toBe(1);
+  });
+
+  it('should deduplicate items within groups in detailed view', () => {
+    const groupedData = [
+      {
+        groupName: 'Issues - opened',
+        items: [
+          createMockItem('Duplicate Issue', '2023-01-01T10:00:00Z', 1),
+          createMockItem('Duplicate Issue', '2023-01-01T12:00:00Z', 3), // newer
+          createMockItem('Unique Issue', '2023-01-01T11:00:00Z', 2),
+        ]
+      }
+    ];
+
+    const result = generatePlainTextFormat([], false, { 
+      isGroupedView: true, 
+      groupedData 
+    });
+
+    expect(result).toContain('Issues - opened');
+    expect(result).toContain('1. Duplicate Issue');
+    expect(result).toContain('2. Unique Issue');
+
+    // Should contain the newer item's URL
+    expect(result).toContain('https://github.com/test/repo/issues/3');
+    expect(result).not.toContain('https://github.com/test/repo/issues/1');
+
+    // Count title occurrences - should appear only once
+    const duplicateIssueMatches = (result.match(/Duplicate Issue/g) || []).length;
+    expect(duplicateIssueMatches).toBe(1);
+  });
+
+  it('should handle empty groups after deduplication', () => {
+    const groupedData = [
+      {
+        groupName: 'Empty Group',
+        items: []
+      },
+      {
+        groupName: 'Non-empty Group',
+        items: [
+          createMockItem('Single Item', '2023-01-01T10:00:00Z', 1),
+        ]
+      }
+    ];
+
+    const result = generatePlainTextFormat([], true, { 
+      isGroupedView: true, 
+      groupedData 
+    });
+
+    expect(result).toContain('Empty Group');
+    expect(result).toContain('Non-empty Group');
+    expect(result).toContain('- Single Item - ');
+  });
+});
+
+describe('generateHtmlFormat with grouped deduplication', () => {
+  const createMockItem = (title: string, updatedAt: string, id: number = Math.random()): any => ({
+    id,
+    title,
+    html_url: `https://github.com/test/repo/issues/${id}`,
+    state: 'open',
+    user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+    created_at: '2023-01-01T10:00:00Z',
+    updated_at: updatedAt,
+    body: 'Test body',
+    number: id,
+    labels: [],
+  });
+
+  it('should deduplicate items within groups in HTML compact view', () => {
+    const groupedData = [
+      {
+        groupName: 'Issues - opened',
+        items: [
+          createMockItem('Duplicate Issue', '2023-01-01T10:00:00Z', 1),
+          createMockItem('Duplicate Issue', '2023-01-01T12:00:00Z', 3), // newer - should be kept
+          createMockItem('Unique Issue', '2023-01-01T11:00:00Z', 2),
+        ]
+      }
+    ];
+
+    const result = generateHtmlFormat([], true, { 
+      isGroupedView: true, 
+      groupedData 
+    });
+
+    expect(result).toContain('<h3 style="margin-bottom: 8px; color: #1f2328;">Issues - opened</h3>');
+    expect(result).toContain('<a href="https://github.com/test/repo/issues/3">Duplicate Issue</a>');
+    expect(result).toContain('<a href="https://github.com/test/repo/issues/2">Unique Issue</a>');
+    
+    // Should NOT contain the older duplicate
+    expect(result).not.toContain('<a href="https://github.com/test/repo/issues/1">Duplicate Issue</a>');
+
+    // Count title occurrences in HTML
+    const duplicateIssueMatches = (result.match(/Duplicate Issue/g) || []).length;
+         expect(duplicateIssueMatches).toBe(1);
+   });
+ });
+
+describe('generatePlainTextFormat with deduplication and truncation for regular compact view', () => {
+  const createMockItem = (title: string, updatedAt: string, id: number = Math.random()): any => ({
+    id,
+    title,
+    html_url: `https://github.com/test/repo/issues/${id}`,
+    state: 'open',
+    user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+    created_at: '2023-01-01T10:00:00Z',
+    updated_at: updatedAt,
+    body: 'Test body',
+    number: id,
+    labels: [],
+  });
+
+  it('should deduplicate and truncate titles in regular compact view', () => {
+    const items = [
+      createMockItem('This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly', '2023-01-01T10:00:00Z', 1),
+      createMockItem('Short title', '2023-01-01T11:00:00Z', 2),
+      createMockItem('This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly', '2023-01-01T12:00:00Z', 3), // newer duplicate
+    ];
+
+    const result = generatePlainTextFormat(items, true); // compact view
+
+    // Should deduplicate - only 2 items should remain
+    const lines = result.split('\n').filter(line => line.trim());
+    expect(lines).toHaveLength(2);
+
+    // Should contain truncated version of the long title
+    expect(result).toContain('[...]');
+    expect(result).toContain('Short title - ');
+    
+    // Should contain the newer item (id 3, not id 1)
+    expect(result).toContain('https://github.com/test/repo/issues/3');
+    expect(result).not.toContain('https://github.com/test/repo/issues/1');
+
+    // Title should be truncated to 100 characters or less
+    const longTitleLine = lines.find(line => line.includes('[...]'));
+    if (longTitleLine) {
+      const titlePart = longTitleLine.split(' - https://')[0];
+      expect(titlePart.length).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it('should not truncate short titles in regular compact view', () => {
+    const items = [
+      createMockItem('Short title', '2023-01-01T10:00:00Z', 1),
+      createMockItem('Another short one', '2023-01-01T11:00:00Z', 2),
+    ];
+
+    const result = generatePlainTextFormat(items, true); // compact view
+
+    expect(result).toContain('Short title - ');
+    expect(result).toContain('Another short one - ');
+    expect(result).not.toContain('[...]');
+  });
+
+  it('should not affect detailed view formatting', () => {
+    const items = [
+      createMockItem('This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly', '2023-01-01T10:00:00Z', 1),
+      createMockItem('This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly', '2023-01-01T12:00:00Z', 3), // newer duplicate
+    ];
+
+    const result = generatePlainTextFormat(items, false); // detailed view
+
+    // Should NOT deduplicate or truncate in detailed view - users expect to see all items with full context
+    expect(result).toContain('1. This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly');
+    expect(result).toContain('2. This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly');
+    expect(result).not.toContain('[...]');
+    
+    // Should contain both items
+    expect(result).toContain('https://github.com/test/repo/issues/1');
+    expect(result).toContain('https://github.com/test/repo/issues/3');
+  });
+});
+
+describe('generateHtmlFormat with deduplication and truncation for regular compact view', () => {
+  const createMockItem = (title: string, updatedAt: string, id: number = Math.random()): any => ({
+    id,
+    title,
+    html_url: `https://github.com/test/repo/issues/${id}`,
+    state: 'open',
+    user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+    created_at: '2023-01-01T10:00:00Z',
+    updated_at: updatedAt,
+    body: 'Test body',
+    number: id,
+    labels: [],
+  });
+
+  it('should deduplicate and truncate titles in regular HTML compact view', () => {
+    const items = [
+      createMockItem('This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly', '2023-01-01T10:00:00Z', 1),
+      createMockItem('Short title', '2023-01-01T11:00:00Z', 2),
+      createMockItem('This is a very long issue title that should definitely be truncated in the middle to make it more readable and user-friendly', '2023-01-01T12:00:00Z', 3), // newer duplicate
+    ];
+
+    const result = generateHtmlFormat(items, true); // compact view
+
+    // Should contain truncated version of the long title
+    expect(result).toContain('[...]');
+    expect(result).toContain('Short title');
+    
+    // Should contain the newer item (id 3, not id 1)
+    expect(result).toContain('href="https://github.com/test/repo/issues/3"');
+    expect(result).not.toContain('href="https://github.com/test/repo/issues/1"');
+
+    // Should deduplicate - only 2 list items should remain
+    const listItemMatches = (result.match(/<li>/g) || []).length;
+    expect(listItemMatches).toBe(2);
   });
 });

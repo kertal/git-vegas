@@ -39,6 +39,7 @@ import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 
 import { ResultsContainer } from './ResultsContainer';
+import { truncateMiddle } from '../utils/textUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
 // Import context hook and helper functions from App.tsx
@@ -744,12 +745,11 @@ const ResultsList = memo(function ResultsList({
                     >
                       <Text
                         sx={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
                           whiteSpace: 'nowrap',
                         }}
+                        title={item.title}
                       >
-                        {item.title}
+                        {truncateMiddle(item.title, 100)}
                       </Text>
                     </Link>
                     <Text

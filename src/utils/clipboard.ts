@@ -1,5 +1,6 @@
 import { GitHubItem } from '../types';
 import { getContrastColor } from '../utils';
+import { truncateMiddle } from './textUtils';
 
 export interface ClipboardOptions {
   isCompactView: boolean;
@@ -26,6 +27,31 @@ export const formatDateForClipboard = (dateString: string): string => {
 };
 
 /**
+ * Deduplicates items by title, keeping the most recent item for each unique title
+ * @param items - Array of GitHub items to deduplicate
+ * @returns Array of deduplicated items
+ */
+export const deduplicateByTitle = (items: GitHubItem[]): GitHubItem[] => {
+  const titleMap = new Map<string, GitHubItem>();
+
+  items.forEach(item => {
+    const existing = titleMap.get(item.title);
+    if (!existing) {
+      titleMap.set(item.title, item);
+    } else {
+      // Keep the more recent item based on updated_at
+      const itemDate = new Date(item.updated_at).getTime();
+      const existingDate = new Date(existing.updated_at).getTime();
+      if (itemDate > existingDate) {
+        titleMap.set(item.title, item);
+      }
+    }
+  });
+
+  return Array.from(titleMap.values());
+};
+
+/**
  * Generates plain text format for GitHub items
  */
 export const generatePlainTextFormat = (
@@ -39,14 +65,12 @@ export const generatePlainTextFormat = (
       return options.groupedData
         .map(group => {
           const groupHeader = `${group.groupName}`;
-          const groupItems = group.items
+          // Deduplicate items by title within each group
+          const deduplicatedItems = deduplicateByTitle(group.items);
+          const groupItems = deduplicatedItems
             .map(item => {
-              const status = item.pull_request
-                ? item.pull_request.merged_at || item.merged
-                  ? 'merged'
-                  : item.state
-                : item.state;
-              return `- ${item.title} (${status}) - ${item.html_url}`;
+              const truncatedTitle = truncateMiddle(item.title, 100);
+              return `- ${truncatedTitle} - ${item.html_url}`;
             })
             .join('\n');
           return `${groupHeader}\n${groupItems}`;
@@ -59,7 +83,9 @@ export const generatePlainTextFormat = (
         plainText += `${group.groupName}\n`;
         plainText += '='.repeat(group.groupName.length) + '\n\n';
         
-        group.items.forEach((item, index) => {
+        // Deduplicate items by title within each group
+        const deduplicatedItems = deduplicateByTitle(group.items);
+        deduplicatedItems.forEach((item, index) => {
           plainText += `${index + 1}. ${item.title}\n`;
           plainText += `   Link: ${item.html_url}\n`;
           plainText += `   Type: ${item.pull_request ? 'Pull Request' : 'Issue'}\n`;
@@ -88,19 +114,17 @@ export const generatePlainTextFormat = (
 
   // Handle regular view
   if (isCompactView) {
-    return items
+    // Deduplicate items by title and apply truncation
+    const deduplicatedItems = deduplicateByTitle(items);
+    return deduplicatedItems
       .map(item => {
-        const status = item.pull_request
-          ? item.pull_request.merged_at || item.merged
-            ? 'merged'
-            : item.state
-          : item.state;
-        return `${item.title} (${status}) - ${item.html_url}`;
+        const truncatedTitle = truncateMiddle(item.title, 100);
+        return `${truncatedTitle} - ${item.html_url}`;
       })
       .join('\n');
   }
 
-  // Detailed format
+  // Detailed format - do NOT deduplicate, users expect to see all items with full context
   let plainText = '';
   items.forEach((item, index) => {
     plainText += `${index + 1}. ${item.title}\n`;
@@ -137,24 +161,14 @@ export const generateHtmlFormat = (
     if (isCompactView) {
       const groupedContent = options.groupedData
         .map(group => {
-          const listItems = group.items
+          // Deduplicate items by title within each group
+          const deduplicatedItems = deduplicateByTitle(group.items);
+          const listItems = deduplicatedItems
             .map(item => {
-              const status = item.pull_request
-                ? item.pull_request.merged_at || item.merged
-                  ? 'merged'
-                  : item.state
-                : item.state;
-              const statusColor =
-                item.pull_request?.merged_at || item.merged
-                  ? '#8250df'
-                  : item.state === 'closed'
-                    ? '#cf222e'
-                    : '#1a7f37';
-
+              const truncatedTitle = truncateMiddle(item.title, 100);
               return `
         <li>
-          <a href="${item.html_url}">${item.title}</a>
-          <span style="color: ${statusColor};">(${status})</span>
+          <a href="${item.html_url}">${truncatedTitle}</a>
         </li>`;
             })
             .join('');
@@ -179,24 +193,14 @@ export const generateHtmlFormat = (
 
   // Handle regular view
   if (isCompactView) {
-    const listItems = items
+    // Deduplicate items by title and apply truncation
+    const deduplicatedItems = deduplicateByTitle(items);
+    const listItems = deduplicatedItems
       .map(item => {
-        const status = item.pull_request
-          ? item.pull_request.merged_at || item.merged
-            ? 'merged'
-            : item.state
-          : item.state;
-        const statusColor =
-          item.pull_request?.merged_at || item.merged
-            ? '#8250df'
-            : item.state === 'closed'
-              ? '#cf222e'
-              : '#1a7f37';
-
+        const truncatedTitle = truncateMiddle(item.title, 100);
         return `
     <li>
-      <a href="${item.html_url}">${item.title}</a>
-      <span style="color: ${statusColor};">(${status})</span>
+      <a href="${item.html_url}">${truncatedTitle}</a>
     </li>`;
       })
       .join('');

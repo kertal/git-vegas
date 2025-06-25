@@ -210,8 +210,9 @@ function App() {
   // Clipboard feedback
   const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
 
-  // Simple search text state (no complex filtering)
-  const [searchText, setSearchText] = useState('');
+  // Separate search text states for events and issues
+  const [eventsSearchText, setEventsSearchText] = useState('');
+  const [issuesSearchText, setIssuesSearchText] = useState('');
 
   // Memoize avatar URLs extraction to avoid recalculating on every render
   const avatarUrls = useMemo(() => {
@@ -530,7 +531,7 @@ function App() {
             <ShareButton
               formSettings={formSettings}
               uiSettings={uiSettings}
-              searchText={searchText}
+              searchText={apiMode === 'events' ? eventsSearchText : issuesSearchText}
               size="medium"
             />
             <IconButton
@@ -583,7 +584,7 @@ function App() {
               statusFilter: 'all',
               includedLabels: [],
               excludedLabels: [],
-              searchText,
+              searchText: issuesSearchText, // Use issues search text for search results
               repoFilters: [],
               userFilter: '',
               availableLabels,
@@ -591,7 +592,7 @@ function App() {
               setStatusFilter: () => {},
               setIncludedLabels: () => {},
               setExcludedLabels: () => {},
-              setSearchText,
+              setSearchText: setIssuesSearchText,
               toggleDescriptionVisibility,
               toggleExpand,
               copyResultsToClipboard,
@@ -623,8 +624,8 @@ function App() {
                 clearSelection={clearSelection}
                 bulkSelectItems={bulkSelectItems}
                 copyResultsToClipboard={copyResultsToClipboard}
-                searchText={searchText}
-                setSearchText={setSearchText}
+                searchText={eventsSearchText}
+                setSearchText={setEventsSearchText}
                 isClipboardCopied={isClipboardCopied}
                 triggerClipboardCopy={triggerClipboardCopy}
               />

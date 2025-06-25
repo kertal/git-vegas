@@ -17,6 +17,7 @@ import { CustomSection, CustomSectionData, GitHubItem } from '../types';
 import CustomSectionsManager from '../utils/customSections';
 import CustomSectionAPI from '../utils/customSectionAPI';
 import { useFormContext } from '../App';
+import { truncateMiddle } from '../utils/textUtils';
 
 interface CustomSectionDisplayProps {
   section: CustomSection;
@@ -92,7 +93,7 @@ const CustomSectionDisplay = ({ section }: CustomSectionDisplayProps) => {
     
     if (item.repository_url) {
       // Extract from URL like https://api.github.com/repos/owner/repo
-      const match = item.repository_url.match(/\/repos\/([^\/]+\/[^\/]+)/);
+      const match = item.repository_url.match(/\/repos\/([^/]+\/[^/]+)/);
       if (match) {
         return match[1];
       }
@@ -187,8 +188,9 @@ const CustomSectionDisplay = ({ section }: CustomSectionDisplayProps) => {
                           target="_blank"
                           rel="noopener noreferrer"
                           sx={{ fontSize: 0, fontWeight: 'semibold', lineHeight: '1.3' }}
+                          title={item.title}
                         >
-                          {item.title}
+                          {truncateMiddle(item.title, 100)}
                         </Link>
                       </Box>
                       <Box sx={{ display: 'flex', gap: 1, fontSize: 0, color: 'fg.muted', flexWrap: 'wrap' }}>
