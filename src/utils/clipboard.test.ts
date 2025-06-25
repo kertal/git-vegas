@@ -5,6 +5,7 @@ import {
   generateHtmlFormat,
   copyResultsToClipboard,
   deduplicateByTitle,
+  deduplicateAcrossGroups,
   ClipboardOptions,
 } from './clipboard';
 import { GitHubItem } from '../types';
@@ -676,7 +677,8 @@ describe('generatePlainTextFormat with grouped deduplication', () => {
       groupedData 
     });
 
-    expect(result).toContain('Empty Group');
+    // Empty groups are now filtered out
+    expect(result).not.toContain('Empty Group');
     expect(result).toContain('Non-empty Group');
     expect(result).toContain('- Single Item - ');
   });
@@ -725,6 +727,136 @@ describe('generateHtmlFormat with grouped deduplication', () => {
          expect(duplicateIssueMatches).toBe(1);
    });
  });
+
+describe('deduplicateAcrossGroups', () => {
+  const createMockItem = (title: string, updatedAt: string, id: number): any => ({
+    id,
+    title,
+    html_url: `https://github.com/test/repo/issues/${id}`,
+    state: 'open',
+    user: { login: 'testuser', avatar_url: 'https://github.com/testuser.png', html_url: 'https://github.com/testuser' },
+    created_at: '2023-01-01T10:00:00Z',
+    updated_at: updatedAt,
+    body: 'Test body',
+    number: id,
+    labels: [],
+  });
+
+  it('should deduplicate items across all groups', () => {
+    const groupedData = [
+      {
+        groupName: 'Group 1',
+        items: [
+          createMockItem('Duplicate Issue', '2023-01-01T10:00:00Z', 1),
+          createMockItem('Unique Issue A', '2023-01-01T11:00:00Z', 2),
+        ]
+      },
+      {
+        groupName: 'Group 2', 
+        items: [
+          createMockItem('Duplicate Issue', '2023-01-01T12:00:00Z', 3), // Same title, newer
+          createMockItem('Unique Issue B', '2023-01-01T13:00:00Z', 4),
+        ]
+      },
+      {
+        groupName: 'Group 3',
+        items: [
+          createMockItem('Unique Issue A', '2023-01-01T14:00:00Z', 5), // Same title as Group 1
+          createMockItem('Unique Issue C', '2023-01-01T15:00:00Z', 6),
+        ]
+      }
+    ];
+
+    const result = deduplicateAcrossGroups(groupedData);
+
+    // Group 1 should have both items (first occurrence, keeping the newest within group)
+    expect(result[0].items).toHaveLength(2);
+    expect(result[0].items[0].title).toBe('Duplicate Issue');
+    expect(result[0].items[0].id).toBe(1); // Only ID 1 exists in Group 1
+    expect(result[0].items[1].title).toBe('Unique Issue A');
+    expect(result[0].items[1].id).toBe(2);
+
+    // Group 2 should only have Unique Issue B (Duplicate Issue was already seen in Group 1)
+    expect(result[1].items).toHaveLength(1);
+    expect(result[1].items[0].title).toBe('Unique Issue B');
+    expect(result[1].items[0].id).toBe(4);
+
+    // Group 3 should only have Unique Issue C (Unique Issue A was already seen in Group 1)
+    expect(result[2].items).toHaveLength(1);
+    expect(result[2].items[0].title).toBe('Unique Issue C');
+    expect(result[2].items[0].id).toBe(6);
+  });
+
+  it('should handle empty groups', () => {
+    const groupedData = [
+      {
+        groupName: 'Group 1',
+        items: [createMockItem('Test Issue', '2023-01-01T10:00:00Z', 1)]
+      },
+      {
+        groupName: 'Empty Group',
+        items: []
+      },
+      {
+        groupName: 'Group 3',
+        items: [createMockItem('Another Issue', '2023-01-01T11:00:00Z', 2)]
+      }
+    ];
+
+    const result = deduplicateAcrossGroups(groupedData);
+
+    expect(result).toHaveLength(3);
+    expect(result[0].items).toHaveLength(1);
+    expect(result[1].items).toHaveLength(0); // Empty group remains empty
+    expect(result[2].items).toHaveLength(1);
+  });
+
+  it('should preserve group structure and names', () => {
+    const groupedData = [
+      {
+        groupName: 'Issues - Open',
+        items: [createMockItem('Test Issue', '2023-01-01T10:00:00Z', 1)]
+      },
+      {
+        groupName: 'PRs - Merged',
+        items: [createMockItem('Test PR', '2023-01-01T11:00:00Z', 2)]
+      }
+    ];
+
+    const result = deduplicateAcrossGroups(groupedData);
+
+    expect(result[0].groupName).toBe('Issues - Open');
+    expect(result[1].groupName).toBe('PRs - Merged');
+    expect(result).toHaveLength(2);
+  });
+
+  it('should handle all duplicate items across groups', () => {
+    const groupedData = [
+      {
+        groupName: 'Group 1',
+        items: [createMockItem('Same Title', '2023-01-01T10:00:00Z', 1)]
+      },
+      {
+        groupName: 'Group 2',
+        items: [createMockItem('Same Title', '2023-01-01T11:00:00Z', 2)]
+      },
+      {
+        groupName: 'Group 3',
+        items: [createMockItem('Same Title', '2023-01-01T12:00:00Z', 3)]
+      }
+    ];
+
+    const result = deduplicateAcrossGroups(groupedData);
+
+    // First group should have the most recent item within that group
+    expect(result[0].items).toHaveLength(1);
+    expect(result[0].items[0].id).toBe(1); // Only item in first group
+
+    // Other groups should be empty (duplicate titles already seen)
+    expect(result[1].items).toHaveLength(0);
+    expect(result[2].items).toHaveLength(0);
+  });
+});
 
 describe('generatePlainTextFormat with deduplication and truncation for regular compact view', () => {
   const createMockItem = (title: string, updatedAt: string, id: number = Math.random()): any => ({

@@ -52,6 +52,36 @@ export const deduplicateByTitle = (items: GitHubItem[]): GitHubItem[] => {
 };
 
 /**
+ * Deduplicates items across all groups, removing items that appear in earlier groups
+ * @param groupedData - Array of grouped data with items
+ * @returns Array of grouped data with global deduplication applied
+ */
+export const deduplicateAcrossGroups = (
+  groupedData: Array<{ groupName: string; items: GitHubItem[] }>
+): Array<{ groupName: string; items: GitHubItem[] }> => {
+  const seenTitles = new Set<string>();
+  
+  return groupedData.map(group => {
+    // First deduplicate within the group to get the most recent version of each title
+    const deduplicatedWithinGroup = deduplicateByTitle(group.items);
+    
+    // Then filter out items that were already seen in previous groups
+    const globallyDeduplicatedItems = deduplicatedWithinGroup.filter(item => {
+      if (seenTitles.has(item.title)) {
+        return false; // Skip this item as it was already seen in an earlier group
+      }
+      seenTitles.add(item.title);
+      return true;
+    });
+    
+    return {
+      ...group,
+      items: globallyDeduplicatedItems
+    };
+  });
+};
+
+/**
  * Generates plain text format for GitHub items
  */
 export const generatePlainTextFormat = (
@@ -62,12 +92,17 @@ export const generatePlainTextFormat = (
   // Handle grouped view
   if (options?.isGroupedView && options?.groupedData) {
     if (isCompactView) {
-      return options.groupedData
+      // Apply global deduplication across all groups
+      const globallyDeduplicatedGroups = deduplicateAcrossGroups(options.groupedData);
+      
+      return globallyDeduplicatedGroups
         .map(group => {
+          if (group.items.length === 0) {
+            return null; // Skip empty groups
+          }
+          
           const groupHeader = `${group.groupName}`;
-          // Deduplicate items by title within each group
-          const deduplicatedItems = deduplicateByTitle(group.items);
-          const groupItems = deduplicatedItems
+          const groupItems = group.items
             .map(item => {
               const truncatedTitle = truncateMiddle(item.title, 100);
               return `- ${truncatedTitle} - ${item.html_url}`;
@@ -75,17 +110,20 @@ export const generatePlainTextFormat = (
             .join('\n');
           return `${groupHeader}\n${groupItems}`;
         })
+        .filter(group => group !== null) // Remove empty groups
         .join('\n\n');
     } else {
       // Detailed grouped format
+      // Apply global deduplication across all groups
+      const globallyDeduplicatedGroups = deduplicateAcrossGroups(options.groupedData);
+      const nonEmptyGroups = globallyDeduplicatedGroups.filter(group => group.items.length > 0);
+      
       let plainText = '';
-      options.groupedData.forEach((group, groupIndex) => {
+      nonEmptyGroups.forEach((group, groupIndex) => {
         plainText += `${group.groupName}\n`;
         plainText += '='.repeat(group.groupName.length) + '\n\n';
         
-        // Deduplicate items by title within each group
-        const deduplicatedItems = deduplicateByTitle(group.items);
-        deduplicatedItems.forEach((item, index) => {
+        group.items.forEach((item, index) => {
           plainText += `${index + 1}. ${item.title}\n`;
           plainText += `   Link: ${item.html_url}\n`;
           plainText += `   Type: ${item.pull_request ? 'Pull Request' : 'Issue'}\n`;
@@ -104,7 +142,7 @@ export const generatePlainTextFormat = (
           plainText += '\n';
         });
         
-        if (groupIndex < options.groupedData!.length - 1) {
+        if (groupIndex < nonEmptyGroups.length - 1) {
           plainText += '\n';
         }
       });
@@ -159,11 +197,16 @@ export const generateHtmlFormat = (
   // Handle grouped view
   if (options?.isGroupedView && options?.groupedData) {
     if (isCompactView) {
-      const groupedContent = options.groupedData
+      // Apply global deduplication across all groups
+      const globallyDeduplicatedGroups = deduplicateAcrossGroups(options.groupedData);
+      
+      const groupedContent = globallyDeduplicatedGroups
         .map(group => {
-          // Deduplicate items by title within each group
-          const deduplicatedItems = deduplicateByTitle(group.items);
-          const listItems = deduplicatedItems
+          if (group.items.length === 0) {
+            return ''; // Skip empty groups
+          }
+          
+          const listItems = group.items
             .map(item => {
               const truncatedTitle = truncateMiddle(item.title, 100);
               return `
@@ -181,6 +224,7 @@ export const generateHtmlFormat = (
       </ul>
     </div>`;
         })
+        .filter(content => content !== '') // Remove empty group content
         .join('');
 
       return `
