@@ -1,0 +1,46 @@
+# Page snapshot
+
+```yaml
+- banner:
+  - banner "Title":
+    - img
+    - heading "GitVegas" [level=2]
+    - button "Share current state"
+    - button "Storage Manager"
+    - button "Settings"
+    - text: 🎲 🎮 🎪 🎨 🎭 🎪 🎰 💎 7️⃣ 🎲 🎲 🎮 🎪 🎨 🎭 🎪 🎰 💎 7️⃣ 🎲 7️⃣ 🎲 🎮 🎪 🎨 🎭 🎪 🎰 💎 7️⃣
+- main:
+  - text: GitHub Username(s) *
+  - textbox "GitHub Username(s) *": testuser
+  - text: Start Date *
+  - textbox "Start Date *": 2024-01-01
+  - text: End Date *
+  - textbox "End Date *": 2024-01-31
+  - text: Action
+  - button "Update"
+  - heading "GitHub API Mode navigation" [level=2]
+  - navigation "GitHub API Mode":
+    - list:
+      - listitem:
+        - link "Overview":
+          - /url: "#"
+      - listitem:
+        - link "GitHub Issues & PRs":
+          - /url: "#"
+      - listitem:
+        - link "GitHub Events":
+          - /url: "#"
+  - checkbox "Select all items" [disabled]
+  - heading "Issues and PRs" [level=2]
+  - button "0"
+  - text: Search issues and PRs
+  - textbox "Search issues and PRs"
+  - text: "View:"
+  - button "Compact"
+  - button "Detailed"
+  - text: No data availableLoad some GitHub data to see results here.
+- contentinfo:
+  - text: v0.0.7.7.7, prompted by
+  - link "@kertal":
+    - /url: https://github.com/kertal
+```
