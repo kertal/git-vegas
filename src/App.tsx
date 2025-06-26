@@ -50,6 +50,7 @@ import {
   categorizeRawSearchItems,
   getAvailableLabelsFromRawEvents,
 } from './utils/rawDataUtils';
+import { filterByText } from './utils/resultsUtils';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -169,6 +170,8 @@ function App() {
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
+
+
   // Calculate counts for navigation tabs
   const searchItemsCount = useMemo(() => {
     return categorizeRawSearchItems(
@@ -213,6 +216,15 @@ function App() {
   // Separate search text states for events and issues
   const [eventsSearchText, setEventsSearchText] = useState('');
   const [issuesSearchText, setIssuesSearchText] = useState('');
+
+  // Apply search text filtering to results (supports label:name, user:username syntax)
+  const filteredResults = useMemo(() => {
+    if (apiMode === 'overview') {
+      return results;
+    }
+    
+    return filterByText(results, issuesSearchText);
+  }, [results, issuesSearchText, apiMode]);
 
   // Memoize avatar URLs extraction to avoid recalculating on every render
   const avatarUrls = useMemo(() => {
@@ -579,7 +591,7 @@ function App() {
           <ResultsContext.Provider
             value={{
               results,
-              filteredResults: results, // No filtering, just use results directly
+              filteredResults: filteredResults,
               filter: 'all',
               statusFilter: 'all',
               includedLabels: [],

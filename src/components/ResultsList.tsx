@@ -317,7 +317,7 @@ const ResultsList = memo(function ResultsList({
 
 
 
-  // Add state for filters active/inactive toggle
+  // Add state for filters active/inactive toggle (always active for search functionality)
   const [areFiltersActive, setAreFiltersActive] = useLocalStorage(
     'github-filters-active',
     true
