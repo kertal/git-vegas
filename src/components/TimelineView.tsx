@@ -192,20 +192,22 @@ const TimelineView = memo(function TimelineView({
 
   const getEventDescription = (item: GitHubItem): string => {
     const type = getEventType(item);
+    const isDraft = item.draft || item.pull_request?.draft;
+    
     if (type === 'comment') {
       if (item.pull_request) {
-        return 'commented on pull request';
+        return `commented on ${isDraft ? 'draft ' : ''}pull request`;
       } else {
         return 'commented on issue';
       }
     } else if (type === 'pull_request') {
       // Check if this is a pull request review
       if (item.title.startsWith('Review on:')) {
-        return 'reviewed pull request';
+        return `reviewed ${isDraft ? 'draft ' : ''}pull request`;
       }
-      if (item.merged_at) return 'merged pull request';
-      if (item.state === 'closed') return 'closed pull request';
-      return 'opened pull request';
+      if (item.merged_at) return `merged ${isDraft ? 'draft ' : ''}pull request`;
+      if (item.state === 'closed') return `closed ${isDraft ? 'draft ' : ''}pull request`;
+      return `opened ${isDraft ? 'draft ' : ''}pull request`;
     } else {
       return item.state === 'closed' ? 'closed issue' : 'opened issue';
     }
@@ -1103,15 +1105,33 @@ const TimelineView = memo(function TimelineView({
                   </div>
 
                   {/* Title (truncated) */}
-                  <Link
-                    href={item.html_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="timeline-item-title timeline-item-title--bold"
-                    title={item.title}
-                  >
-                    {truncateMiddle(item.title, 100)}
-                  </Link>
+                  <div className="timeline-item-title-container">
+                    <Link
+                      href={item.html_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="timeline-item-title timeline-item-title--bold"
+                      title={item.title}
+                    >
+                      {truncateMiddle(item.title, 100)}
+                    </Link>
+                    {getEventType(item) === 'pull_request' && (item.draft || item.pull_request?.draft) && (
+                      <Text
+                        sx={{
+                          fontSize: 0,
+                          fontWeight: 'bold',
+                          color: 'attention.fg',
+                          bg: 'attention.subtle',
+                          px: 1,
+                          py: 0,
+                          borderRadius: 1,
+                          ml: 1,
+                        }}
+                      >
+                        DRAFT
+                      </Text>
+                    )}
+                  </div>
 
                   {/* Repo */}
                   <div className="timeline-item-repo-container">

@@ -160,6 +160,21 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
                         </Text>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {getItemType(item) === 'pr' && (item.draft || item.pull_request?.draft) && (
+                          <Text
+                            sx={{
+                              px: 1,
+                              py: 0,
+                              borderRadius: 1,
+                              fontSize: '9px',
+                              fontWeight: 'bold',
+                              color: 'attention.fg',
+                              bg: 'attention.subtle',
+                            }}
+                          >
+                            DRAFT
+                          </Text>
+                        )}
                         <Text
                           sx={{
                             px: 1,

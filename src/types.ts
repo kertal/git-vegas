@@ -7,6 +7,7 @@ export interface GitHubItem {
   pull_request?: {
     merged_at?: string;
     url?: string;
+    draft?: boolean;
   };
   created_at: string;
   updated_at: string;
@@ -31,6 +32,7 @@ export interface GitHubItem {
     avatar_url: string;
     html_url: string;
   };
+  draft?: boolean;
 }
 
 // Raw data storage types
@@ -101,6 +103,7 @@ export interface GitHubEvent {
       closed_at?: string;
       merged_at?: string;
       merged?: boolean;
+      draft?: boolean;
       user: {
         login: string;
         avatar_url: string;

@@ -258,6 +258,13 @@
   font-weight: 600;
 }
 
+.timeline-item-title-container {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
 .timeline-item-count-badge {
   padding: 0.25rem 0.5rem;
   background-color: var(--bgColor-neutral-muted);

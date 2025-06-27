@@ -197,6 +197,11 @@ const CustomSectionDisplay = ({ section }: CustomSectionDisplayProps) => {
                         <Text>
                           #{item.number} by {item.user.login}
                         </Text>
+                        {item.pull_request && (item.draft || item.pull_request.draft) && (
+                          <Text sx={{ fontWeight: 'bold', color: 'attention.fg' }}>
+                            DRAFT
+                          </Text>
+                        )}
                         <Text>{getRepositoryName(item)}</Text>
                         <Text>{formatTimeAgo(item.updated_at || item.created_at)}</Text>
                       </Box>

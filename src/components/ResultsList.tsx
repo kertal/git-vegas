@@ -674,16 +674,26 @@ const ResultsList = memo(function ResultsList({
                     />
                     {item.pull_request ? (
                       item.pull_request.merged_at || item.merged ? (
-                        <Box sx={{ color: 'done.fg', display: 'flex' }}>
+                        <Box sx={{ color: 'done.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
                           <GitMergeIcon size={16} />
                         </Box>
                       ) : item.state === 'closed' ? (
-                        <Box sx={{ color: 'closed.fg', display: 'flex' }}>
+                        <Box sx={{ color: 'closed.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
                           <GitPullRequestIcon size={16} />
+                          {(item.draft || item.pull_request.draft) && (
+                            <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
+                              DRAFT
+                            </Text>
+                          )}
                         </Box>
                       ) : (
-                        <Box sx={{ color: 'open.fg', display: 'flex' }}>
+                        <Box sx={{ color: 'open.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
                           <GitPullRequestIcon size={16} />
+                          {(item.draft || item.pull_request.draft) && (
+                            <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
+                              DRAFT
+                            </Text>
+                          )}
                         </Box>
                       )
                     ) : item.state === 'closed' ? (
@@ -888,6 +898,7 @@ const ResultsList = memo(function ResultsList({
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 color: 'done.fg',
+                                gap: 1,
                               }}
                             >
                               <GitMergeIcon size={16} />
@@ -900,21 +911,33 @@ const ResultsList = memo(function ResultsList({
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 color: 'closed.fg',
+                                gap: 1,
                               }}
                             >
                               <GitPullRequestIcon size={16} />
+                              {(item.draft || item.pull_request.draft) && (
+                                <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
+                                  DRAFT
+                                </Text>
+                              )}
                             </Box>
                           ) : (
                             <Box
                               as="span"
-                              aria-label="Open Pull Request"
+                              aria-label={`${(item.draft || item.pull_request.draft) ? 'Draft ' : ''}Open Pull Request`}
                               sx={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 color: 'open.fg',
+                                gap: 1,
                               }}
                             >
                               <GitPullRequestIcon size={16} />
+                              {(item.draft || item.pull_request.draft) && (
+                                <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
+                                  DRAFT
+                                </Text>
+                              )}
                             </Box>
                           )
                         ) : (
