@@ -184,7 +184,7 @@ const TimelineView = memo(function TimelineView({
       // If only label/user filters were used, item passed checks above
       return true;
     });
-  }, [items, parsedSearchText]);
+  }, [items, parsedSearchText, searchText]);
 
   // Sort filtered items by updated date (newest first)
   const sortedItems = [...filteredItems].sort(

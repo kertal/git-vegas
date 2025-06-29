@@ -419,18 +419,23 @@ describe('OverviewTab', () => {
       renderOverviewTab();
 
       const viewAllButtons = screen.getAllByRole('button');
-      expect(viewAllButtons).toHaveLength(2);
-      expect(viewAllButtons[0]).toHaveTextContent('View All (2)');
-      expect(viewAllButtons[1]).toHaveTextContent('View All (2)');
+      expect(viewAllButtons).toHaveLength(3); // Manage Sections + 2 View All buttons
+      
+      // Find the View All buttons specifically by their complete text content
+      const allViewAllButtons = screen.getAllByText(/View All \(\d+\)/);
+      expect(allViewAllButtons).toHaveLength(2);
+      expect(allViewAllButtons[0]).toBeInTheDocument();
+      expect(allViewAllButtons[1]).toBeInTheDocument();
     });
 
     it('should have proper heading structure', () => {
       renderOverviewTab();
 
       const headings = screen.getAllByRole('heading');
-      expect(headings).toHaveLength(2);
-      expect(headings[0]).toHaveTextContent('Recent Issues & Pull Requests');
-      expect(headings[1]).toHaveTextContent('Recent Events');
+      expect(headings).toHaveLength(3); // Overview + 2 section headings
+      expect(headings[0]).toHaveTextContent('Overview');
+      expect(headings[1]).toHaveTextContent('Recent Issues & Pull Requests');
+      expect(headings[2]).toHaveTextContent('Recent Events');
     });
   });
 

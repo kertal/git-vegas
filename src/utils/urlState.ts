@@ -149,7 +149,7 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
       return date.toISOString().split('T')[0];
     })(),
     endDate: new Date().toISOString().split('T')[0],
-    apiMode: 'overview',
+    apiMode: 'search',
     isCompactView: false,
     timelineViewMode: 'standard',
     filter: 'all',

@@ -1,6 +1,76 @@
 import '@testing-library/jest-dom';
 import { vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import React from 'react';
+
+// Mock SVG imports
+vi.mock('*.svg?react', () => ({
+  default: () => React.createElement('div', { 'data-testid': 'svg-mock' }, 'SVG'),
+}));
+
+vi.mock('*.svg', () => ({
+  default: 'svg-mock-path',
+}));
+
+// Mock the actual App.tsx contexts
+vi.mock('../App', async () => {
+  const actual = await vi.importActual('../App');
+  return {
+    ...actual,
+    useFormContext: () => ({
+      username: 'testuser',
+      startDate: '2023-01-01',
+      endDate: '2023-12-31',
+      githubToken: 'test-token',
+      apiMode: 'search',
+      setUsername: vi.fn(),
+      setStartDate: vi.fn(),
+      setEndDate: vi.fn(),
+      setGithubToken: vi.fn(),
+      setApiMode: vi.fn(),
+      handleSearch: vi.fn(),
+      handleUsernameBlur: vi.fn(),
+      validateUsernameFormat: vi.fn(),
+      loading: false,
+      loadingProgress: '',
+      error: null,
+      searchItemsCount: 0,
+      eventsCount: 0,
+    }),
+    useResultsContext: () => ({
+      results: [],
+      filteredResults: [],
+      filter: 'all',
+      statusFilter: 'all',
+      includedLabels: [],
+      excludedLabels: [],
+      searchText: '',
+      repoFilters: [],
+      userFilter: '',
+      availableLabels: [],
+      setFilter: vi.fn(),
+      setStatusFilter: vi.fn(),
+      setIncludedLabels: vi.fn(),
+      setExcludedLabels: vi.fn(),
+      setSearchText: vi.fn(),
+      toggleDescriptionVisibility: vi.fn(),
+      toggleExpand: vi.fn(),
+      copyResultsToClipboard: vi.fn(),
+      descriptionVisible: {},
+      expanded: {},
+      clipboardMessage: null,
+      isCompactView: true,
+      setIsCompactView: vi.fn(),
+      selectedItems: new Set(),
+      toggleItemSelection: vi.fn(),
+      selectAllItems: vi.fn(),
+      clearSelection: vi.fn(),
+      setRepoFilters: vi.fn(),
+      setUserFilter: vi.fn(),
+      isClipboardCopied: vi.fn(() => false),
+    }),
+  };
+});
 
 // Extend expect matchers
 declare module 'vitest' {

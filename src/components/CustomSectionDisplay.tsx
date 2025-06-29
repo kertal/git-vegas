@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Text,
@@ -30,31 +30,7 @@ const CustomSectionDisplay = ({ section }: CustomSectionDisplayProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load cached data on mount
-  useEffect(() => {
-    loadSectionData();
-  }, [section.id]);
-
-  const loadSectionData = async () => {
-    try {
-      // Check if we have cached data
-      const cachedData = await CustomSectionsManager.loadSectionData(section.id);
-      if (cachedData) {
-        setSectionData(cachedData);
-      }
-
-      // Check if we need to refresh
-      const needsRefresh = await CustomSectionsManager.needsRefresh(section.id);
-      if (needsRefresh) {
-        fetchFreshData();
-      }
-    } catch (error) {
-      console.error('Failed to load section data:', error);
-      setError('Failed to load cached data');
-    }
-  };
-
-  const fetchFreshData = async () => {
+  const fetchFreshData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -79,7 +55,31 @@ const CustomSectionDisplay = ({ section }: CustomSectionDisplayProps) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [section, githubToken]);
+
+  const loadSectionData = useCallback(async () => {
+    try {
+      // Check if we have cached data
+      const cachedData = await CustomSectionsManager.loadSectionData(section.id);
+      if (cachedData) {
+        setSectionData(cachedData);
+      }
+
+      // Check if we need to refresh
+      const needsRefresh = await CustomSectionsManager.needsRefresh(section.id);
+      if (needsRefresh) {
+        fetchFreshData();
+      }
+    } catch (error) {
+      console.error('Failed to load section data:', error);
+      setError('Failed to load cached data');
+    }
+  }, [section.id, fetchFreshData]);
+
+  // Load cached data on mount
+  useEffect(() => {
+    loadSectionData();
+  }, [loadSectionData]);
 
   const displayItems = useMemo(() => {
     if (!sectionData) return [];
