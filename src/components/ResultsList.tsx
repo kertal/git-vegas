@@ -28,6 +28,7 @@ import {
   PasteIcon,
   SearchIcon,
   CheckIcon,
+  CopyIcon,
 } from '@primer/octicons-react';
 
 import ReactMarkdown from 'react-markdown';
@@ -37,10 +38,41 @@ import { GitHubItem } from '../types';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
+import { useFormContext } from '../App';
 
 import { ResultsContainer } from './ResultsContainer';
 import { truncateMiddle } from '../utils/textUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
+import { CloneIssueDialog } from './CloneIssueDialog';
+
+// Helper function to get clone button state
+const getCloneButtonState = (item: GitHubItem, githubToken?: string) => {
+  if (item.pull_request) {
+    return {
+      disabled: true,
+      tooltip: 'Pull requests cannot be cloned as issues'
+    };
+  }
+  
+  if (!item.repository_url) {
+    return {
+      disabled: true,
+      tooltip: 'Repository information not available'
+    };
+  }
+  
+  if (!githubToken) {
+    return {
+      disabled: true,
+      tooltip: 'GitHub token required - configure in settings'
+    };
+  }
+  
+  return {
+    disabled: false,
+    tooltip: 'Clone this issue'
+  };
+};
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -64,7 +96,6 @@ interface UseResultsContextHookType {
   descriptionVisible: { [id: number]: boolean };
   expanded: { [id: number]: boolean };
   clipboardMessage: string | null;
-  clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: (compact: boolean) => void;
   selectedItems: Set<string | number>;
@@ -293,6 +324,8 @@ const ResultsList = memo(function ResultsList({
   useResultsContext,
   buttonStyles,
 }: ResultsListProps) {
+  // Get GitHub token from form context
+  const { githubToken } = useFormContext();
   const {
     results,
     filteredResults,
@@ -305,7 +338,6 @@ const ResultsList = memo(function ResultsList({
     userFilter = '',
     setSearchText,
     copyResultsToClipboard,
-    clearAllFilters,
     isCompactView,
     setIsCompactView,
     selectedItems,
@@ -325,6 +357,10 @@ const ResultsList = memo(function ResultsList({
 
   // Add state for the description dialog
   const [selectedItemForDialog, setSelectedItemForDialog] =
+    useState<GitHubItem | null>(null);
+
+  // Add state for the clone dialog
+  const [selectedItemForClone, setSelectedItemForClone] =
     useState<GitHubItem | null>(null);
 
   // Use debounced search hook
@@ -348,7 +384,7 @@ const ResultsList = memo(function ResultsList({
     excludedLabels.length > 0;
 
   // Helper to check if any filters are active (configured AND enabled)
-  const hasActiveFilters = areFiltersActive && hasConfiguredFilters;
+
 
   // Calculate select all checkbox state
   const selectAllState = useMemo(() => {
@@ -622,15 +658,6 @@ const ResultsList = memo(function ResultsList({
                           ? `No items found matching "${searchText}". Try a different search term, use label:name or -label:name for label filtering, or adjust your filters.`
                           : `Your current filters don't match any of the ${results.length} available items.`}
                       </Text>
-                      {hasActiveFilters && (
-                        <Button
-                          variant="default"
-                          onClick={clearAllFilters}
-                          sx={buttonStyles}
-                        >
-                          Clear All Filters
-                        </Button>
-                      )}
                       {searchText && (
                         <Button
                           variant="default"
@@ -651,6 +678,7 @@ const ResultsList = memo(function ResultsList({
                 {displayResults.map(item => (
                   <Box
                     key={item.id}
+                    data-testid="result-item"
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
@@ -680,20 +708,10 @@ const ResultsList = memo(function ResultsList({
                       ) : item.state === 'closed' ? (
                         <Box sx={{ color: 'closed.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
                           <GitPullRequestIcon size={16} />
-                          {(item.draft || item.pull_request.draft) && (
-                            <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
-                              DRAFT
-                            </Text>
-                          )}
                         </Box>
                       ) : (
                         <Box sx={{ color: 'open.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
                           <GitPullRequestIcon size={16} />
-                          {(item.draft || item.pull_request.draft) && (
-                            <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
-                              DRAFT
-                            </Text>
-                          )}
                         </Box>
                       )
                     ) : item.state === 'closed' ? (
@@ -751,6 +769,9 @@ const ResultsList = memo(function ResultsList({
                         flexGrow: 1,
                         minWidth: 0,
                         ':hover': { textDecoration: 'underline' },
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1,
                       }}
                     >
                       <Text
@@ -761,6 +782,11 @@ const ResultsList = memo(function ResultsList({
                       >
                         {truncateMiddle(item.title, 100)}
                       </Text>
+                      {item.pull_request && (item.draft || item.pull_request.draft) && (
+                        <Label variant="secondary" size="small">
+                          Draft
+                        </Label>
+                      )}
                     </Link>
                     <Text
                       sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}
@@ -775,24 +801,43 @@ const ResultsList = memo(function ResultsList({
                         day: 'numeric',
                       })}
                     </Text>
-                    {item.body && (
-                      <div>
+                    <div>
+                      {item.body && (
                         <IconButton
                           icon={EyeIcon}
                           variant="invisible"
                           aria-label="Show description"
                           size="small"
                           onClick={() => setSelectedItemForDialog(item)}
-                        ></IconButton>
-                        <IconButton
-                          icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
-                          variant="invisible"
-                          aria-label="Copy to clipboard"
-                          size="small"
-                          onClick={() => copySingleItemToClipboard(item)}
-                        ></IconButton>
-                      </div>
-                    )}
+                        />
+                      )}
+                      <IconButton
+                        icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
+                        variant="invisible"
+                        aria-label="Copy to clipboard"
+                        size="small"
+                        onClick={() => copySingleItemToClipboard(item)}
+                      />
+                      {(() => {
+                        const cloneState = getCloneButtonState(item, githubToken);
+                        return (
+                          <IconButton
+                            icon={CopyIcon}
+                            variant="invisible"
+                            aria-label={cloneState.tooltip}
+                            size="small"
+                            onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
+                            disabled={cloneState.disabled}
+                            title={cloneState.tooltip}
+                            sx={{
+                              color: cloneState.disabled ? '#d0d7de' : 'fg.default',
+                              cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
+                              opacity: cloneState.disabled ? 0.5 : 1
+                            }}
+                          />
+                        );
+                      })()}
+                    </div>
                   </Box>
                 ))}
               </Box>
@@ -801,6 +846,7 @@ const ResultsList = memo(function ResultsList({
                 {displayResults.map(item => (
                   <Box
                     key={item.id}
+                    data-testid="result-item"
                     sx={{
                       border: '1px solid',
                       borderColor: 'border.default',
@@ -915,11 +961,6 @@ const ResultsList = memo(function ResultsList({
                               }}
                             >
                               <GitPullRequestIcon size={16} />
-                              {(item.draft || item.pull_request.draft) && (
-                                <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
-                                  DRAFT
-                                </Text>
-                              )}
                             </Box>
                           ) : (
                             <Box
@@ -933,11 +974,6 @@ const ResultsList = memo(function ResultsList({
                               }}
                             >
                               <GitPullRequestIcon size={16} />
-                              {(item.draft || item.pull_request.draft) && (
-                                <Text sx={{ fontSize: 0, fontWeight: 'bold', color: 'fg.muted' }}>
-                                  DRAFT
-                                </Text>
-                              )}
                             </Box>
                           )
                         ) : (
@@ -970,6 +1006,11 @@ const ResultsList = memo(function ResultsList({
                         >
                           {item.title}
                         </Text>
+                        {item.pull_request && (item.draft || item.pull_request.draft) && (
+                          <Label variant="secondary" size="small" sx={{ ml: 1 }}>
+                            Draft
+                          </Label>
+                        )}
                       </Box>
                     </Link>
                     <Stack
@@ -1058,6 +1099,45 @@ const ResultsList = memo(function ResultsList({
                             </Text>
                           )}
                       </Stack>
+                      
+                      {/* Action buttons for detailed view */}
+                      <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
+                        {item.body && (
+                          <IconButton
+                            icon={EyeIcon}
+                            variant="invisible"
+                            aria-label="Show description"
+                            size="small"
+                            onClick={() => setSelectedItemForDialog(item)}
+                          />
+                        )}
+                        <IconButton
+                          icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
+                          variant="invisible"
+                          aria-label="Copy to clipboard"
+                          size="small"
+                          onClick={() => copySingleItemToClipboard(item)}
+                        />
+                                                 {(() => {
+                           const cloneState = getCloneButtonState(item, githubToken);
+                           return (
+                             <IconButton
+                               icon={CopyIcon}
+                               variant="invisible"
+                               aria-label={cloneState.tooltip}
+                               size="small"
+                               onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
+                               disabled={cloneState.disabled}
+                               title={cloneState.tooltip}
+                               sx={{
+                                 color: cloneState.disabled ? '#d0d7de' : 'fg.default',
+                                 cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
+                                 opacity: cloneState.disabled ? 0.5 : 1
+                               }}
+                             />
+                           );
+                         })()}
+                      </Box>
                     </Stack>
                   </Box>
                 ))}
@@ -1078,6 +1158,17 @@ const ResultsList = memo(function ResultsList({
           hasNext={getCurrentItemIndex() < filteredResults.length - 1}
         />
       )}
+
+      {/* Clone Issue Dialog */}
+      <CloneIssueDialog
+        isOpen={selectedItemForClone !== null}
+        onClose={() => setSelectedItemForClone(null)}
+        originalIssue={selectedItemForClone}
+        onSuccess={(newIssue) => {
+          console.log('Issue cloned successfully:', newIssue);
+          // Optionally refresh data or show success message
+        }}
+      />
     </Box>
   );
 });

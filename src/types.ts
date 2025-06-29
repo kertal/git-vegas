@@ -172,7 +172,6 @@ export interface ResultsContextType {
   descriptionVisible: { [id: number]: boolean };
   expanded: { [id: number]: boolean };
   clipboardMessage: string | null;
-  clearAllFilters: () => void;
   isCompactView: boolean;
   setIsCompactView: (value: boolean) => void;
   selectedItems: Set<string | number>;

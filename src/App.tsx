@@ -611,7 +611,6 @@ function App() {
               descriptionVisible,
               expanded,
               clipboardMessage,
-              clearAllFilters: () => {},
               isCompactView,
               setIsCompactView,
               selectedItems,

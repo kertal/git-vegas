@@ -67,7 +67,6 @@ const mockUseResultsContext = () => ({
   descriptionVisible: {},
   expanded: {},
   clipboardMessage: null,
-  clearAllFilters: vi.fn(),
   isCompactView: false,
   setIsCompactView: vi.fn(),
   selectedItems: new Set<number>(),

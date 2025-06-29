@@ -7,6 +7,7 @@ import {
   Avatar,
   Spinner,
   Link,
+  Label,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -182,7 +183,7 @@ const CustomSectionDisplay = ({ section }: CustomSectionDisplayProps) => {
                       alt={item.user.login}
                     />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Box sx={{ mb: 0 }}>
+                      <Box sx={{ mb: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Link
                           href={item.html_url}
                           target="_blank"
@@ -192,16 +193,16 @@ const CustomSectionDisplay = ({ section }: CustomSectionDisplayProps) => {
                         >
                           {truncateMiddle(item.title, 100)}
                         </Link>
+                        {item.pull_request && (item.draft || item.pull_request.draft) && (
+                          <Label variant="secondary" size="small">
+                            Draft
+                          </Label>
+                        )}
                       </Box>
                       <Box sx={{ display: 'flex', gap: 1, fontSize: 0, color: 'fg.muted', flexWrap: 'wrap' }}>
                         <Text>
                           #{item.number} by {item.user.login}
                         </Text>
-                        {item.pull_request && (item.draft || item.pull_request.draft) && (
-                          <Text sx={{ fontWeight: 'bold', color: 'attention.fg' }}>
-                            DRAFT
-                          </Text>
-                        )}
                         <Text>{getRepositoryName(item)}</Text>
                         <Text>{formatTimeAgo(item.updated_at || item.created_at)}</Text>
                       </Box>

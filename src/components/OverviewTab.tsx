@@ -7,6 +7,7 @@ import {
   Avatar,
   Timeline,
   Dialog,
+  Label,
 } from '@primer/react';
 import { GitPullRequestIcon, IssueOpenedIcon, CalendarIcon, LinkExternalIcon, GearIcon } from '@primer/octicons-react';
 import { useFormContext } from '../App';
@@ -159,23 +160,7 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
                           {getItemType(item) === 'pr' ? 'opened pull request' : 'opened issue'}
                         </Text>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {getItemType(item) === 'pr' && (item.draft || item.pull_request?.draft) && (
-                          <Text
-                            sx={{
-                              px: 1,
-                              py: 0,
-                              borderRadius: 1,
-                              fontSize: '9px',
-                              fontWeight: 'bold',
-                              color: 'attention.fg',
-                              bg: 'attention.subtle',
-                            }}
-                          >
-                            DRAFT
-                          </Text>
-                        )}
-                        <Text
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>+                        <Text
                           sx={{
                             px: 1,
                             py: 0,
@@ -188,18 +173,24 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
                         >
                           {item.state}
                         </Text>
+                        
                         <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
                           {formatDate(item.updated_at || item.created_at)}
                         </Text>
                       </Box>
                     </Box>
-                    <Box sx={{ mt: 0 }}>
+                    <Box sx={{ mt: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Link href={item.html_url} target="_blank" rel="noopener noreferrer" sx={{ fontSize: 0, fontWeight: 'semibold', lineHeight: '1.3' }}>
                         {item.title}
                         <Box as="span" sx={{ ml: 1 }}>
                           <LinkExternalIcon size={10} />
                         </Box>
                       </Link>
+                      {getItemType(item) === 'pr' && (item.draft || item.pull_request?.draft) && (
+                        <Label variant="secondary" size="small">
+                          Draft
+                        </Label>
+                      )}
                     </Box>
                     <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
                       in <Link 

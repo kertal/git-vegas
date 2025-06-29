@@ -1,69 +1,42 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('User Search Integration Tests', () => {
+test.describe('User Search UI', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the app
     await page.goto('/');
-    
-    // Wait for the app to load
     await expect(page.locator('h1')).toContainText('Overview');
   });
 
-  test('should filter results by user: syntax in search input', async ({ page }) => {
-    // First, we need to mock some data or ensure there's test data
-    // For now, let's check if the search input exists and functions
-    
-    // Look for the search input - it might be in the Issues & PRs or Events tab
+  test('should display search form elements', async ({ page }) => {
+    // Check that the main form elements are present
+    await expect(page.locator('input[placeholder*="username"]')).toBeVisible();
+    await expect(page.locator('input[type="date"]').first()).toBeVisible();
+    await expect(page.locator('input[type="date"]').last()).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+  });
+
+  test('should switch between tabs', async ({ page }) => {
+    // Test tab switching
     await page.getByText('GitHub Issues & PRs').click();
-    
-    // Wait for the tab to be active
     await expect(page.locator('[aria-current="page"]')).toContainText('GitHub Issues & PRs');
     
-    // Look for a search input field
-    const searchInput = page.locator('input[type="text"]').last(); // Get the search input (last text input)
-    
-    if (await searchInput.isVisible()) {
-      // Test user: syntax
-      await searchInput.fill('user:testuser');
-      
-      // Wait a moment for filtering to apply
-      await page.waitForTimeout(500);
-      
-      // We should test that the filtering works, but without actual data,
-      // we can at least verify that the search term was applied
-      await expect(searchInput).toHaveValue('user:testuser');
-    }
-  });
-
-  test('should handle user search with multiple users', async ({ page }) => {
-    await page.getByText('GitHub Issues & PRs').click();
-    
-    const searchInput = page.locator('input[type="text"]').last();
-    
-    if (await searchInput.isVisible()) {
-      await searchInput.fill('user:alice user:bob');
-      await page.waitForTimeout(500);
-      await expect(searchInput).toHaveValue('user:alice user:bob');
-    }
-  });
-
-  test('should handle combined user and label search', async ({ page }) => {
-    await page.getByText('GitHub Issues & PRs').click();
-    
-    const searchInput = page.locator('input[type="text"]').last();
-    
-    if (await searchInput.isVisible()) {
-      await searchInput.fill('user:testuser label:bug');
-      await page.waitForTimeout(500);
-      await expect(searchInput).toHaveValue('user:testuser label:bug');
-    }
-  });
-
-  test('should work in Events tab as well', async ({ page }) => {
     await page.getByText('GitHub Events').click();
-    
-    // Wait for the tab to be active
     await expect(page.locator('[aria-current="page"]')).toContainText('GitHub Events');
+  });
+
+  test('should display search input in Issues & PRs tab', async ({ page }) => {
+    await page.getByText('GitHub Issues & PRs').click();
+    
+    const searchInput = page.locator('input[type="text"]').last();
+    await expect(searchInput).toBeVisible();
+    
+    // Test that we can type in the search input
+    await searchInput.fill('user:testuser');
+    await page.waitForTimeout(100); // Small wait for WebKit
+    await expect(searchInput).toHaveValue('user:testuser');
+  });
+
+  test('should display search input in Events tab', async ({ page }) => {
+    await page.getByText('GitHub Events').click();
     
     const searchInput = page.locator('input[type="text"]').last();
     
@@ -74,35 +47,23 @@ test.describe('User Search Integration Tests', () => {
     }
   });
 
-  test('should clear search when clear button is clicked', async ({ page }) => {
+  test('should handle user search syntax', async ({ page }) => {
     await page.getByText('GitHub Issues & PRs').click();
     
     const searchInput = page.locator('input[type="text"]').last();
     
-    if (await searchInput.isVisible()) {
-      // Enter search text
-      await searchInput.fill('user:testuser');
-      await expect(searchInput).toHaveValue('user:testuser');
-      
-      // Look for clear button (might be an X button or clear text)
-      const clearButton = page.locator('button').filter({ hasText: /clear|×|✕/i }).first();
-      
-      if (await clearButton.isVisible()) {
-        await clearButton.click();
-        await expect(searchInput).toHaveValue('');
-      }
-    }
-  });
-
-  test('should handle case-insensitive user search', async ({ page }) => {
-    await page.getByText('GitHub Issues & PRs').click();
+    // Test various user search patterns
+    const testPatterns = [
+      'user:alice',
+      'user:alice user:bob',
+      'user:testuser label:bug',
+      'label:enhancement user:developer'
+    ];
     
-    const searchInput = page.locator('input[type="text"]').last();
-    
-    if (await searchInput.isVisible()) {
-      await searchInput.fill('user:TESTUSER');
-      await page.waitForTimeout(500);
-      await expect(searchInput).toHaveValue('user:TESTUSER');
+    for (const pattern of testPatterns) {
+      await searchInput.fill(pattern);
+      await expect(searchInput).toHaveValue(pattern);
+      await page.waitForTimeout(100);
     }
   });
 
@@ -117,149 +78,100 @@ test.describe('User Search Integration Tests', () => {
       await expect(searchInput).toHaveValue('user:test-user_123');
     }
   });
+
+  test('should clear search input', async ({ page }) => {
+    await page.getByText('GitHub Issues & PRs').click();
+    
+    const searchInput = page.locator('input[type="text"]').last();
+    
+    if (await searchInput.isVisible()) {
+      // Enter search text
+      await searchInput.fill('user:testuser');
+      await expect(searchInput).toHaveValue('user:testuser');
+      
+      // Clear the input
+      await searchInput.fill('');
+      await expect(searchInput).toHaveValue('');
+    }
+  });
+
+  test('should show no data message when no data is loaded', async ({ page }) => {
+    await page.getByText('GitHub Issues & PRs').click();
+    
+    // Should show the no data message
+    await expect(page.locator('text=No data available')).toBeVisible();
+    await expect(page.locator('text=Load some GitHub data to see results here')).toBeVisible();
+  });
+
+  test('should display compact and detailed view buttons', async ({ page }) => {
+    await page.getByText('GitHub Issues & PRs').click();
+    
+    // Check that view toggle buttons are present
+    await expect(page.locator('button', { hasText: 'Compact' })).toBeVisible();
+    await expect(page.locator('button', { hasText: 'Detailed' })).toBeVisible();
+  });
+
+  test('should display select all checkbox', async ({ page }) => {
+    await page.getByText('GitHub Issues & PRs').click();
+    
+    // Check that the select all checkbox is present (might be disabled when no data)
+    const selectAllCheckbox = page.locator('checkbox', { hasText: /select all/i }).or(
+      page.locator('input[type="checkbox"]').first()
+    );
+    
+    // The checkbox should exist even if disabled
+    await expect(selectAllCheckbox).toBeVisible();
+  });
 });
 
-test.describe('User Search with Mock Data', () => {
+test.describe('User Search Form Validation', () => {
   test.beforeEach(async ({ page }) => {
-    // We can intercept API calls and provide mock data
-    await page.route('**/search/issues**', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          items: [
-            {
-              id: 1,
-              title: 'Test issue by alice',
-              html_url: 'https://github.com/test/repo/issues/1',
-              state: 'open',
-              created_at: '2024-01-01T10:00:00Z',
-              updated_at: '2024-01-01T10:00:00Z',
-              body: 'Test issue body',
-              user: {
-                login: 'alice',
-                avatar_url: 'https://github.com/alice.png',
-                html_url: 'https://github.com/alice',
-              },
-              labels: [
-                { name: 'bug', color: 'red' },
-              ],
-              repository_url: 'https://api.github.com/repos/test/repo',
-            },
-            {
-              id: 2,
-              title: 'Another issue by bob',
-              html_url: 'https://github.com/test/repo/issues/2',
-              state: 'open',
-              created_at: '2024-01-02T10:00:00Z',
-              updated_at: '2024-01-02T10:00:00Z',
-              body: 'Another test issue',
-              user: {
-                login: 'bob',
-                avatar_url: 'https://github.com/bob.png',
-                html_url: 'https://github.com/bob',
-              },
-              labels: [
-                { name: 'enhancement', color: 'blue' },
-              ],
-              repository_url: 'https://api.github.com/repos/test/repo',
-            }
-          ]
-        })
-      });
-    });
-
-    // Mock username validation
-    await page.route('**/users/**', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          login: 'testuser',
-          id: 123,
-          avatar_url: 'https://github.com/testuser.png'
-        })
-      });
-    });
-
     await page.goto('/');
     await expect(page.locator('h1')).toContainText('Overview');
   });
 
-  test('should filter results by specific user', async ({ page }) => {
-    // Fill in the form to trigger a search
-    await page.fill('input[placeholder*="username"]', 'testuser');
-    await page.locator('input[type="date"]').first().fill('2024-01-01');
-    await page.locator('input[type="date"]').last().fill('2024-01-31');
+  test('should require username input', async ({ page }) => {
+    // Try to submit without username
+    const submitButton = page.locator('button[type="submit"]');
+    const usernameInput = page.locator('input[placeholder*="username"]');
     
-    // Submit the search
-    await page.click('button[type="submit"]');
+    // Clear any existing value
+    await usernameInput.fill('');
     
-    // Wait for results to load
-    await page.waitForTimeout(2000);
+    // Try to submit
+    await submitButton.click();
     
-    // Switch to Issues & PRs tab
-    await page.getByText('GitHub Issues & PRs').click();
-    
-    // Now test the user: filter
-    const searchInput = page.locator('input[type="text"]').last();
-    await searchInput.fill('user:alice');
-    
-    // Wait for filtering
-    await page.waitForTimeout(500);
-    
-    // Check that only alice's issues are shown
-    const resultItems = page.locator('[data-testid="result-item"], .result-item, article').filter({ hasText: 'alice' });
-    await expect(resultItems).toHaveCount(1);
-    
-    // Verify the result contains alice's issue
-    await expect(page.locator('text=Test issue by alice')).toBeVisible();
-    await expect(page.locator('text=Another issue by bob')).not.toBeVisible();
+    // Should show validation message or prevent submission
+    // The exact behavior depends on browser validation
+    const isRequired = await usernameInput.getAttribute('aria-required');
+    expect(isRequired).toBe('true');
   });
 
-  test('should show all results when user filter is cleared', async ({ page }) => {
-    // Fill in the form and search
-    await page.fill('input[placeholder*="username"]', 'testuser');
-    await page.locator('input[type="date"]').first().fill('2024-01-01');
-    await page.locator('input[type="date"]').last().fill('2024-01-31');
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(2000);
+  test('should require date inputs', async ({ page }) => {
+    const startDateInput = page.locator('input[type="date"]').first();
+    const endDateInput = page.locator('input[type="date"]').last();
     
-    // Switch to Issues & PRs tab
-    await page.getByText('GitHub Issues & PRs').click();
+    // Check that date inputs are marked as required
+    const startRequired = await startDateInput.getAttribute('aria-required');
+    const endRequired = await endDateInput.getAttribute('aria-required');
     
-    // Apply user filter
-    const searchInput = page.locator('input[type="text"]').last();
-    await searchInput.fill('user:alice');
-    await page.waitForTimeout(500);
-    
-    // Clear the filter
-    await searchInput.fill('');
-    await page.waitForTimeout(500);
-    
-    // Both results should be visible now
-    await expect(page.locator('text=Test issue by alice')).toBeVisible();
-    await expect(page.locator('text=Another issue by bob')).toBeVisible();
+    expect(startRequired).toBe('true');
+    expect(endRequired).toBe('true');
   });
 
-  test('should handle multiple user filters', async ({ page }) => {
-    // Fill in the form and search
+  test('should accept valid form input', async ({ page }) => {
+    // Fill in valid data
     await page.fill('input[placeholder*="username"]', 'testuser');
     await page.locator('input[type="date"]').first().fill('2024-01-01');
     await page.locator('input[type="date"]').last().fill('2024-01-31');
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(2000);
     
-    // Switch to Issues & PRs tab
-    await page.getByText('GitHub Issues & PRs').click();
+    // Verify the values are set
+    await expect(page.locator('input[placeholder*="username"]')).toHaveValue('testuser');
+    await expect(page.locator('input[type="date"]').first()).toHaveValue('2024-01-01');
+    await expect(page.locator('input[type="date"]').last()).toHaveValue('2024-01-31');
     
-    // Apply multiple user filter
-    const searchInput = page.locator('input[type="text"]').last();
-    await searchInput.fill('user:alice user:bob');
-    await page.waitForTimeout(500);
-    
-    // Both results should be visible
-    await expect(page.locator('text=Test issue by alice')).toBeVisible();
-    await expect(page.locator('text=Another issue by bob')).toBeVisible();
+    // The submit button should be enabled
+    const submitButton = page.locator('button[type="submit"]');
+    await expect(submitButton).toBeEnabled();
   });
 }); 

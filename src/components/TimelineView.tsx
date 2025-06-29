@@ -8,7 +8,6 @@ import {
   Heading,
   ActionMenu,
   ActionList,
-
   Checkbox,
   Box,
   Token,
@@ -16,6 +15,7 @@ import {
   Dialog,
   TextInput,
   FormControl,
+  Label,
 } from '@primer/react';
 import {
   IssueOpenedIcon,
@@ -31,6 +31,7 @@ import {
   ChevronRightIcon,
   SearchIcon,
   CheckIcon,
+  CopyIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -42,7 +43,38 @@ import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
 import { truncateMiddle } from '../utils/textUtils';
+import { CloneIssueDialog } from './CloneIssueDialog';
+import { useFormContext } from '../App';
 import './TimelineView.css';
+
+// Helper function to get clone button state
+const getCloneButtonState = (item: GitHubItem, githubToken?: string) => {
+  if (item.pull_request) {
+    return {
+      disabled: true,
+      tooltip: 'Pull requests cannot be cloned as issues'
+    };
+  }
+  
+  if (!item.repository_url) {
+    return {
+      disabled: true,
+      tooltip: 'Repository information not available'
+    };
+  }
+  
+  if (!githubToken) {
+    return {
+      disabled: true,
+      tooltip: 'GitHub token required - configure in settings'
+    };
+  }
+  
+  return {
+    disabled: false,
+    tooltip: 'Clone this issue'
+  };
+};
 
 type ViewMode = 'standard' | 'raw' | 'grouped';
 
@@ -82,6 +114,8 @@ const TimelineView = memo(function TimelineView({
   isClipboardCopied,
   triggerClipboardCopy,
 }: TimelineViewProps) {
+  // Get GitHub token from form context
+  const { githubToken } = useFormContext();
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
@@ -190,29 +224,6 @@ const TimelineView = memo(function TimelineView({
     }
   };
 
-  const getEventDescription = (item: GitHubItem): string => {
-    const type = getEventType(item);
-    const isDraft = item.draft || item.pull_request?.draft;
-    
-    if (type === 'comment') {
-      if (item.pull_request) {
-        return `commented on ${isDraft ? 'draft ' : ''}pull request`;
-      } else {
-        return 'commented on issue';
-      }
-    } else if (type === 'pull_request') {
-      // Check if this is a pull request review
-      if (item.title.startsWith('Review on:')) {
-        return `reviewed ${isDraft ? 'draft ' : ''}pull request`;
-      }
-      if (item.merged_at) return `merged ${isDraft ? 'draft ' : ''}pull request`;
-      if (item.state === 'closed') return `closed ${isDraft ? 'draft ' : ''}pull request`;
-      return `opened ${isDraft ? 'draft ' : ''}pull request`;
-    } else {
-      return item.state === 'closed' ? 'closed issue' : 'opened issue';
-    }
-  };
-
   const formatRepoName = (url: string | undefined): string => {
     if (!url) return 'Unknown Repository';
     const match = url.match(/repos\/(.+)$/);
@@ -255,6 +266,10 @@ const TimelineView = memo(function TimelineView({
 
   // Description dialog state and handlers
   const [selectedItemForDialog, setSelectedItemForDialog] =
+    useState<GitHubItem | null>(null);
+
+  // Clone dialog state
+  const [selectedItemForClone, setSelectedItemForClone] =
     useState<GitHubItem | null>(null);
 
   // Single item clipboard copy handler
@@ -1045,7 +1060,7 @@ const TimelineView = memo(function TimelineView({
             {sortedItems.map((item, index) => {
               // const eventType = getEventType(item); // unused
               const repoName = formatRepoName(item.repository_url);
-              const eventDescription = getEventDescription(item);
+             
 
               return (
                 <div
@@ -1099,9 +1114,6 @@ const TimelineView = memo(function TimelineView({
                     >
                       {item.user.login}
                     </Link>
-                    <Text className="timeline-item-action">
-                      {eventDescription}
-                    </Text>
                   </div>
 
                   {/* Title (truncated) */}
@@ -1116,20 +1128,13 @@ const TimelineView = memo(function TimelineView({
                       {truncateMiddle(item.title, 100)}
                     </Link>
                     {getEventType(item) === 'pull_request' && (item.draft || item.pull_request?.draft) && (
-                      <Text
-                        sx={{
-                          fontSize: 0,
-                          fontWeight: 'bold',
-                          color: 'attention.fg',
-                          bg: 'attention.subtle',
-                          px: 1,
-                          py: 0,
-                          borderRadius: 1,
-                          ml: 1,
-                        }}
+                      <Label
+                        variant="secondary"
+                        size="small"
+                        sx={{ ml: 1 }}
                       >
-                        DRAFT
-                      </Text>
+                        📝 Draft
+                      </Label>
                     )}
                   </div>
 
@@ -1154,8 +1159,8 @@ const TimelineView = memo(function TimelineView({
                   </Text>
 
                   {/* Action buttons */}
-                  {item.body && (
-                    <div>
+                  <div>
+                    {item.body && (
                       <IconButton
                         icon={EyeIcon}
                         variant="invisible"
@@ -1163,19 +1168,38 @@ const TimelineView = memo(function TimelineView({
                         size="small"
                         onClick={() => setSelectedItemForDialog(item)}
                       />
-                      <IconButton
-                        icon={
-                          isCopied(item.event_id || item.id)
-                            ? CheckIcon
-                            : PasteIcon
-                        }
-                        variant="invisible"
-                        aria-label="Copy to clipboard"
-                        size="small"
-                        onClick={() => copySingleItemToClipboard(item)}
-                      />
-                    </div>
-                  )}
+                    )}
+                    <IconButton
+                      icon={
+                        isCopied(item.event_id || item.id)
+                          ? CheckIcon
+                          : PasteIcon
+                      }
+                      variant="invisible"
+                      aria-label="Copy to clipboard"
+                      size="small"
+                      onClick={() => copySingleItemToClipboard(item)}
+                    />
+                                         {(() => {
+                       const cloneState = getCloneButtonState(item, githubToken);
+                       return (
+                         <IconButton
+                           icon={CopyIcon}
+                           variant="invisible"
+                           aria-label={cloneState.tooltip}
+                           size="small"
+                           onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
+                           disabled={cloneState.disabled}
+                           title={cloneState.tooltip}
+                           sx={{
+                             color: cloneState.disabled ? '#d0d7de' : 'fg.default',
+                             cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
+                             opacity: cloneState.disabled ? 0.5 : 1
+                           }}
+                         />
+                       );
+                     })()}
+                  </div>
                 </div>
               );
             })}
@@ -1256,6 +1280,17 @@ const TimelineView = memo(function TimelineView({
           </Box>
         </Dialog>
       )}
+
+      {/* Clone Issue Dialog */}
+      <CloneIssueDialog
+        isOpen={selectedItemForClone !== null}
+        onClose={() => setSelectedItemForClone(null)}
+        originalIssue={selectedItemForClone}
+        onSuccess={(newIssue) => {
+          console.log('Issue cloned successfully:', newIssue);
+          // Optionally refresh data or show success message
+        }}
+      />
     </ResultsContainer>
   );
 });
