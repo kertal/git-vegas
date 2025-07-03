@@ -9,7 +9,18 @@ import {
   Dialog,
   Label,
 } from '@primer/react';
-import { GitPullRequestIcon, IssueOpenedIcon, CalendarIcon, LinkExternalIcon, GearIcon } from '@primer/octicons-react';
+import { 
+  GitPullRequestIcon, 
+  IssueOpenedIcon, 
+  CalendarIcon, 
+  LinkExternalIcon, 
+  GearIcon,
+  GitCommitIcon,
+  GitBranchIcon,
+  StarIcon,
+  RepoIcon,
+  CommentIcon
+} from '@primer/octicons-react';
 import { useFormContext } from '../App';
 import { GitHubItem, GitHubEvent, CustomSection } from '../types';
 import { categorizeRawSearchItems, categorizeRawEvents } from '../utils/rawDataUtils';
@@ -88,6 +99,180 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
         return <IssueOpenedIcon size={16} />;
       default:
         return <IssueOpenedIcon size={16} />;
+    }
+  };
+
+  // Helper functions for events
+  const getEventIcon = (event: GitHubEvent) => {
+    switch (event.type) {
+      case 'PushEvent':
+        return <GitCommitIcon size={14} />;
+      case 'CreateEvent':
+        return <GitBranchIcon size={14} />;
+      case 'PullRequestEvent':
+        return <GitPullRequestIcon size={14} />;
+      case 'IssuesEvent':
+        return <IssueOpenedIcon size={14} />;
+      case 'ForkEvent':
+        return <GitBranchIcon size={14} />;
+      case 'WatchEvent':
+        return <StarIcon size={14} />;
+      case 'PublicEvent':
+        return <RepoIcon size={14} />;
+      case 'IssueCommentEvent':
+      case 'PullRequestReviewCommentEvent':
+        return <CommentIcon size={14} />;
+      case 'PullRequestReviewEvent':
+        return <GitPullRequestIcon size={14} />;
+      case 'DeleteEvent':
+        return <GitBranchIcon size={14} />;
+      case 'GollumEvent':
+        return <RepoIcon size={14} />;
+      default:
+        return <CalendarIcon size={14} />;
+    }
+  };
+
+  const getEventDescription = (event: GitHubEvent) => {
+    const actor = event.actor.login;
+    
+    switch (event.type) {
+      case 'PushEvent': {
+        const payload = event.payload as any;
+        const commits = payload?.commits?.length || 0;
+        const branch = payload?.ref?.replace('refs/heads/', '') || 'main';
+        return `${actor} pushed ${commits} commit${commits !== 1 ? 's' : ''} to ${branch}`;
+      }
+      
+      case 'CreateEvent': {
+        const createPayload = event.payload as any;
+        const refType = createPayload?.ref_type || 'repository';
+        const ref = createPayload?.ref || '';
+        return `${actor} created ${refType}${ref ? ` ${ref}` : ''}`;
+      }
+      
+      case 'PullRequestEvent': {
+        const action = event.payload?.action || 'updated';
+        const prNumber = event.payload?.pull_request?.number;
+        const prTitle = event.payload?.pull_request?.title || 'pull request';
+        return `${actor} ${action} pull request #${prNumber}: ${prTitle}`;
+      }
+      
+      case 'IssuesEvent': {
+        const issueAction = event.payload?.action || 'updated';
+        const issueNumber = event.payload?.issue?.number;
+        const issueTitle = event.payload?.issue?.title || 'issue';
+        return `${actor} ${issueAction} issue #${issueNumber}: ${issueTitle}`;
+      }
+      
+      case 'ForkEvent': {
+        const forkPayload = event.payload as any;
+        const forkee = forkPayload?.forkee?.full_name || 'repository';
+        return `${actor} forked repository to ${forkee}`;
+      }
+      
+      case 'WatchEvent':
+        return `${actor} starred the repository`;
+      
+      case 'PublicEvent':
+        return `${actor} made the repository public`;
+      
+      case 'IssueCommentEvent': {
+        const commentIssueNumber = event.payload?.issue?.number;
+        const commentIssueTitle = event.payload?.issue?.title || 'issue';
+        return `${actor} commented on issue #${commentIssueNumber}: ${commentIssueTitle}`;
+      }
+      
+      case 'PullRequestReviewCommentEvent': {
+        const reviewPrNumber = event.payload?.pull_request?.number;
+        const reviewPrTitle = event.payload?.pull_request?.title || 'pull request';
+        return `${actor} commented on pull request #${reviewPrNumber}: ${reviewPrTitle}`;
+      }
+      
+      case 'PullRequestReviewEvent': {
+        const reviewAction = event.payload?.action || 'reviewed';
+        const reviewPrNum = event.payload?.pull_request?.number;
+        const reviewPrTtl = event.payload?.pull_request?.title || 'pull request';
+        return `${actor} ${reviewAction} pull request #${reviewPrNum}: ${reviewPrTtl}`;
+      }
+      
+      case 'DeleteEvent': {
+        const deletePayload = event.payload as any;
+        const deleteRefType = deletePayload?.ref_type || 'branch';
+        const deleteRef = deletePayload?.ref || '';
+        return `${actor} deleted ${deleteRefType}${deleteRef ? ` ${deleteRef}` : ''}`;
+      }
+      
+      case 'GollumEvent': {
+        const gollumPayload = event.payload as any;
+        const pages = gollumPayload?.pages?.length || 0;
+        return `${actor} updated ${pages} wiki page${pages !== 1 ? 's' : ''}`;
+      }
+      
+      default:
+        return `${actor} performed ${event.type.replace(/([A-Z])/g, ' $1').toLowerCase()}`;
+    }
+  };
+
+  const getEventLink = (event: GitHubEvent) => {
+    switch (event.type) {
+      case 'PushEvent': {
+        const pushPayload = event.payload as any;
+        const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
+        return `https://github.com/${event.repo?.name}/commits/${branch}`;
+      }
+      
+      case 'CreateEvent': {
+        const createPayload = event.payload as any;
+        if (createPayload?.ref_type === 'branch') {
+          return `https://github.com/${event.repo?.name}/tree/${createPayload.ref}`;
+        }
+        return `https://github.com/${event.repo?.name}`;
+      }
+      
+      case 'PullRequestEvent': {
+        const prNumber = event.payload?.pull_request?.number;
+        return `https://github.com/${event.repo?.name}/pull/${prNumber}`;
+      }
+      
+      case 'IssuesEvent': {
+        const issueNumber = event.payload?.issue?.number;
+        return `https://github.com/${event.repo?.name}/issues/${issueNumber}`;
+      }
+      
+      case 'ForkEvent': {
+        const forkPayload = event.payload as any;
+        const forkee = forkPayload?.forkee?.full_name;
+        return forkee ? `https://github.com/${forkee}` : `https://github.com/${event.repo?.name}`;
+      }
+      
+      case 'WatchEvent':
+      case 'PublicEvent':
+        return `https://github.com/${event.repo?.name}`;
+      
+      case 'IssueCommentEvent': {
+        const commentIssueNum = event.payload?.issue?.number;
+        return `https://github.com/${event.repo?.name}/issues/${commentIssueNum}`;
+      }
+      
+      case 'PullRequestReviewCommentEvent': {
+        const reviewCommentPrNum = event.payload?.pull_request?.number;
+        return `https://github.com/${event.repo?.name}/pull/${reviewCommentPrNum}`;
+      }
+      
+      case 'PullRequestReviewEvent': {
+        const reviewPrNum = event.payload?.pull_request?.number;
+        return `https://github.com/${event.repo?.name}/pull/${reviewPrNum}`;
+      }
+      
+      case 'DeleteEvent':
+        return `https://github.com/${event.repo?.name}`;
+      
+      case 'GollumEvent':
+        return `https://github.com/${event.repo?.name}/wiki`;
+      
+      default:
+        return `https://github.com/${event.repo?.name}`;
     }
   };
 
@@ -243,7 +428,7 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
             {recentEvents.map((event) => (
               <Timeline.Item key={event.id} condensed>
                 <Timeline.Badge>
-                  <CalendarIcon size={14} />
+                  {getEventIcon(event)}
                 </Timeline.Badge>
                 <Timeline.Body>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -259,16 +444,30 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
                             {event.actor.login}
                           </Link>
                         </Text>
-                        <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                          {event.type.replace(/([A-Z])/g, ' $1').toLowerCase()}
-                        </Text>
                       </Box>
                       <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
                         {formatDate(event.created_at)}
                       </Text>
                     </Box>
+                    <Box sx={{ mt: 0, display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Link 
+                        href={getEventLink(event)} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        sx={{ fontSize: 0, fontWeight: 'semibold', lineHeight: '1.3' }}
+                      >
+                        {getEventDescription(event)}
+                        <Box as="span" sx={{ ml: 1 }}>
+                          <LinkExternalIcon size={10} />
+                        </Box>
+                      </Link>
+                    </Box>
                     <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
-                      in <Link href={`https://github.com/${event.repo?.name}`} target="_blank" rel="noopener noreferrer">
+                      in <Link 
+                        href={`https://github.com/${event.repo?.name}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                      >
                         {event.repo?.name}
                         <Box as="span" sx={{ ml: 1 }}>
                           <LinkExternalIcon size={10} />
