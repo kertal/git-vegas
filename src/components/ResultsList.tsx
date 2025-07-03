@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo } from 'react';
+import React, { memo, useState } from 'react';
 import {
   Box,
   Button,
@@ -20,60 +20,32 @@ import {
 import {
   GitPullRequestIcon,
   IssueOpenedIcon,
-  XIcon,
   GitMergeIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  EyeIcon,
-  PasteIcon,
   SearchIcon,
   CheckIcon,
-  CopyIcon,
+  PasteIcon,
+  RepoIcon,
 } from '@primer/octicons-react';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
-import { useLocalStorage } from '../hooks/useLocalStorage';
+
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useFormContext } from '../App';
 
 import { ResultsContainer } from './ResultsContainer';
 import { truncateMiddle } from '../utils/textUtils';
-import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-import { CloneIssueDialog } from './CloneIssueDialog';
-import StarButton from './StarButton';
 
-// Helper function to get clone button state
-const getCloneButtonState = (item: GitHubItem, githubToken?: string) => {
-  if (item.pull_request) {
-    return {
-      disabled: true,
-      tooltip: 'Pull requests cannot be cloned as issues'
-    };
-  }
-  
-  if (!item.repository_url) {
-    return {
-      disabled: true,
-      tooltip: 'Repository information not available'
-    };
-  }
-  
-  if (!githubToken) {
-    return {
-      disabled: true,
-      tooltip: 'GitHub token required - configure in settings'
-    };
-  }
-  
-  return {
-    disabled: false,
-    tooltip: 'Clone this issue'
-  };
-};
+import { CloneIssueDialog } from './CloneIssueDialog';
+import ActionButtonsRow from './ActionButtonsRow';
+import './TimelineView.css';
+
+
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -201,14 +173,18 @@ const DescriptionDialog = memo(function DescriptionDialog({
             aria-label="Previous item"
             onClick={onPrevious}
             disabled={!hasPrevious}
-            sx={{ color: hasPrevious ? 'fg.default' : 'fg.muted' }}
+            sx={{
+              color: hasPrevious ? 'fg.default' : 'fg.muted',
+            }}
           />
           <IconButton
             icon={ChevronRightIcon}
             aria-label="Next item"
             onClick={onNext}
             disabled={!hasNext}
-            sx={{ color: hasNext ? 'fg.default' : 'fg.muted' }}
+            sx={{
+              color: hasNext ? 'fg.default' : 'fg.muted',
+            }}
           />
         </div>
       )}
@@ -216,106 +192,22 @@ const DescriptionDialog = memo(function DescriptionDialog({
       <Box
         sx={{
           p: 3,
-          height: 'calc(100vh - 120px)',
+          maxHeight: '70vh',
           overflow: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 3,
         }}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 2,
-            alignItems: 'center',
-            fontSize: 1,
-            color: 'fg.muted',
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            a: ({ href, children }) => (
+              <Link href={href} target="_blank" rel="noopener noreferrer">
+                {children}
+              </Link>
+            ),
           }}
         >
-          <Avatar src={item.user.avatar_url} size={20} />
-          <Link
-            href={item.user.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {item.user.login}
-          </Link>
-          <Text>•</Text>
-          <Link href={item.html_url} target="_blank" rel="noopener noreferrer">
-            {new URL(item.html_url).pathname}
-          </Link>
-        </Box>
-
-        <Box
-          sx={{
-            bg: 'canvas.default',
-            p: 3,
-            borderRadius: 2,
-            border: '1px solid',
-            borderColor: 'border.default',
-            fontSize: 1,
-          }}
-        >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              a: ({ ...props }) => (
-                <Link
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{ color: 'accent.fg' }}
-                  {...props}
-                />
-              ),
-              pre: ({ ...props }) => (
-                <Box
-                  as="pre"
-                  sx={{
-                    bg: 'canvas.subtle',
-                    p: 2,
-                    borderRadius: 1,
-                    overflowX: 'auto',
-                    fontSize: 0,
-                    border: '1px solid',
-                    borderColor: 'border.muted',
-                  }}
-                  {...props}
-                />
-              ),
-              code: ({
-                inline,
-                ...props
-              }: { inline?: boolean } & React.HTMLAttributes<HTMLElement>) =>
-                inline ? (
-                  <Box
-                    as="code"
-                    sx={{
-                      bg: 'canvas.subtle',
-                      p: '2px 4px',
-                      borderRadius: 1,
-                      fontSize: 0,
-                    }}
-                    {...props}
-                  />
-                ) : (
-                  <Box
-                    as="code"
-                    sx={{ display: 'block', fontSize: 0 }}
-                    {...props}
-                  />
-                ),
-              img: ({ ...props }) => (
-                <Box
-                  as="img"
-                  sx={{ maxWidth: '100%', height: 'auto' }}
-                  {...props}
-                />
-              ),
-            }}
-          >
-            {item.body || '*No description provided*'}
-          </ReactMarkdown>
-        </Box>
+          {item.body || 'No description available.'}
+        </ReactMarkdown>
       </Box>
     </Dialog>
   );
@@ -325,161 +217,93 @@ const ResultsList = memo(function ResultsList({
   useResultsContext,
   buttonStyles,
 }: ResultsListProps) {
-  // Get GitHub token from form context
-  const { githubToken } = useFormContext();
   const {
     results,
     filteredResults,
-    filter,
-    statusFilter,
-    includedLabels = [],
-    excludedLabels = [],
     searchText,
-    repoFilters = [],
-    userFilter = '',
     setSearchText,
-    copyResultsToClipboard,
-    isCompactView,
-    setIsCompactView,
     selectedItems,
     toggleItemSelection,
     selectAllItems,
     clearSelection,
     isClipboardCopied,
+    copyResultsToClipboard,
+    isCompactView,
+    setIsCompactView,
   } = useResultsContext();
 
+  // Get GitHub token from form context
+  const { githubToken } = useFormContext();
 
-
-  // Add state for filters active/inactive toggle (always active for search functionality)
-  const [areFiltersActive, setAreFiltersActive] = useLocalStorage(
-    'github-filters-active',
-    true
-  );
-
-  // Add state for the description dialog
-  const [selectedItemForDialog, setSelectedItemForDialog] =
-    useState<GitHubItem | null>(null);
-
-  // Add state for the clone dialog
-  const [selectedItemForClone, setSelectedItemForClone] =
-    useState<GitHubItem | null>(null);
+  // Use copy feedback hook
+  const { isCopied } = useCopyFeedback(2000);
 
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
-    setSearchText,
+    value => setSearchText(value),
     300
   );
 
-  // Use copy feedback hook
-  const { isCopied, triggerCopy } = useCopyFeedback(2000);
+  // Dialog state
+  const [selectedItemForDialog, setSelectedItemForDialog] = useState<GitHubItem | null>(null);
+  const [selectedItemForClone, setSelectedItemForClone] = useState<GitHubItem | null>(null);
 
-  // Helper to check if any filters are configured
-  const hasConfiguredFilters =
-    filter !== 'all' ||
-    statusFilter !== 'all' ||
-    userFilter !== '' ||
-    includedLabels.length > 0 ||
-    searchText !== '' ||
-    repoFilters.length > 0 ||
-    excludedLabels.length > 0;
+  // Check if filters are active
+  const areFiltersActive = filteredResults.length !== results.length;
 
-  // Helper to check if any filters are active (configured AND enabled)
-
-
-  // Calculate select all checkbox state
-  const selectAllState = useMemo(() => {
-    const displayResults = areFiltersActive ? filteredResults : results;
-    if (displayResults.length === 0) {
-      return { checked: false, indeterminate: false };
-    }
-
-    const selectedCount = displayResults.filter(item =>
-      selectedItems.has(item.event_id || item.id)
-    ).length;
-
-    if (selectedCount === 0) {
-      return { checked: false, indeterminate: false };
-    } else if (selectedCount === displayResults.length) {
-      return { checked: true, indeterminate: false };
-    } else {
-      return { checked: false, indeterminate: true };
-    }
-  }, [areFiltersActive, filteredResults, results, selectedItems]);
-
-  // Handle select all checkbox click
+  // Selection handlers
   const handleSelectAllChange = () => {
-    const displayResults = areFiltersActive ? filteredResults : results;
-    const selectedCount = displayResults.filter(item =>
-      selectedItems.has(item.event_id || item.id)
-    ).length;
-
-    if (selectedCount === displayResults.length) {
-      // All are selected, clear selection
+    if (selectedItems instanceof Set && selectedItems.size === (areFiltersActive ? filteredResults.length : results.length)) {
       clearSelection();
     } else {
-      // Some or none are selected, select all
       selectAllItems();
     }
   };
 
 
 
-  // Add navigation logic
+  // Dialog navigation handlers
   const handlePreviousItem = () => {
-    if (!selectedItemForDialog) return;
-    const currentIndex = filteredResults.findIndex(
-      item => item.id === selectedItemForDialog.id
-    );
+    const currentIndex = getCurrentItemIndex();
     if (currentIndex > 0) {
       setSelectedItemForDialog(filteredResults[currentIndex - 1]);
     }
   };
 
   const handleNextItem = () => {
-    if (!selectedItemForDialog) return;
-    const currentIndex = filteredResults.findIndex(
-      item => item.id === selectedItemForDialog.id
-    );
+    const currentIndex = getCurrentItemIndex();
     if (currentIndex < filteredResults.length - 1) {
       setSelectedItemForDialog(filteredResults[currentIndex + 1]);
     }
   };
 
   const getCurrentItemIndex = () => {
-    if (!selectedItemForDialog) return -1;
-    return filteredResults.findIndex(
-      item => item.id === selectedItemForDialog.id
-    );
+    return filteredResults.findIndex(item => item.id === selectedItemForDialog?.id);
   };
 
-  // Single item clipboard copy handler
-  const copySingleItemToClipboard = async (item: GitHubItem) => {
-    const itemId = item.event_id || item.id;
-    const result = await copyToClipboard([item], {
-      isCompactView: true, // Use compact format for single items
-      onSuccess: () => {
-        // Trigger copy feedback animation
-        triggerCopy(itemId);
-      },
-      onError: (error: Error) => {
-        console.error('Failed to copy item:', error);
-      },
-    });
-
-    return result;
+  const formatRepoName = (url: string | undefined): string => {
+    if (!url) return 'Unknown';
+    return url.replace('https://api.github.com/repos/', '');
   };
 
   return (
     <Box>
-      {/* Results Section */}
       <ResultsContainer
         headerLeft={
           <>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
               <Checkbox
-                checked={selectAllState.checked}
-                indeterminate={selectAllState.indeterminate}
+                checked={
+                  selectedItems instanceof Set &&
+                  selectedItems.size === (areFiltersActive ? filteredResults.length : results.length) &&
+                  (areFiltersActive ? filteredResults.length : results.length) > 0
+                }
+                indeterminate={
+                  selectedItems instanceof Set &&
+                  selectedItems.size > 0 &&
+                  selectedItems.size < (areFiltersActive ? filteredResults.length : results.length)
+                }
                 onChange={handleSelectAllChange}
                 aria-label="Select all items"
                 disabled={
@@ -551,37 +375,7 @@ const ResultsList = memo(function ResultsList({
         }
         headerRight={
           <>
-            <Box sx={{ display: 'none' }}>
-              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>Filters:</Text>
-              <ButtonGroup>
-                <Button
-                  size="small"
-                  variant={areFiltersActive ? 'primary' : 'default'}
-                  onClick={() => setAreFiltersActive(true)}
-                  sx={{
-                    ...buttonStyles,
-                    border:
-                      areFiltersActive && hasConfiguredFilters
-                        ? '2px solid'
-                        : '1px solid',
-                    borderColor:
-                      areFiltersActive && hasConfiguredFilters
-                        ? 'success.emphasis'
-                        : 'border.default',
-                  }}
-                >
-                  Active
-                </Button>
-                <Button
-                  size="small"
-                  variant={!areFiltersActive ? 'primary' : 'default'}
-                  onClick={() => setAreFiltersActive(false)}
-                  sx={buttonStyles}
-                >
-                  Off
-                </Button>
-              </ButtonGroup>
-            </Box>
+
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <FormControl>
@@ -621,9 +415,7 @@ const ResultsList = memo(function ResultsList({
           </>
         }
       >
-        <Box sx={{ p: 3 }}>
-
-
+        <div className="timeline-container">
           {/* Results List */}
           {(() => {
             const displayResults = areFiltersActive ? filteredResults : results;
@@ -677,21 +469,11 @@ const ResultsList = memo(function ResultsList({
             return isCompactView ? (
               <Box sx={{ gap: 1 }}>
                 {displayResults.map(item => (
-                  <Box
+                  <div
                     key={item.id}
-                    data-testid="result-item"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      py: 1,
-                      px: 2,
-                      borderRadius: 1,
-                      ':hover': {
-                        bg: 'canvas.subtle',
-                      },
-                    }}
+                    className="timeline-item timeline-item--standard"
                   >
+                    {/* Checkbox */}
                     <Checkbox
                       checked={
                         selectedItems instanceof Set &&
@@ -700,45 +482,32 @@ const ResultsList = memo(function ResultsList({
                       onChange={() =>
                         toggleItemSelection(item.event_id || item.id)
                       }
+                      sx={{ flexShrink: 0 }}
                     />
-                    {item.pull_request ? (
-                      item.pull_request.merged_at || item.merged ? (
-                        <Box sx={{ color: 'done.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <GitMergeIcon size={16} />
-                        </Box>
+
+                    {/* Icon */}
+                    <div className="timeline-item-icon">
+                      {item.pull_request ? (
+                        item.pull_request.merged_at || item.merged ? (
+                          <GitMergeIcon size={16} className="timeline-item-icon--merged" />
+                        ) : item.state === 'closed' ? (
+                          <GitPullRequestIcon size={16} className="timeline-item-icon--closed" />
+                        ) : (
+                          <GitPullRequestIcon size={16} className="timeline-item-icon--open" />
+                        )
                       ) : item.state === 'closed' ? (
-                        <Box sx={{ color: 'closed.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <GitPullRequestIcon size={16} />
-                        </Box>
+                        <IssueOpenedIcon size={16} className="timeline-item-icon--closed" />
                       ) : (
-                        <Box sx={{ color: 'open.fg', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <GitPullRequestIcon size={16} />
-                        </Box>
-                      )
-                    ) : item.state === 'closed' ? (
-                      <Box
-                        sx={{
-                          position: 'relative',
-                          display: 'inline-flex',
-                          color: 'closed.fg',
-                        }}
-                      >
-                        <IssueOpenedIcon size={16} />
-                        <Box
-                          sx={{ position: 'absolute', top: '3px', left: '3px' }}
-                        >
-                          <XIcon size={10} />
-                        </Box>
-                      </Box>
-                    ) : (
-                      <Box sx={{ color: 'open.fg', display: 'flex' }}>
-                        <IssueOpenedIcon size={16} />
-                      </Box>
-                    )}
+                        <IssueOpenedIcon size={16} className="timeline-item-icon--open" />
+                      )}
+                    </div>
+
+                    {/* Avatar */}
                     <Avatar
                       src={item.user.avatar_url}
-                      alt={`${item.user.login}'s avatar`}
                       size={16}
+                      alt={item.user.login}
+                      className="timeline-item-avatar"
                       sx={{ cursor: 'pointer' }}
                       onClick={() => {
                         // Add user to search text in format user:{username}
@@ -755,401 +524,238 @@ const ResultsList = memo(function ResultsList({
                         }
                       }}
                     />
-                    <Text
-                      sx={{ fontSize: 1, color: 'fg.muted', flexShrink: 0 }}
-                    >
-                      {item.user.login}
-                    </Text>
-                    <Link
-                      href={item.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{
-                        textDecoration: 'none',
-                        fontSize: 1,
-                        flexGrow: 1,
-                        minWidth: 0,
-                        ':hover': { textDecoration: 'underline' },
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                      }}
-                    >
-                      <Text
-                        sx={{
-                          whiteSpace: 'nowrap',
-                        }}
+
+                    {/* User and action */}
+                    <div className="timeline-item-action-container">
+                      <Link
+                        href={item.user.html_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="timeline-item-user"
+                      >
+                        {item.user.login}
+                      </Link>
+                    </div>
+
+                    {/* Title (truncated) */}
+                    <div className="timeline-item-title-container">
+                      <Link
+                        href={item.html_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="timeline-item-title timeline-item-title--bold"
                         title={item.title}
                       >
                         {truncateMiddle(item.title, 100)}
-                      </Text>
+                      </Link>
                       {item.pull_request && (item.draft || item.pull_request.draft) && (
-                        <Label variant="secondary" size="small">
+                        <Label
+                          variant="secondary"
+                          size="small"
+                          sx={{ ml: 1 }}
+                        >
                           Draft
                         </Label>
                       )}
-                    </Link>
-                    <Text
-                      sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}
-                    >
-                      {item.repository_url?.split('/').slice(-1)[0] || 'N/A'}
-                    </Text>
-                    <Text
-                      sx={{ fontSize: 0, color: 'fg.muted', flexShrink: 0 }}
-                    >
+                    </div>
+
+                    {/* Repo */}
+                    <div className="timeline-item-repo-container">
+                      <RepoIcon size={12} />
+                      <Link
+                        href={`https://github.com/${formatRepoName(item.repository_url)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="timeline-item-repo"
+                      >
+                        {formatRepoName(item.repository_url).split('/')[1] || formatRepoName(item.repository_url)}
+                      </Link>
+                    </div>
+
+                    {/* Time */}
+                    <Text className="timeline-item-time">
                       {new Date(item.updated_at).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                       })}
                     </Text>
-                    <div>
-                      <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-                        {item.body && (
-                          <IconButton
-                            icon={EyeIcon}
-                            variant="invisible"
-                            aria-label="Show description"
-                            size="small"
-                            onClick={() => setSelectedItemForDialog(item)}
-                          />
-                        )}
-                        <IconButton
-                          icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
-                          variant="invisible"
-                          aria-label="Copy to clipboard"
-                          size="small"
-                          onClick={() => copySingleItemToClipboard(item)}
-                        />
-                        {(() => {
-                          const cloneState = getCloneButtonState(item, githubToken);
-                          return (
-                            <IconButton
-                              icon={CopyIcon}
-                              variant="invisible"
-                              aria-label={cloneState.tooltip}
-                              size="small"
-                              onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
-                              disabled={cloneState.disabled}
-                              title={cloneState.tooltip}
-                              sx={{
-                                color: cloneState.disabled ? '#d0d7de' : 'fg.default',
-                                cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
-                                opacity: cloneState.disabled ? 0.5 : 1
-                              }}
-                            />
-                          );
-                        })()}
-                        <StarButton item={item} />
-                      </Box>
-                    </div>
-                  </Box>
+
+                    {/* Action buttons */}
+                    <ActionButtonsRow
+                      item={item}
+                      githubToken={githubToken}
+                      isCopied={isCopied}
+                      onShowDescription={setSelectedItemForDialog}
+                      onCloneItem={setSelectedItemForClone}
+                      size="small"
+                    />
+                  </div>
                 ))}
               </Box>
             ) : (
               <Stack sx={{ gap: 3 }}>
                 {displayResults.map(item => (
-                  <Box
+                  <div
                     key={item.id}
-                    data-testid="result-item"
-                    sx={{
-                      border: '1px solid',
-                      borderColor: 'border.default',
-                      borderRadius: 2,
-                      p: 3,
-                      bg: 'canvas.subtle',
-                      ':last-child': { mb: 0 },
-                    }}
+                    className="timeline-item timeline-item--standard"
                   >
-                    {/* Project info section */}
-                    <Stack
-                      direction="horizontal"
-                      alignItems="center"
-                      sx={{ mb: 2, gap: 2 }}
-                    >
-                      <Box
-                        sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
-                      >
-                        <Checkbox
-                          checked={
-                            selectedItems instanceof Set &&
-                            selectedItems.has(item.event_id || item.id)
-                          }
-                          onChange={() =>
-                            toggleItemSelection(item.event_id || item.id)
-                          }
-                        />
-                      </Box>
-                      <Avatar
-                        src={item.user.avatar_url}
-                        alt={`${item.user.login}'s avatar`}
-                        size={24}
-                        sx={{ cursor: 'pointer' }}
-                        onClick={() => {
-                          // Add user to search text in format user:{username}
-                          const userSearchTerm = `user:${item.user.login}`;
-                          const currentSearch = searchText.trim();
-                          
-                          // Check if this user is already in the search text
-                          const userRegex = new RegExp(`\\buser:${item.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
-                          if (!userRegex.test(currentSearch)) {
-                            const newSearchText = currentSearch 
-                              ? `${currentSearch} ${userSearchTerm}`
-                              : userSearchTerm;
-                            setSearchText(newSearchText);
-                          }
-                        }}
-                      />
+                    {/* Checkbox */}
+                    <Checkbox
+                      checked={
+                        selectedItems instanceof Set &&
+                        selectedItems.has(item.event_id || item.id)
+                      }
+                      onChange={() =>
+                        toggleItemSelection(item.event_id || item.id)
+                      }
+                      sx={{ flexShrink: 0 }}
+                    />
+
+                    {/* Icon */}
+                    <div className="timeline-item-icon">
+                      {item.pull_request ? (
+                        item.pull_request.merged_at || item.merged ? (
+                          <GitMergeIcon size={16} className="timeline-item-icon--merged" />
+                        ) : item.state === 'closed' ? (
+                          <GitPullRequestIcon size={16} className="timeline-item-icon--closed" />
+                        ) : (
+                          <GitPullRequestIcon size={16} className="timeline-item-icon--open" />
+                        )
+                      ) : item.state === 'closed' ? (
+                        <IssueOpenedIcon size={16} className="timeline-item-icon--closed" />
+                      ) : (
+                        <IssueOpenedIcon size={16} className="timeline-item-icon--open" />
+                      )}
+                    </div>
+
+                    {/* Avatar */}
+                    <Avatar
+                      src={item.user.avatar_url}
+                      size={24}
+                      alt={item.user.login}
+                      className="timeline-item-avatar"
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => {
+                        // Add user to search text in format user:{username}
+                        const userSearchTerm = `user:${item.user.login}`;
+                        const currentSearch = searchText.trim();
+                        
+                        // Check if this user is already in the search text
+                        const userRegex = new RegExp(`\\buser:${item.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
+                        if (!userRegex.test(currentSearch)) {
+                          const newSearchText = currentSearch 
+                            ? `${currentSearch} ${userSearchTerm}`
+                            : userSearchTerm;
+                          setSearchText(newSearchText);
+                        }
+                      }}
+                    />
+
+                    {/* User and action */}
+                    <div className="timeline-item-action-container">
                       <Link
                         href={item.user.html_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        sx={{
-                          fontSize: 1,
-                          color: 'fg.muted',
-                          textDecoration: 'none',
-                          ':hover': { textDecoration: 'underline' },
-                        }}
+                        className="timeline-item-user"
                       >
                         {item.user.login}
                       </Link>
-                      {item.repository_url && (
-                        <>
-                          <Text sx={{ color: 'fg.muted' }}>/</Text>
-                          <Link
-                            href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{ fontSize: 1, color: 'accent.fg' }}
-                          >
-                            {
-                              item.repository_url
-                                .replace('https://api.github.com/repos/', '')
-                                .split('/')[1]
-                            }
-                          </Link>
-                        </>
-                      )}
-                    </Stack>
-                    <Link
-                      href={item.html_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{ display: 'block', mb: 1 }}
-                    >
-                      <Box
-                        sx={{ display: 'flex', alignItems: 'center', gap: 2 }}
+                    </div>
+
+                    {/* Title */}
+                    <div className="timeline-item-title-container">
+                      <Link
+                        href={item.html_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="timeline-item-title timeline-item-title--bold"
+                        title={item.title}
                       >
-                        {item.pull_request ? (
-                          item.pull_request.merged_at || item.merged ? (
-                            <Box
-                              as="span"
-                              aria-label="Merged Pull Request"
-                              sx={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                color: 'done.fg',
-                                gap: 1,
-                              }}
-                            >
-                              <GitMergeIcon size={16} />
-                            </Box>
-                          ) : item.state === 'closed' ? (
-                            <Box
-                              as="span"
-                              aria-label="Closed Pull Request"
-                              sx={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                color: 'closed.fg',
-                                gap: 1,
-                              }}
-                            >
-                              <GitPullRequestIcon size={16} />
-                            </Box>
-                          ) : (
-                            <Box
-                              as="span"
-                              aria-label={`${(item.draft || item.pull_request.draft) ? 'Draft ' : ''}Open Pull Request`}
-                              sx={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                color: 'open.fg',
-                                gap: 1,
-                              }}
-                            >
-                              <GitPullRequestIcon size={16} />
-                            </Box>
-                          )
-                        ) : (
-                          <Box
-                            as="span"
-                            aria-label={`${item.state === 'closed' ? 'Closed' : 'Open'} Issue`}
+                        {item.title}
+                      </Link>
+                      {item.pull_request && (item.draft || item.pull_request.draft) && (
+                        <Label
+                          variant="secondary"
+                          size="small"
+                          sx={{ ml: 1 }}
+                        >
+                          Draft
+                        </Label>
+                      )}
+                    </div>
+
+                    {/* Repo */}
+                    <div className="timeline-item-repo-container">
+                      <RepoIcon size={12} />
+                      <Link
+                        href={`https://github.com/${formatRepoName(item.repository_url)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="timeline-item-repo"
+                      >
+                        {formatRepoName(item.repository_url).split('/')[1] || formatRepoName(item.repository_url)}
+                      </Link>
+                    </div>
+
+                    {/* Labels */}
+                    {item.labels && item.labels.length > 0 && (
+                      <div className="timeline-item-labels">
+                        {item.labels.map((l: { name: string; color?: string; description?: string }) => (
+                          <Label
+                            key={l.name}
                             sx={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              color:
-                                item.state === 'closed'
-                                  ? 'closed.fg'
-                                  : 'open.fg',
+                              backgroundColor: l.color ? `#${l.color}` : undefined,
+                              color: l.color ? getContrastColor(l.color) : undefined,
+                              fontWeight: 'bold',
+                              fontSize: 0,
+                              cursor: 'pointer',
+                            }}
+                            title={l.description || l.name}
+                            onClick={() => {
+                              // Add label to search text in format label:{labelName}
+                              const labelSearchTerm = `label:${l.name}`;
+                              const currentSearch = searchText.trim();
+                              
+                              // Check if this label is already in the search text
+                              const labelRegex = new RegExp(`\\blabel:${l.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
+                              if (!labelRegex.test(currentSearch)) {
+                                const newSearchText = currentSearch 
+                                  ? `${currentSearch} ${labelSearchTerm}`
+                                  : labelSearchTerm;
+                                setSearchText(newSearchText);
+                              }
                             }}
                           >
-                            <IssueOpenedIcon size={16} />
-                            {item.state === 'closed' && (
-                              <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-                                <XIcon size={12} />
-                              </Box>
-                            )}
-                          </Box>
-                        )}
-                        <Text
-                          sx={{
-                            fontWeight: 'semibold',
-                            fontSize: 2,
-                            color: 'accent.fg',
-                          }}
-                        >
-                          {item.title}
-                        </Text>
-                        {item.pull_request && (item.draft || item.pull_request.draft) && (
-                          <Label variant="secondary" size="small" sx={{ ml: 1 }}>
-                            Draft
+                            {l.name}
                           </Label>
-                        )}
-                      </Box>
-                    </Link>
-                    <Stack
-                      direction="horizontal"
-                      alignItems="center"
-                      sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}
-                    >
-                      {/* Display labels */}
-                      {item.labels &&
-                        item.labels.map(
-                          (l: {
-                            name: string;
-                            color?: string;
-                            description?: string;
-                          }) => (
-                            <Label
-                              key={l.name}
-                              sx={{
-                                backgroundColor: l.color
-                                  ? `#${l.color}`
-                                  : undefined,
-                                color: l.color
-                                  ? getContrastColor(l.color)
-                                  : undefined,
-                                fontWeight: 'bold',
-                                fontSize: 0,
-                                cursor: 'pointer',
-                              }}
-                              title={l.description || l.name}
-                              onClick={() => {
-                                // Add label to search text in format label:{labelName}
-                                const labelSearchTerm = `label:${l.name}`;
-                                const currentSearch = searchText.trim();
-                                
-                                // Check if this label is already in the search text
-                                const labelRegex = new RegExp(`\\blabel:${l.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
-                                if (!labelRegex.test(currentSearch)) {
-                                  const newSearchText = currentSearch 
-                                    ? `${currentSearch} ${labelSearchTerm}`
-                                    : labelSearchTerm;
-                                  setSearchText(newSearchText);
-                                }
-                              }}
-                            >
-                              {l.name}
-                            </Label>
-                          )
-                        )}
-                    </Stack>
-                    <Stack
-                      direction="horizontal"
-                      alignItems="center"
-                      sx={{
-                        fontSize: 0,
-                        color: 'fg.muted',
-                        mt: 2,
-                        flexWrap: 'wrap',
-                        gap: 3,
-                      }}
-                    >
-                      <Stack
-                        direction="horizontal"
-                        sx={{ flexWrap: 'wrap', gap: 2 }}
-                      >
-                        <Text>
-                          Created:{' '}
-                          {new Date(item.created_at).toLocaleDateString()}
-                        </Text>
-                        <Text>
-                          Updated:{' '}
-                          {new Date(item.updated_at).toLocaleDateString()}
-                        </Text>
-                        {item.pull_request?.merged_at && (
-                          <Text sx={{ color: 'done.fg', fontWeight: 'bold' }}>
-                            Merged:{' '}
-                            {new Date(
-                              item.pull_request.merged_at
-                            ).toLocaleDateString()}
-                          </Text>
-                        )}
-                        {item.state === 'closed' &&
-                          !item.pull_request?.merged_at && (
-                            <Text sx={{ color: 'danger.fg' }}>
-                              Closed:{' '}
-                              {new Date(item.closed_at!).toLocaleDateString()}
-                            </Text>
-                          )}
-                      </Stack>
-                      
-                      {/* Action buttons for detailed view */}
-                      <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-                        {item.body && (
-                          <IconButton
-                            icon={EyeIcon}
-                            variant="invisible"
-                            aria-label="Show description"
-                            size="small"
-                            onClick={() => setSelectedItemForDialog(item)}
-                          />
-                        )}
-                        <IconButton
-                          icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
-                          variant="invisible"
-                          aria-label="Copy to clipboard"
-                          size="small"
-                          onClick={() => copySingleItemToClipboard(item)}
-                        />
-                        {(() => {
-                          const cloneState = getCloneButtonState(item, githubToken);
-                          return (
-                            <IconButton
-                              icon={CopyIcon}
-                              variant="invisible"
-                              aria-label={cloneState.tooltip}
-                              size="small"
-                              onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
-                              disabled={cloneState.disabled}
-                              title={cloneState.tooltip}
-                              sx={{
-                                color: cloneState.disabled ? '#d0d7de' : 'fg.default',
-                                cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
-                                opacity: cloneState.disabled ? 0.5 : 1
-                              }}
-                            />
-                          );
-                        })()}
-                        <StarButton item={item} />
-                      </Box>
-                    </Stack>
-                  </Box>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Time */}
+                    <Text className="timeline-item-time">
+                      {new Date(item.updated_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </Text>
+
+                    {/* Action buttons */}
+                    <ActionButtonsRow
+                      item={item}
+                      githubToken={githubToken}
+                      isCopied={isCopied}
+                      onShowDescription={setSelectedItemForDialog}
+                      onCloneItem={setSelectedItemForClone}
+                      size="small"
+                    />
+                  </div>
                 ))}
               </Stack>
             );
           })()}
-        </Box>
+        </div>
       </ResultsContainer>
 
       {/* Description Dialog */}

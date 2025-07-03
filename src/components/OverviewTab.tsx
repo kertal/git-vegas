@@ -139,7 +139,7 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
     
     switch (event.type) {
       case 'PushEvent': {
-        const payload = event.payload as any;
+        const payload = event.payload as { commits?: { length: number }[]; ref?: string };
         const commits = payload?.commits?.length || 0;
         const branch = payload?.ref?.replace('refs/heads/', '') || 'main';
         return `${actor} pushed ${commits} commit${commits !== 1 ? 's' : ''} to ${branch}`;
@@ -167,7 +167,7 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
       }
       
       case 'ForkEvent': {
-        const forkPayload = event.payload as any;
+        const forkPayload = event.payload as { forkee?: { full_name?: string } };
         const forkee = forkPayload?.forkee?.full_name || 'repository';
         return `${actor} forked repository to ${forkee}`;
       }
@@ -198,14 +198,14 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
       }
       
       case 'DeleteEvent': {
-        const deletePayload = event.payload as any;
+        const deletePayload = event.payload as { ref_type?: string; ref?: string };
         const deleteRefType = deletePayload?.ref_type || 'branch';
         const deleteRef = deletePayload?.ref || '';
         return `${actor} deleted ${deleteRefType}${deleteRef ? ` ${deleteRef}` : ''}`;
       }
       
       case 'GollumEvent': {
-        const gollumPayload = event.payload as any;
+        const gollumPayload = event.payload as { pages?: { length: number }[] };
         const pages = gollumPayload?.pages?.length || 0;
         return `${actor} updated ${pages} wiki page${pages !== 1 ? 's' : ''}`;
       }
