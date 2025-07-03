@@ -45,6 +45,7 @@ import { parseSearchText } from '../utils/resultsUtils';
 import { truncateMiddle } from '../utils/textUtils';
 import { CloneIssueDialog } from './CloneIssueDialog';
 import { useFormContext } from '../App';
+import StarButton from './StarButton';
 import './TimelineView.css';
 
 // Helper function to get clone button state
@@ -1007,8 +1008,8 @@ const TimelineView = memo(function TimelineView({
                                       </Text>
 
                                       {/* Action buttons */}
-                                      {group.mostRecent.body && (
-                                        <div>
+                                      <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+                                        {group.mostRecent.body && (
                                           <IconButton
                                             icon={EyeIcon}
                                             variant="invisible"
@@ -1020,26 +1021,46 @@ const TimelineView = memo(function TimelineView({
                                               )
                                             }
                                           />
-                                          <IconButton
-                                            icon={
-                                              isCopied(
-                                                group.mostRecent.event_id ||
-                                                  group.mostRecent.id
-                                              )
-                                                ? CheckIcon
-                                                : PasteIcon
-                                            }
-                                            variant="invisible"
-                                            aria-label="Copy to clipboard"
-                                            size="small"
-                                            onClick={() =>
-                                              copySingleItemToClipboard(
-                                                group.mostRecent
-                                              )
-                                            }
-                                          />
-                                        </div>
-                                      )}
+                                        )}
+                                        <IconButton
+                                          icon={
+                                            isCopied(
+                                              group.mostRecent.event_id ||
+                                                group.mostRecent.id
+                                            )
+                                              ? CheckIcon
+                                              : PasteIcon
+                                          }
+                                          variant="invisible"
+                                          aria-label="Copy to clipboard"
+                                          size="small"
+                                          onClick={() =>
+                                            copySingleItemToClipboard(
+                                              group.mostRecent
+                                            )
+                                          }
+                                        />
+                                        {(() => {
+                                          const cloneState = getCloneButtonState(group.mostRecent, githubToken);
+                                          return (
+                                            <IconButton
+                                              icon={CopyIcon}
+                                              variant="invisible"
+                                              aria-label={cloneState.tooltip}
+                                              size="small"
+                                              onClick={() => !cloneState.disabled && setSelectedItemForClone(group.mostRecent)}
+                                              disabled={cloneState.disabled}
+                                              title={cloneState.tooltip}
+                                              sx={{
+                                                color: cloneState.disabled ? '#d0d7de' : 'fg.default',
+                                                cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
+                                                opacity: cloneState.disabled ? 0.5 : 1
+                                              }}
+                                            />
+                                          );
+                                        })()}
+                                        <StarButton item={group.mostRecent} />
+                                      </Box>
                                     </div>
                                   </div>
                                 );
@@ -1159,7 +1180,7 @@ const TimelineView = memo(function TimelineView({
                   </Text>
 
                   {/* Action buttons */}
-                  <div>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
                     {item.body && (
                       <IconButton
                         icon={EyeIcon}
@@ -1170,36 +1191,33 @@ const TimelineView = memo(function TimelineView({
                       />
                     )}
                     <IconButton
-                      icon={
-                        isCopied(item.event_id || item.id)
-                          ? CheckIcon
-                          : PasteIcon
-                      }
+                      icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
                       variant="invisible"
                       aria-label="Copy to clipboard"
                       size="small"
                       onClick={() => copySingleItemToClipboard(item)}
                     />
-                                         {(() => {
-                       const cloneState = getCloneButtonState(item, githubToken);
-                       return (
-                         <IconButton
-                           icon={CopyIcon}
-                           variant="invisible"
-                           aria-label={cloneState.tooltip}
-                           size="small"
-                           onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
-                           disabled={cloneState.disabled}
-                           title={cloneState.tooltip}
-                           sx={{
-                             color: cloneState.disabled ? '#d0d7de' : 'fg.default',
-                             cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
-                             opacity: cloneState.disabled ? 0.5 : 1
-                           }}
-                         />
-                       );
-                     })()}
-                  </div>
+                    {(() => {
+                      const cloneState = getCloneButtonState(item, githubToken);
+                      return (
+                        <IconButton
+                          icon={CopyIcon}
+                          variant="invisible"
+                          aria-label={cloneState.tooltip}
+                          size="small"
+                          onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
+                          disabled={cloneState.disabled}
+                          title={cloneState.tooltip}
+                          sx={{
+                            color: cloneState.disabled ? '#d0d7de' : 'fg.default',
+                            cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
+                            opacity: cloneState.disabled ? 0.5 : 1
+                          }}
+                        />
+                      );
+                    })()}
+                    <StarButton item={item} />
+                  </Box>
                 </div>
               );
             })}

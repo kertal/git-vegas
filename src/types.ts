@@ -254,3 +254,17 @@ export interface CustomSectionData {
   labels: string[];
   type: 'issues' | 'prs' | 'both';
 }
+
+// Starring system types
+export interface StarredItem {
+  id: string;
+  type: 'issue' | 'pr' | 'comment';
+  item: GitHubItem;
+  starredAt: string;
+  note?: string;
+}
+
+export interface StarredItemsStorage {
+  starredItems: StarredItem[];
+  lastUpdated: string;
+}

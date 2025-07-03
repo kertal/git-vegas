@@ -44,6 +44,7 @@ import { ResultsContainer } from './ResultsContainer';
 import { truncateMiddle } from '../utils/textUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { CloneIssueDialog } from './CloneIssueDialog';
+import StarButton from './StarButton';
 
 // Helper function to get clone button state
 const getCloneButtonState = (item: GitHubItem, githubToken?: string) => {
@@ -802,41 +803,44 @@ const ResultsList = memo(function ResultsList({
                       })}
                     </Text>
                     <div>
-                      {item.body && (
-                        <IconButton
-                          icon={EyeIcon}
-                          variant="invisible"
-                          aria-label="Show description"
-                          size="small"
-                          onClick={() => setSelectedItemForDialog(item)}
-                        />
-                      )}
-                      <IconButton
-                        icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
-                        variant="invisible"
-                        aria-label="Copy to clipboard"
-                        size="small"
-                        onClick={() => copySingleItemToClipboard(item)}
-                      />
-                      {(() => {
-                        const cloneState = getCloneButtonState(item, githubToken);
-                        return (
+                      <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+                        {item.body && (
                           <IconButton
-                            icon={CopyIcon}
+                            icon={EyeIcon}
                             variant="invisible"
-                            aria-label={cloneState.tooltip}
+                            aria-label="Show description"
                             size="small"
-                            onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
-                            disabled={cloneState.disabled}
-                            title={cloneState.tooltip}
-                            sx={{
-                              color: cloneState.disabled ? '#d0d7de' : 'fg.default',
-                              cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
-                              opacity: cloneState.disabled ? 0.5 : 1
-                            }}
+                            onClick={() => setSelectedItemForDialog(item)}
                           />
-                        );
-                      })()}
+                        )}
+                        <IconButton
+                          icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
+                          variant="invisible"
+                          aria-label="Copy to clipboard"
+                          size="small"
+                          onClick={() => copySingleItemToClipboard(item)}
+                        />
+                        {(() => {
+                          const cloneState = getCloneButtonState(item, githubToken);
+                          return (
+                            <IconButton
+                              icon={CopyIcon}
+                              variant="invisible"
+                              aria-label={cloneState.tooltip}
+                              size="small"
+                              onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
+                              disabled={cloneState.disabled}
+                              title={cloneState.tooltip}
+                              sx={{
+                                color: cloneState.disabled ? '#d0d7de' : 'fg.default',
+                                cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
+                                opacity: cloneState.disabled ? 0.5 : 1
+                              }}
+                            />
+                          );
+                        })()}
+                        <StarButton item={item} />
+                      </Box>
                     </div>
                   </Box>
                 ))}
@@ -1101,7 +1105,7 @@ const ResultsList = memo(function ResultsList({
                       </Stack>
                       
                       {/* Action buttons for detailed view */}
-                      <Box sx={{ display: 'flex', gap: 1, ml: 'auto' }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
                         {item.body && (
                           <IconButton
                             icon={EyeIcon}
@@ -1118,25 +1122,26 @@ const ResultsList = memo(function ResultsList({
                           size="small"
                           onClick={() => copySingleItemToClipboard(item)}
                         />
-                                                 {(() => {
-                           const cloneState = getCloneButtonState(item, githubToken);
-                           return (
-                             <IconButton
-                               icon={CopyIcon}
-                               variant="invisible"
-                               aria-label={cloneState.tooltip}
-                               size="small"
-                               onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
-                               disabled={cloneState.disabled}
-                               title={cloneState.tooltip}
-                               sx={{
-                                 color: cloneState.disabled ? '#d0d7de' : 'fg.default',
-                                 cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
-                                 opacity: cloneState.disabled ? 0.5 : 1
-                               }}
-                             />
-                           );
-                         })()}
+                        {(() => {
+                          const cloneState = getCloneButtonState(item, githubToken);
+                          return (
+                            <IconButton
+                              icon={CopyIcon}
+                              variant="invisible"
+                              aria-label={cloneState.tooltip}
+                              size="small"
+                              onClick={() => !cloneState.disabled && setSelectedItemForClone(item)}
+                              disabled={cloneState.disabled}
+                              title={cloneState.tooltip}
+                              sx={{
+                                color: cloneState.disabled ? '#d0d7de' : 'fg.default',
+                                cursor: cloneState.disabled ? 'not-allowed' : 'pointer',
+                                opacity: cloneState.disabled ? 0.5 : 1
+                              }}
+                            />
+                          );
+                        })()}
+                        <StarButton item={item} />
                       </Box>
                     </Stack>
                   </Box>

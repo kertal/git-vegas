@@ -27,6 +27,7 @@ import { categorizeRawSearchItems, categorizeRawEvents } from '../utils/rawDataU
 import CustomSectionsManager from '../utils/customSections';
 import CustomSectionManager from './CustomSectionManager';
 import CustomSectionDisplay from './CustomSectionDisplay';
+import StarredItemsSection from './StarredItemsSection';
 
 interface OverviewTabProps {
   indexedDBSearchItems: GitHubItem[];
@@ -304,6 +305,9 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
           ))}
         </Box>
       )}
+
+      {/* Starred Items Section */}
+      <StarredItemsSection onRefresh={() => {}} />
 
       {/* Issues & PRs Section */}
       <Box sx={{ mb: 3 }}>
