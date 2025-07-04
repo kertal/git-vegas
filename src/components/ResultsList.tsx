@@ -6,9 +6,7 @@ import {
   Heading,
   Link,
   ButtonGroup,
-  Avatar,
   Stack,
-  Label,
   Checkbox,
   ActionMenu,
   ActionList,
@@ -26,12 +24,10 @@ import {
   SearchIcon,
   CheckIcon,
   CopyIcon,
-  RepoIcon,
 } from '@primer/octicons-react';
 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getContrastColor } from '../utils';
 import { GitHubItem } from '../types';
 
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
@@ -40,11 +36,8 @@ import { useFormContext } from '../App';
 
 import { ResultsContainer } from './ResultsContainer';
 import { CloneIssueDialog } from './CloneIssueDialog';
-import ActionButtonsRow from './ActionButtonsRow';
 import './TimelineView.css';
 import ItemRow from './ItemRow';
-
-
 
 // Import context hook and helper functions from App.tsx
 interface UseResultsContextHookType {
@@ -245,22 +238,26 @@ const ResultsList = memo(function ResultsList({
   );
 
   // Dialog state
-  const [selectedItemForDialog, setSelectedItemForDialog] = useState<GitHubItem | null>(null);
-  const [selectedItemForClone, setSelectedItemForClone] = useState<GitHubItem | null>(null);
+  const [selectedItemForDialog, setSelectedItemForDialog] =
+    useState<GitHubItem | null>(null);
+  const [selectedItemForClone, setSelectedItemForClone] =
+    useState<GitHubItem | null>(null);
 
   // Check if filters are active
   const areFiltersActive = filteredResults.length !== results.length;
 
   // Selection handlers
   const handleSelectAllChange = () => {
-    if (selectedItems instanceof Set && selectedItems.size === (areFiltersActive ? filteredResults.length : results.length)) {
+    if (
+      selectedItems instanceof Set &&
+      selectedItems.size ===
+        (areFiltersActive ? filteredResults.length : results.length)
+    ) {
       clearSelection();
     } else {
       selectAllItems();
     }
   };
-
-
 
   // Dialog navigation handlers
   const handlePreviousItem = () => {
@@ -278,12 +275,9 @@ const ResultsList = memo(function ResultsList({
   };
 
   const getCurrentItemIndex = () => {
-    return filteredResults.findIndex(item => item.id === selectedItemForDialog?.id);
-  };
-
-  const formatRepoName = (url: string | undefined): string => {
-    if (!url) return 'Unknown';
-    return url.replace('https://api.github.com/repos/', '');
+    return filteredResults.findIndex(
+      item => item.id === selectedItemForDialog?.id
+    );
   };
 
   return (
@@ -295,13 +289,18 @@ const ResultsList = memo(function ResultsList({
               <Checkbox
                 checked={
                   selectedItems instanceof Set &&
-                  selectedItems.size === (areFiltersActive ? filteredResults.length : results.length) &&
-                  (areFiltersActive ? filteredResults.length : results.length) > 0
+                  selectedItems.size ===
+                    (areFiltersActive
+                      ? filteredResults.length
+                      : results.length) &&
+                  (areFiltersActive ? filteredResults.length : results.length) >
+                    0
                 }
                 indeterminate={
                   selectedItems instanceof Set &&
                   selectedItems.size > 0 &&
-                  selectedItems.size < (areFiltersActive ? filteredResults.length : results.length)
+                  selectedItems.size <
+                    (areFiltersActive ? filteredResults.length : results.length)
                 }
                 onChange={handleSelectAllChange}
                 aria-label="Select all items"
@@ -333,12 +332,12 @@ const ResultsList = memo(function ResultsList({
                     borderColor: 'border.default',
                   }}
                 >
-                  {(isClipboardCopied('compact') || isClipboardCopied('detailed')) ? (
+                  {isClipboardCopied('compact') ||
+                  isClipboardCopied('detailed') ? (
                     <CheckIcon size={14} />
                   ) : (
                     <CopyIcon size={14} />
-                  )}
-                  {' '}
+                  )}{' '}
                   {(() => {
                     const displayResults = areFiltersActive
                       ? filteredResults
@@ -370,13 +369,10 @@ const ResultsList = memo(function ResultsList({
                 </ActionMenu.Overlay>
               </ActionMenu>
             </Box>
-
           </>
         }
         headerRight={
           <>
-
-
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <FormControl>
                 <FormControl.Label visuallyHidden>
@@ -385,7 +381,7 @@ const ResultsList = memo(function ResultsList({
                 <TextInput
                   placeholder="Search issues and PRs"
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={e => setInputValue(e.target.value)}
                   leadingVisual={SearchIcon}
                   size="small"
                   sx={{ minWidth: '300px' }}
@@ -393,7 +389,6 @@ const ResultsList = memo(function ResultsList({
               </FormControl>
               <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
               <ButtonGroup>
-              
                 <Button
                   size="small"
                   variant={isCompactView ? 'primary' : 'default'}
@@ -447,7 +442,7 @@ const ResultsList = memo(function ResultsList({
                         No matches found
                       </Text>
                       <Text sx={{ fontSize: 1, color: 'fg.muted', mb: 3 }}>
-                        {searchText 
+                        {searchText
                           ? `No items found matching "${searchText}". Try a different search term, use label:name or -label:name for label filtering, or adjust your filters.`
                           : `Your current filters don't match any of the ${results.length} available items.`}
                       </Text>
@@ -488,166 +483,28 @@ const ResultsList = memo(function ResultsList({
                 ))}
               </Box>
             ) : (
-              <Stack sx={{ gap: 3 }}>
-                {displayResults.map(item => (
-                  <div
-                    key={item.id}
-                    className="timeline-item timeline-item--standard"
-                  >
-                    {/* Checkbox */}
-                    <Checkbox
-                      checked={
-                        selectedItems instanceof Set &&
-                        selectedItems.has(item.event_id || item.id)
-                      }
-                      onChange={() =>
-                        toggleItemSelection(item.event_id || item.id)
-                      }
-                      sx={{ flexShrink: 0 }}
-                    />
-
-                    {/* Icon */}
-                    <div className="timeline-item-icon">
-                      {item.pull_request ? (
-                        item.pull_request.merged_at || item.merged ? (
-                          <GitMergeIcon size={16} className="timeline-item-icon--merged" />
-                        ) : item.state === 'closed' ? (
-                          <GitPullRequestIcon size={16} className="timeline-item-icon--closed" />
-                        ) : (
-                          <GitPullRequestIcon size={16} className="timeline-item-icon--open" />
-                        )
-                      ) : item.state === 'closed' ? (
-                        <IssueOpenedIcon size={16} className="timeline-item-icon--closed" />
-                      ) : (
-                        <IssueOpenedIcon size={16} className="timeline-item-icon--open" />
-                      )}
-                    </div>
-
-                    {/* Avatar */}
-                    <Avatar
-                      src={item.user.avatar_url}
-                      size={24}
-                      alt={item.user.login}
-                      className="timeline-item-avatar"
-                      sx={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        // Add user to search text in format user:{username}
-                        const userSearchTerm = `user:${item.user.login}`;
-                        const currentSearch = searchText.trim();
-                        
-                        // Check if this user is already in the search text
-                        const userRegex = new RegExp(`\\buser:${item.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
-                        if (!userRegex.test(currentSearch)) {
-                          const newSearchText = currentSearch 
-                            ? `${currentSearch} ${userSearchTerm}`
-                            : userSearchTerm;
-                          setSearchText(newSearchText);
-                        }
-                      }}
-                    />
-
-                    {/* User and action */}
-                    <div className="timeline-item-action-container">
-                      <Link
-                        href={item.user.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="timeline-item-user"
-                      >
-                        {item.user.login}
-                      </Link>
-                    </div>
-
-                    {/* Title */}
-                    <div className="timeline-item-title-container">
-                      <Link
-                        href={item.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="timeline-item-title timeline-item-title--bold"
-                        title={item.title}
-                      >
-                        {item.title}
-                      </Link>
-                      {item.pull_request && (item.draft || item.pull_request.draft) && (
-                        <Label
-                          variant="secondary"
-                          size="small"
-                          sx={{ ml: 1 }}
-                        >
-                          Draft
-                        </Label>
-                      )}
-                    </div>
-
-                    {/* Repo */}
-                    <div className="timeline-item-repo-container">
-                      <RepoIcon size={12} />
-                      <Link
-                        href={`https://github.com/${formatRepoName(item.repository_url)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="timeline-item-repo"
-                      >
-                        {formatRepoName(item.repository_url).split('/')[1] || formatRepoName(item.repository_url)}
-                      </Link>
-                    </div>
-
-                    {/* Labels */}
-                    {item.labels && item.labels.length > 0 && (
-                      <div className="timeline-item-labels">
-                        {item.labels.map((l: { name: string; color?: string; description?: string }) => (
-                          <Label
-                            key={l.name}
-                            sx={{
-                              backgroundColor: l.color ? `#${l.color}` : undefined,
-                              color: l.color ? getContrastColor(l.color) : undefined,
-                              fontWeight: 'bold',
-                              fontSize: 0,
-                              cursor: 'pointer',
-                            }}
-                            title={l.description || l.name}
-                            onClick={() => {
-                              // Add label to search text in format label:{labelName}
-                              const labelSearchTerm = `label:${l.name}`;
-                              const currentSearch = searchText.trim();
-                              
-                              // Check if this label is already in the search text
-                              const labelRegex = new RegExp(`\\blabel:${l.name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
-                              if (!labelRegex.test(currentSearch)) {
-                                const newSearchText = currentSearch 
-                                  ? `${currentSearch} ${labelSearchTerm}`
-                                  : labelSearchTerm;
-                                setSearchText(newSearchText);
-                              }
-                            }}
-                          >
-                            {l.name}
-                          </Label>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Time */}
-                    <Text className="timeline-item-time">
-                      {new Date(item.updated_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-
-                    {/* Action buttons */}
-                    <ActionButtonsRow
+              <Box sx={{ gap: 1, p: 2 }}>
+                <Stack sx={{ gap: 3, p: 2 }}>
+                  {displayResults.map(item => (
+                    <ItemRow
+                      key={item.id}
                       item={item}
                       githubToken={githubToken}
                       isCopied={isCopied}
                       onShowDescription={setSelectedItemForDialog}
                       onCloneItem={setSelectedItemForClone}
-                      size="small"
+                      selected={selectedItems.has(item.event_id || item.id)}
+                      onSelect={toggleItemSelection}
+                      showCheckbox={!!toggleItemSelection}
+                      showLabels={true}
+                      showRepo={true}
+                      showUser={true}
+                      showTime={true}
+                      size="medium"
                     />
-                  </div>
-                ))}
-              </Stack>
+                  ))}
+                </Stack>
+              </Box>
             );
           })()}
         </div>
@@ -670,7 +527,7 @@ const ResultsList = memo(function ResultsList({
         isOpen={selectedItemForClone !== null}
         onClose={() => setSelectedItemForClone(null)}
         originalIssue={selectedItemForClone}
-        onSuccess={(newIssue) => {
+        onSuccess={newIssue => {
           console.log('Issue cloned successfully:', newIssue);
           // Optionally refresh data or show success message
         }}

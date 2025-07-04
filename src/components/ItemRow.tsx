@@ -88,7 +88,7 @@ const ItemRow = ({
         )}
       </Box>
       {showLabels && item.labels && item.labels.length > 0 && (
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', minWidth: 0 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', minWidth: 0, maxWidth: '30%' }}>
           {item.labels.map((l: { name: string; color?: string; description?: string }) => (
             <Label
               key={l.name}
