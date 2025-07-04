@@ -127,6 +127,46 @@ export interface GitHubEvent {
   created_at: string;
 }
 
+// Specific payload types for different GitHub event types
+export interface PushEventPayload {
+  ref?: string;
+  size?: number;
+  distinct_size?: number;
+  commits?: Array<{
+    sha: string;
+    message: string;
+    author: { name: string; email: string };
+  }>;
+}
+
+export interface CreateEventPayload {
+  ref_type?: string;
+  ref?: string;
+  master_branch?: string;
+  description?: string;
+}
+
+export interface ForkEventPayload {
+  forkee?: {
+    full_name?: string;
+    html_url?: string;
+  };
+}
+
+export interface DeleteEventPayload {
+  ref_type?: string;
+  ref?: string;
+}
+
+export interface GollumEventPayload {
+  pages?: Array<{
+    page_name: string;
+    title: string;
+    action: string;
+    html_url: string;
+  }>;
+}
+
 // Context Types
 export interface FormContextType {
   username: string;

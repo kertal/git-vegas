@@ -238,7 +238,7 @@ export const fetchUserItems = async (
   }
 
   const response = await fetch(
-    `https://api.github.com/search/issues?q=author:${username}+created:${_startDate}..${_endDate}&per_page=100`,
+    `https://api.github.com/search/issues?q=author:${username}+updated:${_startDate}..${_endDate}&per_page=100`,
     { headers }
   );
 

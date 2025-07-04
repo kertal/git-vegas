@@ -16,13 +16,6 @@ import {
   FormControl,
 } from '@primer/react';
 import {
-  IssueOpenedIcon,
-  IssueClosedIcon,
-  GitPullRequestIcon,
-  GitMergeIcon,
-  GitPullRequestClosedIcon,
-  CommentIcon,
-  EyeIcon,
   CopyIcon,
   ChevronLeftIcon,
   ChevronRightIcon,

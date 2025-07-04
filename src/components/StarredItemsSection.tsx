@@ -3,18 +3,15 @@ import {
   Box,
   Text,
   Link,
-  Button,
   Avatar,
   Timeline,
   Label,
-  ButtonGroup,
 } from '@primer/react';
 import { 
   GitPullRequestIcon, 
   IssueOpenedIcon, 
   CommentIcon,
   LinkExternalIcon,
-  TrashIcon,
 } from '@primer/octicons-react';
 import { StarredItem } from '../types';
 import { StarredItemsManager } from '../utils/starredItems';
@@ -26,7 +23,7 @@ interface StarredItemsSectionProps {
 
 const StarredItemsSection = memo(function StarredItemsSection({ onRefresh }: StarredItemsSectionProps) {
   const [starredItems, setStarredItems] = useState<StarredItem[]>([]);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'issue' | 'pr' | 'comment'>('all');
+  const [activeFilter] = useState<'all' | 'issue' | 'pr' | 'comment'>('all');
 
   // Load starred items on mount and when refresh is triggered
   useEffect(() => {
@@ -68,13 +65,7 @@ const StarredItemsSection = memo(function StarredItemsSection({ onRefresh }: Sta
     }
   };
 
-  const handleUnstar = (item: StarredItem) => {
-    StarredItemsManager.removeItem(item.item);
-    loadStarredItems();
-    onRefresh?.();
-  };
-
-  const counts = useMemo(() => StarredItemsManager.getCounts(), [starredItems]);
+  const counts = useMemo(() => StarredItemsManager.getCounts(), []);
 
   if (starredItems.length === 0) {
     return null;
@@ -86,36 +77,6 @@ const StarredItemsSection = memo(function StarredItemsSection({ onRefresh }: Sta
         <Text as="h2" sx={{ fontSize: 1, fontWeight: 'bold' }}>
           Starred Items ({counts.total})
         </Text>
-        <ButtonGroup>
-          <Button
-            size="small"
-            variant={activeFilter === 'all' ? 'primary' : 'default'}
-            onClick={() => setActiveFilter('all')}
-          >
-            All ({counts.total})
-          </Button>
-          <Button
-            size="small"
-            variant={activeFilter === 'issue' ? 'primary' : 'default'}
-            onClick={() => setActiveFilter('issue')}
-          >
-            Issues ({counts.issues})
-          </Button>
-          <Button
-            size="small"
-            variant={activeFilter === 'pr' ? 'primary' : 'default'}
-            onClick={() => setActiveFilter('pr')}
-          >
-            PRs ({counts.prs})
-          </Button>
-          <Button
-            size="small"
-            variant={activeFilter === 'comment' ? 'primary' : 'default'}
-            onClick={() => setActiveFilter('comment')}
-          >
-            Comments ({counts.comments})
-          </Button>
-        </ButtonGroup>
       </Box>
       
       {filteredItems.length > 0 ? (
@@ -199,14 +160,6 @@ const StarredItemsSection = memo(function StarredItemsSection({ onRefresh }: Sta
                         onRefresh?.();
                       }}
                     />
-                    <Button
-                      size="small"
-                      variant="invisible"
-                      onClick={() => handleUnstar(starredItem)}
-                      sx={{ p: 1, color: 'danger.fg' }}
-                    >
-                      <TrashIcon size={12} />
-                    </Button>
                   </Box>
                 </Box>
               </Timeline.Body>

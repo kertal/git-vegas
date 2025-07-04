@@ -4,6 +4,13 @@ import { ThemeProvider } from '@primer/react';
 import OverviewTab from '../OverviewTab';
 import { GitHubItem, GitHubEvent } from '../../types';
 import * as rawDataUtils from '../../utils/rawDataUtils';
+import { 
+  PushEventPayload, 
+  CreateEventPayload, 
+  ForkEventPayload, 
+  DeleteEventPayload, 
+  GollumEventPayload 
+} from '../../types';
 
 // Mock the App context
 const mockSetApiMode = vi.fn();
@@ -616,7 +623,7 @@ describe('OverviewTab', () => {
           payload: {
             commits: [{ id: 'abc123', message: 'test commit' }],
             ref: 'refs/heads/main',
-          } as any,
+          } as PushEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [pushEvent] });
 
@@ -633,7 +640,7 @@ describe('OverviewTab', () => {
               { id: 'def456', message: 'test commit 2' },
             ],
             ref: 'refs/heads/feature',
-          } as any,
+          } as PushEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [pushEvent] });
 
@@ -647,7 +654,7 @@ describe('OverviewTab', () => {
           payload: {
             ref_type: 'branch',
             ref: 'feature/new-feature',
-          } as any,
+          } as CreateEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [createEvent] });
 
@@ -660,7 +667,7 @@ describe('OverviewTab', () => {
           type: 'CreateEvent',
           payload: {
             ref_type: 'repository',
-          } as any,
+          } as CreateEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [createEvent] });
 
@@ -709,7 +716,7 @@ describe('OverviewTab', () => {
             forkee: {
               full_name: 'forkuser/forked-repo',
             },
-          } as any,
+          } as ForkEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [forkEvent] });
 
@@ -792,7 +799,7 @@ describe('OverviewTab', () => {
           payload: {
             ref_type: 'branch',
             ref: 'old-feature',
-          } as any,
+          } as DeleteEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [deleteEvent] });
 
@@ -807,9 +814,9 @@ describe('OverviewTab', () => {
             pages: [
               { name: 'Home', action: 'created' },
               { name: 'About', action: 'updated' },
-            ],
-          } as any,
-        };
+            ] as GollumEventPayload['pages'],
+          },
+        } as GollumEventPayload;
         renderOverviewTab({ indexedDBEvents: [gollumEvent] });
 
         expect(screen.getByText(/eventuser1 updated 2 wiki pages/)).toBeInTheDocument();
@@ -821,8 +828,8 @@ describe('OverviewTab', () => {
           type: 'GollumEvent',
           payload: {
             pages: [{ name: 'Home', action: 'created' }],
-          } as any,
-        };
+          },
+        } as GollumEventPayload;
         renderOverviewTab({ indexedDBEvents: [gollumEvent] });
 
         expect(screen.getByText(/eventuser1 updated 1 wiki page/)).toBeInTheDocument();
@@ -836,7 +843,7 @@ describe('OverviewTab', () => {
           type: 'PushEvent',
           payload: {
             ref: 'refs/heads/main',
-          } as any,
+          } as PushEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [pushEvent] });
 
@@ -851,7 +858,7 @@ describe('OverviewTab', () => {
           payload: {
             ref_type: 'branch',
             ref: 'feature/new-feature',
-          } as any,
+          } as CreateEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [createEvent] });
 
@@ -865,7 +872,7 @@ describe('OverviewTab', () => {
           type: 'CreateEvent',
           payload: {
             ref_type: 'repository',
-          } as any,
+          } as CreateEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [createEvent] });
 
@@ -913,7 +920,7 @@ describe('OverviewTab', () => {
             forkee: {
               full_name: 'forkuser/forked-repo',
             },
-          } as any,
+          } as ForkEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [forkEvent] });
 
@@ -1047,7 +1054,7 @@ describe('OverviewTab', () => {
           payload: {
             commits: [{ id: 'abc123', message: 'test commit' }],
             ref: 'refs/heads/main',
-          } as any,
+          } as PushEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [pushEvent] });
 
@@ -1064,7 +1071,7 @@ describe('OverviewTab', () => {
           payload: {
             commits: [{ id: 'abc123', message: 'test commit' }],
             ref: 'refs/heads/main',
-          } as any,
+          } as PushEventPayload,
         };
         renderOverviewTab({ indexedDBEvents: [pushEvent] });
 

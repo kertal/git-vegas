@@ -188,7 +188,7 @@ export const categorizeRawSearchItems = (
   const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
 
   return rawItems.filter(item => {
-    const itemTime = new Date(item.created_at).getTime();
+    const itemTime = new Date(item.updated_at).getTime();
 
     // Filter by date range if dates are provided
     if (startDate && itemTime < startDateTime) {
