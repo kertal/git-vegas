@@ -2,9 +2,9 @@ import { memo } from 'react';
 import { Box, IconButton } from '@primer/react';
 import {
   EyeIcon,
-  PasteIcon,
   CheckIcon,
   CopyIcon,
+  DuplicateIcon,
 } from '@primer/octicons-react';
 import { GitHubItem } from '../types';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
@@ -80,7 +80,7 @@ const ActionButtonsRow = memo(function ActionButtonsRow({
         />
       )}
       <IconButton
-        icon={isCopied(item.event_id || item.id) ? CheckIcon : PasteIcon}
+        icon={isCopied(item.event_id || item.id) ? CheckIcon : CopyIcon}
         variant="invisible"
         aria-label="Copy to clipboard"
         size={size}
@@ -90,7 +90,7 @@ const ActionButtonsRow = memo(function ActionButtonsRow({
         const cloneState = getCloneButtonState(item, githubToken);
         return (
           <IconButton
-            icon={CopyIcon}
+            icon={DuplicateIcon}
             variant="invisible"
             aria-label={cloneState.tooltip}
             size={size}
