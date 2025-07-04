@@ -25,7 +25,7 @@ import {
   ChevronRightIcon,
   SearchIcon,
   CheckIcon,
-  PasteIcon,
+  CopyIcon,
   RepoIcon,
 } from '@primer/octicons-react';
 
@@ -337,8 +337,9 @@ const ResultsList = memo(function ResultsList({
                   {(isClipboardCopied('compact') || isClipboardCopied('detailed')) ? (
                     <CheckIcon size={14} />
                   ) : (
-                    <PasteIcon size={14} />
+                    <CopyIcon size={14} />
                   )}
+                  {' '}
                   {(() => {
                     const displayResults = areFiltersActive
                       ? filteredResults

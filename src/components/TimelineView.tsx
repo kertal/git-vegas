@@ -24,7 +24,7 @@ import {
   GitPullRequestClosedIcon,
   CommentIcon,
   EyeIcon,
-  PasteIcon,
+  CopyIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   SearchIcon,
@@ -383,8 +383,8 @@ const TimelineView = memo(function TimelineView({
             {(isClipboardCopied?.('compact') || isClipboardCopied?.('detailed')) ? (
               <CheckIcon size={14} />
             ) : (
-              <PasteIcon size={14} />
-            )}
+              <CopyIcon size={14} />
+            )} {' '}
             {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
           </ActionMenu.Button>
 
