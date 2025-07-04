@@ -31,7 +31,6 @@ const ItemRow = ({
   showCheckbox = false,
   showLabels = true,
   showRepo = true,
-  showUser = true,
   showTime = true,
   size = 'small',
 }: ItemRowProps) => {
@@ -44,38 +43,8 @@ const ItemRow = ({
           sx={{ flexShrink: 0 }}
         />
       )}
-      <Avatar
-        src={item.user.avatar_url}
-        alt={`${item.user.login}'s avatar`}
-        size={size === 'small' ? 24 : 32}
-        sx={{ cursor: 'pointer' }}
-      />
-      {showUser && (
-        <Link
-          href={item.user.html_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ fontSize: 1, color: 'fg.muted', textDecoration: 'none', ':hover': { textDecoration: 'underline' } }}
-        >
-          {item.user.login}
-        </Link>
-      )}
-      {showRepo && item.repository_url && (
-        <>
-          <Text sx={{ color: 'fg.muted' }}>/</Text>
-          <RepoIcon size={12} />
-          <Link
-            href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{ fontSize: 1, color: 'accent.fg' }}
-          >
-            {item.repository_url.replace('https://api.github.com/repos/', '').split('/')[1]}
-          </Link>
-        </>
-      )}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-        {item.pull_request ? (
+
+{item.pull_request ? (
           item.pull_request.merged_at || item.merged ? (
             <Box as="span" aria-label="Merged Pull Request" sx={{ display: 'inline-flex', alignItems: 'center', color: 'done.fg', gap: 1 }}>
               <GitMergeIcon size={16} />
@@ -95,11 +64,20 @@ const ItemRow = ({
             {item.state === 'closed' && <Box sx={{ display: 'inline-flex', ml: '-4px' }}><XIcon size={12} /></Box>}
           </Box>
         )}
+     
+     
+       <Avatar
+        src={item.user.avatar_url}
+        alt={`${item.user.login}'s avatar`}
+        size={size === 'small' ? 24 : 32}
+      />
+    
+      <Box sx={{  alignItems: 'center', gap: 1, flex: 1 }}>
         <Link
           href={item.html_url}
           target="_blank"
           rel="noopener noreferrer"
-          sx={{ fontWeight: 'semibold', fontSize: 2, color: 'accent.fg', ml: 1, mr: 1, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}
+          sx={{  textOverflow: 'ellipsis', overflow: 'hidden' }}
         >
           {item.title}
         </Link>
@@ -117,9 +95,6 @@ const ItemRow = ({
               sx={{
                 backgroundColor: l.color ? `#${l.color}` : undefined,
                 color: l.color ? getContrastColor(l.color) : undefined,
-                fontWeight: 'bold',
-                fontSize: 0,
-                cursor: 'pointer',
               }}
               title={l.description || l.name}
             >
@@ -129,11 +104,24 @@ const ItemRow = ({
         </Box>
       )}
       {showTime && (
-        <Text sx={{ fontSize: 0, color: 'fg.muted', minWidth: 80, textAlign: 'right' }}>
-          {new Date(item.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+        <Text sx={{ color: 'fg.muted', minWidth: 80, textAlign: 'right' }}>
+          {new Date(item.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
         </Text>
       )}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+        {showRepo && item.repository_url && (
+        <>
+          <RepoIcon size={12} />
+          <Link
+            href={`https://github.com/${item.repository_url.replace('https://api.github.com/repos/', '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ color: 'accent.fg' }}
+          >
+            {item.repository_url.replace('https://api.github.com/repos/', '').split('/')[1]}
+          </Link>
+        </>
+      )}
+      <div>
         <ActionButtonsRow
           item={item}
           githubToken={githubToken}
@@ -142,7 +130,7 @@ const ItemRow = ({
           onCloneItem={onCloneItem}
           size={size}
         />
-      </Box>
+      </div>
     </Box>
   );
 };

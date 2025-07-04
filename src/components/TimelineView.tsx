@@ -1001,7 +1001,7 @@ const TimelineView = memo(function TimelineView({
         <Dialog
           onClose={() => setSelectedItemForDialog(null)}
           role="dialog"
-          title={null}
+          title={selectedItemForDialog.title}
           renderFooter={() => (
             <div>
               <IconButton
@@ -1028,67 +1028,6 @@ const TimelineView = memo(function TimelineView({
             </div>
           )}
         >
-          <div className="timeline-item timeline-item--standard" style={{ marginBottom: 24 }}>
-            {/* Avatar */}
-            <Avatar
-              src={selectedItemForDialog.user.avatar_url}
-              size={14}
-              alt={selectedItemForDialog.user.login}
-              className="timeline-item-avatar"
-              sx={{ cursor: 'pointer' }}
-              onClick={() => {
-                // Add user to search text in format user:{username}
-                const userSearchTerm = `user:${selectedItemForDialog.user.login}`;
-                const currentSearch = searchText.trim();
-                // Check if this user is already in the search text
-                const userRegex = new RegExp(`\\buser:${selectedItemForDialog.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
-                if (!userRegex.test(currentSearch)) {
-                  const newSearchText = currentSearch 
-                    ? `${currentSearch} ${userSearchTerm}`
-                    : userSearchTerm;
-                  setSearchText?.(newSearchText);
-                }
-              }}
-            />
-            {/* User */}
-            <Link
-              href={selectedItemForDialog.user.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="timeline-item-user"
-            >
-              {selectedItemForDialog.user.login}
-            </Link>
-            {/* Title */}
-            <Link
-              href={selectedItemForDialog.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="timeline-item-title"
-              title={selectedItemForDialog.title}
-            >
-              {selectedItemForDialog.title}
-            </Link>
-            {/* Repo */}
-            <Text className="timeline-item-repo">
-              {formatRepoName(selectedItemForDialog.repository_url).split('/')[1] || formatRepoName(selectedItemForDialog.repository_url)}
-            </Text>
-            {/* Time */}
-            <Text className="timeline-item-time">
-              {formatDistanceToNow(new Date(selectedItemForDialog.updated_at), {
-                addSuffix: true,
-              })}
-            </Text>
-            {/* Action buttons */}
-            <ActionButtonsRow
-              item={selectedItemForDialog}
-              githubToken={githubToken}
-              isCopied={isCopied}
-              onShowDescription={setSelectedItemForDialog}
-              onCloneItem={setSelectedItemForClone}
-              size="small"
-            />
-          </div>
           <Box sx={{ p: 3, maxHeight: '40vh', overflow: 'auto' }}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
