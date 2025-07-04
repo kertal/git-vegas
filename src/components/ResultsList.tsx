@@ -39,11 +39,10 @@ import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useFormContext } from '../App';
 
 import { ResultsContainer } from './ResultsContainer';
-import { truncateMiddle } from '../utils/textUtils';
-
 import { CloneIssueDialog } from './CloneIssueDialog';
 import ActionButtonsRow from './ActionButtonsRow';
 import './TimelineView.css';
+import ItemRow from './ItemRow';
 
 
 
@@ -468,129 +467,24 @@ const ResultsList = memo(function ResultsList({
             }
 
             return isCompactView ? (
-              <Box sx={{ gap: 1 }}>
+              <Box sx={{ gap: 1, p: 2 }}>
                 {displayResults.map(item => (
-                  <div
+                  <ItemRow
                     key={item.id}
-                    className="timeline-item timeline-item--standard"
-                  >
-                    {/* Checkbox */}
-                    <Checkbox
-                      checked={
-                        selectedItems instanceof Set &&
-                        selectedItems.has(item.event_id || item.id)
-                      }
-                      onChange={() =>
-                        toggleItemSelection(item.event_id || item.id)
-                      }
-                      sx={{ flexShrink: 0 }}
-                    />
-
-                    {/* Icon */}
-                    <div className="timeline-item-icon">
-                      {item.pull_request ? (
-                        item.pull_request.merged_at || item.merged ? (
-                          <GitMergeIcon size={16} className="timeline-item-icon--merged" />
-                        ) : item.state === 'closed' ? (
-                          <GitPullRequestIcon size={16} className="timeline-item-icon--closed" />
-                        ) : (
-                          <GitPullRequestIcon size={16} className="timeline-item-icon--open" />
-                        )
-                      ) : item.state === 'closed' ? (
-                        <IssueOpenedIcon size={16} className="timeline-item-icon--closed" />
-                      ) : (
-                        <IssueOpenedIcon size={16} className="timeline-item-icon--open" />
-                      )}
-                    </div>
-
-                    {/* Avatar */}
-                    <Avatar
-                      src={item.user.avatar_url}
-                      size={16}
-                      alt={item.user.login}
-                      className="timeline-item-avatar"
-                      sx={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        // Add user to search text in format user:{username}
-                        const userSearchTerm = `user:${item.user.login}`;
-                        const currentSearch = searchText.trim();
-                        
-                        // Check if this user is already in the search text
-                        const userRegex = new RegExp(`\\buser:${item.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
-                        if (!userRegex.test(currentSearch)) {
-                          const newSearchText = currentSearch 
-                            ? `${currentSearch} ${userSearchTerm}`
-                            : userSearchTerm;
-                          setSearchText(newSearchText);
-                        }
-                      }}
-                    />
-
-                    {/* User and action */}
-                    <div className="timeline-item-action-container">
-                      <Link
-                        href={item.user.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="timeline-item-user"
-                      >
-                        {item.user.login}
-                      </Link>
-                    </div>
-
-                    {/* Title (truncated) */}
-                    <div className="timeline-item-title-container">
-                      <Link
-                        href={item.html_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="timeline-item-title timeline-item-title--bold"
-                        title={item.title}
-                      >
-                        {truncateMiddle(item.title, 100)}
-                      </Link>
-                      {item.pull_request && (item.draft || item.pull_request.draft) && (
-                        <Label
-                          variant="secondary"
-                          size="small"
-                          sx={{ ml: 1 }}
-                        >
-                          Draft
-                        </Label>
-                      )}
-                    </div>
-
-                    {/* Repo */}
-                    <div className="timeline-item-repo-container">
-                      <RepoIcon size={12} />
-                      <Link
-                        href={`https://github.com/${formatRepoName(item.repository_url)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="timeline-item-repo"
-                      >
-                        {formatRepoName(item.repository_url).split('/')[1] || formatRepoName(item.repository_url)}
-                      </Link>
-                    </div>
-
-                    {/* Time */}
-                    <Text className="timeline-item-time">
-                      {new Date(item.updated_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-
-                    {/* Action buttons */}
-                    <ActionButtonsRow
-                      item={item}
-                      githubToken={githubToken}
-                      isCopied={isCopied}
-                      onShowDescription={setSelectedItemForDialog}
-                      onCloneItem={setSelectedItemForClone}
-                      size="small"
-                    />
-                  </div>
+                    item={item}
+                    githubToken={githubToken}
+                    isCopied={isCopied}
+                    onShowDescription={setSelectedItemForDialog}
+                    onCloneItem={setSelectedItemForClone}
+                    selected={selectedItems.has(item.event_id || item.id)}
+                    onSelect={toggleItemSelection}
+                    showCheckbox={!!toggleItemSelection}
+                    showLabels={false}
+                    showRepo={true}
+                    showUser={true}
+                    showTime={true}
+                    size="small"
+                  />
                 ))}
               </Box>
             ) : (
