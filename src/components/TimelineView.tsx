@@ -1,7 +1,6 @@
 import { memo, useMemo, useState } from 'react';
 import {
   Text,
-  Avatar,
   Link,
   Button,
   ButtonGroup,
@@ -39,12 +38,10 @@ import remarkGfm from 'remark-gfm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
-import { truncateMiddle } from '../utils/textUtils';
 import { CloneIssueDialog } from './CloneIssueDialog';
-import { useFormContext } from '../App';
-import ActionButtonsRow from './ActionButtonsRow';
 import ItemRow from './ItemRow';
 import './TimelineView.css';
+import { useFormContext } from '../App';
 
 
 
@@ -176,14 +173,6 @@ const TimelineView = memo(function TimelineView({
       return 'comment';
     }
     return item.pull_request ? 'pull_request' : 'issue';
-  };
-
-
-
-  const formatRepoName = (url: string | undefined): string => {
-    if (!url) return 'Unknown Repository';
-    const match = url.match(/repos\/(.+)$/);
-    return match ? match[1] : url;
   };
 
   // Calculate select all checkbox state
@@ -460,7 +449,7 @@ const TimelineView = memo(function TimelineView({
       className="timeline-view"
     >
       {/* API Limitation Note */}
-      <Box sx={{ p: 2, mb: 2, bg: 'attention.subtle', borderRadius: 2 }}>
+      <Box sx={{ p: 2,  bg: 'attention.subtle'}}>
         <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
           <strong>Note:</strong> Timeline includes up to 300 events from the
           past 30 days. Event latency can be 30s to 6h depending on time of day.
@@ -622,24 +611,7 @@ const TimelineView = memo(function TimelineView({
                     ([groupName, groupItems]) => {
                       if (groupItems.length === 0) return null;
 
-                      // Get the appropriate icon for the group
-                      const getGroupIcon = () => {
-                        if (groupName === 'PRs - opened')
-                          return <GitPullRequestIcon size={20} />;
-                        if (groupName === 'PRs - merged')
-                          return <GitMergeIcon size={20} />;
-                        if (groupName === 'PRs - closed')
-                          return <GitPullRequestClosedIcon size={20} />;
-                        if (groupName === 'PRs - reviewed')
-                          return <EyeIcon size={20} />;
-                        if (groupName === 'Issues - opened')
-                          return <IssueOpenedIcon size={20} />;
-                        if (groupName === 'Issues - closed')
-                          return <IssueClosedIcon size={20} />;
-                        if (groupName === 'Issues - commented')
-                          return <CommentIcon size={20} />;
-                        return <IssueOpenedIcon size={20} />;
-                      };
+                  
 
                       return (
                         <div key={groupName} className="timeline-section">
@@ -785,9 +757,7 @@ const TimelineView = memo(function TimelineView({
                               />
                             )}
 
-                            <div className="timeline-section-icon timeline-section-icon--muted">
-                              {getGroupIcon()}
-                            </div>
+                         
                             <Text className="timeline-section-title timeline-section-title--default">
                               {groupName}{' '}
                               <Token
@@ -845,119 +815,35 @@ const TimelineView = memo(function TimelineView({
                                 );
 
                               // Show grouped items with count badges but individual checkboxes for each event using event_id
-                              return groupedItems.map((group, groupIndex) => {
-                                const repoName = formatRepoName(
-                                  group.mostRecent.repository_url
-                                );
-                                const isLastGroup =
-                                  groupIndex === groupedItems.length - 1;
-
+                              return groupedItems.map((group) => {
                                 return (
                                   <div
                                     key={group.url}
                                     className="timeline-group"
                                   >
-                                    {/* Group Header with Most Recent Item */}
-                                    <div
-                                      className={`timeline-item ${
-                                        !isLastGroup
-                                          ? ''
-                                          : 'timeline-item--no-border'
-                                      }`}
-                                    >
-                                      {/* Checkbox for most recent item */}
-                                      {toggleItemSelection && (
-                                        <Checkbox
-                                          checked={selectedItems.has(
-                                            group.mostRecent.event_id ||
-                                              group.mostRecent.id
-                                          )}
-                                          onChange={() =>
-                                            toggleItemSelection(
-                                              group.mostRecent.event_id ||
-                                                group.mostRecent.id
-                                            )
-                                          }
-                                          sx={{ flexShrink: 0 }}
-                                        />
-                                      )}
-
-                                      {/* Avatar */}
-                                      <Avatar
-                                        src={group.mostRecent.user.avatar_url}
-                                        size={14}
-                                        alt={group.mostRecent.user.login}
-                                        className="timeline-item-avatar"
-                                        sx={{ cursor: 'pointer' }}
-                                        onClick={() => {
-                                          // Add user to search text in format user:{username}
-                                          const userSearchTerm = `user:${group.mostRecent.user.login}`;
-                                          const currentSearch = searchText.trim();
-                                          
-                                          // Check if this user is already in the search text
-                                          const userRegex = new RegExp(`\\buser:${group.mostRecent.user.login.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}\\b`);
-                                          if (!userRegex.test(currentSearch)) {
-                                            const newSearchText = currentSearch 
-                                              ? `${currentSearch} ${userSearchTerm}`
-                                              : userSearchTerm;
-                                            setSearchText?.(newSearchText);
-                                          }
-                                        }}
-                                      />
-
-                                      {/* User */}
-                                      <Link
-                                        href={group.mostRecent.user.html_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="timeline-item-user"
-                                      >
-                                        {group.mostRecent.user.login}
-                                      </Link>
-
-                                      {/* Title (truncated) */}
-                                      <Link
-                                        href={group.mostRecent.html_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="timeline-item-title"
-                                        title={group.mostRecent.title}
-                                      >
-                                        {truncateMiddle(group.mostRecent.title, 100)}{' '}
-                                        {group.items.length > 1 && (
-                                          <Token
-                                            text={group.items.length.toString()}
-                                            size="small"
-                                            sx={{ ml: 1, flexShrink: 0 }}
-                                          />
-                                        )}
-                                      </Link>
-
-                                      {/* Repo */}
-                                      <Text className="timeline-item-repo">
-                                        {repoName.split('/')[1] || repoName}
-                                      </Text>
-
-                                      {/* Time */}
-                                      <Text className="timeline-item-time">
-                                        {formatDistanceToNow(
-                                          new Date(group.mostRecent.updated_at),
-                                          {
-                                            addSuffix: true,
-                                          }
-                                        )}
-                                      </Text>
-
-                                      {/* Action buttons */}
-                                      <ActionButtonsRow
-                                        item={group.mostRecent}
-                                        githubToken={githubToken}
-                                        isCopied={isCopied}
-                                        onShowDescription={setSelectedItemForDialog}
-                                        onCloneItem={setSelectedItemForClone}
+                                    <ItemRow
+                                      item={group.mostRecent}
+                                      githubToken={githubToken}
+                                      isCopied={isCopied}
+                                      onShowDescription={setSelectedItemForDialog}
+                                      onCloneItem={setSelectedItemForClone}
+                                      selected={selectedItems.has(group.mostRecent.event_id || group.mostRecent.id)}
+                                      onSelect={toggleItemSelection}
+                                      showCheckbox={!!toggleItemSelection}
+                                      showLabels={false}
+                                      showRepo={true}
+                                      showUser={true}
+                                      showTime={true}
+                                      size="small"
+                                    />
+                                    {/* Group count badge if more than one item in group */}
+                                    {group.items.length > 1 && (
+                                      <Token
+                                        text={group.items.length.toString()}
                                         size="small"
+                                        sx={{ ml: 2, mt: -2 }}
                                       />
-                                    </div>
+                                    )}
                                   </div>
                                 );
                               });
