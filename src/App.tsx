@@ -25,7 +25,6 @@ import { OfflineBanner } from './components/OfflineBanner';
 import ShareButton from './components/ShareButton';
 import TimelineView from './components/TimelineView';
 import OverviewTab from './components/OverviewTab';
-import SummaryView from './components/Summary';
 import { LoadingIndicator } from './components/LoadingIndicator';
 import { useLocalStorage, useFormSettings } from './hooks/useLocalStorage';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
@@ -52,6 +51,7 @@ import {
   getAvailableLabelsFromRawEvents,
 } from './utils/rawDataUtils';
 import { filterByText } from './utils/resultsUtils';
+import SummaryView from './components/Summary';
 
 // Form Context to isolate form state changes
 const FormContext = createContext<FormContextType | null>(null);
@@ -90,6 +90,7 @@ export const buttonStyles = {
   gap: 2,
 };
 
+// Add back the events-grouped logic in the results calculation and render logic. Update the results useMemo to include 'events-grouped' mode and add the SummaryView component usage in the render section.
 // Add the main App component
 function App() {
   // Consolidated settings - reducing from 11 useLocalStorage calls to 5
@@ -112,7 +113,7 @@ function App() {
     'github-ui-settings',
     {
       isCompactView: true,
-      timelineViewMode: 'grouped',
+      timelineViewMode: 'standard',
     }
   );
 
@@ -409,7 +410,7 @@ function App() {
   );
 
   const setTimelineViewMode = useCallback(
-    (timelineViewMode: 'standard' | 'raw' | 'grouped') => {
+    (timelineViewMode: 'standard' | 'raw') => {
       setUISettings(prev => ({ ...prev, timelineViewMode }));
     },
     [setUISettings]
@@ -500,18 +501,6 @@ function App() {
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
   }, [setSelectedItems]);
-
-  const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
-    const newSelected = new Set(selectedItems);
-    itemIds.forEach(id => {
-      if (shouldSelect) {
-        newSelected.add(id);
-      } else {
-        newSelected.delete(id);
-      }
-    });
-    setSelectedItems(newSelected);
-  }, [selectedItems, setSelectedItems]);
 
   // Handle manual slot machine spin
   const handleManualSpin = useCallback(() => {
@@ -628,18 +617,16 @@ function App() {
               <TimelineView
                 items={results}
                 rawEvents={indexedDBEvents}
-                viewMode={timelineViewMode}
+                viewMode={timelineViewMode === 'raw' ? 'raw' : 'standard'}
                 setViewMode={setTimelineViewMode}
                 selectedItems={selectedItems}
                 toggleItemSelection={toggleItemSelection}
                 selectAllItems={selectAllItems}
                 clearSelection={clearSelection}
-                bulkSelectItems={bulkSelectItems}
                 copyResultsToClipboard={copyResultsToClipboard}
                 searchText={eventsSearchText}
                 setSearchText={setEventsSearchText}
                 isClipboardCopied={isClipboardCopied}
-                triggerClipboardCopy={triggerClipboardCopy}
               />
             ) : apiMode === 'overview' ? (
               <OverviewTab 
@@ -648,19 +635,17 @@ function App() {
               />
             ) : apiMode === 'events-grouped' ? (
               <SummaryView
-              items={results}
-              rawEvents={indexedDBEvents}
-              selectedItems={selectedItems}
-              toggleItemSelection={toggleItemSelection}
-              selectAllItems={selectAllItems}
-              clearSelection={clearSelection}
-              bulkSelectItems={bulkSelectItems}
-              copyResultsToClipboard={copyResultsToClipboard}
-              searchText={eventsSearchText}
-              setSearchText={setEventsSearchText}
-              isClipboardCopied={isClipboardCopied}
-              triggerClipboardCopy={triggerClipboardCopy}
-            />
+                items={results}
+                rawEvents={indexedDBEvents}
+                selectedItems={selectedItems}
+                toggleItemSelection={toggleItemSelection}
+                selectAllItems={selectAllItems}
+                clearSelection={clearSelection}
+                copyResultsToClipboard={copyResultsToClipboard}
+                searchText={eventsSearchText}
+                setSearchText={setEventsSearchText}
+                isClipboardCopied={isClipboardCopied}
+              />
             ) : (
               <ResultsList
                 useResultsContext={useResultsContext}

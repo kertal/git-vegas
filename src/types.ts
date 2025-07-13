@@ -45,7 +45,7 @@ export interface RawDataStorage {
   metadata: {
     lastFetch: number;
     usernames: string[];
-    apiMode: 'search' | 'events' | 'overview';
+    apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
     startDate?: string;
     endDate?: string;
   };
