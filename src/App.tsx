@@ -25,6 +25,7 @@ import { OfflineBanner } from './components/OfflineBanner';
 import ShareButton from './components/ShareButton';
 import TimelineView from './components/TimelineView';
 import OverviewTab from './components/OverviewTab';
+import SummaryView from './components/Summary';
 import { LoadingIndicator } from './components/LoadingIndicator';
 import { useLocalStorage, useFormSettings } from './hooks/useLocalStorage';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
@@ -155,7 +156,7 @@ function App() {
 
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
-    if (apiMode === 'events') {
+    if (apiMode === 'events' || apiMode === 'events-grouped') {
       return categorizeRawEvents(indexedDBEvents, startDate, endDate);
     } else if (apiMode === 'search') {
       // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
@@ -187,7 +188,7 @@ function App() {
 
   // Get available labels from raw data
   const availableLabels = useMemo(() => {
-    if (apiMode === 'events') {
+    if (apiMode === 'events' || apiMode === 'events-grouped') {
       return getAvailableLabelsFromRawEvents(indexedDBEvents);
     } else if (apiMode === 'search') {
       return extractAvailableLabels(
@@ -393,7 +394,7 @@ function App() {
   );
 
   const setApiMode = useCallback(
-    (apiMode: 'search' | 'events' | 'overview') => {
+    (apiMode: 'search' | 'events' | 'overview' | 'events-grouped') => {
       setFormSettings(prev => ({ ...prev, apiMode }));
     },
     [setFormSettings]
@@ -645,6 +646,21 @@ function App() {
                 indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
                 indexedDBEvents={indexedDBEvents}
               />
+            ) : apiMode === 'events-grouped' ? (
+              <SummaryView
+              items={results}
+              rawEvents={indexedDBEvents}
+              selectedItems={selectedItems}
+              toggleItemSelection={toggleItemSelection}
+              selectAllItems={selectAllItems}
+              clearSelection={clearSelection}
+              bulkSelectItems={bulkSelectItems}
+              copyResultsToClipboard={copyResultsToClipboard}
+              searchText={eventsSearchText}
+              setSearchText={setEventsSearchText}
+              isClipboardCopied={isClipboardCopied}
+              triggerClipboardCopy={triggerClipboardCopy}
+            />
             ) : (
               <ResultsList
                 useResultsContext={useResultsContext}

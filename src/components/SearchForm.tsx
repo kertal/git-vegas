@@ -160,6 +160,17 @@ const SearchForm = memo(function SearchForm() {
             >
               GitHub Events
             </UnderlineNav.Item>
+            <UnderlineNav.Item
+              href="#"
+              aria-current={apiMode === 'events-grouped' ? 'page' : undefined}
+              counter={eventsCount > 0 ? eventsCount : undefined}
+              onSelect={e => {
+                e.preventDefault();
+                setApiMode('events-grouped');
+              }}
+            >
+              GitHub Events Grouped
+            </UnderlineNav.Item>
           </UnderlineNav>
         </Box>
       </Box>

@@ -173,12 +173,12 @@ export interface FormContextType {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'overview';
+  apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
   setUsername: (value: string) => void;
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
   setGithubToken: (value: string) => void;
-  setApiMode: (value: 'search' | 'events' | 'overview') => void;
+  setApiMode: (value: 'search' | 'events' | 'overview' | 'events-grouped') => void;
   handleSearch: (forceRefresh?: boolean) => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
@@ -245,7 +245,7 @@ export interface FormSettings {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'overview';
+  apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
 }
 
 // UI/Display settings that control how data is presented
