@@ -26,7 +26,8 @@ const SearchForm = memo(function SearchForm() {
     loading,
     error,
     searchItemsCount,
-    eventsCount,
+    rawEventsCount = 0,
+    groupedEventsCount = 0,
   } = useFormContext();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,7 +153,7 @@ const SearchForm = memo(function SearchForm() {
             <UnderlineNav.Item
               href="#"
               aria-current={apiMode === 'events' ? 'page' : undefined}
-              counter={eventsCount > 0 ? eventsCount : undefined}
+              counter={rawEventsCount > 0 ? rawEventsCount : undefined}
               onSelect={e => {
                 e.preventDefault();
                 setApiMode('events');
@@ -163,7 +164,7 @@ const SearchForm = memo(function SearchForm() {
             <UnderlineNav.Item
               href="#"
               aria-current={apiMode === 'events-grouped' ? 'page' : undefined}
-              counter={eventsCount > 0 ? eventsCount : undefined}
+              counter={groupedEventsCount > 0 ? groupedEventsCount : undefined}
               onSelect={e => {
                 e.preventDefault();
                 setApiMode('events-grouped');

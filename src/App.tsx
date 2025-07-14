@@ -187,6 +187,31 @@ function App() {
     return categorizeRawEvents(indexedDBEvents, startDate, endDate).length;
   }, [indexedDBEvents, startDate, endDate]);
 
+  // Calculate grouped events count (number of unique URLs after grouping)
+  const groupedEventsCount = useMemo(() => {
+    if (apiMode !== 'events-grouped') return 0;
+    
+    const categorizedEvents = categorizeRawEvents(indexedDBEvents, startDate, endDate);
+    
+    // Group by URL to count unique items
+    const urlGroups: { [url: string]: GitHubItem[] } = {};
+    
+    categorizedEvents.forEach(item => {
+      let groupingUrl = item.html_url;
+      // For comments, extract the issue/PR URL from the comment URL
+      if (item.title.startsWith('Comment on:')) {
+        groupingUrl = groupingUrl.split('#')[0];
+      }
+      
+      if (!urlGroups[groupingUrl]) {
+        urlGroups[groupingUrl] = [];
+      }
+      urlGroups[groupingUrl].push(item);
+    });
+    
+    return Object.keys(urlGroups).length;
+  }, [indexedDBEvents, startDate, endDate, apiMode]);
+
   // Get available labels from raw data
   const availableLabels = useMemo(() => {
     if (apiMode === 'events' || apiMode === 'events-grouped') {
@@ -514,6 +539,8 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  const rawEventsCount = indexedDBEvents.length;
+
   return (
     <PageLayout sx={{ '--spacing': '4 !important' }} containerWidth='full'>
       <PageLayout.Header className="border-bottom bgColor-inset">
@@ -576,6 +603,8 @@ function App() {
             error,
             searchItemsCount,
             eventsCount,
+            rawEventsCount,
+            groupedEventsCount,
           }}
         >
           <ResultsContext.Provider
