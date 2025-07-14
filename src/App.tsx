@@ -113,7 +113,6 @@ function App() {
     'github-ui-settings',
     {
       isCompactView: true,
-      timelineViewMode: 'standard',
     }
   );
 
@@ -151,7 +150,7 @@ function App() {
 
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
-  const { isCompactView, timelineViewMode } = uiSettings;
+  const { isCompactView } = uiSettings;
   const { descriptionVisible, expanded, selectedItems } = itemUIState;
   const { validatedUsernames, invalidUsernames } = usernameCache;
 
@@ -241,7 +240,6 @@ function App() {
   const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
 
   // Separate search text states for events and issues
-  const [eventsSearchText, setEventsSearchText] = useState('');
   const [issuesSearchText, setIssuesSearchText] = useState('');
 
   // Apply search text filtering to results (supports label:name, user:username syntax)
@@ -434,12 +432,7 @@ function App() {
     [setUISettings]
   );
 
-  const setTimelineViewMode = useCallback(
-    (timelineViewMode: 'standard' | 'raw') => {
-      setUISettings(prev => ({ ...prev, timelineViewMode }));
-    },
-    [setUISettings]
-  );
+
 
   // Handle item UI state changes
   const setSelectedItems = useCallback(
@@ -560,7 +553,7 @@ function App() {
             <ShareButton
               formSettings={formSettings}
               uiSettings={uiSettings}
-              searchText={apiMode === 'events' ? eventsSearchText : issuesSearchText}
+              searchText={issuesSearchText}
               size="medium"
             />
             <IconButton
@@ -646,16 +639,6 @@ function App() {
               <TimelineView
                 items={results}
                 rawEvents={indexedDBEvents}
-                viewMode={timelineViewMode === 'raw' ? 'raw' : 'standard'}
-                setViewMode={setTimelineViewMode}
-                selectedItems={selectedItems}
-                toggleItemSelection={toggleItemSelection}
-                selectAllItems={selectAllItems}
-                clearSelection={clearSelection}
-                copyResultsToClipboard={copyResultsToClipboard}
-                searchText={eventsSearchText}
-                setSearchText={setEventsSearchText}
-                isClipboardCopied={isClipboardCopied}
               />
             ) : apiMode === 'overview' ? (
               <OverviewTab 

@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useCallback } from 'react';
 import {
   Text,
   Link,
@@ -29,6 +29,7 @@ import remarkGfm from 'remark-gfm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
+import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { CloneIssueDialog } from './CloneIssueDialog';
 import ItemRow from './ItemRow';
 import './TimelineView.css';
@@ -41,46 +42,56 @@ type ViewMode = 'standard' | 'raw';
 interface TimelineViewProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
-  viewMode?: ViewMode;
-  setViewMode?: (viewMode: ViewMode) => void;
-  // Selection functionality
-  selectedItems?: Set<string | number>;
-  toggleItemSelection?: (id: string | number) => void;
-  selectAllItems?: () => void;
-  clearSelection?: () => void;
-  copyResultsToClipboard?: (format: 'detailed' | 'compact') => void;
-  // Search functionality
-  searchText?: string;
-  setSearchText?: (searchText: string) => void;
-  // Clipboard feedback
-  isClipboardCopied?: (itemId: string | number) => boolean;
 }
 
 const TimelineView = memo(function TimelineView({
   items,
   rawEvents = [],
-  viewMode = 'standard',
-  setViewMode,
-  selectedItems = new Set(),
-  toggleItemSelection,
-  selectAllItems,
-  clearSelection,
-  copyResultsToClipboard,
-  searchText = '',
-  setSearchText,
-  isClipboardCopied,
 }: TimelineViewProps) {
   // Get GitHub token from form context
   const { githubToken } = useFormContext();
+  
+  // Internal state for view mode
+  const [viewMode, setViewMode] = useState<ViewMode>('standard');
+  
+  // Internal state for selection
+  const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
+  
+  // Internal state for search
+  const [searchText, setSearchText] = useState('');
+  
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
-    value => setSearchText?.(value),
+    setSearchText,
     300
   );
 
   // Use copy feedback hook
-  const { isCopied } = useCopyFeedback(2000);
+  const { isCopied, triggerCopy } = useCopyFeedback(2000);
+
+  // Internal selection handlers
+  const toggleItemSelection = useCallback((id: string | number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllItems = useCallback(() => {
+    setSelectedItems(new Set(items.map(item => item.event_id || item.id)));
+  }, [items]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems(new Set());
+  }, []);
+
+
 
   // Memoize search text parsing to avoid repeated regex operations
   const parsedSearchText = useMemo(() => {
@@ -147,6 +158,33 @@ const TimelineView = memo(function TimelineView({
     (a, b) =>
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
+
+  // Internal copy handler
+  const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
+    // Regular copy for non-grouped modes
+    const selectedItemsArray =
+      selectedItems.size > 0
+        ? sortedItems.filter(item =>
+            selectedItems.has(item.event_id || item.id)
+          )
+        : sortedItems;
+
+    await copyToClipboard(selectedItemsArray, {
+      isCompactView: format === 'compact',
+      onSuccess: () => {
+        // Trigger visual feedback via copy feedback system
+        triggerCopy(format);
+      },
+      onError: (error: Error) => {
+        console.error('Failed to copy results:', error);
+      },
+    });
+  }, [sortedItems, selectedItems, triggerCopy]);
+
+  // Clipboard feedback helper
+  const isClipboardCopied = useCallback((itemId: string | number) => {
+    return isCopied(itemId);
+  }, [isCopied]);
 
   // Calculate select all checkbox state
   const selectAllState = useMemo(() => {
@@ -216,13 +254,7 @@ const TimelineView = memo(function TimelineView({
     return sortedItems.findIndex(item => item.id === selectedItemForDialog.id);
   };
 
-  // Custom copy handler that supports grouped mode
-  const handleCopyResults = async (format: 'detailed' | 'compact') => {
-    if (!copyResultsToClipboard) return;
 
-    // Regular copy for non-grouped modes
-    copyResultsToClipboard(format);
-  };
 
   // Check if we have no results but should show different messages
   const hasRawEvents = rawEvents && rawEvents.length > 0;
@@ -251,39 +283,37 @@ const TimelineView = memo(function TimelineView({
           Events
         </Heading>
       </Box>
-      {copyResultsToClipboard && (
-        <ActionMenu>
-          <ActionMenu.Button
-            variant="default"
-            size="small"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              fontSize: 0,
-              borderColor: 'border.default',
-            }}
-          >
-            {(isClipboardCopied?.('compact') || isClipboardCopied?.('detailed')) ? (
-              <CheckIcon size={14} />
-            ) : (
-              <CopyIcon size={14} />
-            )} {' '}
-            {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
-          </ActionMenu.Button>
+      <ActionMenu>
+        <ActionMenu.Button
+          variant="default"
+          size="small"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            fontSize: 0,
+            borderColor: 'border.default',
+          }}
+        >
+          {(isClipboardCopied('compact') || isClipboardCopied('detailed')) ? (
+            <CheckIcon size={14} />
+          ) : (
+            <CopyIcon size={14} />
+          )} {' '}
+          {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
+        </ActionMenu.Button>
 
-          <ActionMenu.Overlay>
-            <ActionList>
-              <ActionList.Item onSelect={() => handleCopyResults('detailed')}>
-                Detailed Format
-              </ActionList.Item>
-              <ActionList.Item onSelect={() => handleCopyResults('compact')}>
-                Compact Format
-              </ActionList.Item>
-            </ActionList>
-          </ActionMenu.Overlay>
-        </ActionMenu>
-      )}
+        <ActionMenu.Overlay>
+          <ActionList>
+            <ActionList.Item onSelect={() => copyResultsToClipboard('detailed')}>
+              Detailed Format
+            </ActionList.Item>
+            <ActionList.Item onSelect={() => copyResultsToClipboard('compact')}>
+              Compact Format
+            </ActionList.Item>
+          </ActionList>
+        </ActionMenu.Overlay>
+      </ActionMenu>
 
     </>
   );
@@ -291,42 +321,38 @@ const TimelineView = memo(function TimelineView({
   // Header right content
   const headerRight = (
     <div className="timeline-header-right">
-      {setSearchText && (
-        <FormControl>
-          <FormControl.Label visuallyHidden>Search events</FormControl.Label>
-          <TextInput
-            placeholder="Search events..."
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            leadingVisual={SearchIcon}
+      <FormControl>
+        <FormControl.Label visuallyHidden>Search events</FormControl.Label>
+        <TextInput
+          placeholder="Search events..."
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          leadingVisual={SearchIcon}
+          size="small"
+          sx={{ minWidth: '300px' }}
+        />
+      </FormControl>
+
+      <div className="timeline-view-controls">
+        <Text className="timeline-view-label">View:</Text>
+        <ButtonGroup>
+          <Button
             size="small"
-            sx={{ minWidth: '300px' }}
-          />
-        </FormControl>
-      )}
+            variant={viewMode === 'standard' ? 'primary' : 'default'}
+            onClick={() => setViewMode('standard')}
+          >
+            Single
+          </Button>
 
-      {setViewMode && (
-        <div className="timeline-view-controls">
-          <Text className="timeline-view-label">View:</Text>
-          <ButtonGroup>
-            <Button
-              size="small"
-              variant={viewMode === 'standard' ? 'primary' : 'default'}
-              onClick={() => setViewMode('standard')}
-            >
-              Single
-            </Button>
-
-            <Button
-              size="small"
-              variant={viewMode === 'raw' ? 'primary' : 'default'}
-              onClick={() => setViewMode('raw')}
-            >
-              Raw
-            </Button>
-          </ButtonGroup>
-        </div>
-      )}
+          <Button
+            size="small"
+            variant={viewMode === 'raw' ? 'primary' : 'default'}
+            onClick={() => setViewMode('raw')}
+          >
+            Raw
+          </Button>
+        </ButtonGroup>
+      </div>
     </div>
   );
 
