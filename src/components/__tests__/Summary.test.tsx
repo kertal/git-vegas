@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@primer/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';

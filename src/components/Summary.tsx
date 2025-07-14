@@ -67,12 +67,36 @@ const SummaryView = memo(function SummaryView({
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
   // Internal selection handlers
+  const toggleItemSelection = useCallback((id: string | number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
   const selectAllItems = useCallback(() => {
     setSelectedItems(new Set(items.map(item => item.event_id || item.id)));
   }, [items]);
 
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
+  }, []);
+
+  const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (shouldSelect) {
+        itemIds.forEach(id => newSet.add(id));
+      } else {
+        itemIds.forEach(id => newSet.delete(id));
+      }
+      return newSet;
+    });
   }, []);
 
 
@@ -521,9 +545,51 @@ const SummaryView = memo(function SummaryView({
             return (
               <div key={groupName} className="timeline-section">
                 <div className="timeline-section-header">
-                  <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', mb: 2 }}>
-                    {groupName}
-                  </Heading>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <Checkbox
+                      checked={(() => {
+                        const sectionItemIds = Object.values(urlGroups).map(items => {
+                          const mostRecent = items.reduce((latest, current) =>
+                            new Date(current.updated_at) > new Date(latest.updated_at)
+                              ? current
+                              : latest
+                          );
+                          return mostRecent.event_id || mostRecent.id;
+                        });
+                        return sectionItemIds.length > 0 && sectionItemIds.every(id => selectedItems.has(id));
+                      })()}
+                      indeterminate={(() => {
+                        const sectionItemIds = Object.values(urlGroups).map(items => {
+                          const mostRecent = items.reduce((latest, current) =>
+                            new Date(current.updated_at) > new Date(latest.updated_at)
+                              ? current
+                              : latest
+                          );
+                          return mostRecent.event_id || mostRecent.id;
+                        });
+                        const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                        return selectedCount > 0 && selectedCount < sectionItemIds.length;
+                      })()}
+                      onChange={() => {
+                        const sectionItemIds = Object.values(urlGroups).map(items => {
+                          const mostRecent = items.reduce((latest, current) =>
+                            new Date(current.updated_at) > new Date(latest.updated_at)
+                              ? current
+                              : latest
+                          );
+                          return mostRecent.event_id || mostRecent.id;
+                        });
+                        const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                        const allSelected = selectedCount === sectionItemIds.length;
+                        bulkSelectItems(sectionItemIds, !allSelected);
+                      }}
+                      sx={{ flexShrink: 0 }}
+                      aria-label={`Select all events in ${groupName} section`}
+                    />
+                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', mb: 2 }}>
+                      {groupName}
+                    </Heading>
+                  </Box>
                 </div>
                 <div className="timeline-section-content">
                   {Object.entries(urlGroups).map(([url, items]) => {
@@ -541,6 +607,9 @@ const SummaryView = memo(function SummaryView({
                           isCopied={isCopied}
                           onShowDescription={setSelectedItemForDialog}
                           onCloneItem={setSelectedItemForClone}
+                          selected={selectedItems.has(mostRecent.event_id || mostRecent.id)}
+                          onSelect={toggleItemSelection}
+                          showCheckbox={true}
                           groupCount={items.length > 1 ? items.length : undefined}
                         />
                       </div>

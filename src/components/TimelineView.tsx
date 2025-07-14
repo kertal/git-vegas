@@ -463,7 +463,6 @@ const TimelineView = memo(function TimelineView({
                 selected={selectedItems.has(item.event_id || item.id)}
                 onSelect={toggleItemSelection}
                 showCheckbox={!!toggleItemSelection}
-                showLabels={false}
                 showRepo={true}
                 showUser={true}
                 showTime={true}
