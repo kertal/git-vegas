@@ -1,7 +1,6 @@
-import { Box, Avatar, Link, Text, Label, Checkbox, Token } from '@primer/react';
+import { Box, Avatar, Link, Text, Checkbox, Token } from '@primer/react';
 import { GitHubItem } from '../types';
 import ActionButtonsRow from './ActionButtonsRow';
-import { getContrastColor } from '../utils';
 import {
   GitMergeIcon,
   GitPullRequestIcon,
@@ -19,7 +18,6 @@ interface ItemRowProps {
   selected?: boolean;
   onSelect?: (id: string | number) => void;
   showCheckbox?: boolean;
-  showLabels?: boolean;
   showRepo?: boolean;
   showUser?: boolean;
   showTime?: boolean;
@@ -36,7 +34,6 @@ const ItemRow = ({
   selected = false,
   onSelect,
   showCheckbox = false,
-  showLabels = true,
   showRepo = true,
   showTime = true,
   size = 'small',
@@ -145,38 +142,7 @@ const ItemRow = ({
             />
           )}
         </Box>
-        {item.pull_request && (item.draft || item.pull_request.draft) && (
-          <Label variant="secondary" size="small" sx={{ ml: 1 }}>
-            Draft
-          </Label>
-        )}
       </Box>
-      {showLabels && item.labels && item.labels.length > 0 && (
-        <Box
-          sx={{
-            display: 'flex',
-            gap: 1,
-            flexWrap: 'wrap',
-            minWidth: 0,
-            maxWidth: '30%',
-          }}
-        >
-          {item.labels.map(
-            (l: { name: string; color?: string; description?: string }) => (
-              <Label
-                key={l.name}
-                sx={{
-                  backgroundColor: l.color ? `#${l.color}` : undefined,
-                  color: l.color ? getContrastColor(l.color) : undefined,
-                }}
-                title={l.description || l.name}
-              >
-                {l.name}
-              </Label>
-            )
-          )}
-        </Box>
-      )}
       {showTime && (
         <Text sx={{ color: 'fg.muted', minWidth: 80, textAlign: 'right' }}>
           {new Date(item.updated_at).toLocaleDateString(undefined, {

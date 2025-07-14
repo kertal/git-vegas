@@ -649,6 +649,7 @@ function App() {
               <SummaryView
                 items={results}
                 rawEvents={indexedDBEvents}
+                indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
               />
             ) : (
               <ResultsList
