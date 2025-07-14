@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useCallback } from 'react';
 import {
   Text,
   Link,
@@ -40,46 +40,65 @@ import { useFormContext } from '../App';
 interface SummaryProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
-  // Selection functionality
-  selectedItems?: Set<string | number>;
-  toggleItemSelection?: (id: string | number) => void;
-  selectAllItems?: () => void;
-  clearSelection?: () => void;
-  bulkSelectItems?: (itemIds: (string | number)[], shouldSelect: boolean) => void;
-  copyResultsToClipboard?: (format: 'detailed' | 'compact') => void;
-  // Search functionality
-  searchText?: string;
-  setSearchText?: (searchText: string) => void;
-  // Clipboard feedback
-  isClipboardCopied?: (itemId: string | number) => boolean;
-  triggerClipboardCopy?: (itemId: string | number) => void;
 }
 
 const SummaryView = memo(function SummaryView({
   items,
   rawEvents = [],
-  selectedItems = new Set(),
-  toggleItemSelection,
-  selectAllItems,
-  clearSelection,
-  bulkSelectItems,
-  copyResultsToClipboard,
-  searchText = '',
-  setSearchText,
-  isClipboardCopied,
-  triggerClipboardCopy,
 }: SummaryProps) {
   // Get GitHub token from form context
   const { githubToken } = useFormContext();
+  
+  // Internal state for selection
+  const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
+  
+  // Internal state for search
+  const [searchText, setSearchText] = useState('');
+  
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
-    value => setSearchText?.(value),
+    setSearchText,
     300
   );
 
   // Use copy feedback hook
-  const { isCopied } = useCopyFeedback(2000);
+  const { isCopied, triggerCopy } = useCopyFeedback(2000);
+
+  // Internal selection handlers
+  const toggleItemSelection = useCallback((id: string | number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllItems = useCallback(() => {
+    setSelectedItems(new Set(items.map(item => item.event_id || item.id)));
+  }, [items]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems(new Set());
+  }, []);
+
+  const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (shouldSelect) {
+        itemIds.forEach(id => newSet.add(id));
+      } else {
+        itemIds.forEach(id => newSet.delete(id));
+      }
+      return newSet;
+    });
+  }, []);
+
+
 
   // Memoize search text parsing to avoid repeated regex operations
   const parsedSearchText = useMemo(() => {
@@ -146,6 +165,87 @@ const SummaryView = memo(function SummaryView({
     (a, b) =>
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
+
+  // Internal copy handler
+  const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
+    // Prepare grouped data structure
+    const actionGroups: {
+      'PRs - opened': GitHubItem[];
+      'PRs - merged': GitHubItem[];
+      'PRs - closed': GitHubItem[];
+      'PRs - reviewed': GitHubItem[];
+      'Issues - opened': GitHubItem[];
+      'Issues - closed': GitHubItem[];
+      'Issues - commented': GitHubItem[];
+    } = {
+      'PRs - opened': [],
+      'PRs - merged': [],
+      'PRs - closed': [],
+      'PRs - reviewed': [],
+      'Issues - opened': [],
+      'Issues - closed': [],
+      'Issues - commented': [],
+    };
+
+    sortedItems.forEach(item => {
+      const type = getEventType(item);
+
+      if (type === 'pull_request' && item.title.startsWith('Review on:')) {
+        actionGroups['PRs - reviewed'].push(item);
+      } else if (type === 'comment') {
+        actionGroups['Issues - commented'].push(item);
+      } else if (type === 'pull_request') {
+        if (item.merged_at) {
+          actionGroups['PRs - merged'].push(item);
+        } else if (item.state === 'closed') {
+          actionGroups['PRs - closed'].push(item);
+        } else {
+          actionGroups['PRs - opened'].push(item);
+        }
+      } else {
+        // issue
+        if (item.state === 'closed') {
+          actionGroups['Issues - closed'].push(item);
+        } else {
+          actionGroups['Issues - opened'].push(item);
+        }
+      }
+    });
+
+    // Convert to the format expected by clipboard utility
+    const groupedData = Object.entries(actionGroups)
+      .filter(([, items]) => items.length > 0)
+      .map(([groupName, items]) => ({
+        groupName,
+        items,
+      }));
+
+    // Use the enhanced clipboard utility with grouped data
+    const selectedItemsArray =
+      selectedItems.size > 0
+        ? sortedItems.filter(item =>
+            selectedItems.has(item.event_id || item.id)
+          )
+        : sortedItems;
+
+    await copyToClipboard(selectedItemsArray, {
+      isCompactView: format === 'compact',
+      isGroupedView: true,
+      groupedData,
+      onSuccess: () => {
+        // Trigger visual feedback via copy feedback system
+        triggerCopy(format);
+      },
+      onError: (error: Error) => {
+        console.error('Failed to copy grouped results:', error);
+      },
+    });
+  }, [sortedItems, selectedItems, triggerCopy]);
+
+  // Clipboard feedback helper
+  const isClipboardCopied = useCallback((itemId: string | number) => {
+    return isCopied(itemId);
+  }, [isCopied]);
 
   const getEventType = (
     item: GitHubItem
@@ -232,85 +332,7 @@ const SummaryView = memo(function SummaryView({
     return sortedItems.findIndex(item => item.id === selectedItemForDialog.id);
   };
 
-  // Custom copy handler that supports grouped mode
-  const handleCopyResults = async (format: 'detailed' | 'compact') => {
-    if (!copyResultsToClipboard) return;
 
-    {
-      // Prepare grouped data structure
-      const actionGroups: {
-        'PRs - opened': GitHubItem[];
-        'PRs - merged': GitHubItem[];
-        'PRs - closed': GitHubItem[];
-        'PRs - reviewed': GitHubItem[];
-        'Issues - opened': GitHubItem[];
-        'Issues - closed': GitHubItem[];
-        'Issues - commented': GitHubItem[];
-      } = {
-        'PRs - opened': [],
-        'PRs - merged': [],
-        'PRs - closed': [],
-        'PRs - reviewed': [],
-        'Issues - opened': [],
-        'Issues - closed': [],
-        'Issues - commented': [],
-      };
-
-      sortedItems.forEach(item => {
-        const type = getEventType(item);
-
-        if (type === 'pull_request' && item.title.startsWith('Review on:')) {
-          actionGroups['PRs - reviewed'].push(item);
-        } else if (type === 'comment') {
-          actionGroups['Issues - commented'].push(item);
-        } else if (type === 'pull_request') {
-          if (item.merged_at) {
-            actionGroups['PRs - merged'].push(item);
-          } else if (item.state === 'closed') {
-            actionGroups['PRs - closed'].push(item);
-          } else {
-            actionGroups['PRs - opened'].push(item);
-          }
-        } else {
-          // issue
-          if (item.state === 'closed') {
-            actionGroups['Issues - closed'].push(item);
-          } else {
-            actionGroups['Issues - opened'].push(item);
-          }
-        }
-      });
-
-      // Convert to the format expected by clipboard utility
-      const groupedData = Object.entries(actionGroups)
-        .filter(([, items]) => items.length > 0)
-        .map(([groupName, items]) => ({
-          groupName,
-          items,
-        }));
-
-      // Use the enhanced clipboard utility with grouped data
-      const selectedItemsArray =
-        selectedItems.size > 0
-          ? sortedItems.filter(item =>
-              selectedItems.has(item.event_id || item.id)
-            )
-          : sortedItems;
-
-      await copyToClipboard(selectedItemsArray, {
-        isCompactView: format === 'compact',
-        isGroupedView: true,
-        groupedData,
-        onSuccess: () => {
-          // Trigger visual feedback via copy feedback system
-          triggerClipboardCopy?.(format);
-        },
-        onError: (error: Error) => {
-          console.error('Failed to copy grouped results:', error);
-        },
-      });
-    }
-  };
 
   // Check if we have no results but should show different messages
   const hasRawEvents = rawEvents && rawEvents.length > 0;
@@ -339,39 +361,37 @@ const SummaryView = memo(function SummaryView({
           Events
         </Heading>
       </Box>
-      {copyResultsToClipboard && (
-        <ActionMenu>
-          <ActionMenu.Button
-            variant="default"
-            size="small"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              fontSize: 0,
-              borderColor: 'border.default',
-            }}
-          >
-            {(isClipboardCopied?.('compact') || isClipboardCopied?.('detailed')) ? (
-              <CheckIcon size={14} />
-            ) : (
-              <CopyIcon size={14} />
-            )} {' '}
-            {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
-          </ActionMenu.Button>
+      <ActionMenu>
+        <ActionMenu.Button
+          variant="default"
+          size="small"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            fontSize: 0,
+            borderColor: 'border.default',
+          }}
+        >
+          {(isClipboardCopied('compact') || isClipboardCopied('detailed')) ? (
+            <CheckIcon size={14} />
+          ) : (
+            <CopyIcon size={14} />
+          )} {' '}
+          {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
+        </ActionMenu.Button>
 
-          <ActionMenu.Overlay>
-            <ActionList>
-              <ActionList.Item onSelect={() => handleCopyResults('detailed')}>
-                Detailed Format
-              </ActionList.Item>
-              <ActionList.Item onSelect={() => handleCopyResults('compact')}>
-                Compact Format
-              </ActionList.Item>
-            </ActionList>
-          </ActionMenu.Overlay>
-        </ActionMenu>
-      )}
+        <ActionMenu.Overlay>
+          <ActionList>
+            <ActionList.Item onSelect={() => copyResultsToClipboard('detailed')}>
+              Detailed Format
+            </ActionList.Item>
+            <ActionList.Item onSelect={() => copyResultsToClipboard('compact')}>
+              Compact Format
+            </ActionList.Item>
+          </ActionList>
+        </ActionMenu.Overlay>
+      </ActionMenu>
 
     </>
   );
@@ -379,19 +399,17 @@ const SummaryView = memo(function SummaryView({
   // Header right content
   const headerRight = (
     <div className="timeline-header-right">
-      {setSearchText && (
-        <FormControl>
-          <FormControl.Label visuallyHidden>Search events</FormControl.Label>
-          <TextInput
-            placeholder="Search events..."
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            leadingVisual={SearchIcon}
-            size="small"
-            sx={{ minWidth: '300px' }}
-          />
-        </FormControl>
-      )}
+      <FormControl>
+        <FormControl.Label visuallyHidden>Search events</FormControl.Label>
+        <TextInput
+          placeholder="Search events..."
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+          leadingVisual={SearchIcon}
+          size="small"
+          sx={{ minWidth: '300px' }}
+        />
+      </FormControl>
 
 
     </div>

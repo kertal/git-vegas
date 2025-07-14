@@ -666,14 +666,6 @@ function App() {
               <SummaryView
                 items={results}
                 rawEvents={indexedDBEvents}
-                selectedItems={selectedItems}
-                toggleItemSelection={toggleItemSelection}
-                selectAllItems={selectAllItems}
-                clearSelection={clearSelection}
-                copyResultsToClipboard={copyResultsToClipboard}
-                searchText={eventsSearchText}
-                setSearchText={setEventsSearchText}
-                isClipboardCopied={isClipboardCopied}
               />
             ) : (
               <ResultsList
