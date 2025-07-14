@@ -738,15 +738,8 @@ const SummaryView = memo(function SummaryView({
                                       showUser={true}
                                       showTime={true}
                                       size="small"
+                                      groupCount={group.items.length}
                                     />
-                                    {/* Group count badge if more than one item in group */}
-                                    {group.items.length > 1 && (
-                                      <Token
-                                        text={group.items.length.toString()}
-                                        size="small"
-                                        sx={{ ml: 2, mt: -2 }}
-                                      />
-                                    )}
                                   </div>
                                 );
                               });

@@ -1,4 +1,4 @@
-import { Box, Avatar, Link, Text, Label, Checkbox } from '@primer/react';
+import { Box, Avatar, Link, Text, Label, Checkbox, Token } from '@primer/react';
 import { GitHubItem } from '../types';
 import ActionButtonsRow from './ActionButtonsRow';
 import { getContrastColor } from '../utils';
@@ -24,6 +24,7 @@ interface ItemRowProps {
   showUser?: boolean;
   showTime?: boolean;
   size?: 'small' | 'medium';
+  groupCount?: number;
 }
 
 const ItemRow = ({
@@ -39,6 +40,7 @@ const ItemRow = ({
   showRepo = true,
   showTime = true,
   size = 'small',
+  groupCount,
 }: ItemRowProps) => {
   return (
     <Box
@@ -126,14 +128,23 @@ const ItemRow = ({
       />
 
       <Box sx={{ alignItems: 'center', gap: 1, flex: 1 }}>
-        <Link
-          href={item.html_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ textOverflow: 'ellipsis', overflow: 'hidden' }}
-        >
-          {item.title}
-        </Link>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Link
+            href={item.html_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ textOverflow: 'ellipsis', overflow: 'hidden' }}
+          >
+            {item.title}
+          </Link>
+          {groupCount && groupCount > 1 && (
+            <Token
+              text={groupCount.toString()}
+              size="small"
+              sx={{ flexShrink: 0 }}
+            />
+          )}
+        </Box>
         {item.pull_request && (item.draft || item.pull_request.draft) && (
           <Label variant="secondary" size="small" sx={{ ml: 1 }}>
             Draft
