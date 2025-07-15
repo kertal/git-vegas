@@ -640,11 +640,6 @@ function App() {
                 items={results}
                 rawEvents={indexedDBEvents}
               />
-            ) : apiMode === 'overview' ? (
-              <OverviewTab 
-                indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
-                indexedDBEvents={indexedDBEvents}
-              />
             ) : apiMode === 'events-grouped' ? (
               <SummaryView
                 items={results}

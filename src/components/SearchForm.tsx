@@ -129,15 +129,16 @@ const SearchForm = memo(function SearchForm() {
         {/* API Mode Switch */}
         <Box sx={{ mb: 2 }}>
           <UnderlineNav aria-label="GitHub API Mode">
-            <UnderlineNav.Item
+          <UnderlineNav.Item
               href="#"
-              aria-current={apiMode === 'overview' ? 'page' : undefined}
+              aria-current={apiMode === 'events-grouped' ? 'page' : undefined}
+              counter={groupedEventsCount > 0 ? groupedEventsCount : undefined}
               onSelect={e => {
                 e.preventDefault();
-                setApiMode('overview');
+                setApiMode('events-grouped');
               }}
             >
-              Overview
+              Summary
             </UnderlineNav.Item>
             <UnderlineNav.Item
               href="#"
@@ -160,17 +161,6 @@ const SearchForm = memo(function SearchForm() {
               }}
             >
               GitHub Events
-            </UnderlineNav.Item>
-            <UnderlineNav.Item
-              href="#"
-              aria-current={apiMode === 'events-grouped' ? 'page' : undefined}
-              counter={groupedEventsCount > 0 ? groupedEventsCount : undefined}
-              onSelect={e => {
-                e.preventDefault();
-                setApiMode('events-grouped');
-              }}
-            >
-              GitHub Events Grouped
             </UnderlineNav.Item>
           </UnderlineNav>
         </Box>
