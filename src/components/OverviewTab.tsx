@@ -7,7 +7,6 @@ import {
   Avatar,
   Timeline,
   Dialog,
-  Label,
 } from '@primer/react';
 import { 
   GitPullRequestIcon, 
@@ -85,13 +84,20 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
       .slice(0, 10);
   }, [indexedDBEvents]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Invalid date';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    try {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return date.toString();
+    }
   };
 
   const getItemType = (item: GitHubItem) => {
@@ -356,7 +362,8 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
                           {getItemType(item) === 'pr' ? 'opened pull request' : 'opened issue'}
                         </Text>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>+                        <Text
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Text
                           sx={{
                             px: 1,
                             py: 0,
@@ -382,11 +389,6 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
                           <LinkExternalIcon size={10} />
                         </Box>
                       </Link>
-                      {getItemType(item) === 'pr' && (item.draft || item.pull_request?.draft) && (
-                        <Label variant="secondary" size="small">
-                          Draft
-                        </Label>
-                      )}
                     </Box>
                     <Text sx={{ fontSize: 0, color: 'fg.muted' }}>
                       in <Link 
