@@ -42,7 +42,7 @@ import './TimelineView.css';
 import ItemRow from './ItemRow';
 
 // Props interface
-interface ResultsListProps {
+interface IssuesAndPRsListProps {
   results: GitHubItem[];
   buttonStyles: React.CSSProperties;
 }
@@ -172,10 +172,10 @@ const DescriptionDialog = memo(function DescriptionDialog({
   );
 });
 
-const ResultsList = memo(function ResultsList({
+const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
   buttonStyles,
-}: ResultsListProps) {
+}: IssuesAndPRsListProps) {
   // Get GitHub token from form context
   const { githubToken } = useFormContext();
 
@@ -539,4 +539,4 @@ const ResultsList = memo(function ResultsList({
   );
 });
 
-export default ResultsList;
+export default IssuesAndPRsList;

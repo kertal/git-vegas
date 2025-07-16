@@ -738,7 +738,7 @@ describe('App Component', () => {
       expect(eventsButton).toHaveAttribute('aria-current', 'page');
     });
 
-    it('should show ResultsList view when Search API is selected (default)', async () => {
+    it('should show IssuesAndPRsList view when Search API is selected (default)', async () => {
       render(<App />);
 
       // Wait for initial loading to complete

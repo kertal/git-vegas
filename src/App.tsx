@@ -6,26 +6,20 @@ import React, {
   createContext,
   useContext,
 } from 'react';
-import {
-  PageLayout,
-  PageHeader,
-  Box,
-  Text,
-  IconButton,
-} from '@primer/react';
-import {
-  GearIcon,
-  DatabaseIcon,
-} from '@primer/octicons-react';
+import { PageLayout, PageHeader, Box, Text, IconButton } from '@primer/react';
+import { GearIcon, DatabaseIcon } from '@primer/octicons-react';
 
 import { useFormSettings, useLocalStorage } from './hooks/useLocalStorage';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
 import { validateUsernameList } from './utils';
-import { categorizeRawEvents, categorizeRawSearchItems } from './utils/rawDataUtils';
+import {
+  categorizeRawEvents,
+  categorizeRawSearchItems,
+} from './utils/rawDataUtils';
 import { GitHubItem, UISettings } from './types';
 
 import SearchForm from './components/SearchForm';
-import ResultsList from './components/ResultsList';
+import IssuesAndPRsList from './components/IssuesAndPRsList';
 import TimelineView from './components/TimelineView';
 import SummaryView from './components/Summary';
 import OverviewTab from './components/OverviewTab';
@@ -48,7 +42,9 @@ interface FormContextType {
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
   setGithubToken: (token: string) => void;
-  setApiMode: (mode: 'search' | 'events' | 'overview' | 'events-grouped') => void;
+  setApiMode: (
+    mode: 'search' | 'events' | 'overview' | 'events-grouped'
+  ) => void;
   handleSearch: () => void;
   handleUsernameBlur: () => void;
   validateUsernameFormat: (username: string) => void;
@@ -102,12 +98,9 @@ function App() {
     }
   );
 
-  const [uiSettings] = useLocalStorage<UISettings>(
-    'github-ui-settings',
-    {
-      isCompactView: true,
-    }
-  );
+  const [uiSettings] = useLocalStorage<UISettings>('github-ui-settings', {
+    isCompactView: true,
+  });
 
   // const [itemUIState] = useLocalStorage<ItemUIState>(
   //   'github-item-ui-state',
@@ -178,25 +171,29 @@ function App() {
   // Calculate grouped events count (number of unique URLs after grouping)
   const groupedEventsCount = useMemo(() => {
     if (apiMode !== 'events-grouped') return 0;
-    
-    const categorizedEvents = categorizeRawEvents(indexedDBEvents, startDate, endDate);
-    
+
+    const categorizedEvents = categorizeRawEvents(
+      indexedDBEvents,
+      startDate,
+      endDate
+    );
+
     // Group by URL to count unique items
     const urlGroups: { [url: string]: GitHubItem[] } = {};
-    
+
     categorizedEvents.forEach(item => {
       let groupingUrl = item.html_url;
       // For comments, extract the issue/PR URL from the comment URL
       if (item.title.startsWith('Comment on:')) {
         groupingUrl = groupingUrl.split('#')[0];
       }
-      
+
       if (!urlGroups[groupingUrl]) {
         urlGroups[groupingUrl] = [];
       }
       urlGroups[groupingUrl].push(item);
     });
-    
+
     return Object.keys(urlGroups).length;
   }, [indexedDBEvents, startDate, endDate, apiMode]);
 
@@ -235,7 +232,7 @@ function App() {
   //   if (apiMode === 'overview') {
   //     return results;
   //   }
-  //   
+  //
   //   return filterByText(results, issuesSearchText);
   // }, [results, issuesSearchText, apiMode]);
 
@@ -247,25 +244,28 @@ function App() {
   }, [results]);
 
   // Real-time username format validation
-  const validateUsernameFormat = useCallback((usernameString: string) => {
-    if (!usernameString.trim()) {
-      setError(null);
-      return;
-    }
+  const validateUsernameFormat = useCallback(
+    (usernameString: string) => {
+      if (!usernameString.trim()) {
+        setError(null);
+        return;
+      }
 
-    const validation = validateUsernameList(usernameString);
+      const validation = validateUsernameList(usernameString);
 
-    if (validation.errors.length === 0) {
-      setError(null);
-      // Update cache with validated usernames
-      setFormSettings(prev => ({
-        ...prev,
-        username: usernameString,
-      }));
-    } else {
-      setError(validation.errors.join('\n'));
-    }
-  }, [setFormSettings]);
+      if (validation.errors.length === 0) {
+        setError(null);
+        // Update cache with validated usernames
+        setFormSettings(prev => ({
+          ...prev,
+          username: usernameString,
+        }));
+      } else {
+        setError(validation.errors.join('\n'));
+      }
+    },
+    [setFormSettings]
+  );
 
   // Handle username blur event
   const handleUsernameBlur = useCallback(() => {
@@ -322,13 +322,18 @@ function App() {
     setLoadingProgress('Starting search...');
 
     try {
-      const usernames = username.split(',').map(u => u.trim()).filter(Boolean);
+      const usernames = username
+        .split(',')
+        .map(u => u.trim())
+        .filter(Boolean);
       let currentProgress = 0;
       const totalUsernames = usernames.length;
 
       const onProgress = (message: string) => {
         currentProgress++;
-        const progressPercent = Math.round((currentProgress / totalUsernames) * 100);
+        const progressPercent = Math.round(
+          (currentProgress / totalUsernames) * 100
+        );
         setLoadingProgress(`${message} (${progressPercent}%)`);
       };
 
@@ -339,7 +344,7 @@ function App() {
       // Fetch events for each username
       for (const singleUsername of usernames) {
         setCurrentUsername(singleUsername);
-        
+
         try {
           // Fetch events
           const eventsResponse = await fetch(
@@ -347,13 +352,15 @@ function App() {
             {
               headers: {
                 ...(githubToken && { Authorization: `token ${githubToken}` }),
-                'Accept': 'application/vnd.github.v3+json',
+                Accept: 'application/vnd.github.v3+json',
               },
             }
           );
 
           if (!eventsResponse.ok) {
-            throw new Error(`Failed to fetch events: ${eventsResponse.statusText}`);
+            throw new Error(
+              `Failed to fetch events: ${eventsResponse.statusText}`
+            );
           }
 
           const events = await eventsResponse.json();
@@ -372,43 +379,62 @@ function App() {
             {
               headers: {
                 ...(githubToken && { Authorization: `token ${githubToken}` }),
-                'Accept': 'application/vnd.github.v3+json',
+                Accept: 'application/vnd.github.v3+json',
               },
             }
           );
 
           if (!searchResponse.ok) {
-            throw new Error(`Failed to fetch issues/PRs: ${searchResponse.statusText}`);
+            throw new Error(
+              `Failed to fetch issues/PRs: ${searchResponse.statusText}`
+            );
           }
 
           const searchData = await searchResponse.json();
-          await storeSearchItems('github-search-items-indexeddb', searchData.items, {
-            lastFetch: Date.now(),
-            usernames: [singleUsername],
-            apiMode: 'search',
-            startDate,
-            endDate,
-          });
+          await storeSearchItems(
+            'github-search-items-indexeddb',
+            searchData.items,
+            {
+              lastFetch: Date.now(),
+              usernames: [singleUsername],
+              apiMode: 'search',
+              startDate,
+              endDate,
+            }
+          );
           onProgress(`Fetched issues/PRs for ${singleUsername}`);
-
         } catch (error) {
           console.error(`Error fetching data for ${singleUsername}:`, error);
-          setError(`Error fetching data for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          setError(
+            `Error fetching data for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
           break;
         }
       }
 
       setLoadingProgress('Search completed!');
       setCurrentUsername('');
-
     } catch (error) {
       console.error('Search error:', error);
-      setError(error instanceof Error ? error.message : 'An error occurred during search');
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'An error occurred during search'
+      );
     } finally {
       setLoading(false);
       setLoadingProgress('');
     }
-  }, [username, githubToken, clearEvents, clearSearchItems, storeEvents, storeSearchItems, startDate, endDate]);
+  }, [
+    username,
+    githubToken,
+    clearEvents,
+    clearSearchItems,
+    storeEvents,
+    storeSearchItems,
+    startDate,
+    endDate,
+  ]);
 
   // Handle manual slot machine spin
   const handleManualSpin = useCallback(() => {
@@ -425,12 +451,12 @@ function App() {
   const rawEventsCount = indexedDBEvents.length;
 
   return (
-    <PageLayout sx={{ '--spacing': '4 !important' }} containerWidth='full'>
+    <PageLayout sx={{ '--spacing': '4 !important' }} containerWidth="full">
       <PageLayout.Header className="border-bottom bgColor-inset">
-        <PageHeader role="banner" aria-label="Title" sx={{ 'p': '2'}}>
+        <PageHeader role="banner" aria-label="Title" sx={{ p: '2' }}>
           <PageHeader.TitleArea>
             <PageHeader.LeadingVisual>
-            <GitVegasLogo width={32} height={32}  onClick={handleManualSpin}/>
+              <GitVegasLogo width={32} height={32} onClick={handleManualSpin} />
             </PageHeader.LeadingVisual>
             <PageHeader.Title>GitVegas</PageHeader.Title>
           </PageHeader.TitleArea>
@@ -457,10 +483,10 @@ function App() {
               onClick={() => setIsSettingsOpen(true)}
             />
             <SlotMachineLoader
-                avatarUrls={avatarUrls}
-                isLoading={loading || initialLoading}
-                isManuallySpinning={isManuallySpinning}
-              />
+              avatarUrls={avatarUrls}
+              isLoading={loading || initialLoading}
+              isManuallySpinning={isManuallySpinning}
+            />
           </PageHeader.Actions>
         </PageHeader>
       </PageLayout.Header>
@@ -492,26 +518,24 @@ function App() {
         >
           <SearchForm />
           {apiMode === 'events' ? (
-            <TimelineView
-              items={results}
-              rawEvents={indexedDBEvents}
-            />
+            <TimelineView items={results} rawEvents={indexedDBEvents} />
           ) : apiMode === 'overview' ? (
             <OverviewTab
-              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+              indexedDBSearchItems={
+                indexedDBSearchItems as unknown as GitHubItem[]
+              }
               indexedDBEvents={indexedDBEvents}
             />
           ) : apiMode === 'events-grouped' ? (
             <SummaryView
               items={results}
               rawEvents={indexedDBEvents}
-              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+              indexedDBSearchItems={
+                indexedDBSearchItems as unknown as GitHubItem[]
+              }
             />
           ) : (
-            <ResultsList
-              results={results}
-              buttonStyles={buttonStyles}
-            />
+            <IssuesAndPRsList results={results} buttonStyles={buttonStyles} />
           )}
           {eventsError && (
             <Box

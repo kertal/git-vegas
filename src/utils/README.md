@@ -283,7 +283,7 @@ All tests run in parallel and provide comprehensive coverage including:
 
 These utilities are primarily used in:
 - **App.tsx:** Main application logic, search orchestration, and state management
-- **ResultsList.tsx:** Results filtering and display
+- **IssuesAndPRsList.tsx:** Results filtering and display
 - **SearchForm.tsx:** Username validation and form handling
 
 The refactoring maintains a clean separation of concerns while dramatically improving code organization, testability, and maintainability. The migration of the GitHub search logic represents a significant improvement in code quality and developer experience. 
