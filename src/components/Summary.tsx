@@ -427,7 +427,7 @@ const SummaryView = memo(function SummaryView({
             m: 0,
           }}
         >
-          Events
+          Summary
         </Heading>
       </Box>
       <ActionMenu>
