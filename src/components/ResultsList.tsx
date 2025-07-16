@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -33,50 +33,17 @@ import { GitHubItem } from '../types';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useFormContext } from '../App';
+import { filterByText } from '../utils/resultsUtils';
+import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
 import { ResultsContainer } from './ResultsContainer';
 import { CloneIssueDialog } from './CloneIssueDialog';
 import './TimelineView.css';
 import ItemRow from './ItemRow';
 
-// Import context hook and helper functions from App.tsx
-interface UseResultsContextHookType {
-  results: GitHubItem[];
-  filteredResults: GitHubItem[];
-  filter: 'all' | 'issue' | 'pr' | 'comment';
-  statusFilter: 'all' | 'open' | 'closed' | 'merged';
-  includedLabels: string[];
-  excludedLabels: string[];
-  searchText: string;
-  repoFilters: string[];
-  userFilter: string;
-  availableLabels: string[];
-  setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
-  setStatusFilter: (filter: 'all' | 'open' | 'closed' | 'merged') => void;
-  setIncludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
-  setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
-  toggleDescriptionVisibility: (id: number) => void;
-  toggleExpand: (id: number) => void;
-  copyResultsToClipboard: (format: 'detailed' | 'compact') => void;
-  descriptionVisible: { [id: number]: boolean };
-  expanded: { [id: number]: boolean };
-  clipboardMessage: string | null;
-  isCompactView: boolean;
-  setIsCompactView: (compact: boolean) => void;
-  selectedItems: Set<string | number>;
-  selectAllItems: () => void;
-  clearSelection: () => void;
-  toggleItemSelection: (id: string | number) => void;
-  setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
-  setUserFilter: React.Dispatch<React.SetStateAction<string>>;
-  setSearchText: (searchText: string) => void;
-  isClipboardCopied: (itemId: string | number) => boolean;
-}
-
 // Props interface
 interface ResultsListProps {
-  useResultsContext: () => UseResultsContextHookType;
-
+  results: GitHubItem[];
   buttonStyles: React.CSSProperties;
 }
 
@@ -206,36 +173,74 @@ const DescriptionDialog = memo(function DescriptionDialog({
 });
 
 const ResultsList = memo(function ResultsList({
-  useResultsContext,
+  results,
   buttonStyles,
 }: ResultsListProps) {
-  const {
-    results,
-    filteredResults,
-    searchText,
-    setSearchText,
-    selectedItems,
-    toggleItemSelection,
-    selectAllItems,
-    clearSelection,
-    isClipboardCopied,
-    copyResultsToClipboard,
-    isCompactView,
-    setIsCompactView,
-  } = useResultsContext();
-
   // Get GitHub token from form context
   const { githubToken } = useFormContext();
 
+  // Internal state management (previously from context)
+  const [searchText, setSearchText] = useState('');
+  const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
+  const [isCompactView, setIsCompactView] = useState(true);
+
   // Use copy feedback hook
-  const { isCopied } = useCopyFeedback(2000);
+  const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
-    value => setSearchText(value),
+    setSearchText,
     300
   );
+
+  // Apply search text filtering to results
+  const filteredResults = useMemo(() => {
+    return filterByText(results, searchText);
+  }, [results, searchText]);
+
+  // Selection handlers
+  const toggleItemSelection = useCallback((id: string | number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllItems = useCallback(() => {
+    setSelectedItems(new Set(results.map((item: GitHubItem) => item.event_id || item.id)));
+  }, [results]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems(new Set());
+  }, []);
+
+  // Copy results to clipboard
+  const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
+    const selectedItemsArray = selectedItems.size > 0
+      ? results.filter((item: GitHubItem) => selectedItems.has(item.event_id || item.id))
+      : results;
+
+    await copyToClipboard(selectedItemsArray, {
+      isCompactView: format === 'compact',
+      onSuccess: () => {
+        triggerCopy(format);
+      },
+      onError: (error: Error) => {
+        console.error('Failed to copy results:', error);
+      },
+    });
+  }, [results, selectedItems, triggerCopy]);
+
+  // Clipboard feedback helper
+  const isClipboardCopied = useCallback((itemId: string | number) => {
+    return isCopied(itemId);
+  }, [isCopied]);
 
   // Dialog state
   const [selectedItemForDialog, setSelectedItemForDialog] =
@@ -276,7 +281,7 @@ const ResultsList = memo(function ResultsList({
 
   const getCurrentItemIndex = () => {
     return filteredResults.findIndex(
-      item => item.id === selectedItemForDialog?.id
+      (item: GitHubItem) => item.id === selectedItemForDialog?.id
     );
   };
 
@@ -343,7 +348,7 @@ const ResultsList = memo(function ResultsList({
                       ? filteredResults
                       : results;
                     const visibleSelectedCount = displayResults.filter(
-                      item =>
+                      (item: GitHubItem) =>
                         selectedItems instanceof Set &&
                         selectedItems.has(item.event_id || item.id)
                     ).length;
@@ -463,7 +468,7 @@ const ResultsList = memo(function ResultsList({
 
             return isCompactView ? (
               <Box sx={{ gap: 1, p: 2 }}>
-                {displayResults.map(item => (
+                {displayResults.map((item: GitHubItem) => (
                   <ItemRow
                     key={item.id}
                     item={item}
@@ -484,7 +489,7 @@ const ResultsList = memo(function ResultsList({
             ) : (
               <Box sx={{ gap: 1, p: 2 }}>
                 <Stack sx={{ gap: 3, p: 2 }}>
-                  {displayResults.map(item => (
+                  {displayResults.map((item: GitHubItem) => (
                     <ItemRow
                       key={item.id}
                       item={item}

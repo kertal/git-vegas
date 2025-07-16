@@ -1,4 +1,4 @@
-import {
+import React, {
   useState,
   useEffect,
   useCallback,
@@ -7,53 +7,60 @@ import {
   useContext,
 } from 'react';
 import {
-  Box,
-  IconButton,
   PageLayout,
   PageHeader,
+  Box,
   Text,
+  IconButton,
 } from '@primer/react';
-import { GearIcon, DatabaseIcon } from '@primer/octicons-react';
-import './App.css';
-import GitVegasLogo from './assets/GitVegas.svg?react';
-import { SlotMachineLoader } from './components/SlotMachineLoader';
+import {
+  GearIcon,
+  DatabaseIcon,
+} from '@primer/octicons-react';
+
+import { useFormSettings, useLocalStorage } from './hooks/useLocalStorage';
+import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
+import { validateUsernameList } from './utils';
+import { categorizeRawEvents, categorizeRawSearchItems } from './utils/rawDataUtils';
+import { GitHubItem, UISettings } from './types';
+
 import SearchForm from './components/SearchForm';
 import ResultsList from './components/ResultsList';
+import TimelineView from './components/TimelineView';
+import SummaryView from './components/Summary';
+import OverviewTab from './components/OverviewTab';
 import SettingsDialog from './components/SettingsDialog';
 import { StorageManager } from './components/StorageManager';
-import { OfflineBanner } from './components/OfflineBanner';
-import ShareButton from './components/ShareButton';
-import TimelineView from './components/TimelineView';
-import OverviewTab from './components/OverviewTab';
 import { LoadingIndicator } from './components/LoadingIndicator';
-import { useLocalStorage, useFormSettings } from './hooks/useLocalStorage';
-import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
-import { useCopyFeedback } from './hooks/useCopyFeedback';
-import {
-  UISettings,
-  ItemUIState,
-  UsernameCache,
-  FormContextType,
-  ResultsContextType,
-  GitHubItem,
-  GitHubEvent,
-} from './types';
-import { extractAvailableLabels } from './utils/resultsUtils';
-import { copyResultsToClipboard as copyToClipboard } from './utils/clipboard';
-import { validateUsernameList } from './utils';
-import {
-  performCombinedGitHubSearch,
-  type GitHubSearchParams,
-} from './utils/githubSearch';
-import {
-  categorizeRawEvents,
-  categorizeRawSearchItems,
-  getAvailableLabelsFromRawEvents,
-} from './utils/rawDataUtils';
-import { filterByText } from './utils/resultsUtils';
-import SummaryView from './components/Summary';
+import ShareButton from './components/ShareButton';
+import { SlotMachineLoader } from './components/SlotMachineLoader';
+import { OfflineBanner } from './components/OfflineBanner';
+import GitVegasLogo from './assets/GitVegas.svg?react';
 
-// Form Context to isolate form state changes
+// Form context for sharing form state across components
+interface FormContextType {
+  username: string;
+  startDate: string;
+  endDate: string;
+  githubToken: string;
+  apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
+  setUsername: (username: string) => void;
+  setStartDate: (date: string) => void;
+  setEndDate: (date: string) => void;
+  setGithubToken: (token: string) => void;
+  setApiMode: (mode: 'search' | 'events' | 'overview' | 'events-grouped') => void;
+  handleSearch: () => void;
+  handleUsernameBlur: () => void;
+  validateUsernameFormat: (username: string) => void;
+  loading: boolean;
+  loadingProgress: string;
+  error: string | null;
+  searchItemsCount: number;
+  eventsCount: number;
+  rawEventsCount: number;
+  groupedEventsCount: number;
+}
+
 const FormContext = createContext<FormContextType | null>(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -61,20 +68,6 @@ export function useFormContext() {
   const context = useContext(FormContext);
   if (!context) {
     throw new Error('useFormContext must be used within a FormContextProvider');
-  }
-  return context;
-}
-
-// Results Context to isolate results state changes
-const ResultsContext = createContext<ResultsContextType | null>(null);
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useResultsContext() {
-  const context = useContext(ResultsContext);
-  if (!context) {
-    throw new Error(
-      'useResultsContext must be used within a ResultsContextProvider'
-    );
   }
   return context;
 }
@@ -109,29 +102,29 @@ function App() {
     }
   );
 
-  const [uiSettings, setUISettings] = useLocalStorage<UISettings>(
+  const [uiSettings] = useLocalStorage<UISettings>(
     'github-ui-settings',
     {
       isCompactView: true,
     }
   );
 
-  const [itemUIState, setItemUIState] = useLocalStorage<ItemUIState>(
-    'github-item-ui-state',
-    {
-      descriptionVisible: {},
-      expanded: {},
-      selectedItems: new Set(),
-    }
-  );
+  // const [itemUIState] = useLocalStorage<ItemUIState>(
+  //   'github-item-ui-state',
+  //   {
+  //     descriptionVisible: {},
+  //     expanded: {},
+  //     selectedItems: new Set(),
+  //   }
+  // );
 
-  const [usernameCache] = useLocalStorage<UsernameCache>(
-    'github-username-cache',
-    {
-      validatedUsernames: new Set(),
-      invalidUsernames: new Set(),
-    }
-  );
+  // const [usernameCache] = useLocalStorage<UsernameCache>(
+  //   'github-username-cache',
+  //   {
+  //     validatedUsernames: new Set(),
+  //     invalidUsernames: new Set(),
+  //   }
+  // );
 
   // IndexedDB storage for events
   const {
@@ -150,9 +143,7 @@ function App() {
 
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
-  const { isCompactView } = uiSettings;
-  const { descriptionVisible, expanded, selectedItems } = itemUIState;
-  const { validatedUsernames, invalidUsernames } = usernameCache;
+  // const { validatedUsernames, invalidUsernames } = usernameCache;
 
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
@@ -170,8 +161,6 @@ function App() {
       return [];
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
-
-
 
   // Calculate counts for navigation tabs
   const searchItemsCount = useMemo(() => {
@@ -212,18 +201,18 @@ function App() {
   }, [indexedDBEvents, startDate, endDate, apiMode]);
 
   // Get available labels from raw data
-  const availableLabels = useMemo(() => {
-    if (apiMode === 'events' || apiMode === 'events-grouped') {
-      return getAvailableLabelsFromRawEvents(indexedDBEvents);
-    } else if (apiMode === 'search') {
-      return extractAvailableLabels(
-        indexedDBSearchItems as unknown as GitHubItem[]
-      );
-    } else {
-      // For 'overview' mode, return empty array as it handles its own data
-      return [];
-    }
-  }, [apiMode, indexedDBEvents, indexedDBSearchItems]);
+  // const availableLabels = useMemo(() => {
+  //   if (apiMode === 'events' || apiMode === 'events-grouped') {
+  //     return getAvailableLabelsFromRawEvents(indexedDBEvents);
+  //   } else if (apiMode === 'search') {
+  //     return extractAvailableLabels(
+  //       indexedDBSearchItems as unknown as GitHubItem[]
+  //   );
+  //   } else {
+  //     // For 'overview' mode, return empty array as it handles its own data
+  //     return [];
+  //   }
+  // }, [apiMode, indexedDBEvents, indexedDBSearchItems]);
 
   // Additional component state (not persisted)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -233,23 +222,22 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
-  const [clipboardMessage, setClipboardMessage] = useState<string | null>(null);
   const [currentUsername, setCurrentUsername] = useState('');
 
   // Clipboard feedback
-  const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
+  // const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
 
   // Separate search text states for events and issues
-  const [issuesSearchText, setIssuesSearchText] = useState('');
+  const [issuesSearchText] = useState('');
 
   // Apply search text filtering to results (supports label:name, user:username syntax)
-  const filteredResults = useMemo(() => {
-    if (apiMode === 'overview') {
-      return results;
-    }
-    
-    return filterByText(results, issuesSearchText);
-  }, [results, issuesSearchText, apiMode]);
+  // const filteredResults = useMemo(() => {
+  //   if (apiMode === 'overview') {
+  //     return results;
+  //   }
+  //   
+  //   return filterByText(results, issuesSearchText);
+  // }, [results, issuesSearchText, apiMode]);
 
   // Memoize avatar URLs extraction to avoid recalculating on every render
   const avatarUrls = useMemo(() => {
@@ -267,126 +255,24 @@ function App() {
 
     const validation = validateUsernameList(usernameString);
 
-    if (validation.errors.length > 0) {
-      setError(validation.errors.join('\n'));
-    } else {
+    if (validation.errors.length === 0) {
       setError(null);
-    }
-  }, []);
-
-  // Handle username field blur with basic format validation
-  const handleUsernameBlur = useCallback(async () => {
-    if (!username) return;
-
-    // Only do format validation on blur, not API validation
-    // API validation will happen during form submission
-    const validation = validateUsernameList(username);
-
-    if (validation.errors.length > 0) {
-      setError(validation.errors.join('\n'));
+      // Update cache with validated usernames
+      setFormSettings(prev => ({
+        ...prev,
+        username: usernameString,
+      }));
     } else {
-      setError(null);
+      setError(validation.errors.join('\n'));
     }
-  }, [username]);
+  }, [setFormSettings]);
 
-  // Update handleSearch to check cache first
-  const handleSearch = useCallback(async () => {
-    // Create search parameters
-    const searchParams: GitHubSearchParams = {
-      username,
-      startDate,
-      endDate,
-      githubToken,
-      apiMode,
-    };
-
-    // Create username cache object
-    const cache: UsernameCache = {
-      validatedUsernames,
-      invalidUsernames,
-    };
-
-    // Set up progress callback
-    const onProgress = (message: string) => {
-      setLoadingProgress(message);
-
-      // Extract username from progress message
-      const usernameMatch = message.match(/for\s+([a-zA-Z0-9_-]+)/);
-      if (usernameMatch) {
-        setCurrentUsername(usernameMatch[1]);
-      } else if (
-        message.includes('Successfully loaded') ||
-        message.includes('Validating usernames')
-      ) {
-        setCurrentUsername('');
-      }
-    };
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Always fetch both events and issues/PRs
-      const result = await performCombinedGitHubSearch(searchParams, cache, {
-        onProgress,
-        requestDelay: 500,
-      });
-
-      // Store both types of data
-      if (result.rawEvents && result.rawEvents.length > 0) {
-        // Store events in IndexedDB
-        await storeEvents('github-events-indexeddb', result.rawEvents, {
-          lastFetch: Date.now(),
-          usernames: result.processedUsernames,
-          apiMode: 'events',
-          startDate,
-          endDate,
-        });
-      }
-
-      if (result.rawSearchItems && result.rawSearchItems.length > 0) {
-        // Store search items in IndexedDB (cast to GitHubEvent[] for storage)
-        await storeSearchItems(
-          'github-search-items-indexeddb',
-          result.rawSearchItems as unknown as GitHubEvent[],
-          {
-            lastFetch: Date.now(),
-            usernames: result.processedUsernames,
-            apiMode: 'search',
-            startDate,
-            endDate,
-          }
-        );
-      }
-
-      // Show success message briefly
-      const eventsCount = result.rawEvents?.length || 0;
-      const itemsCount = result.rawSearchItems?.length || 0;
-      setLoadingProgress(
-        `Successfully loaded ${eventsCount} events and ${itemsCount} issues/PRs!`
-      );
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Clear loading state
-      setLoading(false);
-      setLoadingProgress('');
-    } catch (err) {
-      console.error('Search failed:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      setLoading(false);
-      setLoadingProgress('');
+  // Handle username blur event
+  const handleUsernameBlur = useCallback(() => {
+    if (username.trim()) {
+      validateUsernameFormat(username);
     }
-  }, [
-    username,
-    startDate,
-    endDate,
-    githubToken,
-    apiMode,
-    validatedUsernames,
-    invalidUsernames,
-    storeEvents,
-    storeSearchItems,
-  ]);
+  }, [username, validateUsernameFormat]);
 
   // Handle form settings changes
   const setUsername = useCallback(
@@ -424,101 +310,105 @@ function App() {
     [setFormSettings]
   );
 
-  // Handle UI settings changes
-  const setIsCompactView = useCallback(
-    (isCompactView: boolean) => {
-      setUISettings(prev => ({ ...prev, isCompactView }));
-    },
-    [setUISettings]
-  );
+  // Handle search with progress tracking
+  const handleSearch = useCallback(async () => {
+    if (!username.trim()) {
+      setError('Please enter a GitHub username');
+      return;
+    }
 
+    setLoading(true);
+    setError(null);
+    setLoadingProgress('Starting search...');
 
+    try {
+      const usernames = username.split(',').map(u => u.trim()).filter(Boolean);
+      let currentProgress = 0;
+      const totalUsernames = usernames.length;
 
-  // Handle item UI state changes
-  const setSelectedItems = useCallback(
-    (selectedItems: Set<string | number>) => {
-      setItemUIState(prev => ({ ...prev, selectedItems }));
-    },
-    [setItemUIState]
-  );
+      const onProgress = (message: string) => {
+        currentProgress++;
+        const progressPercent = Math.round((currentProgress / totalUsernames) * 100);
+        setLoadingProgress(`${message} (${progressPercent}%)`);
+      };
 
-  const toggleDescriptionVisibility = useCallback(
-    (id: number) => {
-      setItemUIState(prev => ({
-        ...prev,
-        descriptionVisible: {
-          ...prev.descriptionVisible,
-          [id]: !prev.descriptionVisible[id],
-        },
-      }));
-    },
-    [setItemUIState]
-  );
+      // Clear existing data
+      await clearEvents();
+      await clearSearchItems();
 
-  const toggleExpand = useCallback(
-    (id: number) => {
-      setItemUIState(prev => ({
-        ...prev,
-        expanded: {
-          ...prev.expanded,
-          [id]: !prev.expanded[id],
-        },
-      }));
-    },
-    [setItemUIState]
-  );
+      // Fetch events for each username
+      for (const singleUsername of usernames) {
+        setCurrentUsername(singleUsername);
+        
+        try {
+          // Fetch events
+          const eventsResponse = await fetch(
+            `https://api.github.com/users/${singleUsername}/events?per_page=300`,
+            {
+              headers: {
+                ...(githubToken && { Authorization: `token ${githubToken}` }),
+                'Accept': 'application/vnd.github.v3+json',
+              },
+            }
+          );
 
-  // Clipboard handler
-  const copyResultsToClipboard = useCallback(
-    async (format: 'detailed' | 'compact') => {
-      // Only consider items that are both selected and in the filtered results
-      const visibleSelectedItems =
-        selectedItems.size > 0
-          ? results.filter(item =>
-              selectedItems.has(item.event_id || item.id)
-            )
-          : results;
+          if (!eventsResponse.ok) {
+            throw new Error(`Failed to fetch events: ${eventsResponse.statusText}`);
+          }
 
-      const result = await copyToClipboard(visibleSelectedItems, {
-        isCompactView: format === 'compact',
-        onSuccess: () => {
-          // Trigger visual feedback via copy feedback system
-          triggerClipboardCopy(format);
-        },
-        onError: (error: Error) => {
-          setClipboardMessage(`Error: ${error.message}`);
-          setTimeout(() => setClipboardMessage(null), 3000);
-        },
-      });
+          const events = await eventsResponse.json();
+          await storeEvents('github-events-indexeddb', events, {
+            lastFetch: Date.now(),
+            usernames: [singleUsername],
+            apiMode: 'events',
+            startDate,
+            endDate,
+          });
+          onProgress(`Fetched events for ${singleUsername}`);
 
-      return result;
-    },
-    [results, selectedItems, triggerClipboardCopy]
-  );
+          // Fetch issues and PRs
+          const searchResponse = await fetch(
+            `https://api.github.com/search/issues?q=author:${singleUsername}&per_page=100&sort=updated`,
+            {
+              headers: {
+                ...(githubToken && { Authorization: `token ${githubToken}` }),
+                'Accept': 'application/vnd.github.v3+json',
+              },
+            }
+          );
 
-  // Selection handlers
-  const toggleItemSelection = useCallback(
-    (id: string | number) => {
-      const newSet = new Set(selectedItems);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
+          if (!searchResponse.ok) {
+            throw new Error(`Failed to fetch issues/PRs: ${searchResponse.statusText}`);
+          }
+
+          const searchData = await searchResponse.json();
+          await storeSearchItems('github-search-items-indexeddb', searchData.items, {
+            lastFetch: Date.now(),
+            usernames: [singleUsername],
+            apiMode: 'search',
+            startDate,
+            endDate,
+          });
+          onProgress(`Fetched issues/PRs for ${singleUsername}`);
+
+        } catch (error) {
+          console.error(`Error fetching data for ${singleUsername}:`, error);
+          setError(`Error fetching data for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          break;
+        }
       }
-      setSelectedItems(newSet);
-    },
-    [selectedItems, setSelectedItems]
-  );
 
-  const selectAllItems = useCallback(() => {
-    setSelectedItems(
-      new Set(results.map(item => item.event_id || item.id))
-    );
-  }, [results, setSelectedItems]);
+      setLoadingProgress('Search completed!');
+      setCurrentUsername('');
 
-  const clearSelection = useCallback(() => {
-    setSelectedItems(new Set());
-  }, [setSelectedItems]);
+    } catch (error) {
+      console.error('Search error:', error);
+      setError(error instanceof Error ? error.message : 'An error occurred during search');
+    } finally {
+      setLoading(false);
+      setLoadingProgress('');
+    }
+  }, [username, githubToken, clearEvents, clearSearchItems, storeEvents, storeSearchItems, startDate, endDate]);
 
   // Handle manual slot machine spin
   const handleManualSpin = useCallback(() => {
@@ -600,82 +490,52 @@ function App() {
             groupedEventsCount,
           }}
         >
-          <ResultsContext.Provider
-            value={{
-              results,
-              filteredResults: filteredResults,
-              filter: 'all',
-              statusFilter: 'all',
-              includedLabels: [],
-              excludedLabels: [],
-              searchText: issuesSearchText, // Use issues search text for search results
-              repoFilters: [],
-              userFilter: '',
-              availableLabels,
-              setFilter: () => {}, // No-op functions since we removed filtering
-              setStatusFilter: () => {},
-              setIncludedLabels: () => {},
-              setExcludedLabels: () => {},
-              setSearchText: setIssuesSearchText,
-              toggleDescriptionVisibility,
-              toggleExpand,
-              copyResultsToClipboard,
-              descriptionVisible,
-              expanded,
-              clipboardMessage,
-              isCompactView,
-              setIsCompactView,
-              selectedItems,
-              toggleItemSelection,
-              selectAllItems,
-              clearSelection,
-              setRepoFilters: () => {},
-              setUserFilter: () => {},
-              isClipboardCopied,
-            }}
-          >
-            <SearchForm />
-            {apiMode === 'events' ? (
-              <TimelineView
-                items={results}
-                rawEvents={indexedDBEvents}
-              />
-            ) : apiMode === 'events-grouped' ? (
-              <SummaryView
-                items={results}
-                rawEvents={indexedDBEvents}
-                indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
-              />
-            ) : (
-              <ResultsList
-                useResultsContext={useResultsContext}
-                buttonStyles={buttonStyles}
-              />
-            )}
-            {eventsError && (
-              <Box
-                sx={{
-                  p: 2,
-                  bg: 'danger.subtle',
-                  color: 'danger.fg',
-                  borderRadius: 2,
-                  mb: 2,
-                }}
-              >
-                <Text>Error loading events: {eventsError}</Text>
-              </Box>
-            )}
-            <SettingsDialog
-              isOpen={isSettingsOpen}
-              onDismiss={() => setIsSettingsOpen(false)}
+          <SearchForm />
+          {apiMode === 'events' ? (
+            <TimelineView
+              items={results}
+              rawEvents={indexedDBEvents}
             />
-            <StorageManager
-              isOpen={isStorageManagerOpen}
-              onClose={() => setIsStorageManagerOpen(false)}
-              onClearEvents={clearEvents}
-              onClearSearchItems={clearSearchItems}
+          ) : apiMode === 'overview' ? (
+            <OverviewTab
+              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+              indexedDBEvents={indexedDBEvents}
             />
-          </ResultsContext.Provider>
+          ) : apiMode === 'events-grouped' ? (
+            <SummaryView
+              items={results}
+              rawEvents={indexedDBEvents}
+              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+            />
+          ) : (
+            <ResultsList
+              results={results}
+              buttonStyles={buttonStyles}
+            />
+          )}
+          {eventsError && (
+            <Box
+              sx={{
+                p: 2,
+                bg: 'danger.subtle',
+                color: 'danger.fg',
+                borderRadius: 2,
+                mb: 2,
+              }}
+            >
+              <Text>Error loading events: {eventsError}</Text>
+            </Box>
+          )}
+          <SettingsDialog
+            isOpen={isSettingsOpen}
+            onDismiss={() => setIsSettingsOpen(false)}
+          />
+          <StorageManager
+            isOpen={isStorageManagerOpen}
+            onClose={() => setIsStorageManagerOpen(false)}
+            onClearEvents={clearEvents}
+            onClearSearchItems={clearSearchItems}
+          />
         </FormContext.Provider>
       </PageLayout.Content>
 
