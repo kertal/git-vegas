@@ -20,7 +20,7 @@ import { GitHubItem, UISettings } from './types';
 
 import SearchForm from './components/SearchForm';
 import IssuesAndPRsList from './components/IssuesAndPRsList';
-import TimelineView from './components/TimelineView';
+import EventView from './components/EventView';
 import SummaryView from './components/Summary';
 import OverviewTab from './components/OverviewTab';
 import SettingsDialog from './components/SettingsDialog';
@@ -518,7 +518,7 @@ function App() {
         >
           <SearchForm />
           {apiMode === 'events' ? (
-            <TimelineView items={results} rawEvents={indexedDBEvents} />
+            <EventView items={results} rawEvents={indexedDBEvents} />
           ) : apiMode === 'overview' ? (
             <OverviewTab
               indexedDBSearchItems={

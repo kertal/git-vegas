@@ -32,22 +32,22 @@ import { parseSearchText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { CloneIssueDialog } from './CloneIssueDialog';
 import ItemRow from './ItemRow';
-import './TimelineView.css';
+import './EventView.css';
 import { useFormContext } from '../App';
 
 
 
 type ViewMode = 'standard' | 'raw';
 
-interface TimelineViewProps {
+interface EventViewProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
 }
 
-const TimelineView = memo(function TimelineView({
+const EventView = memo(function EventView({
   items,
   rawEvents = [],
-}: TimelineViewProps) {
+}: EventViewProps) {
   // Get GitHub token from form context
   const { githubToken } = useFormContext();
   
@@ -536,4 +536,4 @@ const TimelineView = memo(function TimelineView({
   );
 });
 
-export default TimelineView;
+export default EventView; 

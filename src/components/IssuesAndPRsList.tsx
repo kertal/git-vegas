@@ -38,7 +38,7 @@ import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
 import { ResultsContainer } from './ResultsContainer';
 import { CloneIssueDialog } from './CloneIssueDialog';
-import './TimelineView.css';
+import './EventView.css';
 import ItemRow from './ItemRow';
 
 // Props interface
