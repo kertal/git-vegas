@@ -24,9 +24,9 @@ import { useFormContext } from '../App';
 import { GitHubItem, GitHubEvent, CustomSection } from '../types';
 import { categorizeRawSearchItems, categorizeRawEvents } from '../utils/rawDataUtils';
 import CustomSectionsManager from '../utils/customSections';
-import CustomSectionManager from './CustomSectionManager';
-import CustomSectionDisplay from './CustomSectionDisplay';
-import StarredItemsSection from './StarredItemsSection';
+import CustomSectionManager from '../components/CustomSectionManager';
+import CustomSectionDisplay from '../components/CustomSectionDisplay';
+import StarredItemsSection from '../components/StarredItemsSection';
 import { 
   PushEventPayload, 
   CreateEventPayload, 

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@primer/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import SummaryView from '../Summary';
+import SummaryView from '../../views/Summary';
 import { GitHubItem, GitHubEvent } from '../../types';
 
 // Mock the form context

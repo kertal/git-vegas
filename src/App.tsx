@@ -1,4 +1,4 @@
-import React, {
+import {
   useState,
   useEffect,
   useCallback,
@@ -19,10 +19,10 @@ import {
 import { GitHubItem, UISettings } from './types';
 
 import SearchForm from './components/SearchForm';
-import IssuesAndPRsList from './components/IssuesAndPRsList';
-import EventView from './components/EventView';
-import SummaryView from './components/Summary';
-import OverviewTab from './components/OverviewTab';
+import IssuesAndPRsList from './views/IssuesAndPRsList';
+import EventView from './views/EventView';
+import SummaryView from './views/Summary';
+import OverviewTab from './views/OverviewTab';
 import SettingsDialog from './components/SettingsDialog';
 import { StorageManager } from './components/StorageManager';
 import { LoadingIndicator } from './components/LoadingIndicator';

@@ -22,15 +22,15 @@ import {
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 
-import { ResultsContainer } from './ResultsContainer';
+import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
-import { CloneIssueDialog } from './CloneIssueDialog';
-import ItemRow from './ItemRow';
+import { CloneIssueDialog } from '../components/CloneIssueDialog';
+import ItemRow from '../components/ItemRow';
 import './Summary.css';
 import { useFormContext } from '../App';
 

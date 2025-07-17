@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@primer/react';
-import OverviewTab from '../OverviewTab';
+import OverviewTab from '../../views/OverviewTab';
 import { GitHubItem, GitHubEvent } from '../../types';
 import * as rawDataUtils from '../../utils/rawDataUtils';
 import { 

@@ -36,10 +36,10 @@ import { useFormContext } from '../App';
 import { filterByText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
-import { ResultsContainer } from './ResultsContainer';
-import { CloneIssueDialog } from './CloneIssueDialog';
+import { ResultsContainer } from '../components/ResultsContainer';
+import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import './EventView.css';
-import ItemRow from './ItemRow';
+import ItemRow from '../components/ItemRow';
 
 // Props interface
 interface IssuesAndPRsListProps {
