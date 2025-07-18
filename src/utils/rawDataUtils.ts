@@ -123,6 +123,78 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       user: actorUser, // Use event actor instead of comment user
       pull_request: issue.pull_request,
     };
+  } else if (type === 'PullRequestReviewCommentEvent' && payload.comment && payload.pull_request) {
+    const comment = payload.comment;
+    const pr = payload.pull_request;
+    return {
+      id: comment.id,
+      event_id: event.id,
+      html_url: comment.html_url,
+      title: `Review comment on: ${pr.title}`,
+      created_at: event.created_at, // Use event timestamp, not comment timestamp
+      updated_at: comment.updated_at,
+      state: pr.state,
+      body: comment.body,
+      labels: pr.labels,
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      closed_at: pr.closed_at,
+      merged_at: pr.merged_at,
+      merged: pr.merged,
+      number: pr.number,
+      user: actorUser, // Use event actor instead of comment user
+      pull_request: {
+        merged_at: pr.merged_at,
+        url: pr.html_url,
+      },
+    };
+  } else if (type === 'PushEvent') {
+    // Handle PushEvent - create a GitHubItem from push event data
+    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string }>; distinct_size?: number };
+    const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
+    const commitCount = pushPayload?.commits?.length || 0;
+    const distinctCount = pushPayload?.distinct_size || 0;
+    
+    // Create a title that describes the push
+    let title = `Pushed ${distinctCount} commit${distinctCount !== 1 ? 's' : ''} to ${branch}`;
+    if (commitCount > distinctCount) {
+      title += ` (${commitCount} total)`;
+    }
+    
+    // Create a body with commit messages if available
+    let body = '';
+    if (pushPayload?.commits && pushPayload.commits.length > 0) {
+      body = pushPayload.commits
+        .slice(0, 5) // Show first 5 commits
+        .map((commit) => `- ${commit.message.split('\n')[0]}`) // First line of commit message
+        .join('\n');
+      
+      if (pushPayload.commits.length > 5) {
+        body += `\n... and ${pushPayload.commits.length - 5} more commits`;
+      }
+    }
+    
+    return {
+      id: parseInt(event.id), // Convert string ID to number for GitHubItem
+      event_id: event.id,
+      html_url: `https://github.com/${repo.name}/commits/${branch}`,
+      title: title,
+      created_at: event.created_at,
+      updated_at: event.created_at, // Push events don't have updated_at, use created_at
+      state: 'open', // Push events are always "open"
+      body: body,
+      labels: [], // Push events don't have labels
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      user: actorUser,
+      // Push events don't have pull_request, closed_at, merged_at, or number
+    };
   }
 
   // Return null for events that don't contain relevant data

@@ -42,8 +42,8 @@ const EventView = memo(function EventView({
   items,
   rawEvents = [],
 }: EventViewProps) {
-  // Get GitHub token from form context
-  const { githubToken } = useFormContext();
+  // Get GitHub token and date range from form context
+  const { githubToken, startDate, endDate } = useFormContext();
   
   // Internal state for view mode
   const [viewMode, setViewMode] = useState<ViewMode>('standard');
@@ -92,7 +92,53 @@ const EventView = memo(function EventView({
     return parseSearchText(searchText || '');
   }, [searchText]);
 
-  // Filter items by search text
+  // Filter raw events by date range and search text
+  const filteredRawEvents = useMemo(() => {
+    // First filter by date range
+    let dateFilteredEvents = rawEvents;
+    if (startDate || endDate) {
+      const startDateTime = startDate ? new Date(startDate).getTime() : 0;
+      const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
+      
+      dateFilteredEvents = rawEvents.filter(event => {
+        const eventTime = new Date(event.created_at).getTime();
+        return eventTime >= startDateTime && eventTime <= endDateTime;
+      });
+    }
+
+    // Then filter by search text if provided
+    if (!searchText || !searchText.trim()) {
+      return dateFilteredEvents;
+    }
+
+    const { userFilters, cleanText } = parsedSearchText;
+
+    return dateFilteredEvents.filter(event => {
+      // Check user filters
+      if (userFilters.length > 0) {
+        const eventUser = event.actor.login.toLowerCase();
+        const matchesUser = userFilters.some(userFilter =>
+          eventUser === userFilter.toLowerCase()
+        );
+        if (!matchesUser) return false;
+      }
+
+      // If there's clean text remaining, search in event type, repo name, and actor
+      if (cleanText) {
+        const searchLower = cleanText.toLowerCase();
+        const typeMatch = event.type.toLowerCase().includes(searchLower);
+        const repoMatch = event.repo?.name.toLowerCase().includes(searchLower);
+        const actorMatch = event.actor.login.toLowerCase().includes(searchLower);
+        const payloadMatch = JSON.stringify(event.payload).toLowerCase().includes(searchLower);
+        return typeMatch || repoMatch || actorMatch || payloadMatch;
+      }
+
+      // If only user filters were used, event passed checks above
+      return true;
+    });
+  }, [rawEvents, searchText, parsedSearchText, startDate, endDate]);
+
+  // Filter items by search text (for standard view)
   const filteredItems = useMemo(() => {
     if (!searchText || !searchText.trim()) {
       return items;
@@ -155,25 +201,40 @@ const EventView = memo(function EventView({
 
   // Internal copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    // Regular copy for non-grouped modes
-    const selectedItemsArray =
-      selectedItems.size > 0
-        ? sortedItems.filter(item =>
-            selectedItems.has(item.event_id || item.id)
-          )
-        : sortedItems;
-
-    await copyToClipboard(selectedItemsArray, {
-      isCompactView: format === 'compact',
-      onSuccess: () => {
-        // Trigger visual feedback via copy feedback system
+    if (viewMode === 'raw') {
+      // Copy raw events
+      const eventsToCopy = filteredRawEvents;
+      const eventsText = eventsToCopy.map(event => 
+        `${event.type} by ${event.actor.login} in ${event.repo.name} - ${event.created_at}\n${JSON.stringify(event, null, 2)}`
+      ).join('\n\n');
+      
+      try {
+        await navigator.clipboard.writeText(eventsText);
         triggerCopy(format);
-      },
-      onError: (error: Error) => {
-        console.error('Failed to copy results:', error);
-      },
-    });
-  }, [sortedItems, selectedItems, triggerCopy]);
+      } catch (error) {
+        console.error('Failed to copy raw events:', error);
+      }
+    } else {
+      // Regular copy for standard view
+      const selectedItemsArray =
+        selectedItems.size > 0
+          ? sortedItems.filter(item =>
+              selectedItems.has(item.event_id || item.id)
+            )
+          : sortedItems;
+
+      await copyToClipboard(selectedItemsArray, {
+        isCompactView: format === 'compact',
+        onSuccess: () => {
+          // Trigger visual feedback via copy feedback system
+          triggerCopy(format);
+        },
+        onError: (error: Error) => {
+          console.error('Failed to copy results:', error);
+        },
+      });
+    }
+  }, [sortedItems, selectedItems, triggerCopy, viewMode, filteredRawEvents]);
 
   // Clipboard feedback helper
   const isClipboardCopied = useCallback((itemId: string | number) => {
@@ -292,7 +353,9 @@ const EventView = memo(function EventView({
           ) : (
             <CopyIcon size={14} />
           )} {' '}
-          {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
+          {viewMode === 'raw' 
+            ? filteredRawEvents.length 
+            : selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
         </ActionMenu.Button>
 
         <ActionMenu.Overlay>
@@ -357,19 +420,20 @@ const EventView = memo(function EventView({
       {/* API Limitation Note */}
       <Box sx={{ p: 2,  bg: 'attention.subtle'}}>
         <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-          <strong>Note:</strong> Timeline includes up to 300 events from the
-          past 30 days. Event latency can be 30s to 6h depending on time of day.
+          <strong>Note:</strong> {viewMode === 'raw' 
+            ? 'Raw view shows all events in the selected time range. Standard view shows issues, PRs, comments, push events, and review events.'
+            : 'Timeline includes up to 300 events from the past 30 days. Event latency can be 30s to 6h depending on time of day.'}
         </Text>
       </Box>
 
       {/* Timeline content */}
       <div className="timeline-content">
-        {sortedItems.length === 0 ? (
+        {(viewMode === 'raw' ? filteredRawEvents.length === 0 : sortedItems.length === 0) ? (
           // Empty state - keep search box visible
           <div className="timeline-empty">
             <Text color="fg.muted">
               {hasSearchText
-                ? `No events found matching "${searchText}". Try a different search term or use label:name / -label:name for label filtering.`
+                ? `No events found matching "${searchText}". Try a different search term or use user:username for user filtering.`
                 : !hasRawEvents
                   ? 'No cached events found. Please perform a search in events mode to load events.'
                   : 'No events found for the selected time period. Try adjusting your date range or filters.'}
@@ -392,8 +456,8 @@ const EventView = memo(function EventView({
         ) : viewMode === 'raw' ? (
           // Raw JSON view - show actual GitHub API events
           <div className="timeline-raw-container">
-            {rawEvents.length > 0 ? (
-              rawEvents
+            {filteredRawEvents.length > 0 ? (
+              filteredRawEvents
                 .sort(
                   (a, b) =>
                     new Date(b.created_at).getTime() -
