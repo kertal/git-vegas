@@ -73,10 +73,6 @@ const SummaryView = memo(function SummaryView({
     });
   }, []);
 
-  const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(items.map(item => item.event_id || item.id)));
-  }, [items]);
-
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
   }, []);
@@ -243,52 +239,15 @@ const SummaryView = memo(function SummaryView({
     return groups;
   }, [sortedItems, indexedDBSearchItems, startDate, endDate]);
 
+  // Select all items that are actually displayed in the view
+  const selectAllItems = useCallback(() => {
+    // Get all items that are actually displayed in the view
+    const allDisplayedItems = Object.values(actionGroups).flat();
+    setSelectedItems(new Set(allDisplayedItems.map(item => item.event_id || item.id)));
+  }, [actionGroups]);
+
   // Internal copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    // Prepare grouped data structure
-    const actionGroups: {
-      'PRs - opened': GitHubItem[];
-      'PRs - merged': GitHubItem[];
-      'PRs - closed': GitHubItem[];
-      'PRs - reviewed': GitHubItem[];
-      'Issues - opened': GitHubItem[];
-      'Issues - closed': GitHubItem[];
-      'Issues - commented': GitHubItem[];
-    } = {
-      'PRs - opened': [],
-      'PRs - merged': [],
-      'PRs - closed': [],
-      'PRs - reviewed': [],
-      'Issues - opened': [],
-      'Issues - closed': [],
-      'Issues - commented': [],
-    };
-
-    sortedItems.forEach(item => {
-      const type = getEventType(item);
-
-      if (type === 'pull_request' && item.title.startsWith('Review on:')) {
-        actionGroups['PRs - reviewed'].push(item);
-      } else if (type === 'comment') {
-        actionGroups['Issues - commented'].push(item);
-      } else if (type === 'pull_request') {
-        if (item.merged_at) {
-          actionGroups['PRs - merged'].push(item);
-        } else if (item.state === 'closed') {
-          actionGroups['PRs - closed'].push(item);
-        } else {
-          actionGroups['PRs - opened'].push(item);
-        }
-      } else {
-        // issue
-        if (item.state === 'closed') {
-          actionGroups['Issues - closed'].push(item);
-        } else {
-          actionGroups['Issues - opened'].push(item);
-        }
-      }
-    });
-
     // Convert to the format expected by clipboard utility
     const groupedData = Object.entries(actionGroups)
       .filter(([, items]) => items.length > 0)
@@ -298,17 +257,30 @@ const SummaryView = memo(function SummaryView({
       }));
 
     // Use the enhanced clipboard utility with grouped data
+    // If items are selected, filter the grouped data to only include selected items
+    let finalGroupedData = groupedData;
+    if (selectedItems.size > 0) {
+      finalGroupedData = groupedData.map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          selectedItems.has(item.event_id || item.id)
+        )
+      })).filter(group => group.items.length > 0);
+    }
+
+    // Get all items for the clipboard (either selected or all)
+    const allItems = Object.values(actionGroups).flat();
     const selectedItemsArray =
       selectedItems.size > 0
-        ? sortedItems.filter(item =>
+        ? allItems.filter(item =>
             selectedItems.has(item.event_id || item.id)
           )
-        : sortedItems;
+        : allItems;
 
     await copyToClipboard(selectedItemsArray, {
       isCompactView: format === 'compact',
       isGroupedView: true,
-      groupedData,
+      groupedData: finalGroupedData,
       onSuccess: () => {
         // Trigger visual feedback via copy feedback system
         triggerCopy(format);
@@ -317,7 +289,7 @@ const SummaryView = memo(function SummaryView({
         console.error('Failed to copy grouped results:', error);
       },
     });
-  }, [sortedItems, selectedItems, triggerCopy]);
+  }, [actionGroups, selectedItems, triggerCopy]);
 
   // Clipboard feedback helper
   const isClipboardCopied = useCallback((itemId: string | number) => {
@@ -326,30 +298,32 @@ const SummaryView = memo(function SummaryView({
 
   // Calculate select all checkbox state
   const selectAllState = useMemo(() => {
-    if (sortedItems.length === 0) {
+    const allDisplayedItems = Object.values(actionGroups).flat();
+    if (allDisplayedItems.length === 0) {
       return { checked: false, indeterminate: false };
     }
 
-    const selectedCount = sortedItems.filter(item =>
+    const selectedCount = allDisplayedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
 
     if (selectedCount === 0) {
       return { checked: false, indeterminate: false };
-    } else if (selectedCount === sortedItems.length) {
+    } else if (selectedCount === allDisplayedItems.length) {
       return { checked: true, indeterminate: false };
     } else {
       return { checked: false, indeterminate: true };
     }
-  }, [sortedItems, selectedItems]);
+  }, [actionGroups, selectedItems]);
 
   // Handle select all checkbox click
   const handleSelectAllChange = () => {
-    const selectedCount = sortedItems.filter(item =>
+    const allDisplayedItems = Object.values(actionGroups).flat();
+    const selectedCount = allDisplayedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
 
-    if (selectedCount === sortedItems.length) {
+    if (selectedCount === allDisplayedItems.length) {
       // All are selected, clear selection
       clearSelection?.();
     } else {
