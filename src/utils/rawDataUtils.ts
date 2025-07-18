@@ -195,6 +195,189 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       user: actorUser,
       // Push events don't have pull_request, closed_at, merged_at, or number
     };
+  } else if (type === 'CreateEvent') {
+    // Handle CreateEvent - create a GitHubItem from create event data
+    const createPayload = payload as { ref_type?: string; ref?: string; master_branch?: string; description?: string };
+    const refType = createPayload?.ref_type || 'repository';
+    const ref = createPayload?.ref || '';
+    
+    let title = '';
+    let htmlUrl = `https://github.com/${repo.name}`;
+    
+    if (refType === 'branch') {
+      title = `Created branch ${ref}`;
+      htmlUrl = `https://github.com/${repo.name}/tree/${ref}`;
+    } else if (refType === 'tag') {
+      title = `Created tag ${ref}`;
+      htmlUrl = `https://github.com/${repo.name}/releases/tag/${ref}`;
+    } else {
+      title = 'Created repository';
+      if (createPayload?.description) {
+        title += `: ${createPayload.description}`;
+      }
+    }
+    
+    return {
+      id: parseInt(event.id),
+      event_id: event.id,
+      html_url: htmlUrl,
+      title: title,
+      created_at: event.created_at,
+      updated_at: event.created_at,
+      state: 'open',
+      body: createPayload?.description || '',
+      labels: [],
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      user: actorUser,
+    };
+  } else if (type === 'ForkEvent') {
+    // Handle ForkEvent - create a GitHubItem from fork event data
+    const forkPayload = payload as { forkee?: { full_name?: string; html_url?: string } };
+    const forkeeName = forkPayload?.forkee?.full_name || 'unknown repository';
+    const forkeeUrl = forkPayload?.forkee?.html_url || `https://github.com/${repo.name}`;
+    
+    return {
+      id: parseInt(event.id),
+      event_id: event.id,
+      html_url: forkeeUrl,
+      title: `Forked repository to ${forkeeName}`,
+      created_at: event.created_at,
+      updated_at: event.created_at,
+      state: 'open',
+      body: `Repository forked from ${repo.name} to ${forkeeName}`,
+      labels: [],
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      user: actorUser,
+    };
+  } else if (type === 'WatchEvent') {
+    // Handle WatchEvent - create a GitHubItem from watch event data
+    const action = payload?.action || 'starred';
+    
+    return {
+      id: parseInt(event.id),
+      event_id: event.id,
+      html_url: `https://github.com/${repo.name}`,
+      title: `${action === 'started' ? 'Starred' : 'Unstarred'} repository`,
+      created_at: event.created_at,
+      updated_at: event.created_at,
+      state: 'open',
+      body: `${actorUser.login} ${action} the repository ${repo.name}`,
+      labels: [],
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      user: actorUser,
+    };
+  } else if (type === 'PublicEvent') {
+    // Handle PublicEvent - create a GitHubItem from public event data
+    return {
+      id: parseInt(event.id),
+      event_id: event.id,
+      html_url: `https://github.com/${repo.name}`,
+      title: 'Made repository public',
+      created_at: event.created_at,
+      updated_at: event.created_at,
+      state: 'open',
+      body: `${actorUser.login} made the repository ${repo.name} public`,
+      labels: [],
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      user: actorUser,
+    };
+  } else if (type === 'DeleteEvent') {
+    // Handle DeleteEvent - create a GitHubItem from delete event data
+    const deletePayload = payload as { ref_type?: string; ref?: string };
+    const refType = deletePayload?.ref_type || 'branch';
+    const ref = deletePayload?.ref || '';
+    
+    let title = '';
+    if (refType === 'branch') {
+      title = `Deleted branch ${ref}`;
+    } else if (refType === 'tag') {
+      title = `Deleted tag ${ref}`;
+    } else {
+      title = `Deleted ${refType}`;
+    }
+    
+    return {
+      id: parseInt(event.id),
+      event_id: event.id,
+      html_url: `https://github.com/${repo.name}`,
+      title: title,
+      created_at: event.created_at,
+      updated_at: event.created_at,
+      state: 'closed',
+      body: `${actorUser.login} deleted ${refType} ${ref} from ${repo.name}`,
+      labels: [],
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      user: actorUser,
+    };
+  } else if (type === 'GollumEvent') {
+    // Handle GollumEvent - create a GitHubItem from gollum event data
+    const gollumPayload = payload as { pages?: Array<{ page_name: string; title: string; action: string; html_url: string }> };
+    const pages = gollumPayload?.pages || [];
+    
+    if (pages.length === 0) {
+      return null; // No pages to display
+    }
+    
+    const page = pages[0]; // Show the first page
+    const action = page.action || 'updated';
+    const pageCount = pages.length;
+    
+    let title = '';
+    if (pageCount === 1) {
+      title = `${action === 'created' ? 'Created' : action === 'edited' ? 'Updated' : 'Deleted'} wiki page: ${page.title}`;
+    } else {
+      title = `${action === 'created' ? 'Created' : action === 'edited' ? 'Updated' : 'Deleted'} ${pageCount} wiki pages`;
+    }
+    
+    let body = '';
+    if (pages.length > 0) {
+      body = pages
+        .slice(0, 5)
+        .map((p) => `- ${p.title} (${p.action})`)
+        .join('\n');
+      
+      if (pages.length > 5) {
+        body += `\n... and ${pages.length - 5} more pages`;
+      }
+    }
+    
+    return {
+      id: parseInt(event.id),
+      event_id: event.id,
+      html_url: page.html_url || `https://github.com/${repo.name}/wiki`,
+      title: title,
+      created_at: event.created_at,
+      updated_at: event.created_at,
+      state: 'open',
+      body: body,
+      labels: [],
+      repository_url: `https://api.github.com/repos/${repo.name}`,
+      repository: {
+        full_name: repo.name,
+        html_url: `https://github.com/${repo.name}`,
+      },
+      user: actorUser,
+    };
   }
 
   // Return null for events that don't contain relevant data
