@@ -4,14 +4,11 @@ import {
   Button,
   Text,
   Heading,
-  Link,
   ButtonGroup,
   Stack,
   Checkbox,
   ActionMenu,
   ActionList,
-  Dialog,
-  IconButton,
   TextInput,
   FormControl,
 } from '@primer/react';
@@ -19,15 +16,11 @@ import {
   GitPullRequestIcon,
   IssueOpenedIcon,
   GitMergeIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   SearchIcon,
   CheckIcon,
   CopyIcon,
 } from '@primer/octicons-react';
 
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { GitHubItem } from '../types';
 
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
@@ -38,6 +31,7 @@ import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
+import DescriptionDialog from '../components/DescriptionDialog';
 import './EventView.css';
 import ItemRow from '../components/ItemRow';
 
@@ -47,130 +41,43 @@ interface IssuesAndPRsListProps {
   buttonStyles: React.CSSProperties;
 }
 
-// Add new interface for the description dialog
-interface DescriptionDialogProps {
-  item: GitHubItem | null;
-  onClose: () => void;
-  onPrevious: () => void;
-  onNext: () => void;
-  hasPrevious: boolean;
-  hasNext: boolean;
-}
-
-const DescriptionDialog = memo(function DescriptionDialog({
-  item,
-  onClose,
-  onPrevious,
-  onNext,
-  hasPrevious,
-  hasNext,
-}: DescriptionDialogProps) {
-  // Add keyboard navigation
-  React.useEffect(() => {
-    if (!item) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' && hasPrevious) {
-        onPrevious();
-      } else if (e.key === 'ArrowRight' && hasNext) {
-        onNext();
-      } else if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [item, onPrevious, onNext, onClose, hasPrevious, hasNext]);
-
-  if (!item) return null;
-
-  return (
-    <Dialog
-      onClose={onClose}
-      role="dialog"
-      title={
-        <Box
-          sx={{
-            display: 'flex',
-            p: 2,
-            alignItems: 'center',
-            gap: 2,
-            width: '100%',
-          }}
-        >
-          {item.pull_request ? (
-            item.pull_request.merged_at ? (
-              <Box sx={{ color: 'done.fg' }}>
-                <GitMergeIcon size={16} />
-              </Box>
-            ) : item.state === 'closed' ? (
-              <Box sx={{ color: 'closed.fg' }}>
-                <GitPullRequestIcon size={16} />
-              </Box>
-            ) : (
-              <Box sx={{ color: 'open.fg' }}>
-                <GitPullRequestIcon size={16} />
-              </Box>
-            )
-          ) : (
-            <Box
-              sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}
-            >
-              <IssueOpenedIcon size={16} />
-            </Box>
-          )}
-          <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>
-            {item.title}
-          </Text>
+// Custom title component for the description dialog
+const DialogTitle = ({ item }: { item: GitHubItem }) => (
+  <Box
+    sx={{
+      display: 'flex',
+      p: 2,
+      alignItems: 'center',
+      gap: 2,
+      width: '100%',
+    }}
+  >
+    {item.pull_request ? (
+      item.pull_request.merged_at ? (
+        <Box sx={{ color: 'done.fg' }}>
+          <GitMergeIcon size={16} />
         </Box>
-      }
-      renderFooter={() => (
-        <div>
-          <IconButton
-            icon={ChevronLeftIcon}
-            aria-label="Previous item"
-            onClick={onPrevious}
-            disabled={!hasPrevious}
-            sx={{
-              color: hasPrevious ? 'fg.default' : 'fg.muted',
-            }}
-          />
-          <IconButton
-            icon={ChevronRightIcon}
-            aria-label="Next item"
-            onClick={onNext}
-            disabled={!hasNext}
-            sx={{
-              color: hasNext ? 'fg.default' : 'fg.muted',
-            }}
-          />
-        </div>
-      )}
-    >
+      ) : item.state === 'closed' ? (
+        <Box sx={{ color: 'closed.fg' }}>
+          <GitPullRequestIcon size={16} />
+        </Box>
+      ) : (
+        <Box sx={{ color: 'open.fg' }}>
+          <GitPullRequestIcon size={16} />
+        </Box>
+      )
+    ) : (
       <Box
-        sx={{
-          p: 3,
-          maxHeight: '70vh',
-          overflow: 'auto',
-        }}
+        sx={{ color: item.state === 'closed' ? 'closed.fg' : 'open.fg' }}
       >
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            a: ({ href, children }) => (
-              <Link href={href} target="_blank" rel="noopener noreferrer">
-                {children}
-              </Link>
-            ),
-          }}
-        >
-          {item.body || 'No description available.'}
-        </ReactMarkdown>
+        <IssueOpenedIcon size={16} />
       </Box>
-    </Dialog>
-  );
-});
+    )}
+    <Text sx={{ flex: 1, fontWeight: 'bold', fontSize: 2 }}>
+      {item.title}
+    </Text>
+  </Box>
+);
 
 const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
@@ -266,23 +173,28 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 
   // Dialog navigation handlers
   const handlePreviousItem = () => {
-    const currentIndex = getCurrentItemIndex();
+    if (!selectedItemForDialog) return;
+    const currentIndex = filteredResults.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
     if (currentIndex > 0) {
       setSelectedItemForDialog(filteredResults[currentIndex - 1]);
     }
   };
 
   const handleNextItem = () => {
-    const currentIndex = getCurrentItemIndex();
+    if (!selectedItemForDialog) return;
+    const currentIndex = filteredResults.findIndex(
+      item => item.id === selectedItemForDialog.id
+    );
     if (currentIndex < filteredResults.length - 1) {
       setSelectedItemForDialog(filteredResults[currentIndex + 1]);
     }
   };
 
   const getCurrentItemIndex = () => {
-    return filteredResults.findIndex(
-      (item: GitHubItem) => item.id === selectedItemForDialog?.id
-    );
+    if (!selectedItemForDialog) return -1;
+    return filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
   };
 
   return (
@@ -514,16 +426,16 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       </ResultsContainer>
 
       {/* Description Dialog */}
-      {selectedItemForDialog && (
-        <DescriptionDialog
-          item={selectedItemForDialog}
-          onClose={() => setSelectedItemForDialog(null)}
-          onPrevious={handlePreviousItem}
-          onNext={handleNextItem}
-          hasPrevious={getCurrentItemIndex() > 0}
-          hasNext={getCurrentItemIndex() < filteredResults.length - 1}
-        />
-      )}
+      <DescriptionDialog
+        item={selectedItemForDialog}
+        onClose={() => setSelectedItemForDialog(null)}
+        onPrevious={handlePreviousItem}
+        onNext={handleNextItem}
+        hasPrevious={getCurrentItemIndex() > 0}
+        hasNext={getCurrentItemIndex() < filteredResults.length - 1}
+        title={selectedItemForDialog ? <DialogTitle item={selectedItemForDialog} /> : undefined}
+        maxHeight="70vh"
+      />
 
       {/* Clone Issue Dialog */}
       <CloneIssueDialog

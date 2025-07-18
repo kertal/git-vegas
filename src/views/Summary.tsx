@@ -1,22 +1,17 @@
 import { memo, useMemo, useState, useCallback } from 'react';
 import {
   Text,
-  Link,
   Button,
   Heading,
   ActionMenu,
   ActionList,
   Checkbox,
   Box,
-  IconButton,
-  Dialog,
   TextInput,
   FormControl,
 } from '@primer/react';
 import {
   CopyIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   SearchIcon,
   CheckIcon,
 } from '@primer/octicons-react';
@@ -24,12 +19,11 @@ import { GitHubItem, GitHubEvent } from '../types';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
+import DescriptionDialog from '../components/DescriptionDialog';
 import ItemRow from '../components/ItemRow';
 import './Summary.css';
 import { useFormContext } from '../App';
@@ -623,53 +617,14 @@ const SummaryView = memo(function SummaryView({
       </div>
 
       {/* Description Dialog */}
-      {selectedItemForDialog && (
-        <Dialog
-          onClose={() => setSelectedItemForDialog(null)}
-          role="dialog"
-          title={selectedItemForDialog.title}
-          renderFooter={() => (
-            <div>
-              <IconButton
-                icon={ChevronLeftIcon}
-                aria-label="Previous item"
-                onClick={handlePreviousItem}
-                disabled={getCurrentItemIndex() <= 0}
-                sx={{
-                  color: getCurrentItemIndex() > 0 ? 'fg.default' : 'fg.muted',
-                }}
-              />
-              <IconButton
-                icon={ChevronRightIcon}
-                aria-label="Next item"
-                onClick={handleNextItem}
-                disabled={getCurrentItemIndex() >= sortedItems.length - 1}
-                sx={{
-                  color:
-                    getCurrentItemIndex() < sortedItems.length - 1
-                      ? 'fg.default'
-                      : 'fg.muted',
-                }}
-              />
-            </div>
-          )}
-        >
-          <Box sx={{ p: 3, maxHeight: '40vh', overflow: 'auto' }}>
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                a: ({ href, children }) => (
-                  <Link href={href} target="_blank" rel="noopener noreferrer">
-                    {children}
-                  </Link>
-                ),
-              }}
-            >
-              {selectedItemForDialog.body || 'No description available.'}
-            </ReactMarkdown>
-          </Box>
-        </Dialog>
-      )}
+      <DescriptionDialog
+        item={selectedItemForDialog}
+        onClose={() => setSelectedItemForDialog(null)}
+        onPrevious={handlePreviousItem}
+        onNext={handleNextItem}
+        hasPrevious={getCurrentItemIndex() > 0}
+        hasNext={getCurrentItemIndex() < sortedItems.length - 1}
+      />
 
       {/* Clone Issue Dialog */}
       <CloneIssueDialog
