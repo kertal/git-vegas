@@ -8,7 +8,6 @@ import {
 } from '@primer/octicons-react';
 import { GitHubItem } from '../types';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-import StarButton from './StarButton';
 
 interface ActionButtonsRowProps {
   item: GitHubItem;
@@ -105,7 +104,6 @@ const ActionButtonsRow = memo(function ActionButtonsRow({
           />
         );
       })()}
-      <StarButton item={item} size={size} />
     </Box>
   );
 });

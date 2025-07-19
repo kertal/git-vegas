@@ -26,7 +26,7 @@ import { categorizeRawSearchItems, categorizeRawEvents } from '../utils/rawDataU
 import CustomSectionsManager from '../utils/customSections';
 import CustomSectionManager from '../components/CustomSectionManager';
 import CustomSectionDisplay from '../components/CustomSectionDisplay';
-import StarredItemsSection from '../components/StarredItemsSection';
+
 import { 
   PushEventPayload, 
   CreateEventPayload, 
@@ -318,9 +318,6 @@ const OverviewTab = memo(function OverviewTab({ indexedDBSearchItems, indexedDBE
           ))}
         </Box>
       )}
-
-      {/* Starred Items Section */}
-      <StarredItemsSection onRefresh={() => {}} />
 
       {/* Issues & PRs Section */}
       <Box sx={{ mb: 3 }}>

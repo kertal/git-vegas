@@ -8,14 +8,7 @@ vi.mock('../../utils/clipboard', () => ({
   copyResultsToClipboard: vi.fn(),
 }));
 
-// Mock the StarButton component
-vi.mock('../StarButton', () => ({
-  default: ({ item, size }: { item: GitHubItem; size?: string }) => (
-    <button data-testid="star-button" data-size={size}>
-      Star {item.title}
-    </button>
-  ),
-}));
+
 
 describe('ActionButtonsRow', () => {
   const mockItem: GitHubItem = {
@@ -55,7 +48,6 @@ describe('ActionButtonsRow', () => {
     expect(screen.getByLabelText('Show description')).toBeInTheDocument();
     expect(screen.getByLabelText('Copy to clipboard')).toBeInTheDocument();
     expect(screen.getByLabelText('Clone this issue')).toBeInTheDocument();
-    expect(screen.getByTestId('star-button')).toBeInTheDocument();
   });
 
   it('does not render description button when item has no body', () => {
@@ -65,7 +57,6 @@ describe('ActionButtonsRow', () => {
     expect(screen.queryByLabelText('Show description')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Copy to clipboard')).toBeInTheDocument();
     expect(screen.getByLabelText('Clone this issue')).toBeInTheDocument();
-    expect(screen.getByTestId('star-button')).toBeInTheDocument();
   });
 
   it('calls onShowDescription when description button is clicked', () => {
@@ -112,17 +103,12 @@ describe('ActionButtonsRow', () => {
     expect(copyButton).toBeInTheDocument();
   });
 
-  it('passes correct size prop to StarButton', () => {
-    render(<ActionButtonsRow {...defaultProps} size="medium" />);
 
-    const starButton = screen.getByTestId('star-button');
-    expect(starButton).toHaveAttribute('data-size', 'medium');
-  });
 
   it('renders buttons in a horizontal flex container', () => {
     const { container } = render(<ActionButtonsRow {...defaultProps} />);
 
-    const buttonContainer = container.querySelector('[data-testid="star-button"]')?.parentElement;
+    const buttonContainer = container.querySelector('[role="button"]')?.parentElement;
     expect(buttonContainer).toBeInTheDocument();
   });
 }); 
