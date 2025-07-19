@@ -422,7 +422,7 @@ const EventView = memo(function EventView({
         <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
           <strong>Note:</strong> {viewMode === 'raw' 
             ? 'Raw view shows all events in the selected time range. Standard view shows all GitHub activity types.'
-            : 'Timeline includes up to 300 events from the past 30 days. Event latency can be 30s to 6h depending on time of day.'}
+            : 'Timeline fetches all available events with pagination (100 per page). Event latency can be 30s to 6h depending on time of day.'}
         </Text>
       </Box>
 

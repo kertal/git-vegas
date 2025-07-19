@@ -38,22 +38,24 @@ const SearchForm = memo(function SearchForm() {
     []
   );
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedValidate = useCallback(
+    debounce((username: string) => {
+      if (username.trim()) {
+        validateUsernameFormat(username);
+      }
+    }, 500),
+    [validateUsernameFormat]
+  );
+
   const handleUsernameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newUsername = e.target.value;
       setUsername(newUsername);
       debouncedSaveToLocalStorage('github-username', newUsername);
-
-      // Add real-time format validation with debouncing
-      if (newUsername.trim()) {
-        const debouncedValidate = debounce(
-          () => validateUsernameFormat(newUsername),
-          500
-        );
-        debouncedValidate();
-      }
+      debouncedValidate(newUsername);
     },
-    [debouncedSaveToLocalStorage, setUsername, validateUsernameFormat]
+    [debouncedSaveToLocalStorage, setUsername, debouncedValidate]
   );
 
   return (

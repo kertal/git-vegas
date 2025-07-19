@@ -16,7 +16,7 @@ import {
   categorizeRawEvents,
   categorizeRawSearchItems,
 } from './utils/rawDataUtils';
-import { GitHubItem, UISettings } from './types';
+import { GitHubItem, GitHubEvent, UISettings } from './types';
 
 import SearchForm from './components/SearchForm';
 import IssuesAndPRsList from './views/IssuesAndPRsList';
@@ -255,16 +255,11 @@ function App() {
 
       if (validation.errors.length === 0) {
         setError(null);
-        // Update cache with validated usernames
-        setFormSettings(prev => ({
-          ...prev,
-          username: usernameString,
-        }));
       } else {
         setError(validation.errors.join('\n'));
       }
     },
-    [setFormSettings]
+    []
   );
 
   // Handle username blur event
@@ -310,6 +305,58 @@ function App() {
     [setFormSettings]
   );
 
+  // Helper function to fetch all events with pagination
+  const fetchAllEvents = async (
+    username: string,
+    token: string,
+    onProgress: (message: string) => void
+  ): Promise<GitHubEvent[]> => {
+    const allEvents: GitHubEvent[] = [];
+    let page = 1;
+    const perPage = 100; // GitHub API max per page
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+      try {
+        onProgress(`Fetching events page ${page} for ${username}...`);
+        
+        const response = await fetch(
+          `https://api.github.com/users/${username}/events?per_page=${perPage}&page=${page}`,
+          {
+            headers: {
+              ...(token && { Authorization: `token ${token}` }),
+              Accept: 'application/vnd.github.v3+json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch events page ${page}: ${response.statusText}`);
+        }
+
+        const events = await response.json();
+        
+        // If we get fewer events than requested, we've reached the end
+        if (events.length < perPage) {
+          hasMorePages = false;
+        }
+        
+        allEvents.push(...events);
+        page++;
+        
+        // Add a small delay to respect GitHub API rate limits
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error(`Error fetching events page ${page} for ${username}:`, error);
+        // Continue with what we have so far
+        hasMorePages = false;
+      }
+    }
+
+    return allEvents;
+  };
+
   // Handle search with progress tracking
   const handleSearch = useCallback(async () => {
     if (!username.trim()) {
@@ -341,37 +388,22 @@ function App() {
       await clearEvents();
       await clearSearchItems();
 
-      // Fetch events for each username
+      // Fetch events for each username with pagination
       for (const singleUsername of usernames) {
         setCurrentUsername(singleUsername);
 
         try {
-          // Fetch events
-          const eventsResponse = await fetch(
-            `https://api.github.com/users/${singleUsername}/events?per_page=300`,
-            {
-              headers: {
-                ...(githubToken && { Authorization: `token ${githubToken}` }),
-                Accept: 'application/vnd.github.v3+json',
-              },
-            }
-          );
-
-          if (!eventsResponse.ok) {
-            throw new Error(
-              `Failed to fetch events: ${eventsResponse.statusText}`
-            );
-          }
-
-          const events = await eventsResponse.json();
-          await storeEvents('github-events-indexeddb', events, {
+          // Fetch all events with pagination
+          const allEvents = await fetchAllEvents(singleUsername, githubToken, onProgress);
+          
+          await storeEvents('github-events-indexeddb', allEvents, {
             lastFetch: Date.now(),
             usernames: [singleUsername],
             apiMode: 'events',
             startDate,
             endDate,
           });
-          onProgress(`Fetched events for ${singleUsername}`);
+          onProgress(`Fetched ${allEvents.length} events for ${singleUsername}`);
 
           // Fetch issues and PRs
           const searchResponse = await fetch(
