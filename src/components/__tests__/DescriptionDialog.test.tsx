@@ -27,6 +27,25 @@ describe('DescriptionDialog', () => {
     state: 'open',
     labels: [],
     event_id: 'event-1',
+    original: {
+      action: 'opened',
+      issue: {
+        id: 1,
+        number: 1,
+        title: 'Test Issue',
+        html_url: 'https://github.com/test/repo/issues/1',
+        state: 'open',
+        body: 'This is a test issue body with **markdown**',
+        labels: [],
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z',
+        user: {
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          html_url: 'https://github.com/testuser',
+        },
+      },
+    },
   };
 
   const defaultProps = {
@@ -57,8 +76,11 @@ describe('DescriptionDialog', () => {
     const jsonButton = screen.getByText('Raw JSON');
     fireEvent.click(jsonButton);
 
-    expect(screen.getByText('Raw JSON Object:')).toBeInTheDocument();
-    expect(screen.getByText(JSON.stringify(mockItem, null, 2))).toBeInTheDocument();
+    expect(screen.getByText('Original Event Data:')).toBeInTheDocument();
+    // Check that the JSON content is present by looking for key parts
+    expect(screen.getByText(/"action": "opened"/)).toBeInTheDocument();
+    expect(screen.getByText(/"id": 1/)).toBeInTheDocument();
+    expect(screen.getByText(/"title": "Test Issue"/)).toBeInTheDocument();
   });
 
   it('switches back to description view when Description button is clicked', () => {
@@ -115,13 +137,23 @@ describe('DescriptionDialog', () => {
     expect(screen.getByText('No description available.')).toBeInTheDocument();
   });
 
+  it('handles items without original data in JSON view', () => {
+    const itemWithoutOriginal = { ...mockItem, original: undefined };
+    render(<DescriptionDialog {...defaultProps} item={itemWithoutOriginal} />);
+
+    const jsonButton = screen.getByText('Raw JSON');
+    fireEvent.click(jsonButton);
+
+    expect(screen.getByText('No original event data available for this item.')).toBeInTheDocument();
+  });
+
   it('applies correct styling to JSON view', () => {
     render(<DescriptionDialog {...defaultProps} />);
 
     const jsonButton = screen.getByText('Raw JSON');
     fireEvent.click(jsonButton);
 
-    const jsonContainer = screen.getByText('Raw JSON Object:').parentElement;
+    const jsonContainer = screen.getByText('Original Event Data:').parentElement;
     expect(jsonContainer).toHaveStyle({
       fontFamily: 'monospace',
       whiteSpace: 'pre-wrap',

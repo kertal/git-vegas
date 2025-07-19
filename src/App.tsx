@@ -423,9 +423,14 @@ function App() {
           }
 
           const searchData = await searchResponse.json();
+          // Add original property to search items
+          const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
+            ...item,
+            original: item, // Store the original item as the original payload
+          }));
           await storeSearchItems(
             'github-search-items-indexeddb',
-            searchData.items,
+            searchItemsWithOriginal,
             {
               lastFetch: Date.now(),
               usernames: [singleUsername],

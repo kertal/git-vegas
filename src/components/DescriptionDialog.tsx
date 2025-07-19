@@ -146,9 +146,15 @@ const DescriptionDialog = memo(function DescriptionDialog({
             }}
           >
             <Text sx={{ fontSize: 0, color: 'fg.muted', mb: 2, display: 'block' }}>
-              Raw JSON Object:
+              Original Event Data:
             </Text>
-            {JSON.stringify(item, null, 2)}
+            {item.original ? (
+              JSON.stringify(item.original, null, 2)
+            ) : (
+              <Text sx={{ color: 'fg.muted', fontStyle: 'italic' }}>
+                No original event data available for this item.
+              </Text>
+            )}
           </Box>
         )}
       </Box>

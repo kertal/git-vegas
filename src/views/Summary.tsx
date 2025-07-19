@@ -159,14 +159,22 @@ const SummaryView = memo(function SummaryView({
   // Helper to determine event type
   const getEventType = (
     item: GitHubItem
-  ): 'issue' | 'pull_request' | 'comment' => {
+  ): 'issue' | 'pull_request' | 'comment' | 'commit' => {
     // Check if this is a pull request review (title starts with "Review on:")
     if (item.title.startsWith('Review on:')) {
       return 'pull_request';
     }
+    // Check if this is a review comment (title starts with "Review comment on:")
+    if (item.title.startsWith('Review comment on:')) {
+      return 'comment';
+    }
     // Check if this is a comment event (title starts with "Comment on:")
     if (item.title.startsWith('Comment on:')) {
       return 'comment';
+    }
+    // Check if this is a push event (title starts with "Pushed")
+    if (item.title.startsWith('Pushed')) {
+      return 'commit';
     }
     return item.pull_request ? 'pull_request' : 'issue';
   };
@@ -178,17 +186,21 @@ const SummaryView = memo(function SummaryView({
       'PRs - merged': GitHubItem[];
       'PRs - closed': GitHubItem[];
       'PRs - reviewed': GitHubItem[];
+      'PRs - commented': GitHubItem[];
       'Issues - opened': GitHubItem[];
       'Issues - closed': GitHubItem[];
       'Issues - commented': GitHubItem[];
+      'Commits': GitHubItem[];
     } = {
       'PRs - opened': [],
       'PRs - merged': [],
       'PRs - closed': [],
       'PRs - reviewed': [],
+      'PRs - commented': [],
       'Issues - opened': [],
       'Issues - closed': [],
       'Issues - commented': [],
+      'Commits': [],
     };
 
     // Add items from events
@@ -196,8 +208,12 @@ const SummaryView = memo(function SummaryView({
       const type = getEventType(item);
       if (type === 'pull_request' && item.title.startsWith('Review on:')) {
         groups['PRs - reviewed'].push(item);
+      } else if (type === 'comment' && item.title.startsWith('Review comment on:')) {
+        groups['PRs - commented'].push(item);
       } else if (type === 'comment') {
         groups['Issues - commented'].push(item);
+      } else if (type === 'commit') {
+        groups['Commits'].push(item);
       } else if (type === 'pull_request') {
         if (item.merged_at) {
           groups['PRs - merged'].push(item);

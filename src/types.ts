@@ -33,6 +33,7 @@ export interface GitHubItem {
     html_url: string;
   };
   draft?: boolean;
+  original?: GitHubEvent['payload'] | Record<string, unknown>; // Original payload from GitHub API
 }
 
 // Raw data storage types
