@@ -1,13 +1,17 @@
-import { memo, useEffect, ReactNode } from 'react';
+import { memo, useEffect, ReactNode, useState } from 'react';
 import {
   Box,
   Dialog,
   IconButton,
   Link,
+  Button,
+  Text,
 } from '@primer/react';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  CodeIcon,
+  FileIcon,
 } from '@primer/octicons-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -34,6 +38,8 @@ const DescriptionDialog = memo(function DescriptionDialog({
   title,
   maxHeight = '40vh',
 }: DescriptionDialogProps) {
+  const [viewMode, setViewMode] = useState<'description' | 'json'>('description');
+
   // Add keyboard navigation
   useEffect(() => {
     if (!item) return;
@@ -51,6 +57,11 @@ const DescriptionDialog = memo(function DescriptionDialog({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [item, onPrevious, onNext, onClose, hasPrevious, hasNext]);
+
+  // Reset view mode when item changes
+  useEffect(() => {
+    setViewMode('description');
+  }, [item]);
 
   if (!item) return null;
 
@@ -83,18 +94,63 @@ const DescriptionDialog = memo(function DescriptionDialog({
       )}
     >
       <Box sx={{ p: 3, maxHeight, overflow: 'auto' }}>
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            a: ({ href, children }) => (
-              <Link href={href} target="_blank" rel="noopener noreferrer">
-                {children}
-              </Link>
-            ),
-          }}
-        >
-          {item.body || 'No description available.'}
-        </ReactMarkdown>
+        {/* View Mode Toggle */}
+        <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
+          <Button
+            size="small"
+            variant={viewMode === 'description' ? 'primary' : 'invisible'}
+            onClick={() => setViewMode('description')}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
+            <FileIcon size={14} />
+            Description
+          </Button>
+          <Button
+            size="small"
+            variant={viewMode === 'json' ? 'primary' : 'invisible'}
+            onClick={() => setViewMode('json')}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+          >
+            <CodeIcon size={14} />
+            Raw JSON
+          </Button>
+        </Box>
+
+        {/* Content */}
+        {viewMode === 'description' ? (
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              a: ({ href, children }) => (
+                <Link href={href} target="_blank" rel="noopener noreferrer">
+                  {children}
+                </Link>
+              ),
+            }}
+          >
+            {item.body || 'No description available.'}
+          </ReactMarkdown>
+        ) : (
+          <Box
+            sx={{
+              bg: 'canvas.subtle',
+              border: '1px solid',
+              borderColor: 'border.default',
+              borderRadius: 2,
+              p: 2,
+              fontFamily: 'monospace',
+              fontSize: 0,
+              whiteSpace: 'pre-wrap',
+              overflow: 'auto',
+              maxHeight: 'calc(100vh - 300px)',
+            }}
+          >
+            <Text sx={{ fontSize: 0, color: 'fg.muted', mb: 2, display: 'block' }}>
+              Raw JSON Object:
+            </Text>
+            {JSON.stringify(item, null, 2)}
+          </Box>
+        )}
       </Box>
     </Dialog>
   );
