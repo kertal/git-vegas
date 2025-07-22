@@ -36,6 +36,7 @@ vi.mock('../App', async () => {
       error: null,
       searchItemsCount: 0,
       eventsCount: 0,
+      rawEventsCount: 0,
     }),
     useResultsContext: () => ({
       results: [],

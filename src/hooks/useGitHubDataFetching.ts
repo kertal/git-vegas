@@ -7,8 +7,8 @@ interface UseGitHubDataFetchingProps {
   githubToken: string;
   startDate: string;
   endDate: string;
-  searchItemsCount: number;
-  eventsCount: number;
+  indexedDBEvents: GitHubEvent[];
+  indexedDBSearchItems: GitHubEvent[];
   onError: (error: string) => void;
   storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
   clearEvents: () => Promise<void>;
@@ -28,8 +28,8 @@ export const useGitHubDataFetching = ({
   githubToken,
   startDate,
   endDate,
-  searchItemsCount,
-  eventsCount,
+  indexedDBEvents,
+  indexedDBSearchItems,
   onError,
   storeEvents,
   clearEvents,
@@ -104,15 +104,14 @@ export const useGitHubDataFetching = ({
     return allEvents;
   };
 
-  // Handle search with progress tracking
   const handleSearch = useCallback(async () => {
     if (!username.trim()) {
       onError('Please enter a GitHub username');
       return;
     }
 
-    // Check if there's existing data
-    const hasExistingData = searchItemsCount > 0 || eventsCount > 0;
+    // Check if there's existing data using actual arrays
+    const hasExistingData = indexedDBEvents.length > 0 || indexedDBSearchItems.length > 0;
     
     setLoading(true);
     onError(''); // Clear any previous errors
@@ -211,44 +210,45 @@ export const useGitHubDataFetching = ({
       }
 
       if (sortedSearchItems.length > 0) {
-        await storeSearchItems(
-          'github-search-items-indexeddb',
-          sortedSearchItems as unknown as GitHubEvent[],
-          {
-            lastFetch: Date.now(),
-            usernames: usernames,
-            apiMode: 'search',
-            startDate,
-            endDate,
-          }
-        );
+        await storeSearchItems('github-search-items-indexeddb', sortedSearchItems as unknown as GitHubEvent[], {
+          lastFetch: Date.now(),
+          usernames: usernames,
+          apiMode: 'search',
+          startDate,
+          endDate,
+        });
       }
 
-      setLoadingProgress('Search completed!');
+      setLoadingProgress('Data fetch completed successfully!');
       setCurrentUsername('');
+      
+      // Clear success message after a delay
+      setTimeout(() => {
+        setLoadingProgress('');
+      }, 2000);
+
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Error during search:', error);
       onError(
-        error instanceof Error
-          ? error.message
-          : 'An error occurred during search'
+        error instanceof Error ? error.message : 'An unexpected error occurred'
       );
+      setLoadingProgress('');
+      setCurrentUsername('');
     } finally {
       setLoading(false);
-      setLoadingProgress('');
     }
   }, [
     username,
     githubToken,
-    clearEvents,
-    clearSearchItems,
-    storeEvents,
-    storeSearchItems,
     startDate,
     endDate,
-    searchItemsCount,
-    eventsCount,
+    indexedDBEvents.length,
+    indexedDBSearchItems.length,
     onError,
+    storeEvents,
+    clearEvents,
+    storeSearchItems,
+    clearSearchItems,
   ]);
 
   return {

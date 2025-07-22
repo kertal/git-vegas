@@ -1,7 +1,6 @@
 import React, { memo, useState, useMemo, useCallback } from 'react';
 import {
   Box,
-  Button,
   Text,
   Heading,
   Checkbox,
@@ -27,6 +26,7 @@ import { ResultsContainer } from '../components/ResultsContainer';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
+import EmptyState from '../components/EmptyState';
 import './EventView.css';
 import ItemRow from '../components/ItemRow';
 
@@ -271,47 +271,13 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 
             if (displayResults.length === 0) {
               return (
-                <Box
-                  sx={{
-                    p: 4,
-                    textAlign: 'center',
-                    border: '1px solid',
-                    borderColor: 'border.default',
-                    borderRadius: 2,
-                    bg: 'canvas.subtle',
-                  }}
-                >
-                  {results.length === 0 ? (
-                    <Box>
-                      <Text sx={{ fontSize: 2, color: 'fg.muted', mb: 2 }}>
-                        No data available
-                      </Text>
-                      <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-                        Load some GitHub data to see results here.
-                      </Text>
-                    </Box>
-                  ) : (
-                    <Box>
-                      <Text sx={{ fontSize: 2, color: 'fg.muted', mb: 2 }}>
-                        No matches found
-                      </Text>
-                      <Text sx={{ fontSize: 1, color: 'fg.muted', mb: 3 }}>
-                        {searchText
-                          ? `No items found matching "${searchText}". Try a different search term, use label:name or -label:name for label filtering, or adjust your filters.`
-                          : `Your current filters don't match any of the ${results.length} available items.`}
-                      </Text>
-                      {searchText && (
-                        <Button
-                          variant="default"
-                          onClick={clearSearch}
-                          sx={{ ...buttonStyles, ml: 2 }}
-                        >
-                          Clear Search
-                        </Button>
-                      )}
-                    </Box>
-                  )}
-                </Box>
+                <EmptyState
+                  type={results.length === 0 ? 'no-data' : 'no-matches'}
+                  searchText={searchText}
+                  totalItems={results.length}
+                  showClearSearch={!!searchText}
+                  onClearSearch={clearSearch}
+                />
               );
             }
 

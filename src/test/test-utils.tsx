@@ -23,6 +23,7 @@ const mockFormContext: FormContextType = {
   error: null,
   searchItemsCount: 0,
   eventsCount: 0,
+  rawEventsCount: 0,
 };
 
 // Mock ResultsContext
