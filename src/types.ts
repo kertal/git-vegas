@@ -46,7 +46,7 @@ export interface RawDataStorage {
   metadata: {
     lastFetch: number;
     usernames: string[];
-    apiMode: 'search' | 'events' | 'events-grouped';
+    apiMode: 'search' | 'events' | 'summary';
     startDate?: string;
     endDate?: string;
   };
@@ -174,12 +174,12 @@ export interface FormContextType {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'summary';
   setUsername: (value: string) => void;
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
   setGithubToken: (value: string) => void;
-  setApiMode: (value: 'search' | 'events' | 'events-grouped') => void;
+  setApiMode: (value: 'search' | 'events' | 'summary') => void;
   handleSearch: (forceRefresh?: boolean) => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
@@ -248,7 +248,7 @@ export interface FormSettings {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'summary';
 }
 
 // UI/Display settings that control how data is presented

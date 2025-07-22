@@ -303,7 +303,7 @@ const EventView = memo(function EventView({
       {/* API Limitation Note */}
       <Box sx={{ p: 2,  bg: 'attention.subtle'}}>
         <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-          <strong>Note:</strong> Timeline fetches all available events with pagination (100 per page). Event latency can be 30s to 6h depending on time of day.
+          <strong>Note:</strong> Events includes up to 300 events from the past 30 days. Event latency can be 30s to 6h depending on time of day.
         </Text>
       </Box>
 

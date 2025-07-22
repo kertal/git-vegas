@@ -426,9 +426,9 @@ const SummaryView = memo(function SummaryView({
   const headerRight = (
     <div className="timeline-header-right">
       <FormControl>
-        <FormControl.Label visuallyHidden>Search events</FormControl.Label>
+        <FormControl.Label visuallyHidden>Search</FormControl.Label>
         <TextInput
-          placeholder="Search events..."
+          placeholder="Search"
           value={inputValue}
           onChange={e => setInputValue(e.target.value)}
           leadingVisual={SearchIcon}
@@ -450,8 +450,8 @@ const SummaryView = memo(function SummaryView({
       {/* API Limitation Note */}
       <Box sx={{ p: 2,  bg: 'attention.subtle'}}>
         <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-          <strong>Note:</strong> Timeline includes up to 300 events from the
-          past 30 days. Event latency can be 30s to 6h depending on time of day.
+          <strong>Note:</strong> This view merges Github issues, PRs, and Events. 
+          Events includes up to 300 events from the past 30 days. Event latency can be 30s to 6h depending on time of day.
         </Text>
       </Box>
 

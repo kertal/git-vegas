@@ -36,13 +36,13 @@ interface FormContextType {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'summary';
   setUsername: (username: string) => void;
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
   setGithubToken: (token: string) => void;
   setApiMode: (
-    mode: 'search' | 'events' | 'events-grouped'
+    mode: 'search' | 'events' | 'summary'
   ) => void;
   handleSearch: () => void;
   handleUsernameBlur: () => void;
@@ -93,7 +93,7 @@ function App() {
       })(),
       endDate: new Date().toISOString().split('T')[0],
       githubToken: '',
-      apiMode: 'events-grouped',
+      apiMode: 'summary',
     }
   );
 
@@ -101,22 +101,7 @@ function App() {
     isCompactView: true,
   });
 
-  // const [itemUIState] = useLocalStorage<ItemUIState>(
-  //   'github-item-ui-state',
-  //   {
-  //     descriptionVisible: {},
-  //     expanded: {},
-  //     selectedItems: new Set(),
-  //   }
-  // );
 
-  // const [usernameCache] = useLocalStorage<UsernameCache>(
-  //   'github-username-cache',
-  //   {
-  //     validatedUsernames: new Set(),
-  //     invalidUsernames: new Set(),
-  //   }
-  // );
 
   // IndexedDB storage for events
   const {
@@ -139,7 +124,7 @@ function App() {
 
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
-    if (apiMode === 'events' || apiMode === 'events-grouped') {
+    if (apiMode === 'events' || apiMode === 'summary') {
       return categorizeRawEvents(indexedDBEvents, startDate, endDate);
     } else if (apiMode === 'search') {
       // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
@@ -168,7 +153,7 @@ function App() {
 
   // Calculate grouped events count (number of unique URLs after grouping)
   const groupedEventsCount = useMemo(() => {
-    if (apiMode !== 'events-grouped') return 0;
+    if (apiMode !== 'summary') return 0;
 
     const categorizedEvents = categorizeRawEvents(
       indexedDBEvents,
@@ -297,7 +282,7 @@ function App() {
   );
 
   const setApiMode = useCallback(
-    (apiMode: 'search' | 'events' | 'events-grouped') => {
+    (apiMode: 'search' | 'events' | 'summary') => {
       setFormSettings(prev => ({ ...prev, apiMode }));
     },
     [setFormSettings]
@@ -362,9 +347,12 @@ function App() {
       return;
     }
 
+    // Check if there's existing data
+    const hasExistingData = searchItemsCount > 0 || eventsCount > 0;
+    
     setLoading(true);
     setError(null);
-    setLoadingProgress('Starting search...');
+    setLoadingProgress(hasExistingData ? 'Updating data in background...' : 'Starting search...');
 
     try {
       const usernames = username
@@ -379,12 +367,15 @@ function App() {
         const progressPercent = Math.round(
           (currentProgress / totalUsernames) * 100
         );
-        setLoadingProgress(`${message} (${progressPercent}%)`);
+        const prefix = hasExistingData ? 'Updating' : 'Fetching';
+        setLoadingProgress(`${prefix} ${message} (${progressPercent}%)`);
       };
 
-      // Clear existing data
-      await clearEvents();
-      await clearSearchItems();
+      // Only clear existing data if this is a fresh search (no existing data)
+      if (!hasExistingData) {
+        await clearEvents();
+        await clearSearchItems();
+      }
 
       // Fetch events for each username with pagination
       for (const singleUsername of usernames) {
@@ -469,6 +460,8 @@ function App() {
     storeSearchItems,
     startDate,
     endDate,
+    searchItemsCount,
+    eventsCount,
   ]);
 
   // Handle manual slot machine spin
@@ -554,7 +547,7 @@ function App() {
           <SearchForm />
           {apiMode === 'events' ? (
             <EventView items={results} rawEvents={indexedDBEvents} />
-          ) : apiMode === 'events-grouped' ? (
+          ) : apiMode === 'summary' ? (
             <SummaryView
               items={results}
               rawEvents={indexedDBEvents}

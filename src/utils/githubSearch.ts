@@ -28,7 +28,7 @@ export interface GitHubSearchParams {
   /** GitHub personal access token (optional) */
   githubToken?: string;
   /** API mode to use */
-  apiMode?: 'search' | 'events' | 'events-grouped';
+  apiMode?: 'search' | 'events' | 'summary';
 }
 
 /**

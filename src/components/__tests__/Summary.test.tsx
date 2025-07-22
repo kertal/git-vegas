@@ -10,7 +10,7 @@ const mockFormContext = {
   startDate: '2024-01-01',
   endDate: '2024-01-31',
   username: 'testuser',
-  apiMode: 'events-grouped' as const,
+      apiMode: 'summary' as const,
   setUsername: vi.fn(),
   setStartDate: vi.fn(),
   setEndDate: vi.fn(),

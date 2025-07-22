@@ -7,7 +7,7 @@ export interface ShareableState {
   username: string;
   startDate: string;
   endDate: string;
-  apiMode: 'search' | 'events' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'summary';
 
   // UI settings
   isCompactView: boolean;
@@ -39,7 +39,7 @@ const urlParamTypes: Record<
 
 // Valid values for enum-like parameters
 const validValues: Partial<Record<keyof ShareableState, string[]>> = {
-  apiMode: ['search', 'events', 'events-grouped'],
+  apiMode: ['search', 'events', 'summary'],
   filter: ['all', 'issue', 'pr', 'comment'],
   statusFilter: ['all', 'open', 'closed', 'merged'],
 };

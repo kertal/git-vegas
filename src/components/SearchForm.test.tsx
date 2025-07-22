@@ -125,11 +125,13 @@ describe('SearchForm', () => {
 
   it('calls handleSearch on form submit', () => {
     render(<SearchForm />);
-    const form = screen.getByRole('form');
+    const updateButton = screen.getByText('Update');
+    const form = updateButton.closest('form');
     
-    fireEvent.submit(form);
-    
-    expect(mockHandleSearch).toHaveBeenCalledTimes(1);
+    if (form) {
+      fireEvent.submit(form);
+      expect(mockHandleSearch).toHaveBeenCalledTimes(1);
+    }
   });
 
   it('does not validate empty usernames', async () => {

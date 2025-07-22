@@ -196,7 +196,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       <ResultsContainer
         headerLeft={
           <>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Checkbox
                 checked={
                   selectedItems instanceof Set &&
