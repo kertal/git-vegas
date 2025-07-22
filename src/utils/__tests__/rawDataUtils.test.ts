@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { transformEventToItem, categorizeRawEvents } from '../rawDataUtils';
+import { transformEventToItem, processRawEvents } from '../rawDataUtils';
 import { GitHubEvent } from '../../types';
 
 describe('rawDataUtils', () => {
@@ -120,7 +120,7 @@ describe('rawDataUtils', () => {
     });
   });
 
-  describe('categorizeRawEvents', () => {
+  describe('processRawEvents', () => {
     it('should preserve original payload in categorized events', () => {
       const mockEvents: GitHubEvent[] = [
         {
@@ -161,7 +161,7 @@ describe('rawDataUtils', () => {
         },
       ];
 
-      const results = categorizeRawEvents(mockEvents);
+      const results = processRawEvents(mockEvents);
 
       expect(results).toHaveLength(1);
       expect(results[0].original).toBeDefined();

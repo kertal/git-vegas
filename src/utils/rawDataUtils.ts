@@ -404,7 +404,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
  * @param endDate - End date for filtering (YYYY-MM-DD)
  * @returns Array of processed GitHub items
  */
-export const categorizeRawEvents = (
+export const processRawEvents = (
   rawEvents: GitHubEvent[],
   startDate?: string,
   endDate?: string

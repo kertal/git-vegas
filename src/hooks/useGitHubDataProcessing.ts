@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
-import { categorizeRawEvents, categorizeRawSearchItems } from '../utils/rawDataUtils';
+import { processRawEvents, categorizeRawSearchItems } from '../utils/rawDataUtils';
 
 interface UseGitHubDataProcessingProps {
   indexedDBEvents: GitHubEvent[];
@@ -27,7 +27,7 @@ export const useGitHubDataProcessing = ({
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
     if (apiMode === 'events' || apiMode === 'summary') {
-      return categorizeRawEvents(indexedDBEvents, startDate, endDate);
+      return processRawEvents(indexedDBEvents, startDate, endDate);
     } else if (apiMode === 'search') {
       // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
       return categorizeRawSearchItems(
@@ -50,7 +50,7 @@ export const useGitHubDataProcessing = ({
   }, [indexedDBSearchItems, startDate, endDate]);
 
   const eventsCount = useMemo(() => {
-    return categorizeRawEvents(indexedDBEvents, startDate, endDate).length;
+    return processRawEvents(indexedDBEvents, startDate, endDate).length;
   }, [indexedDBEvents, startDate, endDate]);
 
   // Calculate grouped events count (number of unique URLs after grouping)
