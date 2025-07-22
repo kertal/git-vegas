@@ -563,7 +563,6 @@ const SummaryView = memo(function SummaryView({
                         <ItemRow
                           item={mostRecent}
                           githubToken={githubToken}
-                          isCopied={isCopied}
                           onShowDescription={setSelectedItemForDialog}
                           onCloneItem={setSelectedItemForClone}
                           selected={selectedItems.has(mostRecent.event_id || mostRecent.id)}

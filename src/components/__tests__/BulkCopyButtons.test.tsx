@@ -23,7 +23,7 @@ describe('BulkCopyButtons', () => {
     renderBulkCopyButtons();
     
     expect(screen.getByText('Copy content (5)')).toBeInTheDocument();
-    expect(screen.getByText('Copy compact (5)')).toBeInTheDocument();
+    expect(screen.getByText('Copy link (5)')).toBeInTheDocument();
   });
 
   it('shows selected count when items are selected', () => {
@@ -32,7 +32,7 @@ describe('BulkCopyButtons', () => {
     });
     
     expect(screen.getByText('Copy content (3)')).toBeInTheDocument();
-    expect(screen.getByText('Copy compact (3)')).toBeInTheDocument();
+    expect(screen.getByText('Copy link (3)')).toBeInTheDocument();
   });
 
   it('calls onCopy when content button is clicked', () => {
@@ -44,11 +44,11 @@ describe('BulkCopyButtons', () => {
     expect(onCopy).toHaveBeenCalledWith('detailed');
   });
 
-  it('calls onCopy when compact button is clicked', () => {
+  it('calls onCopy when link button is clicked', () => {
     const onCopy = vi.fn();
     renderBulkCopyButtons({ onCopy });
     
-    fireEvent.click(screen.getByText('Copy compact (5)'));
+    fireEvent.click(screen.getByText('Copy link (5)'));
     
     expect(onCopy).toHaveBeenCalledWith('compact');
   });
@@ -64,15 +64,15 @@ describe('BulkCopyButtons', () => {
     expect(contentButton.closest('button')).toHaveAttribute('aria-label', 'Copied to clipboard');
   });
 
-  it('shows check icon when compact is copied', () => {
+  it('shows check icon when link is copied', () => {
     renderBulkCopyButtons({
       isCopied: vi.fn((id) => id === 'compact'),
     });
     
-    const compactButton = screen.getByText('Copy compact (5)');
-    expect(compactButton).toBeInTheDocument();
+    const linkButton = screen.getByText('Copy link (5)');
+    expect(linkButton).toBeInTheDocument();
     // Check that the button contains a check icon
-    expect(compactButton.closest('button')).toHaveAttribute('aria-label', 'Copied to clipboard');
+    expect(linkButton.closest('button')).toHaveAttribute('aria-label', 'Copied to clipboard');
   });
 
   it('does not render when showOnlyWhenSelected is true and no items are selected', () => {
@@ -82,7 +82,7 @@ describe('BulkCopyButtons', () => {
     });
     
     expect(screen.queryByText('Copy content')).not.toBeInTheDocument();
-    expect(screen.queryByText('Copy compact')).not.toBeInTheDocument();
+    expect(screen.queryByText('Copy link')).not.toBeInTheDocument();
   });
 
   it('renders when showOnlyWhenSelected is true and items are selected', () => {
@@ -92,7 +92,7 @@ describe('BulkCopyButtons', () => {
     });
     
     expect(screen.getByText('Copy content (2)')).toBeInTheDocument();
-    expect(screen.getByText('Copy compact (2)')).toBeInTheDocument();
+    expect(screen.getByText('Copy link (2)')).toBeInTheDocument();
   });
 
   it('applies custom button styles', () => {

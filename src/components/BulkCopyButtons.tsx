@@ -35,20 +35,13 @@ const BulkCopyButtons = memo(function BulkCopyButtons({
         size="small"
         onClick={() => onCopy('detailed')}
         aria-label={isContentCopied ? "Copied to clipboard" : "Copy content"}
+        leadingVisual={isContentCopied ? CheckIcon : CopyIcon}
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
           fontSize: 0,
           borderColor: 'border.default',
           ...buttonStyles,
         }}
       >
-        {isContentCopied ? (
-          <CheckIcon size={14} />
-        ) : (
-          <CopyIcon size={14} />
-        )}
         Copy content ({displayCount})
       </Button>
 
@@ -56,22 +49,15 @@ const BulkCopyButtons = memo(function BulkCopyButtons({
         variant="default"
         size="small"
         onClick={() => onCopy('compact')}
-        aria-label={isCompactCopied ? "Copied to clipboard" : "Copy compact"}
+        aria-label={isCompactCopied ? "Copied to clipboard" : "Copy link"}
+        leadingVisual={isCompactCopied ? CheckIcon : LinkIcon}
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
           fontSize: 0,
           borderColor: 'border.default',
           ...buttonStyles,
         }}
       >
-        {isCompactCopied ? (
-          <CheckIcon size={14} />
-        ) : (
-          <LinkIcon size={14} />
-        )}
-        Copy compact ({displayCount})
+        Copy link ({displayCount})
       </Button>
     </div>
   );

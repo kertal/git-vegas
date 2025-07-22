@@ -129,22 +129,19 @@ export const useGitHubDataFetching = ({
         await clearSearchItems();
       }
 
+      // Accumulate all data from all users
+      const allEvents: GitHubEvent[] = [];
+      const allSearchItems: GitHubEvent[] = [];
+
       // Fetch events for each username with pagination
       for (const singleUsername of usernames) {
         setCurrentUsername(singleUsername);
 
         try {
           // Fetch all events with pagination
-          const allEvents = await fetchAllEvents(singleUsername, githubToken, onProgress);
-          
-          await storeEvents('github-events-indexeddb', allEvents, {
-            lastFetch: Date.now(),
-            usernames: [singleUsername],
-            apiMode: 'events',
-            startDate,
-            endDate,
-          });
-          onProgress(`Fetched ${allEvents.length} events for ${singleUsername}`);
+          const userEvents = await fetchAllEvents(singleUsername, githubToken, onProgress);
+          allEvents.push(...userEvents);
+          onProgress(`Fetched ${userEvents.length} events for ${singleUsername}`);
 
           // Fetch issues and PRs
           const searchResponse = await fetch(
@@ -169,17 +166,7 @@ export const useGitHubDataFetching = ({
             ...item,
             original: item, // Store the original item as the original payload
           }));
-          await storeSearchItems(
-            'github-search-items-indexeddb',
-            searchItemsWithOriginal,
-            {
-              lastFetch: Date.now(),
-              usernames: [singleUsername],
-              apiMode: 'search',
-              startDate,
-              endDate,
-            }
-          );
+          allSearchItems.push(...searchItemsWithOriginal);
           onProgress(`Fetched issues/PRs for ${singleUsername}`);
         } catch (error) {
           console.error(`Error fetching data for ${singleUsername}:`, error);
@@ -188,6 +175,31 @@ export const useGitHubDataFetching = ({
           );
           break;
         }
+      }
+
+      // Store all accumulated data at once
+      if (allEvents.length > 0) {
+        await storeEvents('github-events-indexeddb', allEvents, {
+          lastFetch: Date.now(),
+          usernames: usernames,
+          apiMode: 'events',
+          startDate,
+          endDate,
+        });
+      }
+
+      if (allSearchItems.length > 0) {
+        await storeSearchItems(
+          'github-search-items-indexeddb',
+          allSearchItems,
+          {
+            lastFetch: Date.now(),
+            usernames: usernames,
+            apiMode: 'search',
+            startDate,
+            endDate,
+          }
+        );
       }
 
       setLoadingProgress('Search completed!');

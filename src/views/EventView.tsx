@@ -344,7 +344,6 @@ const EventView = memo(function EventView({
                 key={`${item.id}-${index}`}
                 item={item}
                 githubToken={githubToken}
-                isCopied={isCopied}
                 onShowDescription={setSelectedItemForDialog}
                 onCloneItem={setSelectedItemForClone}
                 selected={selectedItems.has(item.event_id || item.id)}

@@ -12,7 +12,6 @@ import {
 interface ItemRowProps {
   item: GitHubItem;
   githubToken?: string;
-  isCopied: (itemId: string | number) => boolean;
   onShowDescription: (item: GitHubItem) => void;
   onCloneItem: (item: GitHubItem) => void;
   selected?: boolean;
@@ -28,7 +27,6 @@ interface ItemRowProps {
 const ItemRow = ({
   item,
   githubToken,
-  isCopied,
   onShowDescription,
   onCloneItem,
   selected = false,
@@ -173,7 +171,6 @@ const ItemRow = ({
         <ActionButtonsRow
           item={item}
           githubToken={githubToken}
-          isCopied={isCopied}
           onShowDescription={onShowDescription}
           onCloneItem={onCloneItem}
           size={size}

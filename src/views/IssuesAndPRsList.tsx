@@ -322,7 +322,6 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                     key={item.id}
                     item={item}
                     githubToken={githubToken}
-                    isCopied={isCopied}
                     onShowDescription={setSelectedItemForDialog}
                     onCloneItem={setSelectedItemForClone}
                     selected={selectedItems.has(item.event_id || item.id)}
