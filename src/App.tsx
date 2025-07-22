@@ -190,6 +190,18 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Auto-fetch data if no data is available and username is provided
+  useEffect(() => {
+    const hasNoData = indexedDBEvents.length === 0 && indexedDBSearchItems.length === 0;
+    const hasUsername = username && username.trim().length > 0;
+    const isNotLoading = !loading && !initialLoading;
+    
+    if (hasNoData && hasUsername && isNotLoading) {
+      // Trigger initial fetch
+      handleSearch();
+    }
+  }, [username, indexedDBEvents.length, indexedDBSearchItems.length, loading, initialLoading, handleSearch]);
+
 
 
   return (
