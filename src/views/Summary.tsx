@@ -3,17 +3,13 @@ import {
   Text,
   Button,
   Heading,
-  ActionMenu,
-  ActionList,
   Checkbox,
   Box,
   TextInput,
   FormControl,
 } from '@primer/react';
 import {
-  CopyIcon,
   SearchIcon,
-  CheckIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 
@@ -24,6 +20,7 @@ import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
+import BulkCopyButton from '../components/BulkCopyButton';
 import ItemRow from '../components/ItemRow';
 import './Summary.css';
 import { useFormContext } from '../App';
@@ -414,37 +411,13 @@ const SummaryView = memo(function SummaryView({
           Summary
         </Heading>
       </Box>
-      <ActionMenu>
-        <ActionMenu.Button
-          variant="default"
-          size="small"
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            fontSize: 0,
-            borderColor: 'border.default',
-          }}
-        >
-          {(isClipboardCopied('compact') || isClipboardCopied('detailed')) ? (
-            <CheckIcon size={14} />
-          ) : (
-            <CopyIcon size={14} />
-          )} {' '}
-          {selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
-        </ActionMenu.Button>
-
-        <ActionMenu.Overlay>
-          <ActionList>
-            <ActionList.Item onSelect={() => copyResultsToClipboard('detailed')}>
-              Detailed Format
-            </ActionList.Item>
-            <ActionList.Item onSelect={() => copyResultsToClipboard('compact')}>
-              Compact Format
-            </ActionList.Item>
-          </ActionList>
-        </ActionMenu.Overlay>
-      </ActionMenu>
+      <BulkCopyButton
+        selectedItems={selectedItems}
+        totalItems={sortedItems.length}
+        isCopied={isClipboardCopied}
+        onCopy={copyResultsToClipboard}
+        showOnlyWhenSelected={true}
+      />
 
     </>
   );

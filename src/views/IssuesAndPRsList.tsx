@@ -7,8 +7,6 @@ import {
   ButtonGroup,
   Stack,
   Checkbox,
-  ActionMenu,
-  ActionList,
   TextInput,
   FormControl,
 } from '@primer/react';
@@ -17,8 +15,6 @@ import {
   IssueOpenedIcon,
   GitMergeIcon,
   SearchIcon,
-  CheckIcon,
-  CopyIcon,
 } from '@primer/octicons-react';
 
 import { GitHubItem } from '../types';
@@ -32,6 +28,7 @@ import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { ResultsContainer } from '../components/ResultsContainer';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
+import BulkCopyButton from '../components/BulkCopyButton';
 import './EventView.css';
 import ItemRow from '../components/ItemRow';
 
@@ -236,55 +233,14 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
               >
                 Issues and PRs
               </Heading>
-              <ActionMenu>
-                <ActionMenu.Button
-                  variant="default"
-                  size="small"
-                  sx={{
-                    ...buttonStyles,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    fontSize: 0,
-                    borderColor: 'border.default',
-                  }}
-                >
-                  {isClipboardCopied('compact') ||
-                  isClipboardCopied('detailed') ? (
-                    <CheckIcon size={14} />
-                  ) : (
-                    <CopyIcon size={14} />
-                  )}{' '}
-                  {(() => {
-                    const displayResults = areFiltersActive
-                      ? filteredResults
-                      : results;
-                    const visibleSelectedCount = displayResults.filter(
-                      (item: GitHubItem) =>
-                        selectedItems instanceof Set &&
-                        selectedItems.has(item.event_id || item.id)
-                    ).length;
-                    return visibleSelectedCount > 0
-                      ? visibleSelectedCount
-                      : displayResults.length;
-                  })()}
-                </ActionMenu.Button>
-
-                <ActionMenu.Overlay>
-                  <ActionList>
-                    <ActionList.Item
-                      onSelect={() => copyResultsToClipboard('compact')}
-                    >
-                      Compact (Links with Titles)
-                    </ActionList.Item>
-                    <ActionList.Item
-                      onSelect={() => copyResultsToClipboard('detailed')}
-                    >
-                      Detailed (Containing the content)
-                    </ActionList.Item>
-                  </ActionList>
-                </ActionMenu.Overlay>
-              </ActionMenu>
+              <BulkCopyButton
+                selectedItems={selectedItems}
+                totalItems={areFiltersActive ? filteredResults.length : results.length}
+                isCopied={isClipboardCopied}
+                onCopy={copyResultsToClipboard}
+                buttonStyles={buttonStyles}
+                showOnlyWhenSelected={true}
+              />
             </Box>
           </>
         }

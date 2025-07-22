@@ -4,17 +4,13 @@ import {
   Button,
   ButtonGroup,
   Heading,
-  ActionMenu,
-  ActionList,
   Checkbox,
   Box,
   TextInput,
   FormControl,
 } from '@primer/react';
 import {
-  CopyIcon,
   SearchIcon,
-  CheckIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,6 +21,7 @@ import { parseSearchText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
+import BulkCopyButton from '../components/BulkCopyButton';
 import ItemRow from '../components/ItemRow';
 import './EventView.css';
 import { useFormContext } from '../App';
@@ -336,39 +333,13 @@ const EventView = memo(function EventView({
           Events
         </Heading>
       </Box>
-      <ActionMenu>
-        <ActionMenu.Button
-          variant="default"
-          size="small"
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            fontSize: 0,
-            borderColor: 'border.default',
-          }}
-        >
-          {(isClipboardCopied('compact') || isClipboardCopied('detailed')) ? (
-            <CheckIcon size={14} />
-          ) : (
-            <CopyIcon size={14} />
-          )} {' '}
-          {viewMode === 'raw' 
-            ? filteredRawEvents.length 
-            : selectedItems.size > 0 ? selectedItems.size : sortedItems.length}
-        </ActionMenu.Button>
-
-        <ActionMenu.Overlay>
-          <ActionList>
-            <ActionList.Item onSelect={() => copyResultsToClipboard('detailed')}>
-              Detailed Format
-            </ActionList.Item>
-            <ActionList.Item onSelect={() => copyResultsToClipboard('compact')}>
-              Compact Format
-            </ActionList.Item>
-          </ActionList>
-        </ActionMenu.Overlay>
-      </ActionMenu>
+      <BulkCopyButton
+        selectedItems={selectedItems}
+        totalItems={viewMode === 'raw' ? filteredRawEvents.length : sortedItems.length}
+        isCopied={isClipboardCopied}
+        onCopy={copyResultsToClipboard}
+        showOnlyWhenSelected={true}
+      />
 
     </>
   );
