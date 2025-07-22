@@ -44,6 +44,8 @@ export const useGitHubDataFetching = ({
   const fetchAllEvents = async (
     username: string,
     token: string,
+    startDate: string,
+    endDate: string,
     onProgress: (message: string) => void
   ): Promise<GitHubEvent[]> => {
     const allEvents: GitHubEvent[] = [];
@@ -71,12 +73,22 @@ export const useGitHubDataFetching = ({
 
         const events = await response.json();
         
+        // Filter events by date range
+        const startDateTime = new Date(startDate).getTime();
+        const endDateTime = new Date(endDate).getTime() + 24 * 60 * 60 * 1000; // Add 24 hours to include end date
+        
+        const filteredEvents = events.filter((event: GitHubEvent) => {
+          const eventTime = new Date(event.created_at).getTime();
+          return eventTime >= startDateTime && eventTime <= endDateTime;
+        });
+        
+        allEvents.push(...filteredEvents);
+        
         // If we get fewer events than requested, we've reached the end
         if (events.length < perPage) {
           hasMorePages = false;
         }
         
-        allEvents.push(...events);
         page++;
         
         // Add a small delay to respect GitHub API rate limits
@@ -139,13 +151,14 @@ export const useGitHubDataFetching = ({
 
         try {
           // Fetch all events with pagination
-          const userEvents = await fetchAllEvents(singleUsername, githubToken, onProgress);
+          const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
           allEvents.push(...userEvents);
           onProgress(`Fetched ${userEvents.length} events for ${singleUsername}`);
 
-          // Fetch issues and PRs
+          // Fetch issues and PRs with date range filtering
+          const searchQuery = `author:${singleUsername} updated:${startDate}..${endDate}`;
           const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=author:${singleUsername}&per_page=100&sort=updated`,
+            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=100&sort=updated`,
             {
               headers: {
                 ...(githubToken && { Authorization: `token ${githubToken}` }),

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { GitHubItem } from '../../types';
 
 // Test the getEventType logic directly
-const getEventType = (item: GitHubItem): 'issue' | 'pull_request' | 'comment' | 'commit' => {
+const getEventType = (item: GitHubItem): 'issue' | 'pull_request' | 'comment' | 'commit' | 'other' => {
   // Check if this is a pull request review (title starts with "Review on:")
   if (item.title.startsWith('Review on:')) {
     return 'pull_request';
@@ -18,6 +18,21 @@ const getEventType = (item: GitHubItem): 'issue' | 'pull_request' | 'comment' | 
   // Check if this is a push event (title starts with "Pushed")
   if (item.title.startsWith('Pushed')) {
     return 'commit';
+  }
+  // Check for other event types that don't belong to issues/PRs
+  if (
+    item.title.startsWith('Created branch') ||
+    item.title.startsWith('Created tag') ||
+    item.title.startsWith('Created repository') ||
+    item.title.startsWith('Deleted branch') ||
+    item.title.startsWith('Deleted tag') ||
+    item.title.startsWith('Forked repository') ||
+    item.title.startsWith('Starred') ||
+    item.title.startsWith('Unstarred') ||
+    item.title.startsWith('Made repository public') ||
+    item.title.includes('wiki page')
+  ) {
+    return 'other';
   }
   return item.pull_request ? 'pull_request' : 'issue';
 };
@@ -145,5 +160,44 @@ describe('SummaryView - Review Comment Categorization', () => {
 
     const result = getEventType(commitItem);
     expect(result).toBe('commit');
+  });
+
+  it('should categorize other event types correctly', () => {
+    const otherEventTypes = [
+      { title: 'Created branch feature/new-feature', expected: 'other' },
+      { title: 'Created tag v1.0.0', expected: 'other' },
+      { title: 'Created repository: My awesome project', expected: 'other' },
+      { title: 'Deleted branch old-feature', expected: 'other' },
+      { title: 'Deleted tag v0.9.0', expected: 'other' },
+      { title: 'Forked repository to user/forked-repo', expected: 'other' },
+      { title: 'Starred repository', expected: 'other' },
+      { title: 'Unstarred repository', expected: 'other' },
+      { title: 'Made repository public', expected: 'other' },
+      { title: 'Created wiki page: Getting Started', expected: 'other' },
+      { title: 'Updated wiki page: Documentation', expected: 'other' },
+    ];
+
+    otherEventTypes.forEach(({ title, expected }) => {
+      const otherItem: GitHubItem = {
+        id: 1,
+        title,
+        html_url: 'https://github.com/test/repo',
+        user: {
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          html_url: 'https://github.com/testuser',
+        },
+        repository_url: 'https://api.github.com/repos/test/repo',
+        created_at: '2024-01-15T00:00:00Z',
+        updated_at: '2024-01-15T00:00:00Z',
+        state: 'open',
+        body: 'Test event',
+        labels: [],
+        event_id: 'event-1',
+      };
+
+      const result = getEventType(otherItem);
+      expect(result).toBe(expected);
+    });
   });
 }); 
