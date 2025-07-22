@@ -4,8 +4,6 @@ import {
   Button,
   Text,
   Heading,
-  ButtonGroup,
-  Stack,
   Checkbox,
   TextInput,
   FormControl,
@@ -86,7 +84,6 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   // Internal state management (previously from context)
   const [searchText, setSearchText] = useState('');
   const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
-  const [isCompactView, setIsCompactView] = useState(true);
 
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
@@ -260,25 +257,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                   sx={{ minWidth: '300px' }}
                 />
               </FormControl>
-              <Text sx={{ fontSize: 1, color: 'fg.muted' }}>View:</Text>
-              <ButtonGroup>
-                <Button
-                  size="small"
-                  variant={isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(true)}
-                  sx={buttonStyles}
-                >
-                  Compact
-                </Button>
-                <Button
-                  size="small"
-                  variant={!isCompactView ? 'primary' : 'default'}
-                  onClick={() => setIsCompactView(false)}
-                  sx={buttonStyles}
-                >
-                  Detailed
-                </Button>
-              </ButtonGroup>
+
             </Box>
           </>
         }
@@ -334,7 +313,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
               );
             }
 
-            return isCompactView ? (
+            return (
               <Box sx={{ gap: 1, p: 2 }}>
                 {displayResults.map((item: GitHubItem) => (
                   <ItemRow
@@ -353,28 +332,6 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                     size="small"
                   />
                 ))}
-              </Box>
-            ) : (
-              <Box sx={{ gap: 1, p: 2 }}>
-                <Stack sx={{ gap: 3, p: 2 }}>
-                  {displayResults.map((item: GitHubItem) => (
-                    <ItemRow
-                      key={item.id}
-                      item={item}
-                      githubToken={githubToken}
-                      isCopied={isCopied}
-                      onShowDescription={setSelectedItemForDialog}
-                      onCloneItem={setSelectedItemForClone}
-                      selected={selectedItems.has(item.event_id || item.id)}
-                      onSelect={toggleItemSelection}
-                      showCheckbox={!!toggleItemSelection}
-                      showRepo={true}
-                      showUser={true}
-                      showTime={true}
-                      size="medium"
-                    />
-                  ))}
-                </Stack>
               </Box>
             );
           })()}
