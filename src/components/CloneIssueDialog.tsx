@@ -121,32 +121,20 @@ export const CloneIssueDialog: React.FC<CloneIssueDialogProps> = ({
   return (
     <Dialog
       onClose={handleClose}
-      sx={{ width: ['90%', '80%', '600px'], maxWidth: '600px' }}
+      position="right" 
+      title="Clone Issue"
     >
-      <Dialog.Header>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text sx={{ fontSize: 3, fontWeight: 'bold' }}>
-            Clone Issue
-          </Text>
-          <IconButton
-            icon={XIcon}
-            aria-label="Close dialog"
-            onClick={handleClose}
-            variant="invisible"
-          />
-        </Box>
-      </Dialog.Header>
 
       <Box sx={{ p: 3 }}>
         <Box sx={{ mb: 3 }}>
-          <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
+          <p >
             Cloning issue from: <strong>{repositoryName}</strong>
-          </Text>
-          <Text sx={{ fontSize: 0, color: 'fg.muted', mt: 1 }}>
+          </p>
+          <p>
             Original: <a href={originalIssue.html_url} target="_blank" rel="noopener noreferrer">
               #{originalIssue.number} {originalIssue.title}
             </a>
-          </Text>
+          </p>
         </Box>
 
         {error && (

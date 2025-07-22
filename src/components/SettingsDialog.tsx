@@ -89,11 +89,7 @@ const SettingsDialog = memo(function SettingsDialog({
     <Dialog
       onClose={handleCancel}
       title="Settings"
-      sx={{
-        width: ['90%', '80%', '600px'],
-        maxWidth: '800px',
-        margin: '0 auto',
-      }}
+      position="right" 
     >
 
       <Box sx={{ p: 3 }}>

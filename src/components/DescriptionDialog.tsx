@@ -70,6 +70,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
       onClose={onClose}
       role="dialog"
       title={title || item.title}
+      position="right" 
       renderFooter={() => (
         <div>
           <IconButton
