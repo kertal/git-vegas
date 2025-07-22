@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, useCallback } from 'react';
+import { memo, useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Text,
   Button,
@@ -7,6 +7,7 @@ import {
   Box,
   TextInput,
   FormControl,
+  Pagination,
 } from '@primer/react';
 import {
   SearchIcon,
@@ -44,6 +45,10 @@ const EventView = memo(function EventView({
   // Internal state for search
   const [searchText, setSearchText] = useState('');
   
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 100;
+  
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
@@ -66,10 +71,6 @@ const EventView = memo(function EventView({
       return newSet;
     });
   }, []);
-
-  const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(items.map(item => item.event_id || item.id)));
-  }, [items]);
 
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
@@ -145,6 +146,27 @@ const EventView = memo(function EventView({
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedItems = sortedItems.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((_event: React.MouseEvent, page: number) => {
+    setCurrentPage(page);
+  }, []);
+
+  // Select all items on current page
+  const selectAllItems = useCallback(() => {
+    setSelectedItems(new Set(paginatedItems.map(item => item.event_id || item.id)));
+  }, [paginatedItems]);
+
   // Internal copy handler for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
     const selectedItemsArray =
@@ -175,30 +197,30 @@ const EventView = memo(function EventView({
 
   // Calculate select all checkbox state
   const selectAllState = useMemo(() => {
-    if (sortedItems.length === 0) {
+    if (paginatedItems.length === 0) {
       return { checked: false, indeterminate: false };
     }
 
-    const selectedCount = sortedItems.filter(item =>
+    const selectedCount = paginatedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
 
     if (selectedCount === 0) {
       return { checked: false, indeterminate: false };
-    } else if (selectedCount === sortedItems.length) {
+    } else if (selectedCount === paginatedItems.length) {
       return { checked: true, indeterminate: false };
     } else {
       return { checked: false, indeterminate: true };
     }
-  }, [sortedItems, selectedItems]);
+  }, [paginatedItems, selectedItems]);
 
   // Handle select all checkbox click
   const handleSelectAllChange = () => {
-    const selectedCount = sortedItems.filter(item =>
+    const selectedCount = paginatedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
 
-    if (selectedCount === sortedItems.length) {
+    if (selectedCount === paginatedItems.length) {
       // All are selected, clear selection
       clearSelection?.();
     } else {
@@ -266,6 +288,11 @@ const EventView = memo(function EventView({
           }}
         >
           Events
+          {totalPages > 1 && (
+            <Text as="span" sx={{ fontSize: 1, color: 'fg.muted', ml: 2 }}>
+              (Page {currentPage} of {totalPages})
+            </Text>
+          )}
         </Heading>
       </Box>
       <BulkCopyButtons
@@ -339,7 +366,7 @@ const EventView = memo(function EventView({
         ) : (
           // Standard timeline view
           <>
-            {sortedItems.map((item, index) => (
+            {paginatedItems.map((item, index) => (
               <ItemRow
                 key={`${item.id}-${index}`}
                 item={item}
@@ -355,6 +382,25 @@ const EventView = memo(function EventView({
                 size="small"
               />
             ))}
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                mt: 4, 
+                pb: 3 
+              }}>
+                <Pagination
+                  pageCount={totalPages}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  showPages={{ narrow: false }}
+                  marginPageCount={2}
+                  surroundingPageCount={2}
+                />
+              </Box>
+            )}
           </>
         )}
       </div>
