@@ -2,7 +2,6 @@ import { memo, useMemo, useState, useCallback } from 'react';
 import {
   Text,
   Button,
-  ButtonGroup,
   Heading,
   Checkbox,
   Box,
@@ -13,7 +12,6 @@ import {
   SearchIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
-import { formatDistanceToNow } from 'date-fns';
 import { ResultsContainer } from '../components/ResultsContainer';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
@@ -28,8 +26,6 @@ import { useFormContext } from '../App';
 
 
 
-type ViewMode = 'standard' | 'raw';
-
 interface EventViewProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
@@ -39,11 +35,8 @@ const EventView = memo(function EventView({
   items,
   rawEvents = [],
 }: EventViewProps) {
-  // Get GitHub token and date range from form context
-  const { githubToken, startDate, endDate } = useFormContext();
-  
-  // Internal state for view mode
-  const [viewMode, setViewMode] = useState<ViewMode>('standard');
+  // Get GitHub token from form context
+  const { githubToken } = useFormContext();
   
   // Internal state for selection
   const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
@@ -89,51 +82,7 @@ const EventView = memo(function EventView({
     return parseSearchText(searchText || '');
   }, [searchText]);
 
-  // Filter raw events by date range and search text
-  const filteredRawEvents = useMemo(() => {
-    // First filter by date range
-    let dateFilteredEvents = rawEvents;
-    if (startDate || endDate) {
-      const startDateTime = startDate ? new Date(startDate).getTime() : 0;
-      const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
-      
-      dateFilteredEvents = rawEvents.filter(event => {
-        const eventTime = new Date(event.created_at).getTime();
-        return eventTime >= startDateTime && eventTime <= endDateTime;
-      });
-    }
 
-    // Then filter by search text if provided
-    if (!searchText || !searchText.trim()) {
-      return dateFilteredEvents;
-    }
-
-    const { userFilters, cleanText } = parsedSearchText;
-
-    return dateFilteredEvents.filter(event => {
-      // Check user filters
-      if (userFilters.length > 0) {
-        const eventUser = event.actor.login.toLowerCase();
-        const matchesUser = userFilters.some(userFilter =>
-          eventUser === userFilter.toLowerCase()
-        );
-        if (!matchesUser) return false;
-      }
-
-      // If there's clean text remaining, search in event type, repo name, and actor
-      if (cleanText) {
-        const searchLower = cleanText.toLowerCase();
-        const typeMatch = event.type.toLowerCase().includes(searchLower);
-        const repoMatch = event.repo?.name.toLowerCase().includes(searchLower);
-        const actorMatch = event.actor.login.toLowerCase().includes(searchLower);
-        const payloadMatch = JSON.stringify(event.payload).toLowerCase().includes(searchLower);
-        return typeMatch || repoMatch || actorMatch || payloadMatch;
-      }
-
-      // If only user filters were used, event passed checks above
-      return true;
-    });
-  }, [rawEvents, searchText, parsedSearchText, startDate, endDate]);
 
   // Filter items by search text (for standard view)
   const filteredItems = useMemo(() => {
@@ -198,40 +147,24 @@ const EventView = memo(function EventView({
 
   // Internal copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    if (viewMode === 'raw') {
-      // Copy raw events
-      const eventsToCopy = filteredRawEvents;
-      const eventsText = eventsToCopy.map(event => 
-        `${event.type} by ${event.actor.login} in ${event.repo.name} - ${event.created_at}\n${JSON.stringify(event, null, 2)}`
-      ).join('\n\n');
-      
-      try {
-        await navigator.clipboard.writeText(eventsText);
-        triggerCopy(format);
-      } catch (error) {
-        console.error('Failed to copy raw events:', error);
-      }
-    } else {
-      // Regular copy for standard view
-      const selectedItemsArray =
-        selectedItems.size > 0
-          ? sortedItems.filter(item =>
-              selectedItems.has(item.event_id || item.id)
-            )
-          : sortedItems;
+    const selectedItemsArray =
+      selectedItems.size > 0
+        ? sortedItems.filter(item =>
+            selectedItems.has(item.event_id || item.id)
+          )
+        : sortedItems;
 
-      await copyToClipboard(selectedItemsArray, {
-        isCompactView: format === 'compact',
-        onSuccess: () => {
-          // Trigger visual feedback via copy feedback system
-          triggerCopy(format);
-        },
-        onError: (error: Error) => {
-          console.error('Failed to copy results:', error);
-        },
-      });
-    }
-  }, [sortedItems, selectedItems, triggerCopy, viewMode, filteredRawEvents]);
+    await copyToClipboard(selectedItemsArray, {
+      isCompactView: format === 'compact',
+      onSuccess: () => {
+        // Trigger visual feedback via copy feedback system
+        triggerCopy(format);
+      },
+      onError: (error: Error) => {
+        console.error('Failed to copy results:', error);
+      },
+    });
+  }, [sortedItems, selectedItems, triggerCopy]);
 
   // Clipboard feedback helper
   const isClipboardCopied = useCallback((itemId: string | number) => {
@@ -335,7 +268,7 @@ const EventView = memo(function EventView({
       </Box>
       <BulkCopyButton
         selectedItems={selectedItems}
-        totalItems={viewMode === 'raw' ? filteredRawEvents.length : sortedItems.length}
+        totalItems={sortedItems.length}
         isCopied={isClipboardCopied}
         onCopy={copyResultsToClipboard}
         showOnlyWhenSelected={true}
@@ -358,27 +291,6 @@ const EventView = memo(function EventView({
           sx={{ minWidth: '300px' }}
         />
       </FormControl>
-
-      <div className="timeline-view-controls">
-        <Text className="timeline-view-label">View:</Text>
-        <ButtonGroup>
-          <Button
-            size="small"
-            variant={viewMode === 'standard' ? 'primary' : 'default'}
-            onClick={() => setViewMode('standard')}
-          >
-            Single
-          </Button>
-
-          <Button
-            size="small"
-            variant={viewMode === 'raw' ? 'primary' : 'default'}
-            onClick={() => setViewMode('raw')}
-          >
-            Raw
-          </Button>
-        </ButtonGroup>
-      </div>
     </div>
   );
 
@@ -391,15 +303,13 @@ const EventView = memo(function EventView({
       {/* API Limitation Note */}
       <Box sx={{ p: 2,  bg: 'attention.subtle'}}>
         <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-          <strong>Note:</strong> {viewMode === 'raw' 
-            ? 'Raw view shows all events in the selected time range. Standard view shows all GitHub activity types.'
-            : 'Timeline fetches all available events with pagination (100 per page). Event latency can be 30s to 6h depending on time of day.'}
+          <strong>Note:</strong> Timeline fetches all available events with pagination (100 per page). Event latency can be 30s to 6h depending on time of day.
         </Text>
       </Box>
 
       {/* Timeline content */}
       <div className="timeline-content">
-        {(viewMode === 'raw' ? filteredRawEvents.length === 0 : sortedItems.length === 0) ? (
+        {sortedItems.length === 0 ? (
           // Empty state - keep search box visible
           <div className="timeline-empty">
             <Text color="fg.muted">
@@ -422,58 +332,6 @@ const EventView = memo(function EventView({
                   Clear search
                 </Button>
               </Box>
-            )}
-          </div>
-        ) : viewMode === 'raw' ? (
-          // Raw JSON view - show actual GitHub API events
-          <div className="timeline-raw-container">
-            {filteredRawEvents.length > 0 ? (
-              filteredRawEvents
-                .sort(
-                  (a, b) =>
-                    new Date(b.created_at).getTime() -
-                    new Date(a.created_at).getTime()
-                )
-                .map((event, index) => (
-                  <div
-                    key={`${event.id}-${index}`}
-                    className="timeline-raw-event"
-                  >
-                    <div className="timeline-raw-event-header">
-                      <div className="timeline-raw-event-header-left">
-                        <Text className="timeline-raw-event-type">
-                          {event.type}
-                        </Text>
-                        <Text className="timeline-raw-event-meta">
-                          by {event.actor.login} in {event.repo.name}
-                        </Text>
-                      </div>
-                      <Text className="timeline-raw-event-time">
-                        {formatDistanceToNow(new Date(event.created_at), {
-                          addSuffix: true,
-                        })}
-                      </Text>
-                    </div>
-                    <div className="timeline-raw-event-content">
-                      <pre
-                        style={{
-                          margin: 0,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {JSON.stringify(event, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                ))
-            ) : (
-              <div className="timeline-raw-empty">
-                <Text color="fg.muted">
-                  No raw events available. Raw events are only available after
-                  performing a new search in events mode.
-                </Text>
-              </div>
             )}
           </div>
         ) : (
