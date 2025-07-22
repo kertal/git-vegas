@@ -25,7 +25,6 @@ const mockFormContext = {
   searchItemsCount: 0,
   eventsCount: 0,
   rawEventsCount: 0,
-  groupedEventsCount: 0,
 };
 
 // Mock the useFormContext hook

@@ -50,7 +50,6 @@ interface FormContextType {
   searchItemsCount: number;
   eventsCount: number;
   rawEventsCount: number;
-  groupedEventsCount: number;
 }
 
 const FormContext = createContext<FormContextType | null>(null);
@@ -116,7 +115,6 @@ function App() {
     results,
     searchItemsCount,
     eventsCount,
-    groupedEventsCount,
     rawEventsCount,
   } = useGitHubDataProcessing({
     indexedDBEvents,
@@ -257,7 +255,6 @@ function App() {
             searchItemsCount,
             eventsCount,
             rawEventsCount,
-            groupedEventsCount,
           }}
         >
           <SearchForm />

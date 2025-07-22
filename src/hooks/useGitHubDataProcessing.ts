@@ -14,7 +14,6 @@ interface UseGitHubDataProcessingReturn {
   results: GitHubItem[];
   searchItemsCount: number;
   eventsCount: number;
-  groupedEventsCount: number;
   rawEventsCount: number;
 }
 
@@ -55,33 +54,7 @@ export const useGitHubDataProcessing = ({
   }, [indexedDBEvents, startDate, endDate]);
 
   // Calculate grouped events count (number of unique URLs after grouping)
-  const groupedEventsCount = useMemo(() => {
-    if (apiMode !== 'summary') return 0;
-
-    const categorizedEvents = categorizeRawEvents(
-      indexedDBEvents,
-      startDate,
-      endDate
-    );
-
-    // Group by URL to count unique items
-    const urlGroups: { [url: string]: GitHubItem[] } = {};
-
-    categorizedEvents.forEach(item => {
-      let groupingUrl = item.html_url;
-      // For comments, extract the issue/PR URL from the comment URL
-      if (item.title.startsWith('Comment on:')) {
-        groupingUrl = groupingUrl.split('#')[0];
-      }
-
-      if (!urlGroups[groupingUrl]) {
-        urlGroups[groupingUrl] = [];
-      }
-      urlGroups[groupingUrl].push(item);
-    });
-
-    return Object.keys(urlGroups).length;
-  }, [indexedDBEvents, startDate, endDate, apiMode]);
+  // (Removed groupedEventsCount)
 
   const rawEventsCount = indexedDBEvents.length;
 
@@ -89,7 +62,6 @@ export const useGitHubDataProcessing = ({
     results,
     searchItemsCount,
     eventsCount,
-    groupedEventsCount,
     rawEventsCount,
   };
 }; 

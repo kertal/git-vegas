@@ -190,7 +190,6 @@ export interface FormContextType {
   searchItemsCount: number;
   eventsCount: number;
   rawEventsCount?: number;
-  groupedEventsCount?: number;
 }
 
 export interface ResultsContextType {

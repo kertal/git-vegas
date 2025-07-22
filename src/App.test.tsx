@@ -68,7 +68,6 @@ vi.mock('./hooks/useGitHubDataProcessing', () => ({
     results: [],
     searchItemsCount: 0,
     eventsCount: 0,
-    groupedEventsCount: 0,
     rawEventsCount: 0,
   })),
 }));

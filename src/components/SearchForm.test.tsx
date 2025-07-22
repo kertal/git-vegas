@@ -28,7 +28,6 @@ vi.mock('../App', () => ({
     error: null,
     searchItemsCount: 0,
     rawEventsCount: 0,
-    groupedEventsCount: 0,
   }),
 }));
 
