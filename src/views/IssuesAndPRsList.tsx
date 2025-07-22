@@ -26,7 +26,7 @@ import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { ResultsContainer } from '../components/ResultsContainer';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
-import BulkCopyButton from '../components/BulkCopyButton';
+import BulkCopyButtons from '../components/BulkCopyButtons';
 import './EventView.css';
 import ItemRow from '../components/ItemRow';
 
@@ -121,7 +121,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     setSelectedItems(new Set());
   }, []);
 
-  // Copy results to clipboard
+  // Copy results to clipboard for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
     const selectedItemsArray = selectedItems.size > 0
       ? results.filter((item: GitHubItem) => selectedItems.has(item.event_id || item.id))
@@ -137,6 +137,8 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       },
     });
   }, [results, selectedItems, triggerCopy]);
+
+
 
   // Clipboard feedback helper
   const isClipboardCopied = useCallback((itemId: string | number) => {
@@ -230,7 +232,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
               >
                 Issues and PRs
               </Heading>
-              <BulkCopyButton
+              <BulkCopyButtons
                 selectedItems={selectedItems}
                 totalItems={areFiltersActive ? filteredResults.length : results.length}
                 isCopied={isClipboardCopied}

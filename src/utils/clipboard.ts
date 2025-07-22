@@ -316,6 +316,17 @@ export const generateHtmlFormat = (
 };
 
 /**
+ * Generates a list of links from GitHub items
+ */
+export const generateLinksFormat = (items: GitHubItem[]): string => {
+  return items
+    .map(item => `${item.title}\n${item.html_url}`)
+    .join('\n\n');
+};
+
+
+
+/**
  * Copies GitHub items to clipboard with both text and HTML formats
  */
 export const copyResultsToClipboard = async (

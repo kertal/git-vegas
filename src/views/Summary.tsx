@@ -20,7 +20,7 @@ import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
-import BulkCopyButton from '../components/BulkCopyButton';
+import BulkCopyButtons from '../components/BulkCopyButtons';
 import ItemRow from '../components/ItemRow';
 import './Summary.css';
 import { useFormContext } from '../App';
@@ -259,7 +259,7 @@ const SummaryView = memo(function SummaryView({
     setSelectedItems(new Set(allDisplayedItems.map(item => item.event_id || item.id)));
   }, [actionGroups]);
 
-  // Internal copy handler
+  // Internal copy handler for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
     // Convert to the format expected by clipboard utility
     const groupedData = Object.entries(actionGroups)
@@ -303,6 +303,8 @@ const SummaryView = memo(function SummaryView({
       },
     });
   }, [actionGroups, selectedItems, triggerCopy]);
+
+
 
   // Clipboard feedback helper
   const isClipboardCopied = useCallback((itemId: string | number) => {
@@ -411,7 +413,7 @@ const SummaryView = memo(function SummaryView({
           Summary
         </Heading>
       </Box>
-      <BulkCopyButton
+      <BulkCopyButtons
         selectedItems={selectedItems}
         totalItems={sortedItems.length}
         isCopied={isClipboardCopied}

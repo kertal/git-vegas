@@ -19,7 +19,7 @@ import { parseSearchText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
-import BulkCopyButton from '../components/BulkCopyButton';
+import BulkCopyButtons from '../components/BulkCopyButtons';
 import ItemRow from '../components/ItemRow';
 import './EventView.css';
 import { useFormContext } from '../App';
@@ -145,7 +145,7 @@ const EventView = memo(function EventView({
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 
-  // Internal copy handler
+  // Internal copy handler for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
     const selectedItemsArray =
       selectedItems.size > 0
@@ -165,6 +165,8 @@ const EventView = memo(function EventView({
       },
     });
   }, [sortedItems, selectedItems, triggerCopy]);
+
+
 
   // Clipboard feedback helper
   const isClipboardCopied = useCallback((itemId: string | number) => {
@@ -266,7 +268,7 @@ const EventView = memo(function EventView({
           Events
         </Heading>
       </Box>
-      <BulkCopyButton
+      <BulkCopyButtons
         selectedItems={selectedItems}
         totalItems={sortedItems.length}
         isCopied={isClipboardCopied}
