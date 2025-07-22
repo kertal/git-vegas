@@ -4,16 +4,11 @@ import {
   Heading,
   Checkbox,
   Box,
-  TextInput,
-  FormControl,
   Pagination,
 } from '@primer/react';
-import {
-  SearchIcon,
-} from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
-import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+// import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
@@ -24,6 +19,7 @@ import ItemRow from '../components/ItemRow';
 import EmptyState from '../components/EmptyState';
 import './EventView.css';
 import { useFormContext } from '../App';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 
 
@@ -40,21 +36,21 @@ const EventView = memo(function EventView({
   const { githubToken } = useFormContext();
   
   // Internal state for selection
-  const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
+  const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('eventView-selectedItems', new Set());
   
-  // Internal state for search
-  const [searchText, setSearchText] = useState('');
+  // Internal state for search (search functionality temporarily hidden)
+  const [searchText] = useLocalStorage<string>('eventView-searchText', '');
   
   // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useLocalStorage<number>('eventView-currentPage', 1);
   const itemsPerPage = 100;
   
-  // Use debounced search hook
-  const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
-    searchText,
-    setSearchText,
-    300
-  );
+  // Use debounced search hook (search functionality temporarily hidden)
+  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
+  //   searchText,
+  //   setSearchText,
+  //   300
+  // );
 
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
@@ -309,17 +305,7 @@ const EventView = memo(function EventView({
   // Header right content
   const headerRight = (
     <div className="timeline-header-right">
-      <FormControl>
-        <FormControl.Label visuallyHidden>Search events</FormControl.Label>
-        <TextInput
-          placeholder="Search events..."
-          value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
-          leadingVisual={SearchIcon}
-          size="small"
-          sx={{ minWidth: '300px' }}
-        />
-      </FormControl>
+      {/* Search functionality temporarily hidden */}
     </div>
   );
 
@@ -343,7 +329,7 @@ const EventView = memo(function EventView({
             type={hasSearchText ? 'no-search-results' : !hasRawEvents ? 'no-cached-data' : 'no-data'}
             searchText={searchText}
             showClearSearch={!!searchText}
-            onClearSearch={clearSearch}
+            onClearSearch={() => {}}
           />
         ) : (
           // Standard timeline view

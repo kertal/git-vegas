@@ -1,4 +1,4 @@
-import React from 'react';
+// ... existing code ...
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
 import EmptyState from '../EmptyState';

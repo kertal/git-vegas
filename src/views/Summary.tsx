@@ -5,11 +5,8 @@ import {
   Heading,
   Checkbox,
   Box,
-  TextInput,
-  FormControl,
 } from '@primer/react';
 import {
-  SearchIcon,
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@primer/octicons-react';
@@ -17,7 +14,7 @@ import { GitHubItem, GitHubEvent } from '../types';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+// import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
@@ -27,7 +24,7 @@ import ItemRow from '../components/ItemRow';
 import EmptyState from '../components/EmptyState';
 import './Summary.css';
 import { useFormContext } from '../App';
-
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 
 interface SummaryProps {
@@ -45,20 +42,20 @@ const SummaryView = memo(function SummaryView({
   const { githubToken, startDate, endDate } = useFormContext();
   
   // Internal state for selection
-  const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
+  const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('summary-selectedItems', new Set());
   
   // Internal state for search
-  const [searchText, setSearchText] = useState('');
+  const [searchText] = useLocalStorage<string>('summary-searchText', '');
   
   // Internal state for collapsed sections
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('summary-collapsedSections', new Set());
   
-  // Use debounced search hook
-  const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
-    searchText,
-    setSearchText,
-    300
-  );
+  // Use debounced search hook (search functionality temporarily hidden)
+  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
+  //   searchText,
+  //   setSearchText,
+  //   300
+  // );
 
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
@@ -465,19 +462,7 @@ const SummaryView = memo(function SummaryView({
   // Header right content
   const headerRight = (
     <div className="timeline-header-right">
-      <FormControl>
-        <FormControl.Label visuallyHidden>Search</FormControl.Label>
-        <TextInput
-          placeholder="Search"
-          value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
-          leadingVisual={SearchIcon}
-          size="small"
-          sx={{ minWidth: '300px' }}
-        />
-      </FormControl>
-
-
+      {/* Search functionality temporarily hidden */}
     </div>
   );
 
@@ -502,7 +487,7 @@ const SummaryView = memo(function SummaryView({
             type={hasSearchText ? 'no-search-results' : !hasRawEvents ? 'no-cached-data' : 'no-data'}
             searchText={searchText}
             showClearSearch={!!searchText}
-            onClearSearch={clearSearch}
+            onClearSearch={() => {}}
           />
         ) : (
           // Grouped view - organize events by individual issues/PRs and by type

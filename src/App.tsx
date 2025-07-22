@@ -170,10 +170,6 @@ function App() {
       .filter(Boolean);
   }, [results]);
 
-  // Real-time username format validation
-
-
-
   // Handle manual slot machine spin
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);

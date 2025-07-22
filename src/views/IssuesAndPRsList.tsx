@@ -4,19 +4,16 @@ import {
   Text,
   Heading,
   Checkbox,
-  TextInput,
-  FormControl,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
   IssueOpenedIcon,
   GitMergeIcon,
-  SearchIcon,
 } from '@primer/octicons-react';
 
 import { GitHubItem } from '../types';
 
-import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+// import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useFormContext } from '../App';
 import { filterByText } from '../utils/resultsUtils';
@@ -29,6 +26,7 @@ import BulkCopyButtons from '../components/BulkCopyButtons';
 import EmptyState from '../components/EmptyState';
 import './EventView.css';
 import ItemRow from '../components/ItemRow';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 
 // Props interface
 interface IssuesAndPRsListProps {
@@ -82,18 +80,18 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   const { githubToken } = useFormContext();
 
   // Internal state management (previously from context)
-  const [searchText, setSearchText] = useState('');
-  const [selectedItems, setSelectedItems] = useState<Set<string | number>>(new Set());
+  const [searchText] = useLocalStorage<string>('issuesAndPRs-searchText', '');
+  const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('issuesAndPRs-selectedItems', new Set());
 
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
-  // Use debounced search hook
-  const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
-    searchText,
-    setSearchText,
-    300
-  );
+  // Use debounced search hook (search functionality temporarily hidden)
+  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
+  //   searchText,
+  //   setSearchText,
+  //   300
+  // );
 
   // Apply search text filtering to results
   const filteredResults = useMemo(() => {
@@ -245,22 +243,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         }
         headerRight={
           <>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FormControl>
-                <FormControl.Label visuallyHidden>
-                  Search issues and PRs
-                </FormControl.Label>
-                <TextInput
-                  placeholder="Search issues and PRs"
-                  value={inputValue}
-                  onChange={e => setInputValue(e.target.value)}
-                  leadingVisual={SearchIcon}
-                  size="small"
-                  sx={{ minWidth: '300px' }}
-                />
-              </FormControl>
-
-            </Box>
+            {/* Search functionality temporarily hidden */}
           </>
         }
       >
@@ -276,7 +259,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                   searchText={searchText}
                   totalItems={results.length}
                   showClearSearch={!!searchText}
-                  onClearSearch={clearSearch}
+                  onClearSearch={() => {}}
                 />
               );
             }
