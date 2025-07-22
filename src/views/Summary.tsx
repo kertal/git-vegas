@@ -543,7 +543,7 @@ const SummaryView = memo(function SummaryView({
                       sx={{ flexShrink: 0 }}
                       aria-label={`Select all events in ${groupName} section`}
                     />
-                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', mb: 2 }}>
+                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
                       {groupName}
                     </Heading>
                   </Box>
