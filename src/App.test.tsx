@@ -44,9 +44,7 @@ vi.mock('./views/Summary', () => ({
   default: () => <div data-testid="summary-view">Summary View</div>,
 }));
 
-vi.mock('./views/OverviewTab', () => ({
-  default: () => <div data-testid="overview-tab">Overview Tab</div>,
-}));
+
 
 vi.mock('./views/IssuesAndPRsList', () => ({
   default: () => <div data-testid="issues-prs-list">Issues and PRs List</div>,

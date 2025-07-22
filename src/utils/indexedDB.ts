@@ -16,7 +16,7 @@ export interface EventsData {
   metadata: {
     lastFetch: number;
     usernames: string[];
-    apiMode: 'search' | 'events';
+    apiMode: 'search' | 'events' | 'events-grouped';
     startDate?: string;
     endDate?: string;
   };

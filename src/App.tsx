@@ -22,7 +22,6 @@ import SearchForm from './components/SearchForm';
 import IssuesAndPRsList from './views/IssuesAndPRsList';
 import EventView from './views/EventView';
 import SummaryView from './views/Summary';
-import OverviewTab from './views/OverviewTab';
 import SettingsDialog from './components/SettingsDialog';
 import { StorageManager } from './components/StorageManager';
 import { LoadingIndicator } from './components/LoadingIndicator';
@@ -37,13 +36,13 @@ interface FormContextType {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'events-grouped';
   setUsername: (username: string) => void;
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
   setGithubToken: (token: string) => void;
   setApiMode: (
-    mode: 'search' | 'events' | 'overview' | 'events-grouped'
+    mode: 'search' | 'events' | 'events-grouped'
   ) => void;
   handleSearch: () => void;
   handleUsernameBlur: () => void;
@@ -94,7 +93,7 @@ function App() {
       })(),
       endDate: new Date().toISOString().split('T')[0],
       githubToken: '',
-      apiMode: 'overview',
+      apiMode: 'events-grouped',
     }
   );
 
@@ -150,7 +149,6 @@ function App() {
         endDate
       );
     } else {
-      // For 'overview' mode, return empty array as it handles its own data
       return [];
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
@@ -299,7 +297,7 @@ function App() {
   );
 
   const setApiMode = useCallback(
-    (apiMode: 'search' | 'events' | 'overview' | 'events-grouped') => {
+    (apiMode: 'search' | 'events' | 'events-grouped') => {
       setFormSettings(prev => ({ ...prev, apiMode }));
     },
     [setFormSettings]
@@ -556,13 +554,6 @@ function App() {
           <SearchForm />
           {apiMode === 'events' ? (
             <EventView items={results} rawEvents={indexedDBEvents} />
-          ) : apiMode === 'overview' ? (
-            <OverviewTab
-              indexedDBSearchItems={
-                indexedDBSearchItems as unknown as GitHubItem[]
-              }
-              indexedDBEvents={indexedDBEvents}
-            />
           ) : apiMode === 'events-grouped' ? (
             <SummaryView
               items={results}

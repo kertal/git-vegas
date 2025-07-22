@@ -7,11 +7,10 @@ export interface ShareableState {
   username: string;
   startDate: string;
   endDate: string;
-  apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'events-grouped';
 
   // UI settings
   isCompactView: boolean;
-  timelineViewMode: 'standard' | 'raw' | 'grouped';
 
   // Filter settings
   filter: 'all' | 'issue' | 'pr' | 'comment';
@@ -31,7 +30,6 @@ const urlParamTypes: Record<
   endDate: 'string',
   apiMode: 'string',
   isCompactView: 'boolean',
-  timelineViewMode: 'string',
   filter: 'string',
   statusFilter: 'string',
   excludedLabels: 'string[]',
@@ -41,7 +39,7 @@ const urlParamTypes: Record<
 
 // Valid values for enum-like parameters
 const validValues: Partial<Record<keyof ShareableState, string[]>> = {
-  apiMode: ['search', 'events', 'overview', 'events-grouped'],
+  apiMode: ['search', 'events', 'events-grouped'],
   filter: ['all', 'issue', 'pr', 'comment'],
   statusFilter: ['all', 'open', 'closed', 'merged'],
 };
@@ -151,7 +149,6 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
     endDate: new Date().toISOString().split('T')[0],
     apiMode: 'search',
     isCompactView: false,
-    timelineViewMode: 'standard',
     filter: 'all',
     statusFilter: 'all',
     excludedLabels: [],
@@ -252,7 +249,6 @@ export function extractShareableState(
     endDate: formSettings.endDate,
     apiMode: formSettings.apiMode,
     isCompactView: uiSettings.isCompactView,
-    timelineViewMode: uiSettings.timelineViewMode,
     filter: 'all',
     statusFilter: 'all',
     excludedLabels: [],
@@ -288,9 +284,6 @@ export function applyUrlOverrides(
     ...uiSettings,
     ...(urlState.isCompactView !== undefined && {
       isCompactView: urlState.isCompactView,
-    }),
-    ...(urlState.timelineViewMode !== undefined && {
-      timelineViewMode: urlState.timelineViewMode,
     }),
   };
 

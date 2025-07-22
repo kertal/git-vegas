@@ -46,7 +46,7 @@ export interface RawDataStorage {
   metadata: {
     lastFetch: number;
     usernames: string[];
-    apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
+    apiMode: 'search' | 'events' | 'events-grouped';
     startDate?: string;
     endDate?: string;
   };
@@ -174,12 +174,12 @@ export interface FormContextType {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'events-grouped';
   setUsername: (value: string) => void;
   setStartDate: (value: string) => void;
   setEndDate: (value: string) => void;
   setGithubToken: (value: string) => void;
-  setApiMode: (value: 'search' | 'events' | 'overview' | 'events-grouped') => void;
+  setApiMode: (value: 'search' | 'events' | 'events-grouped') => void;
   handleSearch: (forceRefresh?: boolean) => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
@@ -248,7 +248,7 @@ export interface FormSettings {
   startDate: string;
   endDate: string;
   githubToken: string;
-  apiMode: 'search' | 'events' | 'overview' | 'events-grouped';
+  apiMode: 'search' | 'events' | 'events-grouped';
 }
 
 // UI/Display settings that control how data is presented
@@ -269,32 +269,6 @@ export interface UsernameCache {
   invalidUsernames: Set<string>;
 }
 
-// Custom sections for Overview tab
-export interface CustomSection {
-  id: string;
-  title: string;
-  repository: string; // Format: "owner/repo"
-  labels: string[]; // Array of label names to filter by
-  type: 'issues' | 'prs' | 'both'; // What type of items to show
-  maxItems: number; // Maximum number of items to display
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
-export interface CustomSectionConfig {
-  sections: CustomSection[];
-  lastUpdated: string;
-}
-
-export interface CustomSectionData {
-  sectionId: string;
-  items: GitHubItem[];
-  events: GitHubEvent[];
-  lastFetch: number;
-  repository: string;
-  labels: string[];
-  type: 'issues' | 'prs' | 'both';
-}
 
 
