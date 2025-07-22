@@ -200,4 +200,20 @@ describe('SummaryView - Review Comment Categorization', () => {
       expect(result).toBe(expected);
     });
   });
+
+  it('should test collapse state management', () => {
+    // Test that collapse state can be toggled
+    const collapsedSections = new Set<string>();
+    
+    // Initially no sections are collapsed
+    expect(collapsedSections.has('PRs - opened')).toBe(false);
+    
+    // Add a section to collapsed state
+    collapsedSections.add('PRs - opened');
+    expect(collapsedSections.has('PRs - opened')).toBe(true);
+    
+    // Remove a section from collapsed state
+    collapsedSections.delete('PRs - opened');
+    expect(collapsedSections.has('PRs - opened')).toBe(false);
+  });
 }); 

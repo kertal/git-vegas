@@ -10,6 +10,8 @@ import {
 } from '@primer/react';
 import {
   SearchIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from '@primer/octicons-react';
 import { GitHubItem, GitHubEvent } from '../types';
 
@@ -47,6 +49,9 @@ const SummaryView = memo(function SummaryView({
   // Internal state for search
   const [searchText, setSearchText] = useState('');
   
+  // Internal state for collapsed sections
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
@@ -81,6 +86,19 @@ const SummaryView = memo(function SummaryView({
         itemIds.forEach(id => newSet.add(id));
       } else {
         itemIds.forEach(id => newSet.delete(id));
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Toggle section collapse state
+  const toggleSectionCollapse = useCallback((sectionName: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionName)) {
+        newSet.delete(sectionName);
+      } else {
+        newSet.add(sectionName);
       }
       return newSet;
     });
@@ -523,76 +541,95 @@ const SummaryView = memo(function SummaryView({
             return (
               <div key={groupName} className="timeline-section">
                 <div className="timeline-section-header">
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <Checkbox
-                      checked={(() => {
-                        const sectionItemIds = Object.values(urlGroups).map(items => {
-                          const mostRecent = items.reduce((latest, current) =>
-                            new Date(current.updated_at) > new Date(latest.updated_at)
-                              ? current
-                              : latest
-                          );
-                          return mostRecent.event_id || mostRecent.id;
-                        });
-                        return sectionItemIds.length > 0 && sectionItemIds.every(id => selectedItems.has(id));
-                      })()}
-                      indeterminate={(() => {
-                        const sectionItemIds = Object.values(urlGroups).map(items => {
-                          const mostRecent = items.reduce((latest, current) =>
-                            new Date(current.updated_at) > new Date(latest.updated_at)
-                              ? current
-                              : latest
-                          );
-                          return mostRecent.event_id || mostRecent.id;
-                        });
-                        const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
-                        return selectedCount > 0 && selectedCount < sectionItemIds.length;
-                      })()}
-                      onChange={() => {
-                        const sectionItemIds = Object.values(urlGroups).map(items => {
-                          const mostRecent = items.reduce((latest, current) =>
-                            new Date(current.updated_at) > new Date(latest.updated_at)
-                              ? current
-                              : latest
-                          );
-                          return mostRecent.event_id || mostRecent.id;
-                        });
-                        const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
-                        const allSelected = selectedCount === sectionItemIds.length;
-                        bulkSelectItems(sectionItemIds, !allSelected);
+                  <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                      <Checkbox
+                        checked={(() => {
+                          const sectionItemIds = Object.values(urlGroups).map(items => {
+                            const mostRecent = items.reduce((latest, current) =>
+                              new Date(current.updated_at) > new Date(latest.updated_at)
+                                ? current
+                                : latest
+                            );
+                            return mostRecent.event_id || mostRecent.id;
+                          });
+                          return sectionItemIds.length > 0 && sectionItemIds.every(id => selectedItems.has(id));
+                        })()}
+                        indeterminate={(() => {
+                          const sectionItemIds = Object.values(urlGroups).map(items => {
+                            const mostRecent = items.reduce((latest, current) =>
+                              new Date(current.updated_at) > new Date(latest.updated_at)
+                                ? current
+                                : latest
+                            );
+                            return mostRecent.event_id || mostRecent.id;
+                          });
+                          const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                          return selectedCount > 0 && selectedCount < sectionItemIds.length;
+                        })()}
+                        onChange={() => {
+                          const sectionItemIds = Object.values(urlGroups).map(items => {
+                            const mostRecent = items.reduce((latest, current) =>
+                              new Date(current.updated_at) > new Date(latest.updated_at)
+                                ? current
+                                : latest
+                            );
+                            return mostRecent.event_id || mostRecent.id;
+                          });
+                          const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                          const allSelected = selectedCount === sectionItemIds.length;
+                          bulkSelectItems(sectionItemIds, !allSelected);
+                        }}
+                        sx={{ flexShrink: 0 }}
+                        aria-label={`Select all events in ${groupName} section`}
+                      />
+                      <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
+                        {groupName}
+                      </Heading>
+                    </Box>
+                    <Button
+                      variant="invisible"
+                      size="small"
+                      onClick={() => toggleSectionCollapse(groupName)}
+                      className="timeline-section-collapse-button"
+                      sx={{ 
+                        fontSize: '0.75rem',
+                        color: 'fg.muted',
+                        flexShrink: 0,
+                        '&:hover': { color: 'fg.default' }
                       }}
-                      sx={{ flexShrink: 0 }}
-                      aria-label={`Select all events in ${groupName} section`}
-                    />
-                    <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
-                      {groupName}
-                    </Heading>
+                      aria-label={`${collapsedSections.has(groupName) ? 'Show' : 'Hide'} ${groupName} section`}
+                    >
+                      {collapsedSections.has(groupName) ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+                    </Button>
                   </Box>
                 </div>
-                <div className="timeline-section-content">
-                  {Object.entries(urlGroups).map(([url, items]) => {
-                    // Show the most recent item in the group
-                    const mostRecent = items.reduce((latest, current) =>
-                      new Date(current.updated_at) > new Date(latest.updated_at)
-                        ? current
-                        : latest
-                    );
-                    return (
-                      <div key={url} className="timeline-group">
-                        <ItemRow
-                          item={mostRecent}
-                          githubToken={githubToken}
-                          onShowDescription={setSelectedItemForDialog}
-                          onCloneItem={setSelectedItemForClone}
-                          selected={selectedItems.has(mostRecent.event_id || mostRecent.id)}
-                          onSelect={toggleItemSelection}
-                          showCheckbox={true}
-                          groupCount={items.length > 1 ? items.length : undefined}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
+                {!collapsedSections.has(groupName) && (
+                  <div className="timeline-section-content">
+                    {Object.entries(urlGroups).map(([url, items]) => {
+                      // Show the most recent item in the group
+                      const mostRecent = items.reduce((latest, current) =>
+                        new Date(current.updated_at) > new Date(latest.updated_at)
+                          ? current
+                          : latest
+                      );
+                      return (
+                        <div key={url} className="timeline-group">
+                          <ItemRow
+                            item={mostRecent}
+                            githubToken={githubToken}
+                            onShowDescription={setSelectedItemForDialog}
+                            onCloneItem={setSelectedItemForClone}
+                            selected={selectedItems.has(mostRecent.event_id || mostRecent.id)}
+                            onSelect={toggleItemSelection}
+                            showCheckbox={true}
+                            groupCount={items.length > 1 ? items.length : undefined}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })

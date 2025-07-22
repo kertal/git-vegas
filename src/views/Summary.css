@@ -178,6 +178,17 @@
 /* Section content */
 .timeline-section-content {
   background-color: var(--bgColor-default);
+  transition: all 0.2s ease-in-out;
+  overflow: hidden;
+}
+
+/* Collapse button styles */
+.timeline-section-collapse-button {
+  transition: transform 0.2s ease-in-out;
+}
+
+.timeline-section-collapse-button:hover {
+  transform: scale(1.1);
 }
 
 /* Timeline items */
