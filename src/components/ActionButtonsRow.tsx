@@ -2,17 +2,14 @@ import { memo } from 'react';
 import { Box, IconButton } from '@primer/react';
 import {
   EyeIcon,
-  CheckIcon,
-  CopyIcon,
   DuplicateIcon,
 } from '@primer/octicons-react';
 import { GitHubItem } from '../types';
-import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
+import CopyToClipboardButton from './CopyToClipboardButton';
 
 interface ActionButtonsRowProps {
   item: GitHubItem;
   githubToken?: string;
-  isCopied: (itemId: string | number) => boolean;
   onShowDescription: (item: GitHubItem) => void;
   onCloneItem: (item: GitHubItem) => void;
   size?: 'small' | 'medium';
@@ -50,22 +47,10 @@ const getCloneButtonState = (item: GitHubItem, githubToken?: string) => {
 const ActionButtonsRow = memo(function ActionButtonsRow({
   item,
   githubToken,
-  isCopied,
   onShowDescription,
   onCloneItem,
   size = 'small'
 }: ActionButtonsRowProps) {
-  const copySingleItemToClipboard = async (item: GitHubItem) => {
-    await copyToClipboard([item], {
-      isCompactView: true, // Use compact format for single items
-      onSuccess: () => {
-        // Success feedback is handled by the parent component
-      },
-      onError: (error: Error) => {
-        console.error('Failed to copy item:', error);
-      },
-    });
-  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 1 }}>
@@ -78,12 +63,9 @@ const ActionButtonsRow = memo(function ActionButtonsRow({
           onClick={() => onShowDescription(item)}
         />
       )}
-      <IconButton
-        icon={isCopied(item.event_id || item.id) ? CheckIcon : CopyIcon}
-        variant="invisible"
-        aria-label="Copy to clipboard"
+      <CopyToClipboardButton
+        item={item}
         size={size}
-        onClick={() => copySingleItemToClipboard(item)}
       />
       {(() => {
         const cloneState = getCloneButtonState(item, githubToken);

@@ -4,8 +4,8 @@ import {
   Dialog,
   IconButton,
   Link,
-  Button,
   Text,
+  UnderlineNav,
 } from '@primer/react';
 import {
   ChevronLeftIcon,
@@ -95,25 +95,31 @@ const DescriptionDialog = memo(function DescriptionDialog({
     >
       <Box sx={{ p: 3, maxHeight, overflow: 'auto' }}>
         {/* View Mode Toggle */}
-        <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
-          <Button
-            size="small"
-            variant={viewMode === 'description' ? 'primary' : 'invisible'}
-            onClick={() => setViewMode('description')}
-            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-          >
-            <FileIcon size={14} />
-            Description
-          </Button>
-          <Button
-            size="small"
-            variant={viewMode === 'json' ? 'primary' : 'invisible'}
-            onClick={() => setViewMode('json')}
-            sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-          >
-            <CodeIcon size={14} />
-            Raw JSON
-          </Button>
+        <Box sx={{ mb: 3 }}>
+          <UnderlineNav aria-label="View mode">
+            <UnderlineNav.Item
+              href="#"
+              aria-current={viewMode === 'description' ? 'page' : undefined}
+              onSelect={(e) => {
+                e.preventDefault();
+                setViewMode('description');
+              }}
+              icon={FileIcon}
+            >
+              Description
+            </UnderlineNav.Item>
+            <UnderlineNav.Item
+              href="#"
+              aria-current={viewMode === 'json' ? 'page' : undefined}
+              onSelect={(e) => {
+                e.preventDefault();
+                setViewMode('json');
+              }}
+              icon={CodeIcon}
+            >
+              Raw JSON
+            </UnderlineNav.Item>
+          </UnderlineNav>
         </Box>
 
         {/* Content */}

@@ -32,7 +32,6 @@ describe('ActionButtonsRow', () => {
   const defaultProps = {
     item: mockItem,
     githubToken: 'test-token',
-    isCopied: vi.fn(() => false),
     onShowDescription: vi.fn(),
     onCloneItem: vi.fn(),
     size: 'small' as const,
@@ -96,19 +95,16 @@ describe('ActionButtonsRow', () => {
     expect(cloneButton).toBeDisabled();
   });
 
-  it('shows check icon when item is copied', () => {
-    render(<ActionButtonsRow {...defaultProps} isCopied={() => true} />);
-
-    const copyButton = screen.getByLabelText('Copy to clipboard');
-    expect(copyButton).toBeInTheDocument();
-  });
 
 
 
-  it('renders buttons in a horizontal flex container', () => {
-    const { container } = render(<ActionButtonsRow {...defaultProps} />);
 
-    const buttonContainer = container.querySelector('[role="button"]')?.parentElement;
-    expect(buttonContainer).toBeInTheDocument();
+  it('renders all buttons correctly', () => {
+    render(<ActionButtonsRow {...defaultProps} />);
+
+    // Verify all expected buttons are present
+    expect(screen.getByLabelText('Show description')).toBeInTheDocument();
+    expect(screen.getByLabelText('Copy to clipboard')).toBeInTheDocument();
+    expect(screen.getByLabelText('Clone this issue')).toBeInTheDocument();
   });
 }); 
