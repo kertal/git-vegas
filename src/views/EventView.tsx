@@ -1,7 +1,6 @@
 import { memo, useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Text,
-  Button,
   Heading,
   Checkbox,
   Box,
@@ -22,6 +21,7 @@ import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
 import ItemRow from '../components/ItemRow';
+import EmptyState from '../components/EmptyState';
 import './EventView.css';
 import { useFormContext } from '../App';
 
@@ -339,30 +339,12 @@ const EventView = memo(function EventView({
       {/* Timeline content */}
       <div className="timeline-content">
         {sortedItems.length === 0 ? (
-          // Empty state - keep search box visible
-          <div className="timeline-empty">
-            <Text color="fg.muted">
-              {hasSearchText
-                ? `No events found matching "${searchText}". Try a different search term or use user:username for user filtering.`
-                : !hasRawEvents
-                  ? 'No cached events found. Please perform a search in events mode to load events.'
-                  : 'No events found for the selected time period. Try adjusting your date range or filters.'}
-            </Text>
-            {hasSearchText && (
-              <Box
-                sx={{
-                  mt: 2,
-                  textAlign: 'center',
-                  display: 'flex',
-                  justifyContent: 'center',
-                }}
-              >
-                <Button variant="default" size="small" onClick={clearSearch}>
-                  Clear search
-                </Button>
-              </Box>
-            )}
-          </div>
+          <EmptyState
+            type={hasSearchText ? 'no-search-results' : !hasRawEvents ? 'no-cached-data' : 'no-data'}
+            searchText={searchText}
+            showClearSearch={!!searchText}
+            onClearSearch={clearSearch}
+          />
         ) : (
           // Standard timeline view
           <>

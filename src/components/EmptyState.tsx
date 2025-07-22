@@ -37,7 +37,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
     switch (type) {
       case 'no-data':
-        return 'No data available';
+        return 'No data available. Enter a username and use the update button to load data.';
       
       case 'no-matches':
         if (searchText) {
@@ -48,16 +48,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       
       case 'no-search-results':
         if (searchText) {
-          return `No events found matching "${searchText}". Try a different search term or use user:username for user filtering.`;
+          return `No data found matching "${searchText}". Try a different search term or use user:username for user filtering.`;
         } else {
-          return 'No events found for the selected time period. Try adjusting your date range or filters.';
+          return 'No data found for the selected time period. Try adjusting your date range or filters.';
         }
       
-      case 'no-cached-data':
-        return 'No cached events found. Please perform a search in events mode to load events.';
-      
       default:
-        return 'No data available';
+        return 'No data available. Enter a username and use the update button to load data.';
     }
   };
 

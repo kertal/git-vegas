@@ -13,7 +13,7 @@ describe('EmptyState', () => {
   describe('No Data Type', () => {
     it('should display "No data available" message', () => {
       render(<EmptyState type="no-data" />);
-      expect(screen.getByText('No data available')).toBeInTheDocument();
+      expect(screen.getByText('No data available. Enter a username and use the update button to load data.')).toBeInTheDocument();
     });
 
     it('should display custom message when provided', () => {
@@ -89,13 +89,13 @@ describe('EmptyState', () => {
         />
       );
       
-      expect(screen.getByText(/No events found matching "user:testuser"/)).toBeInTheDocument();
+      expect(screen.getByText(/No data found matching "user:testuser"/)).toBeInTheDocument();
     });
 
     it('should display time period message when no search text', () => {
       render(<EmptyState type="no-search-results" />);
       
-      expect(screen.getByText(/No events found for the selected time period/)).toBeInTheDocument();
+      expect(screen.getByText(/No data found for the selected time period/)).toBeInTheDocument();
     });
 
     it('should show clear search button when search text and callback provided', () => {
@@ -114,13 +114,25 @@ describe('EmptyState', () => {
       fireEvent.click(clearButton);
       expect(mockOnClearSearch).toHaveBeenCalledTimes(1);
     });
+
+    it('should not show clear search button when no search text', () => {
+      render(
+        <EmptyState 
+          type="no-search-results" 
+          showClearSearch={true}
+          onClearSearch={mockOnClearSearch}
+        />
+      );
+      
+      expect(screen.queryByText('Clear search')).not.toBeInTheDocument();
+    });
   });
 
   describe('No Cached Data Type', () => {
     it('should display cached data message', () => {
       render(<EmptyState type="no-cached-data" />);
       
-      expect(screen.getByText(/No cached events found/)).toBeInTheDocument();
+      expect(screen.getByText('No data available. Enter a username and use the update button to load data.')).toBeInTheDocument();
     });
   });
 

@@ -11,7 +11,7 @@ import {
   applyUrlOverrides,
   ShareableState,
 } from './urlState';
-import { FormSettings, UISettings } from '../types';
+import { FormSettings } from '../types';
 import { createDefaultFilter } from './resultsUtils';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -124,14 +124,13 @@ describe('urlState utilities', () => {
   describe('parseUrlParams', () => {
     it('should parse valid URL parameters', () => {
       mockLocation.search =
-        '?username=testuser&apiMode=events&isCompactView=true&excludedLabels=bug,feature';
+        '?username=testuser&apiMode=events&excludedLabels=bug,feature';
 
       const result = parseUrlParams();
 
       expect(result).toEqual({
         username: 'testuser',
         apiMode: 'events',
-        isCompactView: true,
         excludedLabels: ['bug', 'feature'],
       });
     });
@@ -176,8 +175,6 @@ describe('urlState utilities', () => {
       })(),
       endDate: new Date().toISOString().split('T')[0],
       apiMode: 'search',
-      isCompactView: false,
-      timelineViewMode: 'standard',
       filter: 'all',
       statusFilter: 'all',
       excludedLabels: [],
@@ -190,16 +187,13 @@ describe('urlState utilities', () => {
         ...defaultState,
         username: 'testuser',
         apiMode: 'events',
-        isCompactView: true,
       };
 
       const params = generateUrlParams(state);
 
       expect(params.get('username')).toBe('testuser');
       expect(params.get('apiMode')).toBe('events');
-      expect(params.get('isCompactView')).toBe('true');
       expect(params.get('filter')).toBeNull(); // default value
-
     });
 
     it('should handle arrays correctly', () => {
@@ -239,8 +233,6 @@ describe('urlState utilities', () => {
       })(),
       endDate: new Date().toISOString().split('T')[0],
       apiMode: 'search',
-      isCompactView: false,
-      timelineViewMode: 'standard',
       filter: 'all',
       statusFilter: 'all',
       excludedLabels: [],
@@ -272,12 +264,14 @@ describe('urlState utilities', () => {
       const state: ShareableState = {
         ...defaultState,
         username: 'test user',
+        searchText: 'test query',
       };
 
       const url = generateShareableUrl(state);
 
       // URLSearchParams encodes spaces as + instead of %20
       expect(url).toContain('username=test+user');
+      expect(url).toContain('searchText=test+query');
     });
   });
 
@@ -366,20 +360,12 @@ describe('urlState utilities', () => {
         username: 'testuser',
         startDate: '2024-01-01',
         endDate: '2024-01-31',
-        githubToken: 'secret',
+        githubToken: 'token',
         apiMode: 'events',
       };
 
-      const uiSettings: UISettings = {
-        isCompactView: true,
-        timelineViewMode: 'standard',
-      };
-
-
-
       const result = extractShareableState(
         formSettings,
-        uiSettings,
         'custom search'
       );
 
@@ -388,13 +374,11 @@ describe('urlState utilities', () => {
         startDate: '2024-01-01',
         endDate: '2024-01-31',
         apiMode: 'events',
-        isCompactView: true,
         filter: 'all',
         statusFilter: 'all',
         excludedLabels: [],
         repoFilters: [],
         searchText: 'custom search',
-        timelineViewMode: 'standard',
       });
     });
   });
@@ -404,7 +388,6 @@ describe('urlState utilities', () => {
       const urlState: Partial<ShareableState> = {
         username: 'urluser',
         apiMode: 'events',
-        isCompactView: true,
         filter: 'pr',
         excludedLabels: ['bug'],
       };
@@ -417,25 +400,17 @@ describe('urlState utilities', () => {
         apiMode: 'search',
       };
 
-      const uiSettings: UISettings = {
-        isCompactView: false,
-        timelineViewMode: 'standard',
-      };
-
       const currentFilters = createDefaultFilter();
 
       const result = applyUrlOverrides(
         urlState,
         formSettings,
-        uiSettings,
         currentFilters
       );
 
       expect(result.formSettings.username).toBe('urluser');
       expect(result.formSettings.apiMode).toBe('events');
       expect(result.formSettings.startDate).toBe('2024-01-01'); // unchanged
-
-      expect(result.uiSettings.isCompactView).toBe(true);
 
       expect(result.currentFilters.filter).toBe('pr');
       expect(result.currentFilters.excludedLabels).toEqual(['bug']);
@@ -456,23 +431,16 @@ describe('urlState utilities', () => {
         apiMode: 'search',
       };
 
-      const uiSettings: UISettings = {
-        isCompactView: false,
-        timelineViewMode: 'standard',
-      };
-
       const currentFilters = createDefaultFilter();
 
       const result = applyUrlOverrides(
         urlState,
         formSettings,
-        uiSettings,
         currentFilters
       );
 
       expect(result.formSettings.username).toBe('urluser');
       expect(result.formSettings.apiMode).toBe('search'); // unchanged
-      expect(result.uiSettings.isCompactView).toBe(false); // unchanged
       expect(result.currentFilters.filter).toBe('all'); // unchanged
     });
   });

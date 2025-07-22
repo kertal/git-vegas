@@ -2,6 +2,17 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SearchForm from './SearchForm';
 
+// Mock the debounce function
+vi.mock('../utils', () => ({
+  debounce: (fn: (...args: unknown[]) => void, delay: number) => {
+    let timeoutId: NodeJS.Timeout;
+    return (...args: unknown[]) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => fn(...args), delay);
+    };
+  },
+}));
+
 // Mock the useFormContext hook
 const mockSetUsername = vi.fn();
 const mockSetStartDate = vi.fn();
@@ -107,6 +118,9 @@ describe('SearchForm', () => {
     
     // Fast-forward time to trigger debounced save
     vi.advanceTimersByTime(500);
+    
+    // Wait for all pending promises and timers
+    await vi.runAllTimersAsync();
     
     // Now localStorage should be called with the final value
     expect(localStorageMock.setItem).toHaveBeenCalledTimes(1);

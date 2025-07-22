@@ -24,6 +24,7 @@ import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
 import ItemRow from '../components/ItemRow';
+import EmptyState from '../components/EmptyState';
 import './Summary.css';
 import { useFormContext } from '../App';
 
@@ -497,30 +498,12 @@ const SummaryView = memo(function SummaryView({
       {/* Timeline content */}
       <div className="timeline-content">
         {Object.values(actionGroups).flat().length === 0 ? (
-          // Empty state - keep search box visible
-          <div className="timeline-empty">
-            <Text color="fg.muted">
-              {hasSearchText
-                ? `No events found matching "${searchText}". Try a different search term or use label:name / -label:name for label filtering.`
-                : !hasRawEvents
-                  ? 'No cached events found. Please perform a search in events mode to load events.'
-                  : 'No events found for the selected time period. Try adjusting your date range or filters.'}
-            </Text>
-            {hasSearchText && (
-              <Box
-                sx={{
-                  mt: 2,
-                  textAlign: 'center',
-                  display: 'flex',
-                  justifyContent: 'center',
-                }}
-              >
-                <Button variant="default" size="small" onClick={clearSearch}>
-                  Clear search
-                </Button>
-              </Box>
-            )}
-          </div>
+          <EmptyState
+            type={hasSearchText ? 'no-search-results' : !hasRawEvents ? 'no-cached-data' : 'no-data'}
+            searchText={searchText}
+            showClearSearch={!!searchText}
+            onClearSearch={clearSearch}
+          />
         ) : (
           // Grouped view - organize events by individual issues/PRs and by type
           Object.entries(actionGroups).map(([groupName, groupItems]) => {

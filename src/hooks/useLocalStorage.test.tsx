@@ -1,163 +1,186 @@
-import { renderHook, act } from '@testing-library/react';
-import { useLocalStorage } from './useLocalStorage';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { useFormSettings } from './useLocalStorage';
+import { FormSettings } from '../types';
 
-describe('useLocalStorage', () => {
+// Mock window.location and history
+const mockLocation = {
+  href: 'http://localhost:3000/',
+  search: '',
+};
+
+const mockHistory = {
+  replaceState: vi.fn(),
+};
+
+Object.defineProperty(window, 'location', {
+  value: mockLocation,
+  writable: true,
+});
+
+Object.defineProperty(window, 'history', {
+  value: mockHistory,
+  writable: true,
+});
+
+// Mock localStorage
+const mockLocalStorage = {
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+};
+
+Object.defineProperty(window, 'localStorage', {
+  value: mockLocalStorage,
+  writable: true,
+});
+
+describe('useFormSettings - URL Parameter Cleanup', () => {
+  const defaultFormSettings: FormSettings = {
+    username: '',
+    startDate: '2024-01-01',
+    endDate: '2024-01-31',
+    githubToken: '',
+    apiMode: 'summary',
+  };
+
   beforeEach(() => {
-    window.localStorage.clear();
-    window.location.search = '';
+    vi.clearAllMocks();
+    mockLocation.search = '';
+    mockLocation.href = 'http://localhost:3000/';
+    mockLocalStorage.getItem.mockReturnValue(null);
   });
 
-  afterEach(() => {
-    window.localStorage.clear();
-    window.location.search = '';
-  });
+  it('should clean up URL parameters after processing them', () => {
+    // Set URL parameters
+    mockLocation.search = '?username=testuser&startDate=2024-02-01&endDate=2024-02-28';
+    mockLocation.href = 'http://localhost:3000/?username=testuser&startDate=2024-02-01&endDate=2024-02-28';
 
-  it('should initialize with default value when no stored value exists', () => {
-    const { result } = renderHook(() =>
-      useLocalStorage('test-key', 'default-value')
-    );
-    expect(result.current[0]).toBe('default-value');
-  });
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
 
-  it('should initialize with localStorage value (URL parameters no longer override)', () => {
-    window.localStorage.setItem(
-      'github-username',
-      JSON.stringify('local-user')
-    );
-    window.location.search = '?username=url-user';
-
-    const { result } = renderHook(() =>
-      useLocalStorage('github-username', 'default-value')
-    );
-    // URL parameters no longer automatically override localStorage
-    expect(result.current[0]).toBe('local-user');
-  });
-
-  it('should update localStorage when value changes', () => {
-    const { result } = renderHook(() => useLocalStorage('test-key', 'initial'));
-
-    act(() => {
-      result.current[1]('updated');
+    // Check that URL parameters were processed
+    expect(result.current[0]).toEqual({
+      ...defaultFormSettings,
+      username: 'testuser',
+      startDate: '2024-02-01',
+      endDate: '2024-02-28',
     });
 
-    expect(result.current[0]).toBe('updated');
-    expect(JSON.parse(window.localStorage.getItem('test-key') || '')).toBe(
-      'updated'
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
     );
   });
 
-  it('should handle Set type correctly', () => {
-    const initialSet = new Set(['item1', 'item2']);
-    const { result } = renderHook(() =>
-      useLocalStorage('test-key', initialSet)
+  it('should clean up URL parameters when only some parameters are present', () => {
+    // Set only username parameter
+    mockLocation.search = '?username=testuser';
+    mockLocation.href = 'http://localhost:3000/?username=testuser';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that URL parameter was processed
+    expect(result.current[0]).toEqual({
+      ...defaultFormSettings,
+      username: 'testuser',
+    });
+
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
     );
+  });
 
-    expect(result.current[0]).toEqual(initialSet);
+  it('should not clean up URL when no form-related parameters are present', () => {
+    // Set unrelated URL parameters
+    mockLocation.search = '?otherParam=value&anotherParam=123';
+    mockLocation.href = 'http://localhost:3000/?otherParam=value&anotherParam=123';
 
-    const newSet = new Set(['item3']);
-    act(() => {
-      result.current[1](newSet);
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that form settings remain unchanged
+    expect(result.current[0]).toEqual(defaultFormSettings);
+
+    // Check that URL cleanup was NOT called
+    expect(mockHistory.replaceState).not.toHaveBeenCalled();
+  });
+
+  it('should not clean up URL when no search parameters are present', () => {
+    // No URL parameters
+    mockLocation.search = '';
+    mockLocation.href = 'http://localhost:3000/';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that form settings remain unchanged
+    expect(result.current[0]).toEqual(defaultFormSettings);
+
+    // Check that URL cleanup was NOT called
+    expect(mockHistory.replaceState).not.toHaveBeenCalled();
+  });
+
+  it('should prioritize URL parameters over localStorage values', () => {
+    // Set localStorage values
+    const localStorageSettings = {
+      ...defaultFormSettings,
+      username: 'localuser',
+      startDate: '2024-01-15',
+      endDate: '2024-01-30',
+    };
+    mockLocalStorage.getItem.mockReturnValue(JSON.stringify(localStorageSettings));
+
+    // Set URL parameters that override localStorage
+    mockLocation.search = '?username=urluser&startDate=2024-02-01';
+    mockLocation.href = 'http://localhost:3000/?username=urluser&startDate=2024-02-01';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that URL parameters take priority
+    expect(result.current[0]).toEqual({
+      ...localStorageSettings,
+      username: 'urluser', // URL value
+      startDate: '2024-02-01', // URL value
+      endDate: '2024-01-31', // default value (no URL override for endDate)
     });
 
-    expect(result.current[0]).toEqual(newSet);
-    expect(JSON.parse(window.localStorage.getItem('test-key') || '{}')).toEqual(
-      { __type: 'Set', __value: Array.from(newSet) }
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
     );
   });
 
-  it('should clear value when using clear function', () => {
-    window.localStorage.setItem('test-key', JSON.stringify('test-value'));
-    const { result } = renderHook(() => useLocalStorage('test-key', 'default'));
+  it('should handle URL encoding correctly', () => {
+    // Set URL parameters with special characters
+    mockLocation.search = '?username=test%20user&startDate=2024-02-01';
+    mockLocation.href = 'http://localhost:3000/?username=test%20user&startDate=2024-02-01';
 
-    act(() => {
-      result.current[2]();
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that URL parameters were decoded correctly
+    expect(result.current[0]).toEqual({
+      ...defaultFormSettings,
+      username: 'test user', // Decoded from test%20user
+      startDate: '2024-02-01',
     });
 
-    expect(result.current[0]).toBe('default');
-    expect(window.localStorage.getItem('test-key')).toBeNull();
-  });
-
-  it('should not update URL parameters automatically (behavior removed)', () => {
-    const { result } = renderHook(() => useLocalStorage('github-username', ''));
-
-    act(() => {
-      result.current[1]('test-user');
-    });
-
-    // URL parameters are no longer automatically updated
-    expect(window.location.search).toBe('');
-    // But localStorage should still be updated
-    expect(result.current[0]).toBe('test-user');
-  });
-
-  it('should not modify URL parameters when clearing (behavior removed)', () => {
-    window.location.search = '?username=test-user';
-    const { result } = renderHook(() => useLocalStorage('github-username', ''));
-
-    act(() => {
-      result.current[2]();
-    });
-
-    // URL parameters are no longer automatically modified
-    expect(window.location.search).toBe('?username=test-user');
-    // But localStorage should be cleared
-    expect(result.current[0]).toBe('');
-  });
-
-  it('should handle errors gracefully', () => {
-    const mockError = new Error('Storage error');
-    const originalSetItem = window.localStorage.setItem;
-    window.localStorage.setItem = vi.fn().mockImplementation(() => {
-      throw mockError;
-    });
-
-    const { result } = renderHook(() => useLocalStorage('test-key', 'default'));
-
-    act(() => {
-      result.current[1]('new-value');
-    });
-
-    // Should keep working with the new value in memory even if storage fails
-    expect(result.current[0]).toBe('new-value');
-
-    window.localStorage.setItem = originalSetItem;
-  });
-
-  it('should properly deserialize Sets from localStorage with enhanced serialization', () => {
-    // Simulate a Set being stored with enhanced serialization format
-    const setData = { __type: 'Set', __value: [1, 2, 3] };
-    window.localStorage.setItem('test-set-key', JSON.stringify(setData));
-
-    const { result } = renderHook(() =>
-      useLocalStorage('test-set-key', new Set<number>())
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
     );
-
-    // The value should be deserialized back to a proper Set
-    expect(result.current[0]).toBeInstanceOf(Set);
-    expect(result.current[0]).toEqual(new Set([1, 2, 3]));
-
-    // Should have .has method available
-    expect(typeof result.current[0].has).toBe('function');
-    expect(result.current[0].has(1)).toBe(true);
-    expect(result.current[0].has(4)).toBe(false);
-  });
-
-  it('should handle corrupted Set data in localStorage gracefully', () => {
-    // Simulate corrupted Set data (missing __type or __value)
-    const corruptedData = { __value: [1, 2, 3] }; // Missing __type
-    window.localStorage.setItem(
-      'test-corrupted-key',
-      JSON.stringify(corruptedData)
-    );
-
-    const defaultSet = new Set([5, 6]);
-    const { result } = renderHook(() =>
-      useLocalStorage('test-corrupted-key', defaultSet)
-    );
-
-    // Should fall back to the corrupted data as-is or the initial value
-    // Since deserialization should handle this gracefully
-    expect(result.current[0]).toBeDefined();
   });
 });

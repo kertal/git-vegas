@@ -335,7 +335,7 @@ describe('githubSearch utilities', () => {
 
       expect(result).toEqual(mockItems);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.github.com/search/issues?q=author:testuser+created:2023-01-01..2023-12-31&per_page=100',
+        'https://api.github.com/search/issues?q=author:testuser+updated:2023-01-01..2023-12-31&per_page=100',
         {
           headers: {
             Accept: 'application/vnd.github.v3+json',

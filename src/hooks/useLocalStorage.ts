@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getParamFromUrl } from '../utils';
 import { FormSettings } from '../types';
 import { safeSetItem } from '../utils/storageUtils';
@@ -29,8 +29,10 @@ const deserializeValue = <T>(jsonString: string): T => {
 };
 
 // Specialized hook for form settings that handles URL parameter mapping
-export function useFormSettings(key: string, initialValue: FormSettings) {
-  // Get initial value from URL parameters first, then localStorage, then initialValue
+export function useFormSettings(key: string, initialValue: FormSettings, onUrlParamsProcessed?: () => void) {
+  const urlParamsProcessedRef = useRef(false);
+  
+  // Get initial value from localStorage, then initialValue
   const [value, setValue] = useState<FormSettings>(() => {
     try {
       let result = { ...initialValue };
@@ -46,21 +48,43 @@ export function useFormSettings(key: string, initialValue: FormSettings) {
         }
       }
 
-      // Then override with URL parameters if they exist
-      const urlUsername = getParamFromUrl('username');
-      const urlStartDate = getParamFromUrl('startDate');
-      const urlEndDate = getParamFromUrl('endDate');
-
-      if (urlUsername !== null) result.username = urlUsername;
-      if (urlStartDate !== null) result.startDate = urlStartDate;
-      if (urlEndDate !== null) result.endDate = urlEndDate;
-
       return result;
     } catch (error) {
       console.error(`Error reading from localStorage key "${key}":`, error);
       return initialValue;
     }
   });
+
+  // Process URL parameters and apply them to the form state
+  useEffect(() => {
+    if (urlParamsProcessedRef.current) return;
+    
+    const urlUsername = getParamFromUrl('username');
+    const urlStartDate = getParamFromUrl('startDate');
+    const urlEndDate = getParamFromUrl('endDate');
+
+    if (urlUsername !== null || urlStartDate !== null || urlEndDate !== null) {
+      urlParamsProcessedRef.current = true;
+      
+      // Apply URL parameters to the form state
+      const updatedSettings = { ...value };
+      if (urlUsername !== null) updatedSettings.username = urlUsername;
+      if (urlStartDate !== null) updatedSettings.startDate = urlStartDate;
+      if (urlEndDate !== null) updatedSettings.endDate = urlEndDate;
+      
+      setValue(updatedSettings);
+
+      // Clean up URL parameters after processing them
+      const url = new URL(window.location.href);
+      if (url.search) {
+        url.search = '';
+        window.history.replaceState({}, '', url.toString());
+      }
+      
+      // Notify that URL parameters were processed
+      onUrlParamsProcessed?.();
+    }
+  }, [value, onUrlParamsProcessed]); // Include dependencies as required by ESLint
 
   // Update localStorage whenever value changes
   useEffect(() => {

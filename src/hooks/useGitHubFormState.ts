@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useLocalStorage } from './useLocalStorage';
+import { useFormSettings } from './useLocalStorage';
 import { FormSettings } from '../types';
 import { validateUsernameList } from '../utils';
 
@@ -16,9 +16,9 @@ interface UseGitHubFormStateReturn {
   setError: (error: string | null) => void;
 }
 
-export const useGitHubFormState = (): UseGitHubFormStateReturn => {
-  // Form settings (persisted in localStorage)
-  const [formSettings, setFormSettings] = useLocalStorage<FormSettings>(
+export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHubFormStateReturn => {
+  // Form settings (persisted in localStorage with URL parameter processing)
+  const [formSettings, setFormSettings] = useFormSettings(
     'github-form-settings',
     {
       username: '',
@@ -28,7 +28,8 @@ export const useGitHubFormState = (): UseGitHubFormStateReturn => {
       endDate: new Date().toISOString().split('T')[0],
       githubToken: '',
       apiMode: 'summary',
-    }
+    },
+    onUrlParamsProcessed
   );
 
   // Note: UI settings removed as no UI settings are currently needed

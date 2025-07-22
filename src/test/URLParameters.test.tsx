@@ -68,6 +68,35 @@ describe('URL Parameters', () => {
     expect(endDateInput.value).toBe('2024-01-31');
   });
 
+  it('should trigger initial fetch when URL parameters are processed', async () => {
+    // Mock successful API response
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ items: [] }),
+    });
+
+    // Set URL parameters
+    window.history.replaceState(
+      {},
+      '',
+      '?username=testuser&startDate=2024-01-01&endDate=2024-01-31'
+    );
+
+    render(<App />);
+
+    // Check if form fields are populated from URL parameters
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('testuser')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('2024-01-01')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('2024-01-31')).toBeInTheDocument();
+    });
+
+    // Verify that search was called automatically due to URL parameters
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    });
+  });
+
   it('should update URL when form values change', async () => {
     render(<App />);
 

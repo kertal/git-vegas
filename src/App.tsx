@@ -1,6 +1,6 @@
 import {
   useState,
-  useEffect,
+  useEffect,  
   useCallback,
   useMemo,
   createContext,
@@ -77,6 +77,18 @@ export const buttonStyles = {
 // Add back the events-grouped logic in the results calculation and render logic. Update the results useMemo to include 'events-grouped' mode and add the SummaryView component usage in the render section.
 // Add the main App component
 function App() {
+  // Additional component state (not persisted)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
+  const [initialLoadingCount, setInitialLoadingCount] = useState(0);
+
+  const [isManuallySpinning, setIsManuallySpinning] = useState(false);
+
+  // Callback for URL parameter processing
+  const handleUrlParamsProcessed = useCallback(() => {
+    setInitialLoadingCount(1);
+  }, []);
+
   // Use the new custom hooks for form state and data fetching
   const {
     formSettings,
@@ -89,7 +101,7 @@ function App() {
     validateUsernameFormat,
     error,
     setError,
-  } = useGitHubFormState();
+  } = useGitHubFormState(handleUrlParamsProcessed);
 
 
 
@@ -145,12 +157,6 @@ function App() {
     clearSearchItems,
   });
 
-  // Additional component state (not persisted)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [isManuallySpinning, setIsManuallySpinning] = useState(false);
-
   // Clipboard feedback
   // const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
 
@@ -174,23 +180,14 @@ function App() {
     setTimeout(() => setIsManuallySpinning(false), 2000);
   }, []);
 
-  // Mark initial loading as complete
-  useEffect(() => {
-    const timer = setTimeout(() => setInitialLoading(false), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Auto-fetch data if no data is available and username is provided
-  useEffect(() => {
-    const hasNoData = indexedDBEvents.length === 0 && indexedDBSearchItems.length === 0;
-    const hasUsername = username && username.trim().length > 0;
-    const isNotLoading = !loading && !initialLoading;
-    
-    if (hasNoData && hasUsername && isNotLoading) {
+   // Auto-fetch data if no data is available and username is provided
+   useEffect(() => {
+    if (initialLoadingCount === 1) {
       // Trigger initial fetch
+      setInitialLoadingCount(0);
       handleSearch();
     }
-  }, [username, indexedDBEvents.length, indexedDBSearchItems.length, loading, initialLoading, handleSearch]);
+  }, [initialLoadingCount, loading, handleSearch]);
 
 
 
@@ -207,7 +204,7 @@ function App() {
           <PageHeader.Actions>
             <LoadingIndicator
               loadingProgress={loadingProgress}
-              isLoading={loading || initialLoading}
+              isLoading={loading}
               currentUsername={currentUsername}
             />
             <ShareButton
@@ -226,7 +223,7 @@ function App() {
             />
             <SlotMachineLoader
               avatarUrls={avatarUrls}
-              isLoading={loading || initialLoading}
+              isLoading={loading}
               isManuallySpinning={isManuallySpinning}
             />
           </PageHeader.Actions>
