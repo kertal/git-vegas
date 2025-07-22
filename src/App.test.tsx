@@ -32,6 +32,47 @@ vi.mock('./hooks/useIndexedDBStorage', () => ({
   })),
 }));
 
+vi.mock('./hooks/useGitHubFormState', () => ({
+  useGitHubFormState: vi.fn(() => ({
+    formSettings: {
+      username: '',
+      startDate: '2024-01-01',
+      endDate: '2024-01-31',
+      githubToken: '',
+      apiMode: 'summary',
+    },
+    uiSettings: { isCompactView: true },
+    setUsername: vi.fn(),
+    setStartDate: vi.fn(),
+    setEndDate: vi.fn(),
+    setGithubToken: vi.fn(),
+    setApiMode: vi.fn(),
+    handleUsernameBlur: vi.fn(),
+    validateUsernameFormat: vi.fn(),
+    error: null,
+    setError: vi.fn(),
+  })),
+}));
+
+vi.mock('./hooks/useGitHubDataFetching', () => ({
+  useGitHubDataFetching: vi.fn(() => ({
+    loading: false,
+    loadingProgress: '',
+    currentUsername: '',
+    handleSearch: vi.fn(),
+  })),
+}));
+
+vi.mock('./hooks/useGitHubDataProcessing', () => ({
+  useGitHubDataProcessing: vi.fn(() => ({
+    results: [],
+    searchItemsCount: 0,
+    eventsCount: 0,
+    groupedEventsCount: 0,
+    rawEventsCount: 0,
+  })),
+}));
+
 vi.mock('./components/SearchForm', () => ({
   default: () => <div data-testid="search-form">Search Form</div>,
 }));
@@ -94,9 +135,9 @@ describe('App', () => {
     expect(screen.getByTestId('search-form')).toBeInTheDocument();
   });
 
-  it('renders event view when apiMode is events', () => {
+  it('renders summary view when apiMode is summary (default)', () => {
     render(<App />);
-    expect(screen.getByTestId('event-view')).toBeInTheDocument();
+    expect(screen.getByTestId('summary-view')).toBeInTheDocument();
   });
 
   it('handles pagination correctly', async () => {

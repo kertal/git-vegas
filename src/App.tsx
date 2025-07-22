@@ -6,17 +6,14 @@ import {
   createContext,
   useContext,
 } from 'react';
-import { PageLayout, PageHeader, Box, Text, IconButton } from '@primer/react';
+import { PageLayout, PageHeader, Box, IconButton } from '@primer/react';
 import { GearIcon, DatabaseIcon } from '@primer/octicons-react';
 
-import { useFormSettings, useLocalStorage } from './hooks/useLocalStorage';
+import { useGitHubFormState } from './hooks/useGitHubFormState';
+import { useGitHubDataFetching } from './hooks/useGitHubDataFetching';
+import { useGitHubDataProcessing } from './hooks/useGitHubDataProcessing';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
-import { validateUsernameList } from './utils';
-import {
-  categorizeRawEvents,
-  categorizeRawSearchItems,
-} from './utils/rawDataUtils';
-import { GitHubItem, GitHubEvent, UISettings } from './types';
+import { GitHubItem } from './types';
 
 import SearchForm from './components/SearchForm';
 import IssuesAndPRsList from './views/IssuesAndPRsList';
@@ -81,37 +78,30 @@ export const buttonStyles = {
 // Add back the events-grouped logic in the results calculation and render logic. Update the results useMemo to include 'events-grouped' mode and add the SummaryView component usage in the render section.
 // Add the main App component
 function App() {
-  // Consolidated settings - reducing from 11 useLocalStorage calls to 5
-  const [formSettings, setFormSettings] = useFormSettings(
-    'github-form-settings',
-    {
-      username: '',
-      startDate: (() => {
-        const date = new Date();
-        date.setDate(date.getDate() - 30); // Default to last 30 days
-        return date.toISOString().split('T')[0];
-      })(),
-      endDate: new Date().toISOString().split('T')[0],
-      githubToken: '',
-      apiMode: 'summary',
-    }
-  );
-
-  const [uiSettings] = useLocalStorage<UISettings>('github-ui-settings', {
-    isCompactView: true,
-  });
+  // Use the new custom hooks for form state and data fetching
+  const {
+    formSettings,
+    uiSettings,
+    setUsername,
+    setStartDate,
+    setEndDate,
+    setGithubToken,
+    setApiMode,
+    handleUsernameBlur,
+    validateUsernameFormat,
+    error,
+    setError,
+  } = useGitHubFormState();
 
 
 
-  // IndexedDB storage for events
+  // IndexedDB storage for events and search items
   const {
     events: indexedDBEvents,
-    error: eventsError,
     storeEvents,
     clearEvents,
   } = useIndexedDBStorage('github-events-indexeddb');
 
-  // IndexedDB storage for search items (reusing the same hook with different key)
   const {
     events: indexedDBSearchItems,
     storeEvents: storeSearchItems,
@@ -120,89 +110,49 @@ function App() {
 
   // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
-  // const { validatedUsernames, invalidUsernames } = usernameCache;
 
-  // Categorize raw data into processed items based on current API mode and date filters
-  const results = useMemo(() => {
-    if (apiMode === 'events' || apiMode === 'summary') {
-      return categorizeRawEvents(indexedDBEvents, startDate, endDate);
-    } else if (apiMode === 'search') {
-      // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
-      return categorizeRawSearchItems(
-        indexedDBSearchItems as unknown as GitHubItem[],
-        startDate,
-        endDate
-      );
-    } else {
-      return [];
-    }
-  }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
+  // Use the data processing hook
+  const {
+    results,
+    searchItemsCount,
+    eventsCount,
+    groupedEventsCount,
+    rawEventsCount,
+  } = useGitHubDataProcessing({
+    indexedDBEvents,
+    indexedDBSearchItems,
+    startDate,
+    endDate,
+    apiMode,
+  });
 
-  // Calculate counts for navigation tabs
-  const searchItemsCount = useMemo(() => {
-    return categorizeRawSearchItems(
-      indexedDBSearchItems as unknown as GitHubItem[],
-      startDate,
-      endDate
-    ).length;
-  }, [indexedDBSearchItems, startDate, endDate]);
 
-  const eventsCount = useMemo(() => {
-    return categorizeRawEvents(indexedDBEvents, startDate, endDate).length;
-  }, [indexedDBEvents, startDate, endDate]);
 
-  // Calculate grouped events count (number of unique URLs after grouping)
-  const groupedEventsCount = useMemo(() => {
-    if (apiMode !== 'summary') return 0;
-
-    const categorizedEvents = categorizeRawEvents(
-      indexedDBEvents,
-      startDate,
-      endDate
-    );
-
-    // Group by URL to count unique items
-    const urlGroups: { [url: string]: GitHubItem[] } = {};
-
-    categorizedEvents.forEach(item => {
-      let groupingUrl = item.html_url;
-      // For comments, extract the issue/PR URL from the comment URL
-      if (item.title.startsWith('Comment on:')) {
-        groupingUrl = groupingUrl.split('#')[0];
-      }
-
-      if (!urlGroups[groupingUrl]) {
-        urlGroups[groupingUrl] = [];
-      }
-      urlGroups[groupingUrl].push(item);
-    });
-
-    return Object.keys(urlGroups).length;
-  }, [indexedDBEvents, startDate, endDate, apiMode]);
-
-  // Get available labels from raw data
-  // const availableLabels = useMemo(() => {
-  //   if (apiMode === 'events' || apiMode === 'events-grouped') {
-  //     return getAvailableLabelsFromRawEvents(indexedDBEvents);
-  //   } else if (apiMode === 'search') {
-  //     return extractAvailableLabels(
-  //       indexedDBSearchItems as unknown as GitHubItem[]
-  //   );
-  //   } else {
-  //     // For 'overview' mode, return empty array as it handles its own data
-  //     return [];
-  //   }
-  // }, [apiMode, indexedDBEvents, indexedDBSearchItems]);
+  // Use the data fetching hook
+  const {
+    loading,
+    loadingProgress,
+    currentUsername,
+    handleSearch,
+  } = useGitHubDataFetching({
+    username,
+    githubToken,
+    startDate,
+    endDate,
+    searchItemsCount,
+    eventsCount,
+    onError: setError,
+    storeEvents,
+    clearEvents,
+    storeSearchItems,
+    clearSearchItems,
+  });
 
   // Additional component state (not persisted)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [loadingProgress, setLoadingProgress] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
-  const [currentUsername, setCurrentUsername] = useState('');
 
   // Clipboard feedback
   // const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
@@ -227,242 +177,8 @@ function App() {
   }, [results]);
 
   // Real-time username format validation
-  const validateUsernameFormat = useCallback(
-    (usernameString: string) => {
-      if (!usernameString.trim()) {
-        setError(null);
-        return;
-      }
 
-      const validation = validateUsernameList(usernameString);
 
-      if (validation.errors.length === 0) {
-        setError(null);
-      } else {
-        setError(validation.errors.join('\n'));
-      }
-    },
-    []
-  );
-
-  // Handle username blur event
-  const handleUsernameBlur = useCallback(() => {
-    if (username.trim()) {
-      validateUsernameFormat(username);
-    }
-  }, [username, validateUsernameFormat]);
-
-  // Handle form settings changes
-  const setUsername = useCallback(
-    (username: string) => {
-      setFormSettings(prev => ({ ...prev, username }));
-    },
-    [setFormSettings]
-  );
-
-  const setStartDate = useCallback(
-    (startDate: string) => {
-      setFormSettings(prev => ({ ...prev, startDate }));
-    },
-    [setFormSettings]
-  );
-
-  const setEndDate = useCallback(
-    (endDate: string) => {
-      setFormSettings(prev => ({ ...prev, endDate }));
-    },
-    [setFormSettings]
-  );
-
-  const setGithubToken = useCallback(
-    (githubToken: string) => {
-      setFormSettings(prev => ({ ...prev, githubToken }));
-    },
-    [setFormSettings]
-  );
-
-  const setApiMode = useCallback(
-    (apiMode: 'search' | 'events' | 'summary') => {
-      setFormSettings(prev => ({ ...prev, apiMode }));
-    },
-    [setFormSettings]
-  );
-
-  // Helper function to fetch all events with pagination
-  const fetchAllEvents = async (
-    username: string,
-    token: string,
-    onProgress: (message: string) => void
-  ): Promise<GitHubEvent[]> => {
-    const allEvents: GitHubEvent[] = [];
-    let page = 1;
-    const perPage = 100; // GitHub API max per page
-    let hasMorePages = true;
-
-    while (hasMorePages) {
-      try {
-        onProgress(`Fetching events page ${page} for ${username}...`);
-        
-        const response = await fetch(
-          `https://api.github.com/users/${username}/events?per_page=${perPage}&page=${page}`,
-          {
-            headers: {
-              ...(token && { Authorization: `token ${token}` }),
-              Accept: 'application/vnd.github.v3+json',
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch events page ${page}: ${response.statusText}`);
-        }
-
-        const events = await response.json();
-        
-        // If we get fewer events than requested, we've reached the end
-        if (events.length < perPage) {
-          hasMorePages = false;
-        }
-        
-        allEvents.push(...events);
-        page++;
-        
-        // Add a small delay to respect GitHub API rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-      } catch (error) {
-        console.error(`Error fetching events page ${page} for ${username}:`, error);
-        // Continue with what we have so far
-        hasMorePages = false;
-      }
-    }
-
-    return allEvents;
-  };
-
-  // Handle search with progress tracking
-  const handleSearch = useCallback(async () => {
-    if (!username.trim()) {
-      setError('Please enter a GitHub username');
-      return;
-    }
-
-    // Check if there's existing data
-    const hasExistingData = searchItemsCount > 0 || eventsCount > 0;
-    
-    setLoading(true);
-    setError(null);
-    setLoadingProgress(hasExistingData ? 'Updating data in background...' : 'Starting search...');
-
-    try {
-      const usernames = username
-        .split(',')
-        .map(u => u.trim())
-        .filter(Boolean);
-      let currentProgress = 0;
-      const totalUsernames = usernames.length;
-
-      const onProgress = (message: string) => {
-        currentProgress++;
-        const progressPercent = Math.round(
-          (currentProgress / totalUsernames) * 100
-        );
-        const prefix = hasExistingData ? 'Updating' : 'Fetching';
-        setLoadingProgress(`${prefix} ${message} (${progressPercent}%)`);
-      };
-
-      // Only clear existing data if this is a fresh search (no existing data)
-      if (!hasExistingData) {
-        await clearEvents();
-        await clearSearchItems();
-      }
-
-      // Fetch events for each username with pagination
-      for (const singleUsername of usernames) {
-        setCurrentUsername(singleUsername);
-
-        try {
-          // Fetch all events with pagination
-          const allEvents = await fetchAllEvents(singleUsername, githubToken, onProgress);
-          
-          await storeEvents('github-events-indexeddb', allEvents, {
-            lastFetch: Date.now(),
-            usernames: [singleUsername],
-            apiMode: 'events',
-            startDate,
-            endDate,
-          });
-          onProgress(`Fetched ${allEvents.length} events for ${singleUsername}`);
-
-          // Fetch issues and PRs
-          const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=author:${singleUsername}&per_page=100&sort=updated`,
-            {
-              headers: {
-                ...(githubToken && { Authorization: `token ${githubToken}` }),
-                Accept: 'application/vnd.github.v3+json',
-              },
-            }
-          );
-
-          if (!searchResponse.ok) {
-            throw new Error(
-              `Failed to fetch issues/PRs: ${searchResponse.statusText}`
-            );
-          }
-
-          const searchData = await searchResponse.json();
-          // Add original property to search items
-          const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
-            ...item,
-            original: item, // Store the original item as the original payload
-          }));
-          await storeSearchItems(
-            'github-search-items-indexeddb',
-            searchItemsWithOriginal,
-            {
-              lastFetch: Date.now(),
-              usernames: [singleUsername],
-              apiMode: 'search',
-              startDate,
-              endDate,
-            }
-          );
-          onProgress(`Fetched issues/PRs for ${singleUsername}`);
-        } catch (error) {
-          console.error(`Error fetching data for ${singleUsername}:`, error);
-          setError(
-            `Error fetching data for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`
-          );
-          break;
-        }
-      }
-
-      setLoadingProgress('Search completed!');
-      setCurrentUsername('');
-    } catch (error) {
-      console.error('Search error:', error);
-      setError(
-        error instanceof Error
-          ? error.message
-          : 'An error occurred during search'
-      );
-    } finally {
-      setLoading(false);
-      setLoadingProgress('');
-    }
-  }, [
-    username,
-    githubToken,
-    clearEvents,
-    clearSearchItems,
-    storeEvents,
-    storeSearchItems,
-    startDate,
-    endDate,
-    searchItemsCount,
-    eventsCount,
-  ]);
 
   // Handle manual slot machine spin
   const handleManualSpin = useCallback(() => {
@@ -476,7 +192,7 @@ function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const rawEventsCount = indexedDBEvents.length;
+
 
   return (
     <PageLayout sx={{ '--spacing': '4 !important' }} containerWidth="full">
@@ -558,19 +274,7 @@ function App() {
           ) : (
             <IssuesAndPRsList results={results} buttonStyles={buttonStyles} />
           )}
-          {eventsError && (
-            <Box
-              sx={{
-                p: 2,
-                bg: 'danger.subtle',
-                color: 'danger.fg',
-                borderRadius: 2,
-                mb: 2,
-              }}
-            >
-              <Text>Error loading events: {eventsError}</Text>
-            </Box>
-          )}
+
           <SettingsDialog
             isOpen={isSettingsOpen}
             onDismiss={() => setIsSettingsOpen(false)}
@@ -578,8 +282,6 @@ function App() {
           <StorageManager
             isOpen={isStorageManagerOpen}
             onClose={() => setIsStorageManagerOpen(false)}
-            onClearEvents={clearEvents}
-            onClearSearchItems={clearSearchItems}
           />
         </FormContext.Provider>
       </PageLayout.Content>

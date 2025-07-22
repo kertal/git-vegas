@@ -1,0 +1,226 @@
+import { useCallback, useState } from 'react';
+import { GitHubEvent } from '../types';
+import { EventsData } from '../utils/indexedDB';
+
+interface UseGitHubDataFetchingProps {
+  username: string;
+  githubToken: string;
+  startDate: string;
+  endDate: string;
+  searchItemsCount: number;
+  eventsCount: number;
+  onError: (error: string) => void;
+  storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  clearEvents: () => Promise<void>;
+  storeSearchItems: (key: string, items: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  clearSearchItems: () => Promise<void>;
+}
+
+interface UseGitHubDataFetchingReturn {
+  loading: boolean;
+  loadingProgress: string;
+  currentUsername: string;
+  handleSearch: () => Promise<void>;
+}
+
+export const useGitHubDataFetching = ({
+  username,
+  githubToken,
+  startDate,
+  endDate,
+  searchItemsCount,
+  eventsCount,
+  onError,
+  storeEvents,
+  clearEvents,
+  storeSearchItems,
+  clearSearchItems,
+}: UseGitHubDataFetchingProps): UseGitHubDataFetchingReturn => {
+  const [loading, setLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState('');
+  const [currentUsername, setCurrentUsername] = useState('');
+
+  // Fetch all events for a username with pagination
+  const fetchAllEvents = async (
+    username: string,
+    token: string,
+    onProgress: (message: string) => void
+  ): Promise<GitHubEvent[]> => {
+    const allEvents: GitHubEvent[] = [];
+    let page = 1;
+    const perPage = 100;
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+      try {
+        onProgress(`Fetching events page ${page} for ${username}...`);
+        
+        const response = await fetch(
+          `https://api.github.com/users/${username}/events?per_page=${perPage}&page=${page}`,
+          {
+            headers: {
+              ...(token && { Authorization: `token ${token}` }),
+              Accept: 'application/vnd.github.v3+json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch events page ${page}: ${response.statusText}`);
+        }
+
+        const events = await response.json();
+        
+        // If we get fewer events than requested, we've reached the end
+        if (events.length < perPage) {
+          hasMorePages = false;
+        }
+        
+        allEvents.push(...events);
+        page++;
+        
+        // Add a small delay to respect GitHub API rate limits
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.error(`Error fetching events page ${page} for ${username}:`, error);
+        // Continue with what we have so far
+        hasMorePages = false;
+      }
+    }
+
+    return allEvents;
+  };
+
+  // Handle search with progress tracking
+  const handleSearch = useCallback(async () => {
+    if (!username.trim()) {
+      onError('Please enter a GitHub username');
+      return;
+    }
+
+    // Check if there's existing data
+    const hasExistingData = searchItemsCount > 0 || eventsCount > 0;
+    
+    setLoading(true);
+    onError(''); // Clear any previous errors
+    setLoadingProgress(hasExistingData ? 'Updating data in background...' : 'Starting search...');
+
+    try {
+      const usernames = username
+        .split(',')
+        .map(u => u.trim())
+        .filter(Boolean);
+      let currentProgress = 0;
+      const totalUsernames = usernames.length;
+
+      const onProgress = (message: string) => {
+        currentProgress++;
+        const progressPercent = Math.round(
+          (currentProgress / totalUsernames) * 100
+        );
+        const prefix = hasExistingData ? 'Updating' : 'Fetching';
+        setLoadingProgress(`${prefix} ${message} (${progressPercent}%)`);
+      };
+
+      // Only clear existing data if this is a fresh search (no existing data)
+      if (!hasExistingData) {
+        await clearEvents();
+        await clearSearchItems();
+      }
+
+      // Fetch events for each username with pagination
+      for (const singleUsername of usernames) {
+        setCurrentUsername(singleUsername);
+
+        try {
+          // Fetch all events with pagination
+          const allEvents = await fetchAllEvents(singleUsername, githubToken, onProgress);
+          
+          await storeEvents('github-events-indexeddb', allEvents, {
+            lastFetch: Date.now(),
+            usernames: [singleUsername],
+            apiMode: 'events',
+            startDate,
+            endDate,
+          });
+          onProgress(`Fetched ${allEvents.length} events for ${singleUsername}`);
+
+          // Fetch issues and PRs
+          const searchResponse = await fetch(
+            `https://api.github.com/search/issues?q=author:${singleUsername}&per_page=100&sort=updated`,
+            {
+              headers: {
+                ...(githubToken && { Authorization: `token ${githubToken}` }),
+                Accept: 'application/vnd.github.v3+json',
+              },
+            }
+          );
+
+          if (!searchResponse.ok) {
+            throw new Error(
+              `Failed to fetch issues/PRs: ${searchResponse.statusText}`
+            );
+          }
+
+          const searchData = await searchResponse.json();
+          // Add original property to search items
+          const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
+            ...item,
+            original: item, // Store the original item as the original payload
+          }));
+          await storeSearchItems(
+            'github-search-items-indexeddb',
+            searchItemsWithOriginal,
+            {
+              lastFetch: Date.now(),
+              usernames: [singleUsername],
+              apiMode: 'search',
+              startDate,
+              endDate,
+            }
+          );
+          onProgress(`Fetched issues/PRs for ${singleUsername}`);
+        } catch (error) {
+          console.error(`Error fetching data for ${singleUsername}:`, error);
+          onError(
+            `Error fetching data for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          break;
+        }
+      }
+
+      setLoadingProgress('Search completed!');
+      setCurrentUsername('');
+    } catch (error) {
+      console.error('Search error:', error);
+      onError(
+        error instanceof Error
+          ? error.message
+          : 'An error occurred during search'
+      );
+    } finally {
+      setLoading(false);
+      setLoadingProgress('');
+    }
+  }, [
+    username,
+    githubToken,
+    clearEvents,
+    clearSearchItems,
+    storeEvents,
+    storeSearchItems,
+    startDate,
+    endDate,
+    searchItemsCount,
+    eventsCount,
+    onError,
+  ]);
+
+  return {
+    loading,
+    loadingProgress,
+    currentUsername,
+    handleSearch,
+  };
+}; 
