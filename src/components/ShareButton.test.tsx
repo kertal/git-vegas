@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { ThemeProvider } from '@primer/react';
 import ShareButton from './ShareButton';
-import { FormSettings, UISettings } from '../types';
+import { FormSettings } from '../types';
 
 import * as urlState from '../utils/urlState';
 
@@ -29,20 +29,11 @@ describe('ShareButton', () => {
     apiMode: 'search',
   };
 
-  const defaultUISettings: UISettings = {
-    isCompactView: false,
-    timelineViewMode: 'standard',
-  };
-
-
-
   const renderShareButton = (props = {}) => {
     return render(
       <ThemeProvider>
         <ShareButton
           formSettings={defaultFormSettings}
-          uiSettings={defaultUISettings}
-
           searchText=""
           {...props}
         />
@@ -57,8 +48,6 @@ describe('ShareButton', () => {
       startDate: '2024-01-01',
       endDate: '2024-01-31',
       apiMode: 'search',
-      isCompactView: false,
-
       filter: 'all',
       statusFilter: 'all',
       labelFilter: '',
@@ -106,7 +95,6 @@ describe('ShareButton', () => {
     await waitFor(() => {
       expect(mockExtractShareableState).toHaveBeenCalledWith(
         defaultFormSettings,
-        defaultUISettings,
         ''
       );
       expect(mockGenerateShareableUrl).toHaveBeenCalled();
@@ -205,7 +193,6 @@ describe('ShareButton', () => {
     await waitFor(() => {
       expect(mockExtractShareableState).toHaveBeenCalledWith(
         defaultFormSettings,
-        defaultUISettings,
         'custom search'
       );
     });
@@ -238,17 +225,8 @@ describe('ShareButton', () => {
       apiMode: 'events',
     };
 
-    const complexUISettings: UISettings = {
-      isCompactView: true,
-      timelineViewMode: 'grouped',
-    };
-
-
-
     renderShareButton({
       formSettings: complexFormSettings,
-      uiSettings: complexUISettings,
-      
       searchText: 'override search',
     });
 
@@ -258,7 +236,6 @@ describe('ShareButton', () => {
     await waitFor(() => {
       expect(mockExtractShareableState).toHaveBeenCalledWith(
         complexFormSettings,
-        complexUISettings,
         'override search'
       );
     });

@@ -1,4 +1,4 @@
-import { FormSettings, UISettings } from '../types';
+import { FormSettings } from '../types';
 import { ResultsFilter } from './resultsUtils';
 
 // Define which app state properties can be shared via URL
@@ -8,9 +8,6 @@ export interface ShareableState {
   startDate: string;
   endDate: string;
   apiMode: 'search' | 'events' | 'summary';
-
-  // UI settings
-  isCompactView: boolean;
 
   // Filter settings
   filter: 'all' | 'issue' | 'pr' | 'comment';
@@ -29,7 +26,6 @@ const urlParamTypes: Record<
   startDate: 'string',
   endDate: 'string',
   apiMode: 'string',
-  isCompactView: 'boolean',
   filter: 'string',
   statusFilter: 'string',
   excludedLabels: 'string[]',
@@ -148,7 +144,6 @@ export function generateUrlParams(state: ShareableState): URLSearchParams {
     })(),
     endDate: new Date().toISOString().split('T')[0],
     apiMode: 'search',
-    isCompactView: false,
     filter: 'all',
     statusFilter: 'all',
     excludedLabels: [],
@@ -240,7 +235,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
  */
 export function extractShareableState(
   formSettings: FormSettings,
-  uiSettings: UISettings,
   searchText: string = ''
 ): ShareableState {
   return {
@@ -248,7 +242,6 @@ export function extractShareableState(
     startDate: formSettings.startDate,
     endDate: formSettings.endDate,
     apiMode: formSettings.apiMode,
-    isCompactView: uiSettings.isCompactView,
     filter: 'all',
     statusFilter: 'all',
     excludedLabels: [],
@@ -264,11 +257,9 @@ export function extractShareableState(
 export function applyUrlOverrides(
   urlState: Partial<ShareableState>,
   formSettings: FormSettings,
-  uiSettings: UISettings,
   currentFilters: ResultsFilter
 ): {
   formSettings: FormSettings;
-  uiSettings: UISettings;
   currentFilters: ResultsFilter;
   searchText: string;
 } {
@@ -278,13 +269,6 @@ export function applyUrlOverrides(
     ...(urlState.startDate !== undefined && { startDate: urlState.startDate }),
     ...(urlState.endDate !== undefined && { endDate: urlState.endDate }),
     ...(urlState.apiMode !== undefined && { apiMode: urlState.apiMode }),
-  };
-
-  const newUISettings: UISettings = {
-    ...uiSettings,
-    ...(urlState.isCompactView !== undefined && {
-      isCompactView: urlState.isCompactView,
-    }),
   };
 
   const newCurrentFilters: ResultsFilter = {
@@ -304,7 +288,6 @@ export function applyUrlOverrides(
 
   return {
     formSettings: newFormSettings,
-    uiSettings: newUISettings,
     currentFilters: newCurrentFilters,
     searchText: urlState.searchText || '',
   };

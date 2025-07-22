@@ -251,9 +251,8 @@ export interface FormSettings {
 }
 
 // UI/Display settings that control how data is presented
-export interface UISettings {
-  isCompactView: boolean;
-}
+// Note: UISettings interface removed as no UI settings are currently needed
+// Format for copying is determined by the copy format button clicked ('detailed' | 'compact')
 
 // Item-specific UI state (visibility, expansion, selection)
 export interface ItemUIState {

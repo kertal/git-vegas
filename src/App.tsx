@@ -80,7 +80,6 @@ function App() {
   // Use the new custom hooks for form state and data fetching
   const {
     formSettings,
-    uiSettings,
     setUsername,
     setStartDate,
     setEndDate,
@@ -155,17 +154,8 @@ function App() {
   // Clipboard feedback
   // const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
 
-  // Separate search text states for events and issues
-  const [issuesSearchText] = useState('');
-
-  // Apply search text filtering to results (supports label:name, user:username syntax)
-  // const filteredResults = useMemo(() => {
-  //   if (apiMode === 'overview') {
-  //     return results;
-  //   }
-  //
-  //   return filterByText(results, issuesSearchText);
-  // }, [results, issuesSearchText, apiMode]);
+  // Note: Search text is managed by individual view components
+  // Each view (Summary, EventView, IssuesAndPRsList) has its own searchText state
 
   // Memoize avatar URLs extraction to avoid recalculating on every render
   const avatarUrls = useMemo(() => {
@@ -222,8 +212,6 @@ function App() {
             />
             <ShareButton
               formSettings={formSettings}
-              uiSettings={uiSettings}
-              searchText={issuesSearchText}
               size="medium"
             />
             <IconButton

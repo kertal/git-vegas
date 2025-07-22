@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useLocalStorage } from './useLocalStorage';
-import { FormSettings, UISettings } from '../types';
+import { FormSettings } from '../types';
 import { validateUsernameList } from '../utils';
 
 interface UseGitHubFormStateReturn {
   formSettings: FormSettings;
-  uiSettings: UISettings;
   setUsername: (username: string) => void;
   setStartDate: (startDate: string) => void;
   setEndDate: (endDate: string) => void;
@@ -32,13 +31,8 @@ export const useGitHubFormState = (): UseGitHubFormStateReturn => {
     }
   );
 
-  // UI settings (persisted in localStorage)
-  const [uiSettings] = useLocalStorage<UISettings>(
-    'github-ui-settings',
-    {
-      isCompactView: true,
-    }
-  );
+  // Note: UI settings removed as no UI settings are currently needed
+  // Format for copying is determined by the copy format button clicked
 
   const [error, setError] = useState<string | null>(null);
 
@@ -106,7 +100,6 @@ export const useGitHubFormState = (): UseGitHubFormStateReturn => {
 
   return {
     formSettings,
-    uiSettings,
     setUsername,
     setStartDate,
     setEndDate,
