@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { GitHubEvent } from '../types';
+import { GitHubEvent, GitHubItem } from '../types';
 import { EventsData } from '../utils/indexedDB';
 
 interface UseGitHubDataFetchingProps {
@@ -131,7 +131,7 @@ export const useGitHubDataFetching = ({
 
       // Accumulate all data from all users
       const allEvents: GitHubEvent[] = [];
-      const allSearchItems: GitHubEvent[] = [];
+      const allSearchItems: GitHubItem[] = [];
 
       // Fetch events for each username with pagination
       for (const singleUsername of usernames) {
@@ -177,9 +177,18 @@ export const useGitHubDataFetching = ({
         }
       }
 
+      // Sort all accumulated data by date (newest first) before storing
+      const sortedEvents = allEvents.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      
+      const sortedSearchItems = allSearchItems.sort((a, b) => 
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+
       // Store all accumulated data at once
-      if (allEvents.length > 0) {
-        await storeEvents('github-events-indexeddb', allEvents, {
+      if (sortedEvents.length > 0) {
+        await storeEvents('github-events-indexeddb', sortedEvents, {
           lastFetch: Date.now(),
           usernames: usernames,
           apiMode: 'events',
@@ -188,10 +197,10 @@ export const useGitHubDataFetching = ({
         });
       }
 
-      if (allSearchItems.length > 0) {
+      if (sortedSearchItems.length > 0) {
         await storeSearchItems(
           'github-search-items-indexeddb',
-          allSearchItems,
+          sortedSearchItems as unknown as GitHubEvent[],
           {
             lastFetch: Date.now(),
             usernames: usernames,
