@@ -155,10 +155,46 @@ function App() {
 
   useEffect(() => {
     if (initialLoadingCount === 1) {
-      setInitialLoadingCount(0);
-      handleSearch();
+      const startTime = Date.now();
+      const minLoadingTime = 5000; // 5 seconds minimum
+      
+      handleSearch().then(() => {
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
+        
+        setTimeout(() => {
+          setInitialLoadingCount(0);
+        }, remainingTime);
+      });
     }
-  }, [initialLoadingCount, loading, handleSearch]);
+  }, [initialLoadingCount, handleSearch]);
+
+  if (initialLoadingCount === 1) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          gap: 3,
+        }}
+      >
+        <SlotMachineLoader
+          avatarUrls={avatarUrls}
+          isLoading={loading}
+          isManuallySpinning={isManuallySpinning}
+          size="large"
+        />
+        <LoadingIndicator
+          loadingProgress={loadingProgress}
+          isLoading={loading}
+          currentUsername={currentUsername}
+        />
+      </Box>
+    );
+  }
 
   return (
     <PageLayout sx={{ '--spacing': '4 !important' }} containerWidth="full">
@@ -194,6 +230,7 @@ function App() {
               avatarUrls={avatarUrls}
               isLoading={loading}
               isManuallySpinning={isManuallySpinning}
+              size="small"
             />
           </PageHeader.Actions>
         </PageHeader>

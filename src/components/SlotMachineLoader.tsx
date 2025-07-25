@@ -7,6 +7,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
   avatarUrls,
   isLoading,
   isManuallySpinning = false,
+  size = 'medium',
 }: SlotMachineLoaderProps) {
   // Ensure we always have items to display
   const allItems = useMemo(() => {
@@ -79,7 +80,12 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
 
     // Get the current visible item (middle item when spinning, final item when stopped)
     const visibleItemIndex = Math.floor(itemSequence.length / 2);
-    const itemHeight = 24; // Height of each item
+    
+    // Size-based dimensions
+    const sizeMultiplier = size === 'large' ? 2.5 : size === 'medium' ? 1.5 : 1;
+    const itemHeight = 24 * sizeMultiplier;
+    const itemWidth = 24 * sizeMultiplier;
+    const totalHeight = 240 * sizeMultiplier;
     const offset = itemHeight * (visibleItemIndex - 0.5); // Center the item by offsetting by half its height
 
     return (
@@ -89,8 +95,8 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '24px',
-          height: '24px',
+          width: `${itemWidth}px`,
+          height: `${itemHeight}px`,
 
           borderColor: 'border.default',
           borderRadius: '4px',
@@ -119,7 +125,7 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            height: '240px', // Height for 10 items
+            height: `${totalHeight}px`, // Height for 10 items
             transform: isSpinning
               ? 'translateY(0)'
               : `translateY(-${offset}px)`,
@@ -133,15 +139,15 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
           sx={{
             '@keyframes spin0': {
               '0%': { transform: 'translateY(0px)' },
-              '100%': { transform: 'translateY(-240px)' },
+              '100%': { transform: `translateY(-${totalHeight}px)` },
             },
             '@keyframes spin1': {
               '0%': { transform: 'translateY(0px)' },
-              '100%': { transform: 'translateY(-240px)' },
+              '100%': { transform: `translateY(-${totalHeight}px)` },
             },
             '@keyframes spin2': {
               '0%': { transform: 'translateY(0px)' },
-              '100%': { transform: 'translateY(-240px)' },
+              '100%': { transform: `translateY(-${totalHeight}px)` },
             },
           }}
         >
@@ -152,8 +158,8 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '24px',
-                height: '24px',
+                width: `${itemWidth}px`,
+                height: `${itemHeight}px`,
                 flexShrink: 0,
                 transform:
                   i === visibleItemIndex && !isSpinning
@@ -168,9 +174,9 @@ export const SlotMachineLoader = memo(function SlotMachineLoader({
             >
               {item &&
                 (typeof item === 'string' && item.startsWith('http') ? (
-                  <Avatar src={item} size={20} />
+                  <Avatar src={item} size={size === 'large' ? 48 : size === 'medium' ? 32 : 20} />
                 ) : (
-                  <Text sx={{ fontSize: 2, lineHeight: 1 }}>{item}</Text>
+                  <Text sx={{ fontSize: size === 'large' ? 4 : size === 'medium' ? 3 : 2, lineHeight: 1 }}>{item}</Text>
                 ))}
             </Box>
           ))}

@@ -151,10 +151,6 @@ export const useGitHubDataFetching = ({
         setCurrentUsername(singleUsername);
 
         try {
-          // Fetch all events with pagination
-          const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
-          allEvents.push(...userEvents);
-          onProgress(`Fetched ${userEvents.length} events for ${singleUsername}`);
 
           // Fetch issues and PRs with date range filtering
           const searchQuery = `author:${singleUsername} updated:${startDate}..${endDate}`;
@@ -183,6 +179,13 @@ export const useGitHubDataFetching = ({
           }));
           allSearchItems.push(...searchItemsWithOriginal);
           onProgress(`Fetched issues/PRs for ${singleUsername}`);
+
+           // Fetch all events with pagination
+           const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
+           allEvents.push(...userEvents);
+           onProgress(`Fetched ${userEvents.length} events for ${singleUsername}`);
+
+
         } catch (error) {
           console.error(`Error fetching data for ${singleUsername}:`, error);
           onError(
