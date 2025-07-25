@@ -1,11 +1,10 @@
 import { memo, useCallback } from 'react';
 import { IconButton } from '@primer/react';
 import {
-  CopyIcon,
+  LinkIcon,
   CheckIcon,
 } from '@primer/octicons-react';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { GitHubItem } from '../types';
 
 interface CopyToClipboardButtonProps {
@@ -27,19 +26,11 @@ const CopyToClipboardButton = memo(function CopyToClipboardButton({
 
   const handleCopy = useCallback(async () => {
     try {
-      await copyToClipboard([item], {
-        isCompactView: true, // Use compact format for single items
-        onSuccess: () => {
-          triggerCopy(item.event_id || item.id);
-          onSuccess?.();
-        },
-        onError: (error: Error) => {
-          console.error('Failed to copy item:', error);
-          onError?.(error);
-        },
-      });
+      await navigator.clipboard.writeText(item.html_url);
+      triggerCopy(item.event_id || item.id);
+      onSuccess?.();
     } catch (error) {
-      console.error('Failed to copy item:', error);
+      console.error('Failed to copy link:', error);
       onError?.(error as Error);
     }
   }, [item, triggerCopy, onSuccess, onError]);
@@ -48,13 +39,13 @@ const CopyToClipboardButton = memo(function CopyToClipboardButton({
 
   return (
     <IconButton
-      icon={isItemCopied ? CheckIcon : CopyIcon}
+      icon={isItemCopied ? CheckIcon : LinkIcon}
       variant="invisible"
-      aria-label={isItemCopied ? "Copied to clipboard" : "Copy to clipboard"}
+      aria-label={isItemCopied ? "Link copied to clipboard" : "Copy link to clipboard"}
       size={size}
       onClick={handleCopy}
       sx={buttonStyles}
-      title={isItemCopied ? "Copied to clipboard" : "Copy to clipboard"}
+      title={isItemCopied ? "Link copied to clipboard" : "Copy link to clipboard"}
     />
   );
 });
