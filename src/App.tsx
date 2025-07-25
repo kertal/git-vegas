@@ -63,7 +63,6 @@ export function useFormContext() {
   return context;
 }
 
-// Update button styles to be consistent
 // eslint-disable-next-line react-refresh/only-export-components
 export const buttonStyles = {
   height: 28,
@@ -74,22 +73,16 @@ export const buttonStyles = {
   gap: 2,
 };
 
-// Add back the events-grouped logic in the results calculation and render logic. Update the results useMemo to include 'events-grouped' mode and add the SummaryView component usage in the render section.
-// Add the main App component
 function App() {
-  // Additional component state (not persisted)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
   const [initialLoadingCount, setInitialLoadingCount] = useState(0);
-
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
 
-  // Callback for URL parameter processing
   const handleUrlParamsProcessed = useCallback(() => {
     setInitialLoadingCount(1);
   }, []);
 
-  // Use the new custom hooks for form state and data fetching
   const {
     formSettings,
     setUsername,
@@ -103,9 +96,6 @@ function App() {
     setError,
   } = useGitHubFormState(handleUrlParamsProcessed);
 
-
-
-  // IndexedDB storage for events and search items
   const {
     events: indexedDBEvents,
     storeEvents,
@@ -118,10 +108,8 @@ function App() {
     clearEvents: clearSearchItems,
   } = useIndexedDBStorage('github-search-items-indexeddb');
 
-  // Extract individual values for convenience
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
-  // Use the data processing hook
   const {
     results,
     searchItemsCount,
@@ -135,9 +123,6 @@ function App() {
     apiMode,
   });
 
-
-
-  // Use the data fetching hook
   const {
     loading,
     loadingProgress,
@@ -157,35 +142,23 @@ function App() {
     clearSearchItems,
   });
 
-  // Clipboard feedback
-  // const { isCopied: isClipboardCopied, triggerCopy: triggerClipboardCopy } = useCopyFeedback(2000);
-
-  // Note: Search text is managed by individual view components
-  // Each view (Summary, EventView, IssuesAndPRsList) has its own searchText state
-
-  // Memoize avatar URLs extraction to avoid recalculating on every render
   const avatarUrls = useMemo(() => {
     return (Array.isArray(results) ? results : [])
       .map(item => item.user.avatar_url)
       .filter(Boolean);
   }, [results]);
 
-  // Handle manual slot machine spin
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);
     setTimeout(() => setIsManuallySpinning(false), 2000);
   }, []);
 
-   // Auto-fetch data if no data is available and username is provided
-   useEffect(() => {
+  useEffect(() => {
     if (initialLoadingCount === 1) {
-      // Trigger initial fetch
       setInitialLoadingCount(0);
       handleSearch();
     }
   }, [initialLoadingCount, loading, handleSearch]);
-
-
 
   return (
     <PageLayout sx={{ '--spacing': '4 !important' }} containerWidth="full">

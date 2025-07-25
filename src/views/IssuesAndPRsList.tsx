@@ -86,13 +86,6 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
-  // Use debounced search hook (search functionality temporarily hidden)
-  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
-  //   searchText,
-  //   setSearchText,
-  //   300
-  // );
-
   // Apply search text filtering to results
   const filteredResults = useMemo(() => {
     return filterByText(results, searchText);
