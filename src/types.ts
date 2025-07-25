@@ -236,6 +236,8 @@ export interface SlotMachineLoaderProps {
 export interface SettingsDialogProps {
   isOpen: boolean;
   onDismiss: () => void;
+  onClearEvents?: () => void;
+  onClearSearchItems?: () => void;
 }
 
 /**

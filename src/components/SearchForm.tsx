@@ -130,7 +130,7 @@ const SearchForm = memo(function SearchForm() {
         {/* API Mode Switch */}
         <Box sx={{ mb: 2 }}>
           <UnderlineNav aria-label="GitHub API Mode">
-                      <UnderlineNav.Item
+            <UnderlineNav.Item
               href="#"
               aria-current={apiMode === 'summary' ? 'page' : undefined}
               onSelect={e => {

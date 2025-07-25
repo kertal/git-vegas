@@ -7,7 +7,7 @@ import {
   useContext,
 } from 'react';
 import { PageLayout, PageHeader, Box, IconButton } from '@primer/react';
-import { GearIcon, DatabaseIcon } from '@primer/octicons-react';
+import { GearIcon } from '@primer/octicons-react';
 
 import { useGitHubFormState } from './hooks/useGitHubFormState';
 import { useGitHubDataFetching } from './hooks/useGitHubDataFetching';
@@ -20,7 +20,7 @@ import IssuesAndPRsList from './views/IssuesAndPRsList';
 import EventView from './views/EventView';
 import SummaryView from './views/Summary';
 import SettingsDialog from './components/SettingsDialog';
-import { StorageManager } from './components/StorageManager';
+
 import { LoadingIndicator } from './components/LoadingIndicator';
 import ShareButton from './components/ShareButton';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
@@ -75,7 +75,6 @@ export const buttonStyles = {
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isStorageManagerOpen, setIsStorageManagerOpen] = useState(false);
   const [initialLoadingCount, setInitialLoadingCount] = useState(0);
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
 
@@ -217,11 +216,6 @@ function App() {
               size="medium"
             />
             <IconButton
-              icon={DatabaseIcon}
-              aria-label="Storage Manager"
-              onClick={() => setIsStorageManagerOpen(true)}
-            />
-            <IconButton
               icon={GearIcon}
               aria-label="Settings"
               onClick={() => setIsSettingsOpen(true)}
@@ -278,10 +272,8 @@ function App() {
           <SettingsDialog
             isOpen={isSettingsOpen}
             onDismiss={() => setIsSettingsOpen(false)}
-          />
-          <StorageManager
-            isOpen={isStorageManagerOpen}
-            onClose={() => setIsStorageManagerOpen(false)}
+            onClearEvents={clearEvents}
+            onClearSearchItems={clearSearchItems}
           />
         </FormContext.Provider>
       </PageLayout.Content>
