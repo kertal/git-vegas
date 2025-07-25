@@ -204,29 +204,6 @@ const SettingsDialog = memo(function SettingsDialog({
             Save Settings
           </Button>
         </Box>
-
-        <Box
-          sx={{
-            mt: 3,
-            p: 3,
-            bg: 'canvas.subtle',
-            border: '1px solid',
-            borderColor: 'border.default',
-            borderRadius: 2,
-          }}
-        >
-          <Heading as="h3" sx={{ fontSize: 1, mb: 2, color: 'fg.muted' }}>
-            Security Best Practices
-          </Heading>
-          <Text as="ul" sx={{ fontSize: 0, color: 'fg.muted', pl: 3 }}>
-            <li>
-              Use fine-grained tokens with minimal permissions when possible
-            </li>
-            <li>Never share your token or commit it to version control</li>
-            <li>Set an expiration date on your token for better security</li>
-            <li>Review and revoke tokens regularly in your GitHub settings</li>
-          </Text>
-        </Box>
       </Box>
     </Dialog>
   );
