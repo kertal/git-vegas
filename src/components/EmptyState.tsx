@@ -37,7 +37,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
     switch (type) {
       case 'no-data':
-        return 'No data available. Enter a username and use the update button to load data.';
+        return 'No data available.';
       
       case 'no-matches':
         if (searchText) {
@@ -54,7 +54,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         }
       
       default:
-        return 'No data available. Enter a username and use the update button to load data.';
+        return 'No data available.';
     }
   };
 

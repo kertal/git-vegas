@@ -68,7 +68,8 @@ export const useGitHubDataFetching = ({
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch events page ${page}: ${response.statusText}`);
+          const responseJSON = await response.json();
+          throw new Error(`Failed to fetch events page ${page}: ${responseJSON.message}`);
         }
 
         const events = await response.json();
@@ -96,6 +97,7 @@ export const useGitHubDataFetching = ({
         
       } catch (error) {
         console.error(`Error fetching events page ${page} for ${username}:`, error);
+        throw error;
         // Continue with what we have so far
         hasMorePages = false;
       }
@@ -167,9 +169,10 @@ export const useGitHubDataFetching = ({
           );
 
           if (!searchResponse.ok) {
-            throw new Error(
-              `Failed to fetch issues/PRs: ${searchResponse.statusText}`
-            );
+            if (!searchResponse.ok) {
+              const responseJSON = await searchResponse.json();
+              throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
+            }
           }
 
           const searchData = await searchResponse.json();
