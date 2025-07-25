@@ -158,10 +158,10 @@ const EventView = memo(function EventView({
     setCurrentPage(page);
   }, []);
 
-  // Select all items on current page
+  // Select all items across all pages
   const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(paginatedItems.map(item => item.event_id || item.id)));
-  }, [paginatedItems]);
+    setSelectedItems(new Set(sortedItems.map(item => item.event_id || item.id)));
+  }, [sortedItems]);
 
   // Internal copy handler for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
@@ -193,30 +193,30 @@ const EventView = memo(function EventView({
 
   // Calculate select all checkbox state
   const selectAllState = useMemo(() => {
-    if (paginatedItems.length === 0) {
+    if (sortedItems.length === 0) {
       return { checked: false, indeterminate: false };
     }
 
-    const selectedCount = paginatedItems.filter(item =>
+    const selectedCount = sortedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
 
     if (selectedCount === 0) {
       return { checked: false, indeterminate: false };
-    } else if (selectedCount === paginatedItems.length) {
+    } else if (selectedCount === sortedItems.length) {
       return { checked: true, indeterminate: false };
     } else {
       return { checked: false, indeterminate: true };
     }
-  }, [paginatedItems, selectedItems]);
+  }, [sortedItems, selectedItems]);
 
   // Handle select all checkbox click
   const handleSelectAllChange = () => {
-    const selectedCount = paginatedItems.filter(item =>
+    const selectedCount = sortedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
 
-    if (selectedCount === paginatedItems.length) {
+    if (selectedCount === sortedItems.length) {
       // All are selected, clear selection
       clearSelection?.();
     } else {
