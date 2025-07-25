@@ -1,7 +1,6 @@
 import { memo, useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Text,
-  Heading,
   Checkbox,
   Box,
   Pagination,
@@ -274,22 +273,20 @@ const EventView = memo(function EventView({
           aria-label="Select all events"
           disabled={sortedItems.length === 0}
         />
-        <Heading
-          as="h2"
+        <Text
           sx={{
-            fontSize: 2,
-            fontWeight: 'semibold',
+            fontSize: 1,
             color: 'fg.default',
             m: 0,
           }}
         >
-          Events
+          Select All
           {totalPages > 1 && (
             <Text as="span" sx={{ fontSize: 1, color: 'fg.muted', ml: 2 }}>
               (Page {currentPage} of {totalPages})
             </Text>
           )}
-        </Heading>
+        </Text>
       </Box>
       <BulkCopyButtons
         selectedItems={selectedItems}

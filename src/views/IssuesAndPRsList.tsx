@@ -2,7 +2,6 @@ import React, { memo, useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Text,
-  Heading,
   Checkbox,
 } from '@primer/react';
 import {
@@ -212,17 +211,15 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                   (areFiltersActive ? filteredResults : results).length === 0
                 }
               />
-              <Heading
-                as="h2"
+              <Text
                 sx={{
-                  fontSize: 2,
-                  fontWeight: 'semibold',
+                  fontSize: 1,
                   color: 'fg.default',
                   m: 0,
                 }}
               >
-                Issues and PRs
-              </Heading>
+                Select All
+              </Text>
               <BulkCopyButtons
                 selectedItems={selectedItems}
                 totalItems={areFiltersActive ? filteredResults.length : results.length}

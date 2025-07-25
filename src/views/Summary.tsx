@@ -436,17 +436,15 @@ const SummaryView = memo(function SummaryView({
           aria-label="Select all events"
           disabled={sortedItems.length === 0}
         />
-        <Heading
-          as="h2"
+        <Text
           sx={{
-            fontSize: 2,
-            fontWeight: 'semibold',
+            fontSize: 1,
             color: 'fg.default',
             m: 0,
           }}
         >
-          Summary
-        </Heading>
+          Select All
+        </Text>
       </Box>
       <BulkCopyButtons
         selectedItems={selectedItems}
