@@ -153,9 +153,9 @@ export const useGitHubDataFetching = ({
         try {
 
           // Fetch issues and PRs with date range filtering
-          const searchQuery = `author:${singleUsername} updated:${startDate}..${endDate}`;
+          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
           const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=100&sort=updated`,
+            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=100&sort=updated&advanced_search=true`,
             {
               headers: {
                 ...(githubToken && { Authorization: `token ${githubToken}` }),

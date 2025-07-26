@@ -3,11 +3,15 @@ import {
   Box,
   Text,
   Checkbox,
+  Button,
+  Heading,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
   IssueOpenedIcon,
   GitMergeIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from '@primer/octicons-react';
 
 import { GitHubItem } from '../types';
@@ -75,12 +79,13 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
   buttonStyles,
 }: IssuesAndPRsListProps) {
-  // Get GitHub token from form context
-  const { githubToken } = useFormContext();
+  // Get GitHub token and username from form context
+  const { githubToken, username } = useFormContext();
 
   // Internal state management (previously from context)
   const [searchText] = useLocalStorage<string>('issuesAndPRs-searchText', '');
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('issuesAndPRs-selectedItems', new Set());
+  const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('issuesAndPRs-collapsedSections', new Set());
 
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
@@ -89,6 +94,47 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   const filteredResults = useMemo(() => {
     return filterByText(results, searchText);
   }, [results, searchText]);
+
+  // Group items into sections
+  const groupedItems = useMemo(() => {
+    const groups: {
+      'PRs': GitHubItem[];
+      'Issues Authored': GitHubItem[];
+      'Issues Assigned': GitHubItem[];
+    } = {
+      'PRs': [],
+      'Issues Authored': [],
+      'Issues Assigned': [],
+    };
+
+    // Parse usernames from the search (can be comma-separated)
+    const searchedUsernames = username.split(',').map(u => u.trim().toLowerCase());
+
+    filteredResults.forEach(item => {
+      if (item.pull_request) {
+        // All pull requests go to PRs section
+        groups['PRs'].push(item);
+      } else {
+        // For issues, check if authored by searched user(s) or assigned
+        const itemAuthor = item.user.login.toLowerCase();
+        if (searchedUsernames.includes(itemAuthor)) {
+          groups['Issues Authored'].push(item);
+        } else {
+          // If not authored by searched user, it must be assigned (since our API query uses author OR assignee)
+          groups['Issues Assigned'].push(item);
+        }
+      }
+    });
+
+    // Sort each group by updated date (newest first)
+    Object.keys(groups).forEach(key => {
+      groups[key as keyof typeof groups].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+    });
+
+    return groups;
+  }, [filteredResults, username]);
 
   // Selection handlers
   const toggleItemSelection = useCallback((id: string | number) => {
@@ -104,36 +150,123 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   }, []);
 
   const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(results.map((item: GitHubItem) => item.event_id || item.id)));
-  }, [results]);
+    const allDisplayedItems = Object.values(groupedItems).flat();
+    setSelectedItems(new Set(allDisplayedItems.map((item: GitHubItem) => item.event_id || item.id)));
+  }, [groupedItems]);
 
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
   }, []);
 
+  const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (shouldSelect) {
+        itemIds.forEach(id => newSet.add(id));
+      } else {
+        itemIds.forEach(id => newSet.delete(id));
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Toggle section collapse state
+  const toggleSectionCollapse = useCallback((sectionName: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(sectionName)) {
+        newSet.delete(sectionName);
+      } else {
+        newSet.add(sectionName);
+      }
+      return newSet;
+    });
+  }, []);
+
   // Copy results to clipboard for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    const selectedItemsArray = selectedItems.size > 0
-      ? results.filter((item: GitHubItem) => selectedItems.has(item.event_id || item.id))
-      : results;
+    // Convert to the format expected by clipboard utility
+    const groupedData = Object.entries(groupedItems)
+      .filter(([, items]) => items.length > 0)
+      .map(([groupName, items]) => ({
+        groupName,
+        items,
+      }));
+
+    // Use the enhanced clipboard utility with grouped data
+    // If items are selected, filter the grouped data to only include selected items
+    let finalGroupedData = groupedData;
+    if (selectedItems.size > 0) {
+      finalGroupedData = groupedData.map(group => ({
+        ...group,
+        items: group.items.filter(item =>
+          selectedItems.has(item.event_id || item.id)
+        )
+      })).filter(group => group.items.length > 0);
+    }
+
+    // Get all items for the clipboard (either selected or all)
+    const allItems = Object.values(groupedItems).flat();
+    const selectedItemsArray =
+      selectedItems.size > 0
+        ? allItems.filter(item =>
+            selectedItems.has(item.event_id || item.id)
+          )
+        : allItems;
 
     await copyToClipboard(selectedItemsArray, {
       isCompactView: format === 'compact',
+      isGroupedView: true,
+      groupedData: finalGroupedData,
       onSuccess: () => {
         triggerCopy(format);
       },
       onError: (error: Error) => {
-        console.error('Failed to copy results:', error);
+        console.error('Failed to copy grouped results:', error);
       },
     });
-  }, [results, selectedItems, triggerCopy]);
-
-
+  }, [groupedItems, selectedItems, triggerCopy]);
 
   // Clipboard feedback helper
   const isClipboardCopied = useCallback((itemId: string | number) => {
     return isCopied(itemId);
   }, [isCopied]);
+
+  // Calculate select all checkbox state
+  const selectAllState = useMemo(() => {
+    const allDisplayedItems = Object.values(groupedItems).flat();
+    if (allDisplayedItems.length === 0) {
+      return { checked: false, indeterminate: false };
+    }
+
+    const selectedCount = allDisplayedItems.filter(item =>
+      selectedItems.has(item.event_id || item.id)
+    ).length;
+
+    if (selectedCount === 0) {
+      return { checked: false, indeterminate: false };
+    } else if (selectedCount === allDisplayedItems.length) {
+      return { checked: true, indeterminate: false };
+    } else {
+      return { checked: false, indeterminate: true };
+    }
+  }, [groupedItems, selectedItems]);
+
+  // Handle select all checkbox click
+  const handleSelectAllChange = () => {
+    const allDisplayedItems = Object.values(groupedItems).flat();
+    const selectedCount = allDisplayedItems.filter(item =>
+      selectedItems.has(item.event_id || item.id)
+    ).length;
+
+    if (selectedCount === allDisplayedItems.length) {
+      // All are selected, clear selection
+      clearSelection();
+    } else {
+      // Some or none are selected, select all
+      selectAllItems();
+    }
+  };
 
   // Dialog state
   const [selectedItemForDialog, setSelectedItemForDialog] =
@@ -141,47 +274,36 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   const [selectedItemForClone, setSelectedItemForClone] =
     useState<GitHubItem | null>(null);
 
-  // Check if filters are active
-  const areFiltersActive = filteredResults.length !== results.length;
-
-  // Selection handlers
-  const handleSelectAllChange = () => {
-    if (
-      selectedItems instanceof Set &&
-      selectedItems.size ===
-        (areFiltersActive ? filteredResults.length : results.length)
-    ) {
-      clearSelection();
-    } else {
-      selectAllItems();
-    }
-  };
-
   // Dialog navigation handlers
   const handlePreviousItem = () => {
     if (!selectedItemForDialog) return;
-    const currentIndex = filteredResults.findIndex(
+    const allItems = Object.values(groupedItems).flat();
+    const currentIndex = allItems.findIndex(
       item => item.id === selectedItemForDialog.id
     );
     if (currentIndex > 0) {
-      setSelectedItemForDialog(filteredResults[currentIndex - 1]);
+      setSelectedItemForDialog(allItems[currentIndex - 1]);
     }
   };
 
   const handleNextItem = () => {
     if (!selectedItemForDialog) return;
-    const currentIndex = filteredResults.findIndex(
+    const allItems = Object.values(groupedItems).flat();
+    const currentIndex = allItems.findIndex(
       item => item.id === selectedItemForDialog.id
     );
-    if (currentIndex < filteredResults.length - 1) {
-      setSelectedItemForDialog(filteredResults[currentIndex + 1]);
+    if (currentIndex < allItems.length - 1) {
+      setSelectedItemForDialog(allItems[currentIndex + 1]);
     }
   };
 
   const getCurrentItemIndex = () => {
     if (!selectedItemForDialog) return -1;
-    return filteredResults.findIndex(item => item.id === selectedItemForDialog.id);
+    const allItems = Object.values(groupedItems).flat();
+    return allItems.findIndex(item => item.id === selectedItemForDialog.id);
   };
+
+  const allDisplayedItems = Object.values(groupedItems).flat();
 
   return (
     <Box>
@@ -190,26 +312,11 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
           <>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Checkbox
-                checked={
-                  selectedItems instanceof Set &&
-                  selectedItems.size ===
-                    (areFiltersActive
-                      ? filteredResults.length
-                      : results.length) &&
-                  (areFiltersActive ? filteredResults.length : results.length) >
-                    0
-                }
-                indeterminate={
-                  selectedItems instanceof Set &&
-                  selectedItems.size > 0 &&
-                  selectedItems.size <
-                    (areFiltersActive ? filteredResults.length : results.length)
-                }
+                checked={selectAllState.checked}
+                indeterminate={selectAllState.indeterminate}
                 onChange={handleSelectAllChange}
                 aria-label="Select all items"
-                disabled={
-                  (areFiltersActive ? filteredResults : results).length === 0
-                }
+                disabled={allDisplayedItems.length === 0}
               />
               <Text
                 sx={{
@@ -220,15 +327,15 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
               >
                 Select All
               </Text>
-              <BulkCopyButtons
-                selectedItems={selectedItems}
-                totalItems={areFiltersActive ? filteredResults.length : results.length}
-                isCopied={isClipboardCopied}
-                onCopy={copyResultsToClipboard}
-                buttonStyles={buttonStyles}
-                showOnlyWhenSelected={true}
-              />
             </Box>
+            <BulkCopyButtons
+              selectedItems={selectedItems}
+              totalItems={allDisplayedItems.length}
+              isCopied={isClipboardCopied}
+              onCopy={copyResultsToClipboard}
+              buttonStyles={buttonStyles}
+              showOnlyWhenSelected={true}
+            />
           </>
         }
         headerRight={
@@ -240,9 +347,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         <div className="timeline-container">
           {/* Results List */}
           {(() => {
-            const displayResults = areFiltersActive ? filteredResults : results;
-
-            if (displayResults.length === 0) {
+            if (allDisplayedItems.length === 0) {
               return (
                 <EmptyState
                   type={results.length === 0 ? 'no-data' : 'no-matches'}
@@ -255,24 +360,80 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
             }
 
             return (
-              <Box sx={{ gap: 1, p: 2 }}>
-                {displayResults.map((item: GitHubItem) => (
-                  <ItemRow
-                    key={item.id}
-                    item={item}
-                    githubToken={githubToken}
-                    onShowDescription={setSelectedItemForDialog}
-                    onCloneItem={setSelectedItemForClone}
-                    selected={selectedItems.has(item.event_id || item.id)}
-                    onSelect={toggleItemSelection}
-                    showCheckbox={!!toggleItemSelection}
-                    showRepo={true}
-                    showUser={true}
-                    showTime={true}
-                    size="small"
-                  />
-                ))}
-              </Box>
+              <div className="timeline-content">
+                {Object.entries(groupedItems).map(([groupName, groupItems]) => {
+                  if (groupItems.length === 0) return null;
+
+                  return (
+                    <div key={groupName} className="timeline-section">
+                      <div className="timeline-section-header">
+                        <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 2 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                            <Checkbox
+                              checked={(() => {
+                                const sectionItemIds = groupItems.map(item => item.event_id || item.id);
+                                return sectionItemIds.length > 0 && sectionItemIds.every(id => selectedItems.has(id));
+                              })()}
+                              indeterminate={(() => {
+                                const sectionItemIds = groupItems.map(item => item.event_id || item.id);
+                                const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                                return selectedCount > 0 && selectedCount < sectionItemIds.length;
+                              })()}
+                              onChange={() => {
+                                const sectionItemIds = groupItems.map(item => item.event_id || item.id);
+                                const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                                const allSelected = selectedCount === sectionItemIds.length;
+                                bulkSelectItems(sectionItemIds, !allSelected);
+                              }}
+                              sx={{ flexShrink: 0 }}
+                              aria-label={`Select all items in ${groupName} section`}
+                            />
+                            <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
+                              {groupName} ({groupItems.length})
+                            </Heading>
+                          </Box>
+                          <Button
+                            variant="invisible"
+                            size="small"
+                            onClick={() => toggleSectionCollapse(groupName)}
+                            className="timeline-section-collapse-button"
+                            sx={{ 
+                              fontSize: '0.75rem',
+                              color: 'fg.muted',
+                              flexShrink: 0,
+                              '&:hover': { color: 'fg.default' }
+                            }}
+                            aria-label={`${collapsedSections.has(groupName) ? 'Show' : 'Hide'} ${groupName} section`}
+                          >
+                            {collapsedSections.has(groupName) ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+                          </Button>
+                        </Box>
+                      </div>
+                      {!collapsedSections.has(groupName) && (
+                        <div className="timeline-section-content">
+                          {groupItems.map((item: GitHubItem) => (
+                            <div key={item.id} className="timeline-group">
+                              <ItemRow
+                                item={item}
+                                githubToken={githubToken}
+                                onShowDescription={setSelectedItemForDialog}
+                                onCloneItem={setSelectedItemForClone}
+                                selected={selectedItems.has(item.event_id || item.id)}
+                                onSelect={toggleItemSelection}
+                                showCheckbox={true}
+                                showRepo={true}
+                                showUser={true}
+                                showTime={true}
+                                size="small"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             );
           })()}
         </div>
@@ -285,7 +446,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         onPrevious={handlePreviousItem}
         onNext={handleNextItem}
         hasPrevious={getCurrentItemIndex() > 0}
-        hasNext={getCurrentItemIndex() < filteredResults.length - 1}
+        hasNext={getCurrentItemIndex() < allDisplayedItems.length - 1}
         title={selectedItemForDialog ? <DialogTitle item={selectedItemForDialog} /> : undefined}
         maxHeight="70vh"
       />
