@@ -4,7 +4,7 @@ import React from 'react';
  * Username Cache Management Utilities
  *
  * Provides functions for managing cached validation state of GitHub usernames
- * to avoid repeated API calls for username validation.
+ * and their associated avatar URLs to avoid repeated API calls.
  */
 
 /**
@@ -41,6 +41,168 @@ export const createRemoveFromCache = (
       return newSet;
     });
   };
+};
+
+/**
+ * Creates a function to add avatar URLs to a Map-based cache
+ *
+ * @param setter - React state setter function for the Map
+ * @returns Function that adds username-avatar URL mappings to the cache
+ */
+export const createAddAvatarsToCache = (
+  setter: React.Dispatch<React.SetStateAction<Map<string, string>>>
+) => {
+  return (avatarUrls: Record<string, string>) => {
+    setter(prevMap => {
+      // Ensure prevMap is a proper Map
+      let safeMap: Map<string, string>;
+      
+      if (prevMap instanceof Map) {
+        safeMap = new Map(prevMap);
+      } else {
+        // If prevMap is not a Map, create a new one
+        safeMap = new Map();
+        if (prevMap && typeof prevMap === 'object') {
+          // Try to reconstruct from plain object
+          try {
+            Object.entries(prevMap).forEach(([key, value]) => {
+              if (typeof value === 'string') {
+                safeMap.set(key, value);
+              }
+            });
+          } catch (error) {
+            console.warn('Failed to reconstruct avatar cache from previous state:', error);
+          }
+        }
+      }
+      
+      // Add new avatar URLs
+      Object.entries(avatarUrls).forEach(([username, avatarUrl]) => {
+        safeMap.set(username, avatarUrl);
+      });
+      
+      return safeMap;
+    });
+  };
+};
+
+/**
+ * Creates a function to update the lastFetched timestamp for usernames
+ *
+ * @param setter - React state setter function for the lastFetched Map
+ * @returns Function that updates timestamps for usernames
+ */
+export const createUpdateLastFetched = (
+  setter: React.Dispatch<React.SetStateAction<Map<string, number>>>
+) => {
+  return (usernames: string[]) => {
+    const now = Date.now();
+    setter(prevMap => {
+      let safeMap: Map<string, number>;
+      
+      if (prevMap instanceof Map) {
+        safeMap = new Map(prevMap);
+      } else {
+        safeMap = new Map();
+        if (prevMap && typeof prevMap === 'object') {
+          try {
+            Object.entries(prevMap).forEach(([key, value]) => {
+              if (typeof value === 'number') {
+                safeMap.set(key, value);
+              }
+            });
+          } catch (error) {
+            console.warn('Failed to reconstruct lastFetched cache from previous state:', error);
+          }
+        }
+      }
+      
+      // Update timestamps for the specified usernames
+      usernames.forEach(username => {
+        safeMap.set(username, now);
+      });
+      
+      return safeMap;
+    });
+  };
+};
+
+/**
+ * Checks if cached data for usernames is stale and needs revalidation
+ *
+ * @param usernames - Array of usernames to check
+ * @param lastFetchedCache - Map of username to last fetch timestamp
+ * @param maxAgeMs - Maximum age in milliseconds before considering data stale (default: 1 hour)
+ * @returns Array of usernames that need revalidation
+ */
+export const getStaleUsernames = (
+  usernames: string[],
+  lastFetchedCache: Map<string, number>,
+  maxAgeMs: number = 60 * 60 * 1000 // 1 hour default
+): string[] => {
+  const now = Date.now();
+  
+  // Ensure lastFetchedCache is a proper Map
+  let safeMap: Map<string, number>;
+  if (lastFetchedCache instanceof Map) {
+    safeMap = lastFetchedCache;
+  } else {
+    safeMap = new Map();
+    if (lastFetchedCache && typeof lastFetchedCache === 'object') {
+      try {
+        Object.entries(lastFetchedCache).forEach(([key, value]) => {
+          if (typeof value === 'number') {
+            safeMap.set(key, value);
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to reconstruct lastFetched cache:', error);
+      }
+    }
+  }
+  
+  return usernames.filter(username => {
+    const lastFetched = safeMap.get(username);
+    return !lastFetched || (now - lastFetched) > maxAgeMs;
+  });
+};
+
+/**
+ * Gets cached avatar URLs for given usernames
+ *
+ * @param usernames - Array of usernames to get avatars for
+ * @param avatarCache - Map of cached username-avatar URL mappings
+ * @returns Array of avatar URLs for the usernames (in same order)
+ */
+export const getCachedAvatarUrls = (
+  usernames: string[],
+  avatarCache: Map<string, string>
+): string[] => {
+  // Defensive programming: ensure avatarCache is a proper Map
+  let safeAvatarCache: Map<string, string>;
+  
+  if (avatarCache instanceof Map) {
+    safeAvatarCache = avatarCache;
+  } else {
+    // If avatarCache is not a Map (e.g., plain object from localStorage), convert it
+    safeAvatarCache = new Map();
+    if (avatarCache && typeof avatarCache === 'object') {
+      // Try to reconstruct from plain object
+      try {
+        Object.entries(avatarCache).forEach(([key, value]) => {
+          if (typeof value === 'string') {
+            safeAvatarCache.set(key, value);
+          }
+        });
+      } catch (error) {
+        console.warn('Failed to reconstruct avatar cache from object:', error);
+      }
+    }
+  }
+
+  return usernames
+    .map(username => safeAvatarCache.get(username))
+    .filter((url): url is string => !!url);
 };
 
 /**

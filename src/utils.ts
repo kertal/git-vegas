@@ -64,6 +64,7 @@ export interface BatchValidationResult {
   valid: string[];
   invalid: string[];
   errors: Record<string, string>;
+  avatarUrls: Record<string, string>;
 }
 
 // GitHub username format validation
@@ -215,6 +216,7 @@ export const validateGitHubUsernames = async (
   const valid: string[] = [];
   const invalid: string[] = [];
   const errors: Record<string, string> = {};
+  const avatarUrls: Record<string, string> = {};
 
   const headers: HeadersInit = {
     Accept: 'application/vnd.github.v3+json',
@@ -240,7 +242,12 @@ export const validateGitHubUsernames = async (
           { headers }
         );
         if (response.ok) {
+          const userData = await response.json();
           valid.push(username);
+          // Cache avatar URL if available
+          if (userData.avatar_url) {
+            avatarUrls[username] = userData.avatar_url;
+          }
         } else if (response.status === 404) {
           invalid.push(username);
           errors[username] = 'Username not found on GitHub';
@@ -259,5 +266,5 @@ export const validateGitHubUsernames = async (
     })
   );
 
-  return { valid, invalid, errors };
+  return { valid, invalid, errors, avatarUrls };
 };

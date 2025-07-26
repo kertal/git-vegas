@@ -62,6 +62,8 @@ export interface CacheCallbacks {
   addToInvalid: (usernames: string[]) => void;
   /** Remove username from validated cache */
   removeFromValidated: (username: string) => void;
+  /** Add avatar URLs to cache */
+  addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
 }
 
 /**
@@ -180,6 +182,11 @@ export const validateAndCacheUsernames = async (
       // Update validated usernames
       if (result.valid.length > 0 && cacheCallbacks?.addToValidated) {
         cacheCallbacks.addToValidated(result.valid);
+      }
+
+      // Cache avatar URLs for validated usernames
+      if (Object.keys(result.avatarUrls).length > 0 && cacheCallbacks?.addAvatarsToCache) {
+        cacheCallbacks.addAvatarsToCache(result.avatarUrls);
       }
 
       // Update invalid usernames

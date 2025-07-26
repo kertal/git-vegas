@@ -40,14 +40,17 @@ import { categorizeUsernames, getInvalidUsernames } from './usernameCache';
 
 describe('githubSearch utilities', () => {
   const mockCache: UsernameCache = {
-    validatedUsernames: new Set(['validuser']),
-    invalidUsernames: new Set(['invaliduser']),
+    validatedUsernames: new Set(),
+    invalidUsernames: new Set(),
+    avatarUrls: new Map(),
+    lastFetched: new Map(),
   };
 
   const mockCacheCallbacks: CacheCallbacks = {
     addToValidated: vi.fn(),
     addToInvalid: vi.fn(),
     removeFromValidated: vi.fn(),
+    addAvatarsToCache: vi.fn(),
   };
 
   const mockSearchParams: GitHubSearchParams = {
@@ -207,6 +210,7 @@ describe('githubSearch utilities', () => {
         valid: ['newuser'],
         invalid: [],
         errors: {},
+        avatarUrls: { newuser: 'https://github.com/newuser.png' },
       });
 
       const result = await validateAndCacheUsernames(
@@ -234,6 +238,7 @@ describe('githubSearch utilities', () => {
         valid: [],
         invalid: ['baduser'],
         errors: { baduser: 'User not found' },
+        avatarUrls: {},
       });
 
       const result = await validateAndCacheUsernames(
@@ -284,6 +289,7 @@ describe('githubSearch utilities', () => {
         valid: ['newuser'],
         invalid: [],
         errors: {},
+        avatarUrls: { newuser: 'https://github.com/newuser.png' },
       });
 
       const result = await validateAndCacheUsernames(
@@ -396,6 +402,8 @@ describe('githubSearch utilities', () => {
       const cache: UsernameCache = {
         validatedUsernames: new Set(['testuser']),
         invalidUsernames: new Set<string>(),
+        avatarUrls: new Map(),
+        lastFetched: new Map(),
       };
 
       mockFetch.mockResolvedValue({
@@ -427,6 +435,8 @@ describe('githubSearch utilities', () => {
       const cache: UsernameCache = {
         validatedUsernames: new Set<string>(),
         invalidUsernames: new Set<string>(),
+        avatarUrls: new Map(),
+        lastFetched: new Map(),
       };
 
       mockFetch.mockResolvedValue({

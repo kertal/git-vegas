@@ -1,32 +1,51 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getParamFromUrl } from '../utils';
 import { FormSettings } from '../types';
-import { safeSetItem } from '../utils/storageUtils';
 
-// Helper function to check if a value is a Set
-// const isSet = (value: any): value is Set<any> => value instanceof Set;
-
-// Enhanced serialization for complex objects containing Sets
-const serializeValue = (value: unknown): string => {
+// Enhanced serialization that handles Set and Map objects
+function serializeValue<T>(value: T): string {
   const replacer = (_key: string, val: unknown) => {
     if (val instanceof Set) {
       return { __type: 'Set', __value: Array.from(val) };
     }
-    return val;
-  };
-  return JSON.stringify(value, replacer);
-};
-
-// Enhanced deserialization for complex objects containing Sets
-const deserializeValue = <T>(jsonString: string): T => {
-  const reviver = (_key: string, val: unknown) => {
-    if (val && typeof val === 'object' && val !== null && 'length' in val === false && '__type' in val && '__value' in val && (val as { __type: string; __value: unknown }).__type === 'Set') {
-      return new Set((val as { __type: string; __value: unknown[] }).__value);
+    if (val instanceof Map) {
+      return { __type: 'Map', __value: Array.from(val.entries()) };
     }
     return val;
   };
-  return JSON.parse(jsonString, reviver) as T;
-};
+  return JSON.stringify(value, replacer);
+}
+
+// Enhanced deserialization that reconstructs Set and Map objects
+function deserializeValue<T>(value: string): T {
+  const reviver = (_key: string, val: unknown) => {
+    if (val && typeof val === 'object' && val !== null) {
+      const obj = val as { __type?: string; __value?: unknown };
+      if (obj.__type === 'Set' && Array.isArray(obj.__value)) {
+        return new Set(obj.__value);
+      }
+      if (obj.__type === 'Map' && Array.isArray(obj.__value)) {
+        return new Map(obj.__value as [unknown, unknown][]);
+      }
+    }
+    return val;
+  };
+  return JSON.parse(value, reviver) as T;
+}
+
+// Safe localStorage setter with quota handling
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    // Handle quota exceeded errors gracefully
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+      return false;
+    }
+    throw error;
+  }
+}
 
 // Specialized hook for form settings that handles URL parameter mapping
 export function useFormSettings(key: string, initialValue: FormSettings, onUrlParamsProcessed?: () => void) {

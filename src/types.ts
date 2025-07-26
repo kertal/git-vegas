@@ -268,6 +268,8 @@ export interface ItemUIState {
 export interface UsernameCache {
   validatedUsernames: Set<string>;
   invalidUsernames: Set<string>;
+  avatarUrls: Map<string, string>;
+  lastFetched: Map<string, number>; // Track when each username was last validated
 }
 
 

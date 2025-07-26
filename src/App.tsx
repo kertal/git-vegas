@@ -93,6 +93,7 @@ function App() {
     validateUsernameFormat,
     error,
     setError,
+    cachedAvatarUrls,
   } = useGitHubFormState(handleUrlParamsProcessed);
 
   const {
@@ -142,10 +143,9 @@ function App() {
   });
 
   const avatarUrls = useMemo(() => {
-    return (Array.isArray(results) ? results : [])
-      .map(item => item.user.avatar_url)
-      .filter(Boolean);
-  }, [results]);
+    // Prioritize cached avatar URLs, then fall back to results
+      return cachedAvatarUrls;
+  }, [cachedAvatarUrls]);
 
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);
