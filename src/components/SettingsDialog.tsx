@@ -8,6 +8,7 @@ import {
   TextInput,
   Button,
   ButtonGroup,
+  Link,
 } from '@primer/react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFormContext } from '../App';
@@ -268,8 +269,24 @@ const SettingsDialog = memo(function SettingsDialog({
             sx={{ bg: 'canvas.default', color: 'fg.default' }}
           />
           <FormControl.Caption id="token-help">
-            Use a fine-grained token with minimal permissions - read-only access
-            to repositories is sufficient
+            Use a fine-grained personal access token with the following permissions:
+            <br />• <strong>Issues:</strong> Read access for viewing issues and assignments (Read and Write if you want to duplicate issues)
+            <br />• <strong>Pull requests:</strong> Read access for viewing PRs and reviews  
+            <br />• <strong>Events:</strong> Read access for GitHub Events API
+            <br />• <strong>Metadata:</strong> Read access for repository information
+            <br />
+            <Text as="span" sx={{ fontSize: 0, fontStyle: 'italic' }}>
+              Fine-grained tokens provide better security than classic tokens by limiting access to specific repositories and permissions.
+            </Text>
+            <br />
+            <Link
+              href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-fine-grained-personal-access-token"
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ fontSize: 0, color: 'accent.fg' }}
+            >
+              📖 View GitHub's guide to creating fine-grained tokens
+            </Link>
           </FormControl.Caption>
         </FormControl>
 
