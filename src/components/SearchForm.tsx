@@ -1,4 +1,4 @@
-import React, { memo, useCallback, FormEvent } from 'react';
+import React, { memo, useCallback, FormEvent, useState } from 'react';
 import {
   Box,
   Button,
@@ -8,7 +8,7 @@ import {
   UnderlineNav,
 } from '@primer/react';
 import { useFormContext } from '../App';
-import { debounce } from '../utils';
+import { validateUsernameList, validateGitHubUsernames } from '../utils';
 
 const SearchForm = memo(function SearchForm() {
   const {
@@ -27,34 +27,88 @@ const SearchForm = memo(function SearchForm() {
     error,
     searchItemsCount,
     rawEventsCount = 0,
+    githubToken,
   } = useFormContext();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedSaveToLocalStorage = useCallback(
-    debounce((key: string, value: string) => {
-      localStorage.setItem(key, value);
-    }, 500),
-    []
-  );
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const debouncedValidate = useCallback(
-    debounce((username: string) => {
-      if (username.trim()) {
-        validateUsernameFormat(username);
-      }
-    }, 500),
-    [validateUsernameFormat]
-  );
+  // Track if validation is in progress
+  const [isValidating, setIsValidating] = useState(false);
 
   const handleUsernameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newUsername = e.target.value;
       setUsername(newUsername);
-      debouncedSaveToLocalStorage('github-username', newUsername);
-      debouncedValidate(newUsername);
+      // Removed localStorage saving - now only saves when validation passes
     },
-    [debouncedSaveToLocalStorage, setUsername, debouncedValidate]
+    [setUsername]
+  );
+
+  const handleUsernameBlurEvent = useCallback(
+    async (e: React.FocusEvent<HTMLInputElement>) => {
+      const username = e.target.value.trim();
+      if (!username) {
+        handleUsernameBlur();
+        return;
+      }
+
+      // First validate format
+      const validation = validateUsernameList(username);
+      if (validation.errors.length > 0) {
+        validateUsernameFormat(username); // This will set the error
+        handleUsernameBlur();
+        return;
+      }
+
+      // Then validate with GitHub API
+      setIsValidating(true);
+      try {
+        const result = await validateGitHubUsernames(
+          validation.usernames,
+          githubToken
+        );
+
+        if (result.invalid.length > 0) {
+          const invalidUsernames = result.invalid;
+          const errorMessages = invalidUsernames.map(username => {
+            const errorMsg = result.errors[username] || 'Username validation failed';
+            return `${username}: ${errorMsg}`;
+          });
+          
+          validateUsernameFormat(''); // Clear any format errors
+          // Set API validation error through the form context
+          const errorMessage = `Invalid GitHub username${invalidUsernames.length > 1 ? 's' : ''}:\n${errorMessages.join('\n')}`;
+          // We need to set this error through the form context
+          // For now, we'll use validateUsernameFormat to show the error
+          validateUsernameFormat(username + ' ' + errorMessage); // Hacky way to show API errors
+        } else {
+          // All usernames are valid
+          validateUsernameFormat(''); // Clear any errors
+          // Save to localStorage only if validation passes
+          localStorage.setItem('github-username', username);
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to validate usernames';
+        validateUsernameFormat(username + ' ' + errorMessage);
+      } finally {
+        setIsValidating(false);
+      }
+
+      handleUsernameBlur();
+    },
+    [validateUsernameFormat, handleUsernameBlur, githubToken]
+  );
+
+  const handleFormSubmit = useCallback(
+    (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      
+      // Prevent submission if there are validation errors
+      if (error || isValidating) {
+        return;
+      }
+      
+      handleSearch();
+    },
+    [handleSearch, error, isValidating]
   );
 
   return (
@@ -66,10 +120,7 @@ const SearchForm = memo(function SearchForm() {
           flexDirection: 'column',
           gap: 3,
         }}
-        onSubmit={(e: FormEvent<HTMLFormElement>) => {
-          e.preventDefault();
-          handleSearch();
-        }}
+        onSubmit={handleFormSubmit}
       >
         {/* Main search fields in a horizontal layout */}
         <Box
@@ -87,7 +138,7 @@ const SearchForm = memo(function SearchForm() {
               placeholder="Enter usernames (comma-separated for multiple)"
               value={username}
               onChange={handleUsernameChange}
-              onBlur={handleUsernameBlur}
+              onBlur={handleUsernameBlurEvent}
               aria-required="true"
               block
             />
@@ -120,10 +171,10 @@ const SearchForm = memo(function SearchForm() {
               variant="primary"
               type="submit"
               block
-              disabled={loading}
-              loading={loading}
+              disabled={loading || isValidating || !!error}
+              loading={loading || isValidating}
             >
-              {loading ? 'Loading...' : 'Update'}
+              {isValidating ? 'Validating...' : loading ? 'Loading...' : 'Update'}
             </Button>
           </FormControl>
         </Box>

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { validateUsernameList } from '../utils';
 import { useFormSettings } from './useLocalStorage';
 import { FormSettings } from '../types';
@@ -34,6 +34,9 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
   // Track if usernames came from URL params for revalidation
   const [fromUrlParams, setFromUrlParams] = useState(false);
   
+  // Track if avatar fetching is in progress to prevent duplicates
+  const fetchingRef = useRef<Set<string>>(new Set());
+  
   // Form settings (persisted in localStorage with URL parameter processing)
   const [formSettings, setFormSettings] = useFormSettings(
     'github-form-settings',
@@ -57,8 +60,8 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
 
   const [error, setError] = useState<string | null>(null);
 
-  // Create cache update function
-  const addAvatarsToCache = createAddAvatarsToCache(setAvatarCache);
+  // Create cache update function (memoized)
+  const addAvatarsToCache = useCallback(createAddAvatarsToCache(setAvatarCache), [setAvatarCache]);
 
   // Get cached avatar URLs for current usernames
   const cachedAvatarUrls = getCachedAvatarUrls(
@@ -68,6 +71,12 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
 
   // Fetch avatars immediately when usernames change (e.g., from URL params)
   useEffect(() => {
+    // Don't validate during active typing - only when fromUrlParams is true (shared links)
+    // or when the user has stopped typing for a while
+    if (!fromUrlParams) {
+      return; // Skip validation for manual typing
+    }
+
     const fetchAvatarsForUsernames = async () => {
       if (!formSettings.username.trim()) return;
 
@@ -76,19 +85,28 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
 
       const usernames = validation.usernames;
       
-      // Determine which usernames need fetching
-      let needAvatarFetch: string[];
+      // Create a key for this fetch operation
+      const fetchKey = `${usernames.join(',')}-${fromUrlParams}-${formSettings.githubToken}`;
       
-      if (fromUrlParams) {
-        // For URL params (shared links), revalidate all usernames for fresh data
-        needAvatarFetch = usernames;
-        console.log('Revalidating avatar cache for shared link usernames:', needAvatarFetch);
-      } else {
-        // For manual entry, only fetch uncached usernames
-        needAvatarFetch = usernames.filter(username => !avatarCache.has(username));
+      // Prevent duplicate fetches
+      if (fetchingRef.current.has(fetchKey)) {
+        return;
       }
       
-      if (needAvatarFetch.length === 0) return;
+      // For URL params (shared links), revalidate all usernames for fresh data
+      const needAvatarFetch = usernames;
+      console.log('Revalidating avatar cache for shared link usernames:', needAvatarFetch);
+      
+      if (needAvatarFetch.length === 0) {
+        // Reset URL params flag even if no fetch needed
+        if (fromUrlParams) {
+          setFromUrlParams(false);
+        }
+        return;
+      }
+
+      // Mark this fetch as in progress
+      fetchingRef.current.add(fetchKey);
 
       try {
         const result: BatchValidationResult = await validateGitHubUsernames(
@@ -96,9 +114,28 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
           formSettings.githubToken
         );
 
-        // Cache avatar URLs for successful validations
-        if (Object.keys(result.avatarUrls).length > 0) {
-          addAvatarsToCache(result.avatarUrls);
+        // Check for validation failures and surface them to the user
+        if (result.invalid.length > 0) {
+          const invalidUsernames = result.invalid;
+          const errorMessages = invalidUsernames.map(username => {
+            const errorMsg = result.errors[username] || 'Username validation failed';
+            return `${username}: ${errorMsg}`;
+          });
+          
+          setError(`Invalid GitHub username${invalidUsernames.length > 1 ? 's' : ''}:\n${errorMessages.join('\n')}`);
+          
+          // Only cache valid usernames
+          if (Object.keys(result.avatarUrls).length > 0) {
+            addAvatarsToCache(result.avatarUrls);
+          }
+        } else {
+          // All usernames were valid, clear any previous errors
+          setError(null);
+          
+          // Cache avatar URLs for successful validations
+          if (Object.keys(result.avatarUrls).length > 0) {
+            addAvatarsToCache(result.avatarUrls);
+          }
         }
         
         // Reset URL params flag after first fetch
@@ -106,16 +143,22 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
           setFromUrlParams(false);
         }
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to validate usernames';
         console.warn('Failed to fetch avatar URLs:', error);
+        setError(`Username validation error: ${errorMessage}`);
+        
         // Reset URL params flag even on error
         if (fromUrlParams) {
           setFromUrlParams(false);
         }
+      } finally {
+        // Remove from in-progress set
+        fetchingRef.current.delete(fetchKey);
       }
     };
 
     fetchAvatarsForUsernames();
-  }, [formSettings.username, formSettings.githubToken, avatarCache, addAvatarsToCache, fromUrlParams]);
+  }, [formSettings.githubToken, fromUrlParams, addAvatarsToCache]); // Removed formSettings.username from deps
 
   // Handle form settings changes
   const setUsername = useCallback(
