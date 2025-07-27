@@ -21,6 +21,7 @@ import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useFormContext } from '../App';
 import { filterByText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
+import { parseCommaSeparatedUsernames, isItemAuthoredBySearchedUsers, sortItemsByUpdatedDate } from '../utils/viewFiltering';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
@@ -135,11 +136,27 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     return groups;
   }, [filteredResults, username]);
 
-  // Select all items in this view - override with grouped items
-  const selectAllDisplayedItems = useCallback(() => {
+  // Selection handlers
+  const toggleItemSelection = useCallback((id: string | number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const selectAllItems = useCallback(() => {
     const allDisplayedItems = Object.values(groupedItems).flat();
-    selectAllItems(allDisplayedItems);
-  }, [groupedItems, selectAllItems]);
+    setSelectedItems(new Set(allDisplayedItems.map((item: GitHubItem) => item.event_id || item.id)));
+  }, [groupedItems]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems(new Set());
+  }, []);
 
   const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
     setSelectedItems(prev => {
@@ -153,7 +170,6 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     });
   }, []);
 
-  // Toggle section collapse state
   const toggleSectionCollapse = useCallback((sectionName: string) => {
     setCollapsedSections(prev => {
       const newSet = new Set(prev);

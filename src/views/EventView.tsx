@@ -43,6 +43,27 @@ const EventView = memo(function EventView({
   // Pagination state
   const [currentPage, setCurrentPage] = useLocalStorage<number>('eventView-currentPage', 1);
   const itemsPerPage = 100;
+
+  // Filter and sort items using utility functions
+  const filteredItems = filterItemsByAdvancedSearch(items, searchText);
+  const sortedItems = sortItemsByUpdatedDate(filteredItems);
+  
+  // Internal selection handlers
+  const toggleItemSelection = useCallback((id: string | number) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedItems(new Set());
+  }, []);
   
   // Use debounced search hook (search functionality temporarily hidden)
   // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
@@ -74,14 +95,14 @@ const EventView = memo(function EventView({
 
   // Select all items across all pages
   const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(sortedItems.map(item => item.event_id || item.id)));
+    setSelectedItems(new Set(sortedItems.map((item: GitHubItem) => item.event_id || item.id)));
   }, [sortedItems]);
 
   // Internal copy handler for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
     const selectedItemsArray =
       selectedItems.size > 0
-        ? sortedItems.filter(item =>
+        ? sortedItems.filter((item: GitHubItem) =>
             selectedItems.has(item.event_id || item.id)
           )
         : sortedItems;
@@ -126,7 +147,7 @@ const EventView = memo(function EventView({
 
   // Handle select all checkbox click
   const handleSelectAllChange = () => {
-    const selectedCount = sortedItems.filter(item =>
+    const selectedCount = sortedItems.filter((item: GitHubItem) =>
       selectedItems.has(item.event_id || item.id)
     ).length;
 
@@ -135,7 +156,7 @@ const EventView = memo(function EventView({
       clearSelection();
     } else {
       // Some or none are selected, select all
-      selectAllItems?.();
+      selectAllItems();
     }
   };
 
@@ -165,7 +186,7 @@ const EventView = memo(function EventView({
   const handleNextItem = () => {
     if (!selectedItemForDialog) return;
     const currentIndex = sortedItems.findIndex(
-      item => item.id === selectedItemForDialog.id
+      (item: GitHubItem) => item.id === selectedItemForDialog.id
     );
     if (currentIndex < sortedItems.length - 1) {
       setSelectedItemForDialog(sortedItems[currentIndex + 1]);
@@ -174,7 +195,7 @@ const EventView = memo(function EventView({
 
   const getCurrentItemIndex = () => {
     if (!selectedItemForDialog) return -1;
-    return sortedItems.findIndex(item => item.id === selectedItemForDialog.id);
+    return sortedItems.findIndex((item: GitHubItem) => item.id === selectedItemForDialog.id);
   };
 
   // Header left content
@@ -246,7 +267,7 @@ const EventView = memo(function EventView({
         ) : (
           // Standard timeline view
           <>
-            {paginatedItems.map((item, index) => (
+            {paginatedItems.map((item: GitHubItem, index: number) => (
               <ItemRow
                 key={`${item.id}-${index}`}
                 item={item}
