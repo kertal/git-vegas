@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { validateUsernameList } from '../utils';
 import { useFormSettings } from './useLocalStorage';
 import { FormSettings } from '../types';
@@ -63,11 +63,15 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
   // Create cache update function (memoized)
   const addAvatarsToCache = useCallback(createAddAvatarsToCache(setAvatarCache), [setAvatarCache]);
 
-  // Get cached avatar URLs for current usernames
-  const cachedAvatarUrls = getCachedAvatarUrls(
-    formSettings.username ? formSettings.username.split(',').map(u => u.trim()) : [],
-    avatarCache
-  );
+  // Memoize the usernames array to prevent unnecessary re-computation
+  const usernames = useMemo(() => {
+    return formSettings.username ? formSettings.username.split(',').map(u => u.trim()) : [];
+  }, [formSettings.username]);
+
+  // Get cached avatar URLs for current usernames - memoized to prevent re-renders
+  const cachedAvatarUrls = useMemo(() => {
+    return getCachedAvatarUrls(usernames, avatarCache);
+  }, [usernames, avatarCache]);
 
   // Fetch avatars immediately when usernames change (e.g., from URL params)
   useEffect(() => {

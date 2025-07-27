@@ -143,8 +143,12 @@ function App() {
   });
 
   const avatarUrls = useMemo(() => {
-    // Prioritize cached avatar URLs, then fall back to results
+    // Prioritize cached avatar URLs if they exist, otherwise return empty array
+    // Only return non-empty arrays to prevent unnecessary re-renders
+    if (cachedAvatarUrls && cachedAvatarUrls.length > 0) {
       return cachedAvatarUrls;
+    }
+    return [];
   }, [cachedAvatarUrls]);
 
   const handleManualSpin = useCallback(() => {
