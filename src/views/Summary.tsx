@@ -14,7 +14,6 @@ import { GitHubItem, GitHubEvent } from '../types';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-// import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { parseSearchText } from '../utils/resultsUtils';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
@@ -25,6 +24,7 @@ import EmptyState from '../components/EmptyState';
 import './Summary.css';
 import { useFormContext } from '../App';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { groupSummaryData } from '../utils/summaryGrouping';
 
 
 interface SummaryProps {
@@ -207,146 +207,15 @@ const SummaryView = memo(function SummaryView({
     return item.pull_request ? 'pull_request' : 'issue';
   };
 
-  // Grouping logic for summary view
+  // Grouping logic for summary view using extracted utility functions
   const actionGroups = useMemo(() => {
-    const groups: {
-      'PRs - opened': GitHubItem[];
-      'PRs - merged': GitHubItem[];
-      'PRs - closed': GitHubItem[];
-      'PRs - reviewed': GitHubItem[];
-      'Issues - opened': GitHubItem[];
-      'Issues - assigned': GitHubItem[];
-      'Issues - closed': GitHubItem[];
-      'Issues - commented': GitHubItem[];
-      'Commits': GitHubItem[];
-      'Other Events': GitHubItem[];
-    } = {
-      'PRs - opened': [],
-      'PRs - merged': [],
-      'PRs - closed': [],
-      'PRs - reviewed': [],
-      'Issues - opened': [],
-      'Issues - assigned': [],
-      'Issues - closed': [],
-      'Issues - commented': [],
-      'Commits': [],
-      'Other Events': [],
-    };
-
-    // Parse usernames from the search (can be comma-separated)
-    const searchedUsernames = username.split(',').map(u => u.trim().toLowerCase());
-
-    // Helper function to extract base PR URL from review/comment URLs
-    const getBasePRUrl = (htmlUrl: string): string => {
-      // Remove fragments and discussion anchors from URLs
-      // Examples:
-      // https://github.com/owner/repo/pull/123#pullrequestreview-123456 -> https://github.com/owner/repo/pull/123
-      // https://github.com/owner/repo/pull/123#discussion_r123456 -> https://github.com/owner/repo/pull/123
-      // https://github.com/owner/repo/pull/123#issuecomment-123456 -> https://github.com/owner/repo/pull/123
-      return htmlUrl.split('#')[0];
-    };
-
-    // Track base PR URLs to prevent duplicates in PR review section
-    const addedReviewPRs = new Set<string>();
-
-    // Add items from events
-    sortedItems.forEach(item => {
-      const type = getEventType(item);
-      if (type === 'pull_request' && item.title.startsWith('Review on:')) {
-        // Check for duplicates in PR reviews using base PR URL
-        const basePRUrl = getBasePRUrl(item.html_url);
-        if (!addedReviewPRs.has(basePRUrl)) {
-          groups['PRs - reviewed'].push(item);
-          addedReviewPRs.add(basePRUrl);
-        }
-      } else if (type === 'comment' && item.title.startsWith('Review comment on:')) {
-        // Review comments on PRs are now ignored (section removed)
-        // These events will not be categorized into any group
-      } else if (type === 'comment') {
-        groups['Issues - commented'].push(item);
-      } else if (type === 'commit') {
-        groups['Commits'].push(item);
-      } else if (type === 'other') {
-        groups['Other Events'].push(item);
-      } else if (type === 'pull_request') {
-        if (item.merged_at) {
-          groups['PRs - merged'].push(item);
-        } else if (item.state === 'closed') {
-          groups['PRs - closed'].push(item);
-        } else {
-          groups['PRs - opened'].push(item);
-        }
-      } else {
-        // Issue - check if authored by searched user(s) or assigned
-        const itemAuthor = item.user.login.toLowerCase();
-        if (searchedUsernames.includes(itemAuthor)) {
-          // Authored by searched user
-          if (item.state === 'closed') {
-            groups['Issues - closed'].push(item);
-          } else {
-            groups['Issues - opened'].push(item);
-          }
-        } else {
-          // Not authored by searched user, must be assigned (since our API query uses author OR assignee)
-          if (item.state === 'closed') {
-            // Closed assigned issues go to commented section
-            groups['Issues - commented'].push(item);
-          } else {
-            // Open assigned issues stay in assigned section
-            groups['Issues - assigned'].push(item);
-          }
-        }
-      }
-    });
-
-    // Add merged PRs from indexedDBSearchItems that are not already in the events
-    const existingMergedPRUrls = new Set(groups['PRs - merged'].map(item => item.html_url));
-    indexedDBSearchItems.forEach(searchItem => {
-      const mergedAt = searchItem.merged_at || searchItem.pull_request?.merged_at;
-      if (
-        searchItem.pull_request &&
-        mergedAt &&
-        searchItem.state === 'closed' &&
-        !existingMergedPRUrls.has(searchItem.html_url)
-      ) {
-        // Check if the merge date falls within the current date range
-        const mergeDate = new Date(mergedAt);
-        const startDateTime = startDate ? new Date(startDate).getTime() : 0;
-        const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
-        const mergeTime = mergeDate.getTime();
-        if (mergeTime >= startDateTime && mergeTime <= endDateTime) {
-          groups['PRs - merged'].push(searchItem);
-        }
-      }
-    });
-
-    // Add assigned issues from indexedDBSearchItems that are not already included
-    const existingIssueUrls = new Set([
-      ...groups['Issues - opened'].map(item => item.html_url),
-      ...groups['Issues - assigned'].map(item => item.html_url),
-      ...groups['Issues - closed'].map(item => item.html_url),
-      ...groups['Issues - commented'].map(item => item.html_url),
-    ]);
-    indexedDBSearchItems.forEach(searchItem => {
-      if (
-        !searchItem.pull_request &&
-        !existingIssueUrls.has(searchItem.html_url)
-      ) {
-        const itemAuthor = searchItem.user.login.toLowerCase();
-        if (!searchedUsernames.includes(itemAuthor)) {
-          // This is an assigned issue (not authored by searched user)
-          if (searchItem.state === 'closed') {
-            // Closed assigned issues go to commented section
-            groups['Issues - commented'].push(searchItem);
-          } else {
-            // Open assigned issues stay in assigned section
-            groups['Issues - assigned'].push(searchItem);
-          }
-        }
-      }
-    });
-
-    return groups;
+    return groupSummaryData(
+      sortedItems,
+      indexedDBSearchItems,
+      username,
+      startDate,
+      endDate
+    );
   }, [sortedItems, indexedDBSearchItems, startDate, endDate, username]);
 
   // Select all items that are actually displayed in the view
