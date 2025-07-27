@@ -5,7 +5,6 @@ import {
   GitMergeIcon,
   GitPullRequestIcon,
   IssueOpenedIcon,
-  XIcon,
   RepoIcon,
 } from '@primer/octicons-react';
 
@@ -108,11 +107,6 @@ const ItemRow = ({
           }}
         >
           <IssueOpenedIcon size={16} />
-          {item.state === 'closed' && (
-            <Box sx={{ display: 'inline-flex', ml: '-4px' }}>
-              <XIcon size={12} />
-            </Box>
-          )}
         </Box>
       )}
 
