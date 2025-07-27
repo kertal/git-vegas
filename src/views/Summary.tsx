@@ -39,7 +39,7 @@ const SummaryView = memo(function SummaryView({
   indexedDBSearchItems = [],
 }: SummaryProps) {
   // Get GitHub token and form settings from form context
-  const { githubToken, startDate, endDate } = useFormContext();
+  const { githubToken, startDate, endDate, username } = useFormContext();
   
   // Internal state for selection
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('summary-selectedItems', new Set());
@@ -216,6 +216,7 @@ const SummaryView = memo(function SummaryView({
       'PRs - reviewed': GitHubItem[];
       'PRs - commented': GitHubItem[];
       'Issues - opened': GitHubItem[];
+      'Issues - assigned': GitHubItem[];
       'Issues - closed': GitHubItem[];
       'Issues - commented': GitHubItem[];
       'Commits': GitHubItem[];
@@ -227,11 +228,15 @@ const SummaryView = memo(function SummaryView({
       'PRs - reviewed': [],
       'PRs - commented': [],
       'Issues - opened': [],
+      'Issues - assigned': [],
       'Issues - closed': [],
       'Issues - commented': [],
       'Commits': [],
       'Other Events': [],
     };
+
+    // Parse usernames from the search (can be comma-separated)
+    const searchedUsernames = username.split(',').map(u => u.trim().toLowerCase());
 
     // Add items from events
     sortedItems.forEach(item => {
@@ -255,11 +260,18 @@ const SummaryView = memo(function SummaryView({
           groups['PRs - opened'].push(item);
         }
       } else {
-        // issue
-        if (item.state === 'closed') {
-          groups['Issues - closed'].push(item);
+        // Issue - check if authored by searched user(s) or assigned
+        const itemAuthor = item.user.login.toLowerCase();
+        if (searchedUsernames.includes(itemAuthor)) {
+          // Authored by searched user
+          if (item.state === 'closed') {
+            groups['Issues - closed'].push(item);
+          } else {
+            groups['Issues - opened'].push(item);
+          }
         } else {
-          groups['Issues - opened'].push(item);
+          // Not authored by searched user, must be assigned (since our API query uses author OR assignee)
+          groups['Issues - assigned'].push(item);
         }
       }
     });
@@ -284,8 +296,28 @@ const SummaryView = memo(function SummaryView({
         }
       }
     });
+
+    // Add assigned issues from indexedDBSearchItems that are not already included
+    const existingIssueUrls = new Set([
+      ...groups['Issues - opened'].map(item => item.html_url),
+      ...groups['Issues - assigned'].map(item => item.html_url),
+      ...groups['Issues - closed'].map(item => item.html_url),
+    ]);
+    indexedDBSearchItems.forEach(searchItem => {
+      if (
+        !searchItem.pull_request &&
+        !existingIssueUrls.has(searchItem.html_url)
+      ) {
+        const itemAuthor = searchItem.user.login.toLowerCase();
+        if (!searchedUsernames.includes(itemAuthor)) {
+          // This is an assigned issue (not authored by searched user)
+          groups['Issues - assigned'].push(searchItem);
+        }
+      }
+    });
+
     return groups;
-  }, [sortedItems, indexedDBSearchItems, startDate, endDate]);
+  }, [sortedItems, indexedDBSearchItems, startDate, endDate, username]);
 
   // Select all items that are actually displayed in the view
   const selectAllItems = useCallback(() => {
