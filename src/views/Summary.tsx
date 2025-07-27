@@ -214,7 +214,6 @@ const SummaryView = memo(function SummaryView({
       'PRs - merged': GitHubItem[];
       'PRs - closed': GitHubItem[];
       'PRs - reviewed': GitHubItem[];
-      'PRs - commented': GitHubItem[];
       'Issues - opened': GitHubItem[];
       'Issues - assigned': GitHubItem[];
       'Issues - closed': GitHubItem[];
@@ -226,7 +225,6 @@ const SummaryView = memo(function SummaryView({
       'PRs - merged': [],
       'PRs - closed': [],
       'PRs - reviewed': [],
-      'PRs - commented': [],
       'Issues - opened': [],
       'Issues - assigned': [],
       'Issues - closed': [],
@@ -238,13 +236,32 @@ const SummaryView = memo(function SummaryView({
     // Parse usernames from the search (can be comma-separated)
     const searchedUsernames = username.split(',').map(u => u.trim().toLowerCase());
 
+    // Helper function to extract base PR URL from review/comment URLs
+    const getBasePRUrl = (htmlUrl: string): string => {
+      // Remove fragments and discussion anchors from URLs
+      // Examples:
+      // https://github.com/owner/repo/pull/123#pullrequestreview-123456 -> https://github.com/owner/repo/pull/123
+      // https://github.com/owner/repo/pull/123#discussion_r123456 -> https://github.com/owner/repo/pull/123
+      // https://github.com/owner/repo/pull/123#issuecomment-123456 -> https://github.com/owner/repo/pull/123
+      return htmlUrl.split('#')[0];
+    };
+
+    // Track base PR URLs to prevent duplicates in PR review section
+    const addedReviewPRs = new Set<string>();
+
     // Add items from events
     sortedItems.forEach(item => {
       const type = getEventType(item);
       if (type === 'pull_request' && item.title.startsWith('Review on:')) {
-        groups['PRs - reviewed'].push(item);
+        // Check for duplicates in PR reviews using base PR URL
+        const basePRUrl = getBasePRUrl(item.html_url);
+        if (!addedReviewPRs.has(basePRUrl)) {
+          groups['PRs - reviewed'].push(item);
+          addedReviewPRs.add(basePRUrl);
+        }
       } else if (type === 'comment' && item.title.startsWith('Review comment on:')) {
-        groups['PRs - commented'].push(item);
+        // Review comments on PRs are now ignored (section removed)
+        // These events will not be categorized into any group
       } else if (type === 'comment') {
         groups['Issues - commented'].push(item);
       } else if (type === 'commit') {
