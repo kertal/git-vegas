@@ -288,7 +288,13 @@ const SummaryView = memo(function SummaryView({
           }
         } else {
           // Not authored by searched user, must be assigned (since our API query uses author OR assignee)
-          groups['Issues - assigned'].push(item);
+          if (item.state === 'closed') {
+            // Closed assigned issues go to commented section
+            groups['Issues - commented'].push(item);
+          } else {
+            // Open assigned issues stay in assigned section
+            groups['Issues - assigned'].push(item);
+          }
         }
       }
     });
@@ -319,6 +325,7 @@ const SummaryView = memo(function SummaryView({
       ...groups['Issues - opened'].map(item => item.html_url),
       ...groups['Issues - assigned'].map(item => item.html_url),
       ...groups['Issues - closed'].map(item => item.html_url),
+      ...groups['Issues - commented'].map(item => item.html_url),
     ]);
     indexedDBSearchItems.forEach(searchItem => {
       if (
@@ -328,7 +335,13 @@ const SummaryView = memo(function SummaryView({
         const itemAuthor = searchItem.user.login.toLowerCase();
         if (!searchedUsernames.includes(itemAuthor)) {
           // This is an assigned issue (not authored by searched user)
-          groups['Issues - assigned'].push(searchItem);
+          if (searchItem.state === 'closed') {
+            // Closed assigned issues go to commented section
+            groups['Issues - commented'].push(searchItem);
+          } else {
+            // Open assigned issues stay in assigned section
+            groups['Issues - assigned'].push(searchItem);
+          }
         }
       }
     });

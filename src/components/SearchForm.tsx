@@ -73,12 +73,9 @@ const SearchForm = memo(function SearchForm() {
             return `${username}: ${errorMsg}`;
           });
           
-          validateUsernameFormat(''); // Clear any format errors
-          // Set API validation error through the form context
+          // Set API validation error - use a simpler approach
           const errorMessage = `Invalid GitHub username${invalidUsernames.length > 1 ? 's' : ''}:\n${errorMessages.join('\n')}`;
-          // We need to set this error through the form context
-          // For now, we'll use validateUsernameFormat to show the error
-          validateUsernameFormat(username + ' ' + errorMessage); // Hacky way to show API errors
+          validateUsernameFormat(errorMessage); // Just pass the error message
         } else {
           // All usernames are valid
           validateUsernameFormat(''); // Clear any errors
@@ -86,8 +83,11 @@ const SearchForm = memo(function SearchForm() {
           localStorage.setItem('github-username', username);
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to validate usernames';
-        validateUsernameFormat(username + ' ' + errorMessage);
+        console.warn('GitHub API validation failed:', error);
+        // Don't block form submission for network errors - just log them
+        validateUsernameFormat(''); // Clear errors for network issues
+        // Still save to localStorage for format-valid usernames
+        localStorage.setItem('github-username', username);
       } finally {
         setIsValidating(false);
       }
@@ -101,14 +101,16 @@ const SearchForm = memo(function SearchForm() {
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       
-      // Prevent submission if there are validation errors
-      if (error || isValidating) {
+      // Only prevent submission if currently validating or if there are format errors
+      // Don't prevent submission for API validation errors
+      if (isValidating) {
         return;
       }
       
+      // Allow submission even if there are API errors - let the main search handle them
       handleSearch();
     },
-    [handleSearch, error, isValidating]
+    [handleSearch, isValidating]
   );
 
   return (
@@ -171,7 +173,7 @@ const SearchForm = memo(function SearchForm() {
               variant="primary"
               type="submit"
               block
-              disabled={loading || isValidating || !!error}
+              disabled={loading || isValidating}
               loading={loading || isValidating}
             >
               {isValidating ? 'Validating...' : loading ? 'Loading...' : 'Update'}

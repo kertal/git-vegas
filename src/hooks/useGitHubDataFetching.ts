@@ -112,6 +112,9 @@ export const useGitHubDataFetching = ({
       return;
     }
 
+    // Reset loading state if it was stuck
+    setLoading(false);
+
     // Check if there's existing data using actual arrays
     const hasExistingData = indexedDBEvents.length > 0 || indexedDBSearchItems.length > 0;
     
@@ -165,10 +168,8 @@ export const useGitHubDataFetching = ({
           );
 
           if (!searchResponse.ok) {
-            if (!searchResponse.ok) {
-              const responseJSON = await searchResponse.json();
-              throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
-            }
+            const responseJSON = await searchResponse.json();
+            throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
           }
 
           const searchData = await searchResponse.json();
@@ -191,7 +192,8 @@ export const useGitHubDataFetching = ({
           onError(
             `Error fetching data for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
-          break;
+          // Continue with other usernames instead of breaking
+          continue;
         }
       }
 
