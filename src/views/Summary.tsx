@@ -24,7 +24,13 @@ import EmptyState from '../components/EmptyState';
 import './Summary.css';
 import { useFormContext } from '../App';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { groupSummaryData } from '../utils/summaryGrouping';
+import { groupSummaryData, getEventType } from '../utils/summaryGrouping';
+import { 
+  formatGroupedDataForClipboard, 
+  getAllDisplayedItems, 
+  hasAnyItems,
+  getGroupSelectState 
+} from '../utils/summaryHelpers';
 
 
 interface SummaryProps {
@@ -169,43 +175,7 @@ const SummaryView = memo(function SummaryView({
       new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
   );
 
-  // Helper to determine event type
-  const getEventType = (
-    item: GitHubItem
-  ): 'issue' | 'pull_request' | 'comment' | 'commit' | 'other' => {
-    // Check if this is a pull request review (title starts with "Review on:")
-    if (item.title.startsWith('Review on:')) {
-      return 'pull_request';
-    }
-    // Check if this is a review comment (title starts with "Review comment on:")
-    if (item.title.startsWith('Review comment on:')) {
-      return 'comment';
-    }
-    // Check if this is a comment event (title starts with "Comment on:")
-    if (item.title.startsWith('Comment on:')) {
-      return 'comment';
-    }
-    // Check if this is a push event (title starts with "Pushed")
-    if (item.title.startsWith('Pushed')) {
-      return 'commit';
-    }
-    // Check for other event types that don't belong to issues/PRs
-    if (
-      item.title.startsWith('Created branch') ||
-      item.title.startsWith('Created tag') ||
-      item.title.startsWith('Created repository') ||
-      item.title.startsWith('Deleted branch') ||
-      item.title.startsWith('Deleted tag') ||
-      item.title.startsWith('Forked repository') ||
-      item.title.startsWith('Starred') ||
-      item.title.startsWith('Unstarred') ||
-      item.title.startsWith('Made repository public') ||
-      item.title.includes('wiki page')
-    ) {
-      return 'other';
-    }
-    return item.pull_request ? 'pull_request' : 'issue';
-  };
+
 
   // Grouping logic for summary view using extracted utility functions
   const actionGroups = useMemo(() => {
@@ -220,35 +190,16 @@ const SummaryView = memo(function SummaryView({
 
   // Select all items that are actually displayed in the view
   const selectAllItems = useCallback(() => {
-    // Get all items that are actually displayed in the view
-    const allDisplayedItems = Object.values(actionGroups).flat();
+    const allDisplayedItems = getAllDisplayedItems(actionGroups);
     setSelectedItems(new Set(allDisplayedItems.map(item => item.event_id || item.id)));
   }, [actionGroups]);
 
   // Internal copy handler for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    // Convert to the format expected by clipboard utility
-    const groupedData = Object.entries(actionGroups)
-      .filter(([, items]) => items.length > 0)
-      .map(([groupName, items]) => ({
-        groupName,
-        items,
-      }));
-
-    // Use the enhanced clipboard utility with grouped data
-    // If items are selected, filter the grouped data to only include selected items
-    let finalGroupedData = groupedData;
-    if (selectedItems.size > 0) {
-      finalGroupedData = groupedData.map(group => ({
-        ...group,
-        items: group.items.filter(item =>
-          selectedItems.has(item.event_id || item.id)
-        )
-      })).filter(group => group.items.length > 0);
-    }
+    const groupedData = formatGroupedDataForClipboard(actionGroups, selectedItems);
 
     // Get all items for the clipboard (either selected or all)
-    const allItems = Object.values(actionGroups).flat();
+    const allItems = getAllDisplayedItems(actionGroups);
     const selectedItemsArray =
       selectedItems.size > 0
         ? allItems.filter(item =>
@@ -259,7 +210,7 @@ const SummaryView = memo(function SummaryView({
     await copyToClipboard(selectedItemsArray, {
       isCompactView: format === 'compact',
       isGroupedView: true,
-      groupedData: finalGroupedData,
+      groupedData,
       onSuccess: () => {
         // Trigger visual feedback via copy feedback system
         triggerCopy(format);
@@ -411,7 +362,7 @@ const SummaryView = memo(function SummaryView({
 
       {/* Timeline content */}
       <div className="timeline-content">
-        {Object.values(actionGroups).flat().length === 0 ? (
+        {!hasAnyItems(actionGroups) ? (
           <EmptyState
             type={hasSearchText ? 'no-search-results' : !hasRawEvents ? 'no-cached-data' : 'no-data'}
             searchText={searchText}
@@ -441,29 +392,7 @@ const SummaryView = memo(function SummaryView({
                   <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
                       <Checkbox
-                        checked={(() => {
-                          const sectionItemIds = Object.values(urlGroups).map(items => {
-                            const mostRecent = items.reduce((latest, current) =>
-                              new Date(current.updated_at) > new Date(latest.updated_at)
-                                ? current
-                                : latest
-                            );
-                            return mostRecent.event_id || mostRecent.id;
-                          });
-                          return sectionItemIds.length > 0 && sectionItemIds.every(id => selectedItems.has(id));
-                        })()}
-                        indeterminate={(() => {
-                          const sectionItemIds = Object.values(urlGroups).map(items => {
-                            const mostRecent = items.reduce((latest, current) =>
-                              new Date(current.updated_at) > new Date(latest.updated_at)
-                                ? current
-                                : latest
-                            );
-                            return mostRecent.event_id || mostRecent.id;
-                          });
-                          const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
-                          return selectedCount > 0 && selectedCount < sectionItemIds.length;
-                        })()}
+                        {...getGroupSelectState(groupItems, selectedItems)}
                         onChange={() => {
                           const sectionItemIds = Object.values(urlGroups).map(items => {
                             const mostRecent = items.reduce((latest, current) =>
