@@ -9,7 +9,7 @@ import { GitHubItem, GitHubEvent } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
 // import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import { parseSearchText } from '../utils/resultsUtils';
+import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
@@ -54,92 +54,7 @@ const EventView = memo(function EventView({
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
-  // Internal selection handlers
-  const toggleItemSelection = useCallback((id: string | number) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  }, []);
 
-  const clearSelection = useCallback(() => {
-    setSelectedItems(new Set());
-  }, []);
-
-
-
-  // Memoize search text parsing to avoid repeated regex operations
-  const parsedSearchText = useMemo(() => {
-    return parseSearchText(searchText || '');
-  }, [searchText]);
-
-
-
-  // Filter items by search text (for standard view)
-  const filteredItems = useMemo(() => {
-    if (!searchText || !searchText.trim()) {
-      return items;
-    }
-
-    const { includedLabels, excludedLabels, userFilters, cleanText } = parsedSearchText;
-
-    return items.filter(item => {
-      // Check label filters first
-      if (includedLabels.length > 0 || excludedLabels.length > 0) {
-        const itemLabels = (item.labels || []).map(label =>
-          label.name.toLowerCase()
-        );
-
-        // Check if item has all required included labels
-        if (includedLabels.length > 0) {
-          const hasAllIncludedLabels = includedLabels.every(labelName =>
-            itemLabels.includes(labelName.toLowerCase())
-          );
-          if (!hasAllIncludedLabels) return false;
-        }
-
-        // Check if item has any excluded labels
-        if (excludedLabels.length > 0) {
-          const hasExcludedLabel = excludedLabels.some(labelName =>
-            itemLabels.includes(labelName.toLowerCase())
-          );
-          if (hasExcludedLabel) return false;
-        }
-      }
-
-      // Check user filters
-      if (userFilters.length > 0) {
-        const itemUser = item.user.login.toLowerCase();
-        const matchesUser = userFilters.some(userFilter =>
-          itemUser === userFilter.toLowerCase()
-        );
-        if (!matchesUser) return false;
-      }
-
-      // If there's clean text remaining, search in title, body, and username
-      if (cleanText) {
-        const searchLower = cleanText.toLowerCase();
-        const titleMatch = item.title.toLowerCase().includes(searchLower);
-        const bodyMatch = item.body?.toLowerCase().includes(searchLower);
-        const userMatch = item.user.login.toLowerCase().includes(searchLower);
-        return titleMatch || bodyMatch || userMatch;
-      }
-
-      // If only label/user filters were used, item passed checks above
-      return true;
-    });
-  }, [items, parsedSearchText, searchText]);
-
-  // Sort filtered items by updated date (newest first)
-  const sortedItems = [...filteredItems].sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
 
   // Reset to first page when search changes
   useEffect(() => {
@@ -217,7 +132,7 @@ const EventView = memo(function EventView({
 
     if (selectedCount === sortedItems.length) {
       // All are selected, clear selection
-      clearSelection?.();
+      clearSelection();
     } else {
       // Some or none are selected, select all
       selectAllItems?.();

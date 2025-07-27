@@ -84,6 +84,8 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 
   // Internal state management (previously from context)
   const [searchText] = useLocalStorage<string>('issuesAndPRs-searchText', '');
+  
+  // Internal state for selection and collapsed sections
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('issuesAndPRs-selectedItems', new Set());
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('issuesAndPRs-collapsedSections', new Set());
 
@@ -108,7 +110,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     };
 
     // Parse usernames from the search (can be comma-separated)
-    const searchedUsernames = username.split(',').map(u => u.trim().toLowerCase());
+    const searchedUsernames = parseCommaSeparatedUsernames(username);
 
     filteredResults.forEach(item => {
       if (item.pull_request) {
@@ -116,8 +118,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         groups['PRs'].push(item);
       } else {
         // For issues, check if authored by searched user(s) or assigned
-        const itemAuthor = item.user.login.toLowerCase();
-        if (searchedUsernames.includes(itemAuthor)) {
+        if (isItemAuthoredBySearchedUsers(item, searchedUsernames)) {
           groups['Issues Authored'].push(item);
         } else {
           // If not authored by searched user, it must be assigned (since our API query uses author OR assignee)
@@ -128,35 +129,17 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 
     // Sort each group by updated date (newest first)
     Object.keys(groups).forEach(key => {
-      groups[key as keyof typeof groups].sort(
-        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-      );
+      groups[key as keyof typeof groups] = sortItemsByUpdatedDate(groups[key as keyof typeof groups]);
     });
 
     return groups;
   }, [filteredResults, username]);
 
-  // Selection handlers
-  const toggleItemSelection = useCallback((id: string | number) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  }, []);
-
-  const selectAllItems = useCallback(() => {
+  // Select all items in this view - override with grouped items
+  const selectAllDisplayedItems = useCallback(() => {
     const allDisplayedItems = Object.values(groupedItems).flat();
-    setSelectedItems(new Set(allDisplayedItems.map((item: GitHubItem) => item.event_id || item.id)));
-  }, [groupedItems]);
-
-  const clearSelection = useCallback(() => {
-    setSelectedItems(new Set());
-  }, []);
+    selectAllItems(allDisplayedItems);
+  }, [groupedItems, selectAllItems]);
 
   const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
     setSelectedItems(prev => {

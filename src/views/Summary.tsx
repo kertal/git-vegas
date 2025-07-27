@@ -15,7 +15,7 @@ import { GitHubItem, GitHubEvent } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import { parseSearchText } from '../utils/resultsUtils';
+import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
 import { CloneIssueDialog } from '../components/CloneIssueDialog';
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
@@ -47,25 +47,17 @@ const SummaryView = memo(function SummaryView({
   // Get GitHub token and form settings from form context
   const { githubToken, startDate, endDate, username } = useFormContext();
   
-  // Internal state for selection
-  const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('summary-selectedItems', new Set());
-  
   // Internal state for search
   const [searchText] = useLocalStorage<string>('summary-searchText', '');
   
-  // Internal state for collapsed sections
+  // Internal state for selection and collapsed sections
+  const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('summary-selectedItems', new Set());
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('summary-collapsedSections', new Set());
   
-  // Use debounced search hook (search functionality temporarily hidden)
-  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
-  //   searchText,
-  //   setSearchText,
-  //   300
-  // );
-
-  // Use copy feedback hook
-  const { isCopied, triggerCopy } = useCopyFeedback(2000);
-
+  // Filter and sort items using utility functions
+  const filteredItems = filterItemsByAdvancedSearch(items, searchText);
+  const sortedItems = sortItemsByUpdatedDate(filteredItems);
+  
   // Internal selection handlers
   const toggleItemSelection = useCallback((id: string | number) => {
     setSelectedItems(prev => {
@@ -107,73 +99,18 @@ const SummaryView = memo(function SummaryView({
       return newSet;
     });
   }, []);
+  
+  // Use debounced search hook (search functionality temporarily hidden)
+  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
+  //   searchText,
+  //   setSearchText,
+  //   300
+  // );
+
+  // Use copy feedback hook
+  const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
 
-  // Memoize search text parsing to avoid repeated regex operations
-  const parsedSearchText = useMemo(() => {
-    return parseSearchText(searchText || '');
-  }, [searchText]);
-
-  // Filter items by search text
-  const filteredItems = useMemo(() => {
-    if (!searchText || !searchText.trim()) {
-      return items;
-    }
-
-    const { includedLabels, excludedLabels, userFilters, cleanText } = parsedSearchText;
-
-    return items.filter(item => {
-      // Check label filters first
-      if (includedLabels.length > 0 || excludedLabels.length > 0) {
-        const itemLabels = (item.labels || []).map(label =>
-          label.name.toLowerCase()
-        );
-
-        // Check if item has all required included labels
-        if (includedLabels.length > 0) {
-          const hasAllIncludedLabels = includedLabels.every(labelName =>
-            itemLabels.includes(labelName.toLowerCase())
-          );
-          if (!hasAllIncludedLabels) return false;
-        }
-
-        // Check if item has any excluded labels
-        if (excludedLabels.length > 0) {
-          const hasExcludedLabel = excludedLabels.some(labelName =>
-            itemLabels.includes(labelName.toLowerCase())
-          );
-          if (hasExcludedLabel) return false;
-        }
-      }
-
-      // Check user filters
-      if (userFilters.length > 0) {
-        const itemUser = item.user.login.toLowerCase();
-        const matchesUser = userFilters.some(userFilter =>
-          itemUser === userFilter.toLowerCase()
-        );
-        if (!matchesUser) return false;
-      }
-
-      // If there's clean text remaining, search in title, body, and username
-      if (cleanText) {
-        const searchLower = cleanText.toLowerCase();
-        const titleMatch = item.title.toLowerCase().includes(searchLower);
-        const bodyMatch = item.body?.toLowerCase().includes(searchLower);
-        const userMatch = item.user.login.toLowerCase().includes(searchLower);
-        return titleMatch || bodyMatch || userMatch;
-      }
-
-      // If only label/user filters were used, item passed checks above
-      return true;
-    });
-  }, [items, parsedSearchText, searchText]);
-
-  // Sort filtered items by updated date (newest first)
-  const sortedItems = [...filteredItems].sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
 
 
 
@@ -260,7 +197,7 @@ const SummaryView = memo(function SummaryView({
       clearSelection?.();
     } else {
       // Some or none are selected, select all
-      selectAllItems?.();
+              selectAllItems();
     }
   };
 
