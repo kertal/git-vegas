@@ -10,9 +10,7 @@ import {
 
 interface ItemRowProps {
   item: GitHubItem;
-  githubToken?: string;
   onShowDescription: (item: GitHubItem) => void;
-  onCloneItem: (item: GitHubItem) => void;
   selected?: boolean;
   onSelect?: (id: string | number) => void;
   showCheckbox?: boolean;
@@ -25,9 +23,8 @@ interface ItemRowProps {
 
 const ItemRow = ({
   item,
-  githubToken,
+
   onShowDescription,
-  onCloneItem,
   selected = false,
   onSelect,
   showCheckbox = false,
@@ -164,9 +161,7 @@ const ItemRow = ({
       <div>
         <ActionButtonsRow
           item={item}
-          githubToken={githubToken}
           onShowDescription={onShowDescription}
-          onCloneItem={onCloneItem}
           size={size}
         />
       </div>

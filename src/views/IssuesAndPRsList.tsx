@@ -24,7 +24,7 @@ import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { parseCommaSeparatedUsernames, isItemAuthoredBySearchedUsers, sortItemsByUpdatedDate } from '../utils/viewFiltering';
 
 import { ResultsContainer } from '../components/ResultsContainer';
-import { CloneIssueDialog } from '../components/CloneIssueDialog';
+
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
 import EmptyState from '../components/EmptyState';
@@ -80,8 +80,8 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
   buttonStyles,
 }: IssuesAndPRsListProps) {
-  // Get GitHub token and username from form context
-  const { githubToken, username } = useFormContext();
+  // Get form context
+  const { username } = useFormContext();
 
   // Internal state management (previously from context)
   const [searchText] = useLocalStorage<string>('issuesAndPRs-searchText', '');
@@ -270,8 +270,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   // Dialog state
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
-  const [selectedItemForClone, setSelectedItemForClone] =
-    useState<GitHubItem | null>(null);
+
 
   // Dialog navigation handlers
   const handlePreviousItem = () => {
@@ -414,9 +413,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                             <div key={item.id} className="timeline-group">
                               <ItemRow
                                 item={item}
-                                githubToken={githubToken}
                                 onShowDescription={setSelectedItemForDialog}
-                                onCloneItem={setSelectedItemForClone}
                                 selected={selectedItems.has(item.event_id || item.id)}
                                 onSelect={toggleItemSelection}
                                 showCheckbox={true}
@@ -450,16 +447,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         maxHeight="70vh"
       />
 
-      {/* Clone Issue Dialog */}
-      <CloneIssueDialog
-        isOpen={selectedItemForClone !== null}
-        onClose={() => setSelectedItemForClone(null)}
-        originalIssue={selectedItemForClone}
-        onSuccess={newIssue => {
-          console.log('Issue cloned successfully:', newIssue);
-          // Optionally refresh data or show success message
-        }}
-      />
+
     </Box>
   );
 });

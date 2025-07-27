@@ -31,9 +31,7 @@ describe('ActionButtonsRow', () => {
 
   const defaultProps = {
     item: mockItem,
-    githubToken: 'test-token',
     onShowDescription: vi.fn(),
-    onCloneItem: vi.fn(),
     size: 'small' as const,
   };
 
@@ -45,8 +43,7 @@ describe('ActionButtonsRow', () => {
     render(<ActionButtonsRow {...defaultProps} />);
 
     expect(screen.getByLabelText('Show description')).toBeInTheDocument();
-    expect(screen.getByLabelText('Copy to clipboard')).toBeInTheDocument();
-    expect(screen.getByLabelText('Clone this issue')).toBeInTheDocument();
+    expect(screen.getByLabelText('Copy link to clipboard')).toBeInTheDocument();
   });
 
   it('does not render description button when item has no body', () => {
@@ -54,8 +51,7 @@ describe('ActionButtonsRow', () => {
     render(<ActionButtonsRow {...defaultProps} item={itemWithoutBody} />);
 
     expect(screen.queryByLabelText('Show description')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Copy to clipboard')).toBeInTheDocument();
-    expect(screen.getByLabelText('Clone this issue')).toBeInTheDocument();
+    expect(screen.getByLabelText('Copy link to clipboard')).toBeInTheDocument();
   });
 
   it('calls onShowDescription when description button is clicked', () => {
@@ -65,35 +61,9 @@ describe('ActionButtonsRow', () => {
     expect(defaultProps.onShowDescription).toHaveBeenCalledWith(mockItem);
   });
 
-  it('calls onCloneItem when clone button is clicked', () => {
-    render(<ActionButtonsRow {...defaultProps} />);
 
-    fireEvent.click(screen.getByLabelText('Clone this issue'));
-    expect(defaultProps.onCloneItem).toHaveBeenCalledWith(mockItem);
-  });
 
-  it('disables clone button for pull requests', () => {
-    const pullRequestItem = { ...mockItem, pull_request: {} };
-    render(<ActionButtonsRow {...defaultProps} item={pullRequestItem} />);
 
-    const cloneButton = screen.getByLabelText('Pull requests cannot be cloned as issues');
-    expect(cloneButton).toBeDisabled();
-  });
-
-  it('disables clone button when no repository URL', () => {
-    const itemWithoutRepo = { ...mockItem, repository_url: undefined };
-    render(<ActionButtonsRow {...defaultProps} item={itemWithoutRepo} />);
-
-    const cloneButton = screen.getByLabelText('Repository information not available');
-    expect(cloneButton).toBeDisabled();
-  });
-
-  it('disables clone button when no GitHub token', () => {
-    render(<ActionButtonsRow {...defaultProps} githubToken={undefined} />);
-
-    const cloneButton = screen.getByLabelText('GitHub token required - configure in settings');
-    expect(cloneButton).toBeDisabled();
-  });
 
 
 
@@ -104,7 +74,6 @@ describe('ActionButtonsRow', () => {
 
     // Verify all expected buttons are present
     expect(screen.getByLabelText('Show description')).toBeInTheDocument();
-    expect(screen.getByLabelText('Copy to clipboard')).toBeInTheDocument();
-    expect(screen.getByLabelText('Clone this issue')).toBeInTheDocument();
+    expect(screen.getByLabelText('Copy link to clipboard')).toBeInTheDocument();
   });
 }); 

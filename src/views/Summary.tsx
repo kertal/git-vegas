@@ -16,7 +16,7 @@ import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
-import { CloneIssueDialog } from '../components/CloneIssueDialog';
+
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
 import ItemRow from '../components/ItemRow';
@@ -44,8 +44,8 @@ const SummaryView = memo(function SummaryView({
   rawEvents = [],
   indexedDBSearchItems = [],
 }: SummaryProps) {
-  // Get GitHub token and form settings from form context
-  const { githubToken, startDate, endDate, username } = useFormContext();
+  // Get form settings from form context
+  const { startDate, endDate, username } = useFormContext();
   
   // Internal state for search
   const [searchText] = useLocalStorage<string>('summary-searchText', '');
@@ -205,9 +205,7 @@ const SummaryView = memo(function SummaryView({
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
 
-  // Clone dialog state
-  const [selectedItemForClone, setSelectedItemForClone] =
-    useState<GitHubItem | null>(null);
+
 
   // Single item clipboard copy handler
 
@@ -380,9 +378,7 @@ const SummaryView = memo(function SummaryView({
                         <div key={url} className="timeline-group">
                           <ItemRow
                             item={mostRecent}
-                            githubToken={githubToken}
                             onShowDescription={setSelectedItemForDialog}
-                            onCloneItem={setSelectedItemForClone}
                             selected={selectedItems.has(mostRecent.event_id || mostRecent.id)}
                             onSelect={toggleItemSelection}
                             showCheckbox={true}
@@ -409,16 +405,7 @@ const SummaryView = memo(function SummaryView({
         hasNext={getCurrentItemIndex() < sortedItems.length - 1}
       />
 
-      {/* Clone Issue Dialog */}
-      <CloneIssueDialog
-        isOpen={selectedItemForClone !== null}
-        onClose={() => setSelectedItemForClone(null)}
-        originalIssue={selectedItemForClone}
-        onSuccess={(newIssue) => {
-          console.log('Issue cloned successfully:', newIssue);
-          // Optionally refresh data or show success message
-        }}
-      />
+
     </ResultsContainer>
   );
 });

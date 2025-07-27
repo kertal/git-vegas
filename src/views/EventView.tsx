@@ -11,13 +11,13 @@ import { ResultsContainer } from '../components/ResultsContainer';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-import { CloneIssueDialog } from '../components/CloneIssueDialog';
+
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
 import ItemRow from '../components/ItemRow';
 import EmptyState from '../components/EmptyState';
 import './EventView.css';
-import { useFormContext } from '../App';
+
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 
@@ -31,8 +31,7 @@ const EventView = memo(function EventView({
   items,
   rawEvents = [],
 }: EventViewProps) {
-  // Get GitHub token from form context
-  const { githubToken } = useFormContext();
+
   
   // Internal state for selection
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('eventView-selectedItems', new Set());
@@ -164,9 +163,7 @@ const EventView = memo(function EventView({
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
 
-  // Clone dialog state
-  const [selectedItemForClone, setSelectedItemForClone] =
-    useState<GitHubItem | null>(null);
+
 
   // Check if we have no results but should show different messages
   const hasRawEvents = rawEvents && rawEvents.length > 0;
@@ -271,9 +268,7 @@ const EventView = memo(function EventView({
               <ItemRow
                 key={`${item.id}-${index}`}
                 item={item}
-                githubToken={githubToken}
                 onShowDescription={setSelectedItemForDialog}
-                onCloneItem={setSelectedItemForClone}
                 selected={selectedItems.has(item.event_id || item.id)}
                 onSelect={toggleItemSelection}
                 showCheckbox={!!toggleItemSelection}
@@ -316,16 +311,7 @@ const EventView = memo(function EventView({
         hasNext={getCurrentItemIndex() < sortedItems.length - 1}
       />
 
-      {/* Clone Issue Dialog */}
-      <CloneIssueDialog
-        isOpen={selectedItemForClone !== null}
-        onClose={() => setSelectedItemForClone(null)}
-        originalIssue={selectedItemForClone}
-        onSuccess={(newIssue) => {
-          console.log('Issue cloned successfully:', newIssue);
-          // Optionally refresh data or show success message
-        }}
-      />
+
     </ResultsContainer>
   );
 });
