@@ -84,5 +84,6 @@ export const parseCommaSeparatedUsernames = (username: string): string[] => {
  */
 export const isItemAuthoredBySearchedUsers = (item: GitHubItem, searchedUsernames: string[]): boolean => {
   const itemAuthor = item.user.login.toLowerCase();
-  return searchedUsernames.includes(itemAuthor);
+  const searchedUsernamesLower = searchedUsernames.map(username => username.toLowerCase());
+  return searchedUsernamesLower.includes(itemAuthor);
 }; 

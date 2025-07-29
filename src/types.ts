@@ -183,6 +183,7 @@ export interface FormContextType {
   handleSearch: (forceRefresh?: boolean) => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
+  addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   loading: boolean;
   loadingProgress: string;
   error: string | null;

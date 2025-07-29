@@ -22,6 +22,7 @@ interface UseGitHubFormStateReturn {
   setApiMode: (apiMode: 'search' | 'events' | 'summary') => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
+  addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   error: string | null;
   setError: React.Dispatch<React.SetStateAction<string | null>>;
   cachedAvatarUrls: string[];
@@ -73,12 +74,16 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
     return getCachedAvatarUrls(usernames, avatarCache);
   }, [usernames, avatarCache]);
 
-  // Fetch avatars immediately when usernames change (e.g., from URL params)
+  // Fetch avatars only when usernames come from URL params (shared links)
   useEffect(() => {
-    // Don't validate during active typing - only when fromUrlParams is true (shared links)
-    // or when the user has stopped typing for a while
+    // Only validate when fromUrlParams is true (shared links), not during manual typing
     if (!fromUrlParams) {
-      return; // Skip validation for manual typing
+      return;
+    }
+    
+    // Skip if no usernames are provided
+    if (!formSettings.username.trim()) {
+      return;
     }
 
     const fetchAvatarsForUsernames = async () => {
@@ -162,7 +167,7 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
     };
 
     fetchAvatarsForUsernames();
-  }, [formSettings.githubToken, fromUrlParams, addAvatarsToCache]); // Removed formSettings.username from deps
+  }, [formSettings.username, formSettings.githubToken, fromUrlParams, addAvatarsToCache, usernames, avatarCache]); // Include all necessary dependencies
 
   // Handle form settings changes
   const setUsername = useCallback(
@@ -237,6 +242,7 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
     setApiMode,
     handleUsernameBlur,
     validateUsernameFormat,
+    addAvatarsToCache,
     error,
     setError,
     cachedAvatarUrls,

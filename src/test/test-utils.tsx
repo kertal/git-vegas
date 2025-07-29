@@ -18,6 +18,7 @@ const mockFormContext: FormContextType = {
   handleSearch: vi.fn(),
   handleUsernameBlur: vi.fn(),
   validateUsernameFormat: vi.fn(),
+  addAvatarsToCache: vi.fn(),
   loading: false,
   loadingProgress: '',
   error: null,

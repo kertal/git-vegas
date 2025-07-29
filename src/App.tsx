@@ -44,6 +44,7 @@ interface FormContextType {
   handleSearch: () => void;
   handleUsernameBlur: () => void;
   validateUsernameFormat: (username: string) => void;
+  addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   loading: boolean;
   loadingProgress: string;
   error: string | null;
@@ -91,6 +92,7 @@ function App() {
     setApiMode,
     handleUsernameBlur,
     validateUsernameFormat,
+    addAvatarsToCache,
     error,
     setError,
     cachedAvatarUrls,
@@ -250,6 +252,7 @@ function App() {
             handleSearch,
             handleUsernameBlur,
             validateUsernameFormat,
+            addAvatarsToCache,
             loading,
             loadingProgress,
             error,

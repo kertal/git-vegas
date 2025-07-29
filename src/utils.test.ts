@@ -193,7 +193,10 @@ describe('validateGitHubUsernames', () => {
 
   it('should validate usernames correctly', async () => {
     mockFetch
-      .mockResolvedValueOnce({ ok: true }) // First username valid
+      .mockResolvedValueOnce({ 
+        ok: true, 
+        json: vi.fn().mockResolvedValue({ avatar_url: 'https://github.com/valid-user.png' })
+      }) // First username valid
       .mockResolvedValueOnce({ ok: false, status: 404 }); // Second username invalid
 
     const result = await validateGitHubUsernames([
@@ -203,6 +206,7 @@ describe('validateGitHubUsernames', () => {
     expect(result.valid).toEqual(['valid-user']);
     expect(result.invalid).toEqual(['invalid-user']);
     expect(result.errors['invalid-user']).toBe('Username not found on GitHub');
+    expect(result.avatarUrls['valid-user']).toBe('https://github.com/valid-user.png');
   });
 
   it('should handle network errors', async () => {

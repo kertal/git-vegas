@@ -23,6 +23,7 @@ const SearchForm = memo(function SearchForm() {
     handleSearch,
     handleUsernameBlur,
     validateUsernameFormat,
+    addAvatarsToCache,
     loading,
     error,
     searchItemsCount,
@@ -79,6 +80,10 @@ const SearchForm = memo(function SearchForm() {
         } else {
           // All usernames are valid
           validateUsernameFormat(''); // Clear any errors
+          // Save avatars to cache for slot machine display
+          if (Object.keys(result.avatarUrls).length > 0) {
+            addAvatarsToCache(result.avatarUrls);
+          }
           // Save to localStorage only if validation passes
           localStorage.setItem('github-username', username);
         }

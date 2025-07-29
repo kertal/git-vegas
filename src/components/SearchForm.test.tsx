@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SearchForm from './SearchForm';
 
@@ -74,57 +74,48 @@ describe('SearchForm', () => {
     expect(mockSetUsername).toHaveBeenCalledWith('testuser');
   });
 
-  it('debounces validation calls', async () => {
+  it('validates on blur instead of while typing', async () => {
     render(<SearchForm />);
     const usernameInput = screen.getByPlaceholderText(/Enter usernames/);
     
     // Type multiple characters quickly
-    fireEvent.change(usernameInput, { target: { value: 't' } });
-    fireEvent.change(usernameInput, { target: { value: 'te' } });
-    fireEvent.change(usernameInput, { target: { value: 'tes' } });
-    fireEvent.change(usernameInput, { target: { value: 'test' } });
-    fireEvent.change(usernameInput, { target: { value: 'testu' } });
-    fireEvent.change(usernameInput, { target: { value: 'testus' } });
-    fireEvent.change(usernameInput, { target: { value: 'testuse' } });
     fireEvent.change(usernameInput, { target: { value: 'testuser' } });
     
-    // Validation should not be called immediately
+    // Validation should not be called while typing
     expect(mockValidateUsernameFormat).not.toHaveBeenCalled();
     
-    // Fast-forward time to trigger debounced validation
-    vi.advanceTimersByTime(500);
+    // Trigger blur event
+    fireEvent.blur(usernameInput);
     
-    // Now validation should be called with the final value
-    expect(mockValidateUsernameFormat).toHaveBeenCalledTimes(1);
-    expect(mockValidateUsernameFormat).toHaveBeenCalledWith('testuser');
+    // Wait for async validation
+    await waitFor(() => {
+      expect(mockValidateUsernameFormat).toHaveBeenCalled();
+    });
   });
 
-  it('debounces localStorage saves', async () => {
+  it('saves to localStorage on blur after successful validation', async () => {
+    // Mock GitHub API validation to succeed
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ avatar_url: 'test.jpg' })
+    });
+
     render(<SearchForm />);
     const usernameInput = screen.getByPlaceholderText(/Enter usernames/);
     
-    // Type multiple characters quickly
-    fireEvent.change(usernameInput, { target: { value: 't' } });
-    fireEvent.change(usernameInput, { target: { value: 'te' } });
-    fireEvent.change(usernameInput, { target: { value: 'tes' } });
-    fireEvent.change(usernameInput, { target: { value: 'test' } });
-    fireEvent.change(usernameInput, { target: { value: 'testu' } });
-    fireEvent.change(usernameInput, { target: { value: 'testus' } });
-    fireEvent.change(usernameInput, { target: { value: 'testuse' } });
+    // Type username
     fireEvent.change(usernameInput, { target: { value: 'testuser' } });
     
-    // localStorage should not be called immediately
+    // localStorage should not be called while typing
     expect(localStorageMock.setItem).not.toHaveBeenCalled();
     
-    // Fast-forward time to trigger debounced save
-    vi.advanceTimersByTime(500);
+    // Trigger blur event
+    fireEvent.blur(usernameInput);
     
-    // Wait for all pending promises and timers
-    await vi.runAllTimersAsync();
-    
-    // Now localStorage should be called with the final value
-    expect(localStorageMock.setItem).toHaveBeenCalledTimes(1);
-    expect(localStorageMock.setItem).toHaveBeenCalledWith('github-username', 'testuser');
+    // Wait for async validation and localStorage save
+    await waitFor(() => {
+      expect(localStorageMock.setItem).toHaveBeenCalledWith('github-username', 'testuser');
+    });
   });
 
   it('calls handleUsernameBlur on blur event', () => {

@@ -24,6 +24,14 @@ class MockURL {
 // Mock window properties and methods used in tests
 Object.defineProperty(window, 'URL', { value: MockURL });
 
+// Mock navigator.clipboard for tests
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
+    writeText: vi.fn(),
+  },
+  writable: true,
+});
+
 // Reset all mocks after each test
 afterEach(() => {
   vi.clearAllMocks();

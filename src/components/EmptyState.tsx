@@ -37,7 +37,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 
     switch (type) {
       case 'no-data':
-        return 'No data available.';
+        return 'No data available. Enter a username and use the update button to load data.';
       
       case 'no-matches':
         if (searchText) {
@@ -52,6 +52,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         } else {
           return 'No data found for the selected time period. Try adjusting your date range or filters.';
         }
+      
+      case 'no-cached-data':
+        return 'No data available. Enter a username and use the update button to load data.';
       
       default:
         return 'No data available.';

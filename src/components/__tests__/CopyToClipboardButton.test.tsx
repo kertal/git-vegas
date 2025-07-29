@@ -4,10 +4,14 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import CopyToClipboardButton from '../CopyToClipboardButton';
 import { GitHubItem } from '../../types';
 
-// Mock the clipboard utility
-vi.mock('../../utils/clipboard', () => ({
-  copyResultsToClipboard: vi.fn(),
-}));
+// Mock navigator.clipboard
+const mockWriteText = vi.fn();
+Object.defineProperty(navigator, 'clipboard', {
+  value: {
+    writeText: mockWriteText,
+  },
+  writable: true,
+});
 
 // Mock the useCopyFeedback hook
 vi.mock('../../hooks/useCopyFeedback', () => ({
@@ -18,7 +22,7 @@ vi.mock('../../hooks/useCopyFeedback', () => ({
   })),
 }));
 
-const mockCopyToClipboard = vi.mocked(await import('../../utils/clipboard')).copyResultsToClipboard;
+// Remove mockCopyToClipboard since we're testing navigator.clipboard.writeText directly
 const mockUseCopyFeedback = vi.mocked(await import('../../hooks/useCopyFeedback')).useCopyFeedback;
 
 const mockItem: GitHubItem = {
@@ -45,12 +49,12 @@ const renderCopyToClipboardButton = (props = {}) => {
 describe('CopyToClipboardButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCopyToClipboard.mockResolvedValue({ success: true, message: 'Copied successfully' });
+    mockWriteText.mockResolvedValue(undefined);
   });
 
   it('renders with copy icon initially', () => {
     renderCopyToClipboardButton();
-    expect(screen.getByLabelText('Copy to clipboard')).toBeInTheDocument();
+    expect(screen.getByLabelText('Copy link to clipboard')).toBeInTheDocument();
   });
 
   it('shows check icon when item is copied', () => {
@@ -62,7 +66,7 @@ describe('CopyToClipboardButton', () => {
     });
 
     renderCopyToClipboardButton();
-    expect(screen.getByLabelText('Copied to clipboard')).toBeInTheDocument();
+    expect(screen.getByLabelText('Link copied to clipboard')).toBeInTheDocument();
   });
 
   it('calls copy function when clicked', async () => {
@@ -75,15 +79,11 @@ describe('CopyToClipboardButton', () => {
 
     renderCopyToClipboardButton();
     
-    const button = screen.getByLabelText('Copy to clipboard');
+    const button = screen.getByLabelText('Copy link to clipboard');
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(mockCopyToClipboard).toHaveBeenCalledWith([mockItem], {
-        isCompactView: true,
-        onSuccess: expect.any(Function),
-        onError: expect.any(Function),
-      });
+      expect(mockWriteText).toHaveBeenCalledWith(mockItem.html_url);
     });
   });
 
@@ -97,15 +97,12 @@ describe('CopyToClipboardButton', () => {
 
     renderCopyToClipboardButton();
     
-    const button = screen.getByLabelText('Copy to clipboard');
+    const button = screen.getByLabelText('Copy link to clipboard');
     fireEvent.click(button);
 
     await waitFor(() => {
-      const onSuccess = mockCopyToClipboard.mock.calls[0][1].onSuccess;
-      if (onSuccess) {
-        onSuccess();
-        expect(mockTriggerCopy).toHaveBeenCalledWith(mockItem.id);
-      }
+      expect(mockWriteText).toHaveBeenCalledWith(mockItem.html_url);
+      expect(mockTriggerCopy).toHaveBeenCalledWith(mockItem.id);
     });
   });
 
@@ -120,26 +117,32 @@ describe('CopyToClipboardButton', () => {
 
     renderCopyToClipboardButton({ onSuccess: mockOnSuccess });
     
-    const button = screen.getByLabelText('Copy to clipboard');
+    const button = screen.getByLabelText('Copy link to clipboard');
     fireEvent.click(button);
 
     await waitFor(() => {
-      const onSuccess = mockCopyToClipboard.mock.calls[0][1].onSuccess;
-      if (onSuccess) {
-        onSuccess();
-        expect(mockOnSuccess).toHaveBeenCalled();
-      }
+      expect(mockWriteText).toHaveBeenCalledWith(mockItem.html_url);
+      expect(mockOnSuccess).toHaveBeenCalled();
     });
   });
 
   it('calls onError callback when copy fails', async () => {
     const mockOnError = vi.fn();
+    const mockTriggerCopy = vi.fn();
     const mockError = new Error('Copy failed');
-    mockCopyToClipboard.mockRejectedValue(mockError);
+    
+    // Mock writeText to reject
+    mockWriteText.mockRejectedValueOnce(mockError);
+    
+    mockUseCopyFeedback.mockReturnValue({
+      isCopied: vi.fn(() => false),
+      triggerCopy: mockTriggerCopy,
+      resetCopy: vi.fn(),
+    });
 
     renderCopyToClipboardButton({ onError: mockOnError });
     
-    const button = screen.getByLabelText('Copy to clipboard');
+    const button = screen.getByLabelText('Copy link to clipboard');
     fireEvent.click(button);
 
     await waitFor(() => {
@@ -151,14 +154,14 @@ describe('CopyToClipboardButton', () => {
     const customStyles = { color: 'red' };
     renderCopyToClipboardButton({ buttonStyles: customStyles });
     
-    const button = screen.getByLabelText('Copy to clipboard');
+    const button = screen.getByLabelText('Copy link to clipboard');
     expect(button).toHaveStyle('color: rgb(255, 0, 0)');
   });
 
   it('uses correct size prop', () => {
     renderCopyToClipboardButton({ size: 'medium' });
     
-    const button = screen.getByLabelText('Copy to clipboard');
+    const button = screen.getByLabelText('Copy link to clipboard');
     // The size prop is passed to IconButton but not exposed as an attribute
     // We can verify the component renders without error
     expect(button).toBeInTheDocument();
