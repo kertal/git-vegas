@@ -6,7 +6,7 @@ import {
   createContext,
   useContext,
 } from 'react';
-import { PageLayout, PageHeader, Box, IconButton } from '@primer/react';
+import { PageLayout, PageHeader, Box, IconButton, Button } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 
 import { useGitHubFormState } from './hooks/useGitHubFormState';
@@ -78,6 +78,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [initialLoadingCount, setInitialLoadingCount] = useState(0);
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
+  const [isDataLoadingComplete, setIsDataLoadingComplete] = useState(false);
 
   const handleUrlParamsProcessed = useCallback(() => {
     setInitialLoadingCount(1);
@@ -161,18 +162,24 @@ function App() {
   useEffect(() => {
     if (initialLoadingCount === 1) {
       const startTime = Date.now();
-      const minLoadingTime = 5000; // 5 seconds minimum
+      const minLoadingTime = 3000; // 3 seconds minimum for better UX
       
       handleSearch().then(() => {
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
         
+        // Instead of automatically switching, mark data loading as complete
         setTimeout(() => {
-          setInitialLoadingCount(0);
+          setIsDataLoadingComplete(true);
         }, remainingTime);
       });
     }
   }, [initialLoadingCount, handleSearch]);
+
+  const handleStartClick = useCallback(() => {
+    setInitialLoadingCount(0);
+    setIsDataLoadingComplete(false);
+  }, []);
 
   if (initialLoadingCount === 1) {
     return (
@@ -197,6 +204,54 @@ function App() {
           isLoading={loading}
           currentUsername={currentUsername}
         />
+        {isDataLoadingComplete && !loading && (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 3,
+              mt: 3,
+              animation: 'fadeIn 0.5s ease-in',
+              '@keyframes fadeIn': {
+                from: { opacity: 0, transform: 'translateY(10px)' },
+                to: { opacity: 1, transform: 'translateY(0)' },
+              },
+            }}
+          >
+            <Box sx={{ textAlign: 'center', color: 'success.fg' }}>
+              <Box sx={{ fontSize: '18px', fontWeight: 'bold', mb: 1 }}>
+                ✅ Data loaded successfully!
+              </Box>
+              <Box sx={{ fontSize: '14px', color: 'fg.muted' }}>
+                Your GitHub activity is ready to view
+              </Box>
+            </Box>
+            <Button
+              variant="primary"
+              size="large"
+              onClick={handleStartClick}
+              sx={{
+                fontSize: '18px',
+                fontWeight: 'bold',
+                px: 5,
+                py: 3,
+                borderRadius: '12px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 6px 16px rgba(0, 0, 0, 0.2)',
+                },
+                '&:active': {
+                  transform: 'translateY(0)',
+                },
+              }}
+            >
+              🚀 Start Exploring
+            </Button>
+          </Box>
+        )}
       </Box>
     );
   }
