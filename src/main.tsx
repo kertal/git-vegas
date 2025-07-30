@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css'; // Should be empty or contain only truly global, non-conflicting styles
+import './mobile.css'; // Mobile-specific optimizations
 import { ThemeProvider, BaseStyles } from '@primer/react';
 import '@primer/css/dist/primer.css';
 

@@ -129,14 +129,18 @@ const SearchForm = memo(function SearchForm() {
         }}
         onSubmit={handleFormSubmit}
       >
-        {/* Main search fields in a horizontal layout */}
+        {/* Main search fields in a responsive layout */}
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns:
-              'minmax(300px, 3fr) repeat(2, minmax(150px, 1fr)) auto',
             gap: 3,
             alignItems: 'flex-start',
+            // Desktop: Original horizontal layout
+            gridTemplateColumns: 'minmax(300px, 3fr) repeat(2, minmax(150px, 1fr)) auto',
+            // Mobile and tablet: Stack vertically
+            '@media (max-width: 1023px)': {
+              gridTemplateColumns: '1fr',
+            },
           }}
         >
           <FormControl required>
@@ -172,6 +176,7 @@ const SearchForm = memo(function SearchForm() {
               block
             />
           </FormControl>
+          
           <FormControl>
             <FormControl.Label>Action</FormControl.Label>
             <Button
@@ -186,8 +191,26 @@ const SearchForm = memo(function SearchForm() {
           </FormControl>
         </Box>
         {/* API Mode Switch */}
-        <Box sx={{ mb: 2 }}>
-          <UnderlineNav aria-label="GitHub API Mode">
+        <Box 
+          sx={{ 
+            mb: 2,
+            '@media (max-width: 767px)': {
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              '& nav': {
+                whiteSpace: 'nowrap',
+              },
+            },
+          }}
+        >
+          <UnderlineNav 
+            aria-label="GitHub API Mode"
+            sx={{
+              '@media (max-width: 767px)': {
+                minWidth: 'fit-content',
+              },
+            }}
+          >
             <UnderlineNav.Item
               href="#"
               aria-current={apiMode === 'summary' ? 'page' : undefined}

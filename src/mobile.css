@@ -1,0 +1,134 @@
+/* Mobile-specific optimizations for GitVegas */
+
+/* Improve touch targets on mobile */
+@media (max-width: 767px) {
+  /* Better button touch targets */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve text input touch targets */
+  input[type="text"],
+  input[type="date"] {
+    min-height: 44px;
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Improve checkbox touch targets */
+  input[type="checkbox"] {
+    min-width: 20px;
+    min-height: 20px;
+  }
+  
+  /* Better link touch targets */
+  a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  /* Prevent horizontal scroll */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Improve table/list scrolling */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Better text wrapping */
+  .text-wrap {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  /* Hide elements that don't work well on mobile */
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  /* Stack elements vertically on mobile */
+  .mobile-stack {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  /* Full width on mobile */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+  
+  /* Reduce font sizes for better mobile display */
+  .mobile-small-text {
+    font-size: 14px !important;
+  }
+  
+  /* Improve slot machine display on mobile */
+  .slot-machine-container {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
+}
+
+/* Tablet-specific optimizations */
+@media (min-width: 768px) and (max-width: 1023px) {
+  /* Slightly reduce spacing on tablet */
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  /* Better two-column layout on tablet */
+  .tablet-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+
+/* Safe area handling for devices with notches */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+  
+  .header-safe-area {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  
+  .footer-safe-area {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Smooth animations for better mobile UX */
+@media (max-width: 767px) {
+  * {
+    /* Improve scrolling performance */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Improve focus visibility on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  button:focus,
+  input:focus,
+  a:focus {
+    outline: 2px solid var(--color-accent-fg);
+    outline-offset: 2px;
+  }
+} 
