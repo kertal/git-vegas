@@ -10,6 +10,7 @@ describe('summaryConstants', () => {
       expect(SUMMARY_GROUP_NAMES.PRS_OPENED).toBe('PRs - opened');
       expect(SUMMARY_GROUP_NAMES.PRS_MERGED).toBe('PRs - merged');
       expect(SUMMARY_GROUP_NAMES.PRS_CLOSED).toBe('PRs - closed');
+      expect(SUMMARY_GROUP_NAMES.PRS_UPDATED).toBe('PRs - updated');
       expect(SUMMARY_GROUP_NAMES.PRS_REVIEWED).toBe('PRs - reviewed');
       expect(SUMMARY_GROUP_NAMES.ISSUES_OPENED).toBe('Issues - opened');
       expect(SUMMARY_GROUP_NAMES.ISSUES_CLOSED).toBe('Issues - closed');
@@ -29,10 +30,11 @@ describe('summaryConstants', () => {
     it('should return all group names as an array', () => {
       const groupNames = getAllGroupNames();
       
-      expect(groupNames).toHaveLength(9);
+      expect(groupNames).toHaveLength(10);
       expect(groupNames).toContain('PRs - opened');
       expect(groupNames).toContain('PRs - merged');
       expect(groupNames).toContain('PRs - closed');
+      expect(groupNames).toContain('PRs - updated');
       expect(groupNames).toContain('PRs - reviewed');
       expect(groupNames).toContain('Issues - opened');
       expect(groupNames).toContain('Issues - closed');
@@ -53,10 +55,11 @@ describe('summaryConstants', () => {
     it('should create an object with all group names as keys', () => {
       const groups = createEmptyGroups();
       
-      expect(Object.keys(groups)).toHaveLength(9);
+      expect(Object.keys(groups)).toHaveLength(10);
       expect(groups).toHaveProperty('PRs - opened');
       expect(groups).toHaveProperty('PRs - merged');
       expect(groups).toHaveProperty('PRs - closed');
+      expect(groups).toHaveProperty('PRs - updated');
       expect(groups).toHaveProperty('PRs - reviewed');
       expect(groups).toHaveProperty('Issues - opened');
       expect(groups).toHaveProperty('Issues - closed');

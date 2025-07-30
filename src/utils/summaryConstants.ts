@@ -3,6 +3,7 @@ export const SUMMARY_GROUP_NAMES = {
   PRS_OPENED: 'PRs - opened',
   PRS_MERGED: 'PRs - merged', 
   PRS_CLOSED: 'PRs - closed',
+  PRS_UPDATED: 'PRs - updated',
   PRS_REVIEWED: 'PRs - reviewed',
   ISSUES_OPENED: 'Issues - opened',
   ISSUES_CLOSED: 'Issues - closed',

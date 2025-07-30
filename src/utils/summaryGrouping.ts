@@ -58,12 +58,26 @@ export const getEventType = (item: GitHubItem): string => {
 };
 
 /**
- * Categories a GitHub item based on its type and content (preserves original logic exactly)
+ * Checks if a date is within the specified range
+ */
+export const isDateInRange = (dateStr: string, startDate: string, endDate: string): boolean => {
+  const date = new Date(dateStr);
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  // Add one day to end date to include the entire end day
+  end.setDate(end.getDate() + 1);
+  return date >= start && date < end;
+};
+
+/**
+ * Categories a GitHub item based on its type and content
  */
 export const categorizeItem = (
   item: GitHubItem,
   searchedUsernames: string[],
-  addedReviewPRs: Set<string>
+  addedReviewPRs: Set<string>,
+  startDate: string,
+  endDate: string
 ): SummaryGroupName | null => {
   const type = getEventType(item);
 
@@ -94,13 +108,32 @@ export const categorizeItem = (
   }
 
   if (type === 'pull_request') {
-    if (item.merged_at) {
+    const createdInRange = isDateInRange(item.created_at, startDate, endDate);
+    const mergedInRange = item.merged_at && isDateInRange(item.merged_at, startDate, endDate);
+    const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
+    const updatedInRange = isDateInRange(item.updated_at, startDate, endDate);
+
+
+
+    // Check if PR was merged within the timeframe
+    if (item.merged_at && mergedInRange) {
       return SUMMARY_GROUP_NAMES.PRS_MERGED;
-    } else if (item.state === 'closed') {
+    } 
+    // Check if PR was closed within the timeframe (and not merged)
+    else if (item.state === 'closed' && closedInRange && !item.merged_at) {
       return SUMMARY_GROUP_NAMES.PRS_CLOSED;
-    } else {
+    } 
+    // Check if PR was created within the timeframe
+    else if (createdInRange) {
       return SUMMARY_GROUP_NAMES.PRS_OPENED;
+    } 
+    // Check if PR was updated but not created/merged/closed within the timeframe
+    else if (updatedInRange && !createdInRange && !mergedInRange && !closedInRange) {
+      return SUMMARY_GROUP_NAMES.PRS_UPDATED;
     }
+    
+    // If none of the above, this PR doesn't belong in this timeframe summary
+    return null;
   }
 
   // Handle issues (default case - matches original logic)
@@ -123,13 +156,15 @@ export const categorizeItem = (
  */
 export const groupItems = (
   items: GitHubItem[],
-  searchedUsernames: string[]
+  searchedUsernames: string[],
+  startDate: string,
+  endDate: string
 ): Record<SummaryGroupName, GitHubItem[]> => {
   const groups = createEmptyGroups<GitHubItem>();
   const addedReviewPRs = new Set<string>();
 
   items.forEach(item => {
-    const groupName = categorizeItem(item, searchedUsernames, addedReviewPRs);
+    const groupName = categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate);
     if (groupName) {
       groups[groupName].push(item);
     }
@@ -203,13 +238,15 @@ export const groupSummaryData = (
   const searchedUsernames = parseUsernames(username);
   
   // Group items first
-  const groups = groupItems(items, searchedUsernames);
+  const groups = groupItems(items, searchedUsernames, startDate, endDate);
   
   // Add merged PRs from search items
   addMergedPRsFromSearchItems(groups, searchItems, startDate, endDate);
   
   // Add assigned issues from search items
   addAssignedIssuesFromSearchItems(groups, searchItems, searchedUsernames);
+  
+
   
   return groups;
 }; 
