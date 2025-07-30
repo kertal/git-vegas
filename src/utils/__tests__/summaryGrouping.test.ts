@@ -99,6 +99,44 @@ describe('categorizeItem - PRs Updated', () => {
     const result = categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate);
     expect(result).toBeNull();
   });
+
+  it('should not categorize merged PR as closed even when closed_at is in range', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/pull/1',
+      title: 'Test PR',
+      created_at: '2024-01-05T00:00:00Z', // Before timeframe
+      updated_at: '2024-01-15T00:00:00Z', // Within timeframe
+      closed_at: '2024-01-15T00:00:00Z', // Within timeframe
+      merged_at: '2024-01-15T00:00:00Z', // Merged within timeframe
+      state: 'closed',
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+      pull_request: { url: 'https://github.com/test/repo/pull/1' },
+    };
+
+    const result = categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_MERGED); // Should be merged, not closed
+  });
+
+  it('should handle PR with merged_at nested in pull_request object', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/pull/1',
+      title: 'Test PR',
+      created_at: '2024-01-05T00:00:00Z', // Before timeframe
+      updated_at: '2024-01-15T00:00:00Z', // Within timeframe
+      closed_at: '2024-01-15T00:00:00Z', // Within timeframe
+      state: 'closed',
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+      pull_request: {
+        url: 'https://github.com/test/repo/pull/1',
+        merged_at: '2024-01-15T00:00:00Z', // Merged nested in pull_request
+      },
+    };
+
+    const result = categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_MERGED); // Should be merged, not closed
+  });
 });
 
 describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results', () => {

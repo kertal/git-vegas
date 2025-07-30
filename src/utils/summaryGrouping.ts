@@ -109,13 +109,14 @@ export const categorizeItemWithoutDateFiltering = (
 
   if (type === 'pull_request') {
     // Categorize PRs by their state and recent activity rather than strict date filtering
+    const mergedAt = item.merged_at || item.pull_request?.merged_at;
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
-    const mergedInRange = item.merged_at && isDateInRange(item.merged_at, startDate, endDate);
+    const mergedInRange = mergedAt && isDateInRange(mergedAt, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
 
-    if (item.merged_at && mergedInRange) {
+    if (mergedAt && mergedInRange) {
       return SUMMARY_GROUP_NAMES.PRS_MERGED;
-    } else if (item.state === 'closed' && closedInRange && !item.merged_at) {
+    } else if (item.state === 'closed' && closedInRange && !mergedAt) {
       return SUMMARY_GROUP_NAMES.PRS_CLOSED;
     } else if (createdInRange) {
       return SUMMARY_GROUP_NAMES.PRS_OPENED;
@@ -187,19 +188,20 @@ export const categorizeItem = (
   }
 
   if (type === 'pull_request') {
+    const mergedAt = item.merged_at || item.pull_request?.merged_at;
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
-    const mergedInRange = item.merged_at && isDateInRange(item.merged_at, startDate, endDate);
+    const mergedInRange = mergedAt && isDateInRange(mergedAt, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
     const updatedInRange = isDateInRange(item.updated_at, startDate, endDate);
 
 
 
     // Check if PR was merged within the timeframe
-    if (item.merged_at && mergedInRange) {
+    if (mergedAt && mergedInRange) {
       return SUMMARY_GROUP_NAMES.PRS_MERGED;
     } 
     // Check if PR was closed within the timeframe (and not merged)
-    else if (item.state === 'closed' && closedInRange && !item.merged_at) {
+    else if (item.state === 'closed' && closedInRange && !mergedAt) {
       return SUMMARY_GROUP_NAMES.PRS_CLOSED;
     } 
     // Check if PR was created within the timeframe
