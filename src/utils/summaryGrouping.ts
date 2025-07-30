@@ -70,6 +70,84 @@ export const isDateInRange = (dateStr: string, startDate: string, endDate: strin
 };
 
 /**
+ * Categories a GitHub item without date filtering (for already date-filtered results)
+ */
+export const categorizeItemWithoutDateFiltering = (
+  item: GitHubItem,
+  searchedUsernames: string[],
+  addedReviewPRs: Set<string>,
+  startDate: string,
+  endDate: string
+): SummaryGroupName | null => {
+  const type = getEventType(item);
+
+  if (type === 'pull_request' && item.title?.startsWith('Review on:')) {
+    const basePRUrl = getBasePRUrl(item.html_url);
+    if (!addedReviewPRs.has(basePRUrl)) {
+      addedReviewPRs.add(basePRUrl);
+      return SUMMARY_GROUP_NAMES.PRS_REVIEWED;
+    }
+    return null; // Skip duplicate reviews
+  }
+
+  if (type === 'comment' && item.title?.startsWith('Review comment on:')) {
+    // Review comments on PRs are ignored (section removed)
+    return null;
+  }
+
+  if (type === 'comment') {
+    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+  }
+
+  if (type === 'commit') {
+    return SUMMARY_GROUP_NAMES.COMMITS;
+  }
+
+  if (type === 'other') {
+    return SUMMARY_GROUP_NAMES.OTHER_EVENTS;
+  }
+
+  if (type === 'pull_request') {
+    // Categorize PRs by their state and recent activity rather than strict date filtering
+    const createdInRange = isDateInRange(item.created_at, startDate, endDate);
+    const mergedInRange = item.merged_at && isDateInRange(item.merged_at, startDate, endDate);
+    const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
+
+    if (item.merged_at && mergedInRange) {
+      return SUMMARY_GROUP_NAMES.PRS_MERGED;
+    } else if (item.state === 'closed' && closedInRange && !item.merged_at) {
+      return SUMMARY_GROUP_NAMES.PRS_CLOSED;
+    } else if (createdInRange) {
+      return SUMMARY_GROUP_NAMES.PRS_OPENED;
+    } else {
+      // PR was updated but not created/merged/closed within timeframe
+      return SUMMARY_GROUP_NAMES.PRS_UPDATED;
+    }
+  }
+
+  // Handle issues - categorize by authorship and recent activity
+  if (type === 'issue') {
+    const createdInRange = isDateInRange(item.created_at, startDate, endDate);
+    const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
+
+    if (isAuthoredBySearchedUser(item, searchedUsernames)) {
+      if (item.state === 'closed' && closedInRange) {
+        return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
+      } else if (createdInRange) {
+        return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
+      } else {
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+      }
+    } else {
+      // Assigned issue - always goes to updated section
+      return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+    }
+  }
+
+  return null;
+};
+
+/**
  * Categories a GitHub item based on its type and content
  */
 export const categorizeItem = (
@@ -136,19 +214,38 @@ export const categorizeItem = (
     return null;
   }
 
-  // Handle issues (default case - matches original logic)
-  if (isAuthoredBySearchedUser(item, searchedUsernames)) {
-    // Authored by searched user
-    if (item.state === 'closed') {
-      return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
+  // Handle issues - apply date range filtering similar to PRs
+  if (type === 'issue') {
+    const createdInRange = isDateInRange(item.created_at, startDate, endDate);
+    const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
+    const updatedInRange = isDateInRange(item.updated_at, startDate, endDate);
+
+    if (isAuthoredBySearchedUser(item, searchedUsernames)) {
+      // Issue authored by searched user
+      if (item.state === 'closed' && closedInRange) {
+        // Issue was closed within the timeframe
+        return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
+      } else if (createdInRange) {
+        // Issue was created within the timeframe (regardless of current state)
+        return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
+      } else if (updatedInRange && !createdInRange && !closedInRange) {
+        // Issue had activity but wasn't created/closed within timeframe
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+      }
     } else {
-      return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
+      // Issue not authored by searched user (assigned)
+      if (updatedInRange) {
+        // Any activity on assigned issue goes to updated section
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+      }
     }
-  } else {
-    // Not authored by searched user, must be assigned
-    // All assigned issues go to updated section regardless of state
-    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+    
+    // If none of the above conditions are met, filter out the issue
+    return null;
   }
+
+  // Default fallback (shouldn't reach here for normal issues)
+  return null;
 };
 
 /**
@@ -158,13 +255,16 @@ export const groupItems = (
   items: GitHubItem[],
   searchedUsernames: string[],
   startDate: string,
-  endDate: string
+  endDate: string,
+  applyDateFiltering = true
 ): Record<SummaryGroupName, GitHubItem[]> => {
   const groups = createEmptyGroups<GitHubItem>();
   const addedReviewPRs = new Set<string>();
 
   items.forEach(item => {
-    const groupName = categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate);
+    const groupName = applyDateFiltering 
+      ? categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate)
+      : categorizeItemWithoutDateFiltering(item, searchedUsernames, addedReviewPRs, startDate, endDate);
     if (groupName) {
       groups[groupName].push(item);
     }
@@ -205,7 +305,9 @@ export const addMergedPRsFromSearchItems = (
 export const addAssignedIssuesFromSearchItems = (
   groups: Record<SummaryGroupName, GitHubItem[]>,
   searchItems: GitHubItem[],
-  searchedUsernames: string[]
+  searchedUsernames: string[],
+  startDate: string,
+  endDate: string
 ): void => {
   const existingIssueUrls = new Set([
     ...groups[SUMMARY_GROUP_NAMES.ISSUES_OPENED].map(item => item.html_url),
@@ -218,8 +320,11 @@ export const addAssignedIssuesFromSearchItems = (
       const itemAuthor = searchItem.user.login.toLowerCase();
       if (!searchedUsernames.includes(itemAuthor)) {
         // This is an assigned issue (not authored by searched user)
-        // All assigned issues go to updated section regardless of state
-        groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].push(searchItem);
+        // Only add if it has activity within the timeframe
+        const updatedInRange = isDateInRange(searchItem.updated_at, startDate, endDate);
+        if (updatedInRange) {
+          groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].push(searchItem);
+        }
       }
     }
   });
@@ -237,14 +342,14 @@ export const groupSummaryData = (
 ): Record<SummaryGroupName, GitHubItem[]> => {
   const searchedUsernames = parseUsernames(username);
   
-  // Group items first
-  const groups = groupItems(items, searchedUsernames, startDate, endDate);
+  // Group items first (apply proper date filtering for categorization)
+  const groups = groupItems(items, searchedUsernames, startDate, endDate, true);
   
   // Add merged PRs from search items
   addMergedPRsFromSearchItems(groups, searchItems, startDate, endDate);
   
   // Add assigned issues from search items
-  addAssignedIssuesFromSearchItems(groups, searchItems, searchedUsernames);
+  addAssignedIssuesFromSearchItems(groups, searchItems, searchedUsernames, startDate, endDate);
   
 
   

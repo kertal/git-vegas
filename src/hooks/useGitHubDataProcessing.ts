@@ -26,14 +26,48 @@ export const useGitHubDataProcessing = ({
 }: UseGitHubDataProcessingProps): UseGitHubDataProcessingReturn => {
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
-    if (apiMode === 'events' || apiMode === 'summary') {
+    if (apiMode === 'events') {
+      // Events view: only processed events
       return processRawEvents(indexedDBEvents, startDate, endDate);
     } else if (apiMode === 'search') {
-      // Cast indexedDBSearchItems to GitHubItem[] since the hook returns GitHubEvent[]
+      // Issues and PRs view: only search items
       return categorizeRawSearchItems(
         indexedDBSearchItems as unknown as GitHubItem[],
         startDate,
         endDate
+      );
+    } else if (apiMode === 'summary') {
+      // Summary view: merge both events AND search items for complete picture
+      const processedEvents = processRawEvents(indexedDBEvents, startDate, endDate);
+      const processedSearchItems = categorizeRawSearchItems(
+        indexedDBSearchItems as unknown as GitHubItem[],
+        startDate,
+        endDate
+      );
+      
+      // Combine both datasets, removing duplicates based on html_url
+      const urlSet = new Set<string>();
+      const combinedResults: GitHubItem[] = [];
+      
+      // Add search items first (they are more complete/accurate)
+      processedSearchItems.forEach(item => {
+        if (!urlSet.has(item.html_url)) {
+          urlSet.add(item.html_url);
+          combinedResults.push(item);
+        }
+      });
+      
+      // Add events that aren't already covered by search items
+      processedEvents.forEach(item => {
+        if (!urlSet.has(item.html_url)) {
+          urlSet.add(item.html_url);
+          combinedResults.push(item);
+        }
+      });
+      
+      // Sort by updated_at (newest first)
+      return combinedResults.sort((a, b) => 
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
     } else {
       return [];
