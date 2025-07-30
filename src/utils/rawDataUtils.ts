@@ -44,6 +44,8 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       closed_at: issue.closed_at,
       number: issue.number,
       user: actorUser, // Use event actor instead of issue user
+      assignee: (payload as any).issue?.assignee || null, // Extract assignee from original payload
+      assignees: (payload as any).issue?.assignees || [],
       pull_request: issue.pull_request,
       original: payload,
     };

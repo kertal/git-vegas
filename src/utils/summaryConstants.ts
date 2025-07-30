@@ -7,7 +7,8 @@ export const SUMMARY_GROUP_NAMES = {
   PRS_REVIEWED: 'PRs - reviewed',
   ISSUES_OPENED: 'Issues - opened',
   ISSUES_CLOSED: 'Issues - closed',
-  ISSUES_UPDATED: 'Issues - updated',
+  ISSUES_UPDATED_AUTHOR: 'Issues - updated (as Author)',
+  ISSUES_UPDATED_ASSIGNEE: 'Issues - updated (as Assignee)',
   COMMITS: 'Commits',
   OTHER_EVENTS: 'Other Events',
 } as const;

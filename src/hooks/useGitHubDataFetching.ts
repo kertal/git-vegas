@@ -173,9 +173,12 @@ export const useGitHubDataFetching = ({
           }
 
           const searchData = await searchResponse.json();
-          // Add original property to search items
+          // Add original property to search items and ensure assignee data is preserved
           const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
             ...item,
+            // Ensure assignee information is preserved from the API response
+            assignee: item.assignee || null,
+            assignees: item.assignees || [],
             original: item, // Store the original item as the original payload
           }));
           allSearchItems.push(...searchItemsWithOriginal);

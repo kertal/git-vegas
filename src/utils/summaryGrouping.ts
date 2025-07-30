@@ -96,7 +96,7 @@ export const categorizeItemWithoutDateFiltering = (
   }
 
   if (type === 'comment') {
-    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
   }
 
   if (type === 'commit') {
@@ -126,7 +126,8 @@ export const categorizeItemWithoutDateFiltering = (
   }
 
   // Handle issues - categorize by authorship and recent activity
-  if (type === 'issue') {
+  // Ensure this is actually an issue and not a PR
+  if (type === 'issue' && !item.pull_request) {
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
 
@@ -136,11 +137,11 @@ export const categorizeItemWithoutDateFiltering = (
       } else if (createdInRange) {
         return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
       } else {
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR;
       }
     } else {
-      // Assigned issue - always goes to updated section
-      return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+      // Assigned issue - always goes to assignee updated section
+      return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
     }
   }
 
@@ -174,7 +175,7 @@ export const categorizeItem = (
   }
 
   if (type === 'comment') {
-    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
   }
 
   if (type === 'commit') {
@@ -215,7 +216,8 @@ export const categorizeItem = (
   }
 
   // Handle issues - apply date range filtering similar to PRs
-  if (type === 'issue') {
+  // Ensure this is actually an issue and not a PR
+  if (type === 'issue' && !item.pull_request) {
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
     const updatedInRange = isDateInRange(item.updated_at, startDate, endDate);
@@ -230,13 +232,13 @@ export const categorizeItem = (
         return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
       } else if (updatedInRange && !createdInRange && !closedInRange) {
         // Issue had activity but wasn't created/closed within timeframe
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR;
       }
     } else {
       // Issue not authored by searched user (assigned)
       if (updatedInRange) {
         // Any activity on assigned issue goes to updated section
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
       }
     }
     
@@ -312,10 +314,12 @@ export const addAssignedIssuesFromSearchItems = (
   const existingIssueUrls = new Set([
     ...groups[SUMMARY_GROUP_NAMES.ISSUES_OPENED].map(item => item.html_url),
     ...groups[SUMMARY_GROUP_NAMES.ISSUES_CLOSED].map(item => item.html_url),
-    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].map(item => item.html_url),
+    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR].map(item => item.html_url),
+    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE].map(item => item.html_url),
   ]);
 
   searchItems.forEach(searchItem => {
+    // Explicitly filter out PRs to ensure they don't appear in issue sections
     if (!searchItem.pull_request && !existingIssueUrls.has(searchItem.html_url)) {
       const itemAuthor = searchItem.user.login.toLowerCase();
       if (!searchedUsernames.includes(itemAuthor)) {
@@ -323,7 +327,7 @@ export const addAssignedIssuesFromSearchItems = (
         // Only add if it has activity within the timeframe
         const updatedInRange = isDateInRange(searchItem.updated_at, startDate, endDate);
         if (updatedInRange) {
-          groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].push(searchItem);
+          groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE].push(searchItem);
         }
       }
     }

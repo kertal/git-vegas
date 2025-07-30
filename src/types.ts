@@ -32,6 +32,16 @@ export interface GitHubItem {
     avatar_url: string;
     html_url: string;
   };
+  assignee?: {
+    login: string;
+    avatar_url: string;
+    html_url: string;
+  };
+  assignees?: Array<{
+    login: string;
+    avatar_url: string;
+    html_url: string;
+  }>;
   draft?: boolean;
   original?: GitHubEvent['payload'] | Record<string, unknown>; // Original payload from GitHub API
 }

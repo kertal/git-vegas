@@ -14,7 +14,8 @@ describe('summaryConstants', () => {
       expect(SUMMARY_GROUP_NAMES.PRS_REVIEWED).toBe('PRs - reviewed');
       expect(SUMMARY_GROUP_NAMES.ISSUES_OPENED).toBe('Issues - opened');
       expect(SUMMARY_GROUP_NAMES.ISSUES_CLOSED).toBe('Issues - closed');
-      expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED).toBe('Issues - updated');
+      expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR).toBe('Issues - updated (as Author)');
+      expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE).toBe('Issues - updated (as Assignee)');
       expect(SUMMARY_GROUP_NAMES.COMMITS).toBe('Commits');
       expect(SUMMARY_GROUP_NAMES.OTHER_EVENTS).toBe('Other Events');
     });
@@ -30,7 +31,7 @@ describe('summaryConstants', () => {
     it('should return all group names as an array', () => {
       const groupNames = getAllGroupNames();
       
-      expect(groupNames).toHaveLength(10);
+      expect(groupNames).toHaveLength(11);
       expect(groupNames).toContain('PRs - opened');
       expect(groupNames).toContain('PRs - merged');
       expect(groupNames).toContain('PRs - closed');
@@ -38,7 +39,8 @@ describe('summaryConstants', () => {
       expect(groupNames).toContain('PRs - reviewed');
       expect(groupNames).toContain('Issues - opened');
       expect(groupNames).toContain('Issues - closed');
-      expect(groupNames).toContain('Issues - updated');
+      expect(groupNames).toContain('Issues - updated (as Author)');
+      expect(groupNames).toContain('Issues - updated (as Assignee)');
       expect(groupNames).toContain('Commits');
       expect(groupNames).toContain('Other Events');
     });
@@ -55,7 +57,7 @@ describe('summaryConstants', () => {
     it('should create an object with all group names as keys', () => {
       const groups = createEmptyGroups();
       
-      expect(Object.keys(groups)).toHaveLength(10);
+      expect(Object.keys(groups)).toHaveLength(11);
       expect(groups).toHaveProperty('PRs - opened');
       expect(groups).toHaveProperty('PRs - merged');
       expect(groups).toHaveProperty('PRs - closed');
@@ -63,7 +65,8 @@ describe('summaryConstants', () => {
       expect(groups).toHaveProperty('PRs - reviewed');
       expect(groups).toHaveProperty('Issues - opened');
       expect(groups).toHaveProperty('Issues - closed');
-      expect(groups).toHaveProperty('Issues - updated');
+      expect(groups).toHaveProperty('Issues - updated (as Author)');
+      expect(groups).toHaveProperty('Issues - updated (as Assignee)');
       expect(groups).toHaveProperty('Commits');
       expect(groups).toHaveProperty('Other Events');
     });

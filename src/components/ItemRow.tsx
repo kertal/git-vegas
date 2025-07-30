@@ -1,6 +1,25 @@
 import { Box, Avatar, Link, Text, Checkbox, Token } from '@primer/react';
 import { GitHubItem } from '../types';
 import ActionButtonsRow from './ActionButtonsRow';
+
+// Helper functions to determine display avatar and user
+const getDisplayAvatar = (item: GitHubItem): string => {
+  // For issues that have an assignee and the user is not the author, show assignee avatar
+  if (!item.pull_request && item.assignee && item.assignee.login !== item.user.login) {
+    return item.assignee.avatar_url;
+  }
+  // Otherwise show the author avatar
+  return item.user.avatar_url;
+};
+
+const getDisplayUser = (item: GitHubItem): string => {
+  // For issues that have an assignee and the user is not the author, show assignee name
+  if (!item.pull_request && item.assignee && item.assignee.login !== item.user.login) {
+    return item.assignee.login;
+  }
+  // Otherwise show the author name
+  return item.user.login;
+};
 import {
   GitMergeIcon,
   GitPullRequestIcon,
@@ -108,8 +127,8 @@ const ItemRow = ({
       )}
 
       <Avatar
-        src={item.user.avatar_url}
-        alt={`${item.user.login}'s avatar`}
+        src={getDisplayAvatar(item)}
+        alt={`${getDisplayUser(item)}'s avatar`}
         size={size === 'small' ? 24 : 32}
       />
 
