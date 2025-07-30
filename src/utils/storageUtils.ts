@@ -149,6 +149,58 @@ export const clearAllGitHubData = (): void => {
 };
 
 /**
+ * Clear GitHub caches and data while preserving the GitHub token
+ * Used when loading the app with URL parameters (shared links)
+ * Returns the preserved GitHub token that should be used in the updated form settings
+ */
+export const clearCachesKeepToken = async (): Promise<string> => {
+  try {
+    // First, preserve the GitHub token from form settings
+    let preservedToken = '';
+    const formSettings = localStorage.getItem('github-form-settings');
+    if (formSettings) {
+      try {
+        const parsed = JSON.parse(formSettings);
+        preservedToken = parsed.githubToken || '';
+      } catch {
+        // If parsing fails, token will remain empty string
+      }
+    }
+
+    // Clear localStorage keys (including form settings - we'll rebuild it with URL params)
+    const keysToRemove = [
+      'github-search-results',
+      'github-events-results', 
+      'github-raw-events-results',
+      'github-raw-data-storage', // Legacy storage
+      'github-last-search-params', // Legacy cache validation
+      'github-item-ui-state',
+      'github-ui-settings',
+      'github-username-cache', // Clear username validation cache
+      'github-form-settings' // Clear form settings - will be rebuilt with URL params
+    ];
+    
+    keysToRemove.forEach(key => {
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+        console.log(`Cleared cache localStorage key: ${key}`);
+      }
+    });
+
+    // Clear IndexedDB data (events and search items)
+    const { eventsStorage } = await import('./indexedDB');
+    await eventsStorage.clear();
+    console.log('Cleared IndexedDB cache data');
+    
+    console.log('✅ Cache cleanup completed, preserved GitHub token for reuse');
+    return preservedToken;
+  } catch (error) {
+    console.error('Failed to clear caches:', error);
+    return '';
+  }
+};
+
+/**
  * Safe localStorage setter that handles quota exceeded errors
  */
 export const safeSetItem = (key: string, value: string): boolean => {

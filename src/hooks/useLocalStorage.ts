@@ -100,6 +100,36 @@ export function useFormSettings(key: string, initialValue: FormSettings, onUrlPa
         window.history.replaceState({}, '', url.toString());
       }
       
+      // Clear caches and data in background when loading with URL parameters (shared links)
+      // This ensures fresh data for subsequent usage
+      // Only do this in production environment, not in tests
+      const isTestEnvironment = typeof window !== 'undefined' && 
+        (window.navigator?.userAgent?.includes('jsdom') || 
+         process.env.NODE_ENV === 'test' ||
+         import.meta.env?.MODE === 'test');
+         
+      if (!isTestEnvironment) {
+        // Run cache cleanup in background (don't await to avoid blocking the URL processing)
+        (async () => {
+          try {
+            const { clearCachesKeepToken } = await import('../utils/storageUtils');
+            const preservedToken = await clearCachesKeepToken();
+            
+            // Update the form settings to preserve the token if we have one
+            if (preservedToken && preservedToken !== updatedSettings.githubToken) {
+              setValue(prev => ({
+                ...prev,
+                githubToken: preservedToken
+              }));
+            }
+            
+            console.log('Background cache cleanup completed for shared link');
+          } catch (error) {
+            console.error('Background cache cleanup failed:', error);
+          }
+        })();
+      }
+      
       // Notify that URL parameters were processed
       onUrlParamsProcessed?.();
     }
