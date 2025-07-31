@@ -23,6 +23,7 @@ const getDisplayUser = (item: GitHubItem): string => {
 import {
   GitMergeIcon,
   GitPullRequestIcon,
+  GitPullRequestDraftIcon,
   IssueOpenedIcon,
   RepoIcon,
 } from '@primer/octicons-react';
@@ -134,7 +135,11 @@ const ItemRow = ({
                   flexShrink: 0,
                 }}
               >
-                <GitPullRequestIcon size={16} />
+                {item.draft || item.pull_request.draft ? (
+                  <GitPullRequestDraftIcon size={16} />
+                ) : (
+                  <GitPullRequestIcon size={16} />
+                )}
               </Box>
             )
           ) : (
@@ -299,7 +304,11 @@ const ItemRow = ({
                     gap: 1,
                   }}
                 >
-                  <GitPullRequestIcon size={16} />
+                  {item.draft || item.pull_request.draft ? (
+                    <GitPullRequestDraftIcon size={16} />
+                  ) : (
+                    <GitPullRequestIcon size={16} />
+                  )}
                 </Box>
               )
             ) : (

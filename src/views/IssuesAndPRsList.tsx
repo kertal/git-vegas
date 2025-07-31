@@ -10,6 +10,7 @@ import {
   GitPullRequestIcon,
   IssueOpenedIcon,
   GitMergeIcon,
+  GitPullRequestDraftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@primer/octicons-react';
@@ -60,7 +61,11 @@ const DialogTitle = ({ item }: { item: GitHubItem }) => (
         </Box>
       ) : (
         <Box sx={{ color: 'open.fg' }}>
-          <GitPullRequestIcon size={16} />
+          {item.draft || item.pull_request.draft ? (
+            <GitPullRequestDraftIcon size={16} />
+          ) : (
+            <GitPullRequestIcon size={16} />
+          )}
         </Box>
       )
     ) : (
