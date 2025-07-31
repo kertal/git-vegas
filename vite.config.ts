@@ -10,7 +10,7 @@ export default defineConfig({
     svgr(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'safari-pinned-tab.svg'],
+      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'GitVegas - GitHub Search Tool',
         short_name: 'GitVegas',
@@ -27,12 +27,12 @@ export default defineConfig({
             type: 'image/png'
           },
           {
-            src: 'icon-512x512.png',
+            src: 'icon-512-x512.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'icon-512x512.png',
+            src: 'icon-512-x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
