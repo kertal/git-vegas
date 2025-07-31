@@ -19,6 +19,7 @@ import EmptyState from '../components/EmptyState';
 import './EventView.css';
 
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { DismissibleBanner } from '../components/DismissibleBanner';
 
 
 
@@ -246,11 +247,9 @@ const EventView = memo(function EventView({
       className="timeline-view"
     >
       {/* API Limitation Note */}
-      <Box sx={{ p: 2,  bg: 'attention.subtle'}}>
-        <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-          <strong>Note:</strong> Events includes up to 300 events from the past 30 days. Event latency can be 30s to 6h depending on time of day.
-        </Text>
-      </Box>
+      <DismissibleBanner bannerId="events-api-limitation">
+        <strong>Note:</strong> Events includes up to 300 events from the past 30 days. Event latency can be 30s to 6h depending on time of day.
+      </DismissibleBanner>
 
       {/* Timeline content */}
       <div className="timeline-content">

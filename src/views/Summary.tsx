@@ -31,6 +31,7 @@ import {
   hasAnyItems,
   getGroupSelectState 
 } from '../utils/summaryHelpers';
+import { DismissibleBanner } from '../components/DismissibleBanner';
 
 
 interface SummaryProps {
@@ -288,12 +289,10 @@ const SummaryView = memo(function SummaryView({
       className="timeline-view"
     >
       {/* API Limitation Note */}
-      <Box sx={{ p: 2,  bg: 'attention.subtle'}}>
-        <Text sx={{ fontSize: 1, color: 'fg.muted' }}>
-          <strong>Note:</strong> This view merges  the last 100 Github issues/PRs and 300 public Github Events per user. 
-           Event latency can be 30s to 6h depending on time of day.
-        </Text>
-      </Box>
+      <DismissibleBanner bannerId="summary-api-limitation">
+        <strong>Note:</strong> This view merges the last 100 GitHub issues/PRs and 300 public GitHub Events per user. 
+        Event latency can be 30s to 6h depending on time of day.
+      </DismissibleBanner>
 
       {/* Timeline content */}
       <div className="timeline-content">
