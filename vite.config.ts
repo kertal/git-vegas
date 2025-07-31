@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     svgr(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'safari-pinned-tab.svg'],
       manifest: {
         name: 'GitVegas - GitHub Search Tool',

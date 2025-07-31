@@ -25,6 +25,7 @@ import { LoadingIndicator } from './components/LoadingIndicator';
 import ShareButton from './components/ShareButton';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
 import { OfflineBanner } from './components/OfflineBanner';
+import { PWAUpdateNotification } from './components/PWAUpdateNotification';
 import GitVegasLogo from './assets/GitVegas.svg?react';
 
 // Form context for sharing form state across components
@@ -420,6 +421,9 @@ function App() {
           </Box>
         </Box>
       </PageLayout.Footer>
+
+      {/* PWA Update Notification */}
+      <PWAUpdateNotification />
     </PageLayout>
   );
 }
