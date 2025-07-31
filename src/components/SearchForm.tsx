@@ -1,4 +1,4 @@
-import React, { memo, useCallback, FormEvent, useState } from 'react';
+import React, { memo, useCallback, useEffect, FormEvent, useState } from 'react';
 import {
   Box,
   Button,
@@ -33,6 +33,7 @@ const SearchForm = memo(function SearchForm() {
 
   // Track if validation is in progress
   const [isValidating, setIsValidating] = useState(false);
+  const [pendingSearch, setPendingSearch] = useState(false);
 
   const handleUsernameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,17 +103,25 @@ const SearchForm = memo(function SearchForm() {
     [validateUsernameFormat, handleUsernameBlur, githubToken]
   );
 
+  // Effect to handle pending search after validation completes
+  useEffect(() => {
+    if (!isValidating && pendingSearch) {
+      setPendingSearch(false);
+      handleSearch();
+    }
+  }, [isValidating, pendingSearch, handleSearch]);
+
   const handleFormSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       
-      // Only prevent submission if currently validating or if there are format errors
-      // Don't prevent submission for API validation errors
+      // If validation is in progress, queue the search to run after validation completes
       if (isValidating) {
+        setPendingSearch(true);
         return;
       }
       
-      // Allow submission even if there are API errors - let the main search handle them
+      // Run search immediately if not validating
       handleSearch();
     },
     [handleSearch, isValidating]
@@ -183,10 +192,17 @@ const SearchForm = memo(function SearchForm() {
               variant="primary"
               type="submit"
               block
-              disabled={loading || isValidating}
+              disabled={loading}
               loading={loading || isValidating}
+              sx={{
+                minWidth: '160px', // Prevent width jumping
+                textAlign: 'center',
+              }}
             >
-              {isValidating ? 'Validating...' : loading ? 'Loading...' : 'Update'}
+              {pendingSearch && isValidating ? 'Validating & queued' 
+               : isValidating ? 'Validating...' 
+               : loading ? 'Loading...' 
+               : 'Update'}
             </Button>
           </FormControl>
         </Box>
