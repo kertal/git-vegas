@@ -14,8 +14,8 @@ describe('summaryConstants', () => {
       expect(SUMMARY_GROUP_NAMES.PRS_REVIEWED).toBe('PRs - reviewed');
       expect(SUMMARY_GROUP_NAMES.ISSUES_OPENED).toBe('Issues - opened');
       expect(SUMMARY_GROUP_NAMES.ISSUES_CLOSED).toBe('Issues - closed');
-      expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR).toBe('Issues - updated (as Author)');
-      expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE).toBe('Issues - updated (as Assignee)');
+      expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR).toBe('Issues (authored) - updated');
+      expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE).toBe('Issues (assigned) - updated');
       expect(SUMMARY_GROUP_NAMES.COMMITS).toBe('Commits');
       expect(SUMMARY_GROUP_NAMES.OTHER_EVENTS).toBe('Other Events');
     });
@@ -39,8 +39,8 @@ describe('summaryConstants', () => {
       expect(groupNames).toContain('PRs - reviewed');
       expect(groupNames).toContain('Issues - opened');
       expect(groupNames).toContain('Issues - closed');
-      expect(groupNames).toContain('Issues - updated (as Author)');
-      expect(groupNames).toContain('Issues - updated (as Assignee)');
+      expect(groupNames).toContain('Issues (authored) - updated');
+      expect(groupNames).toContain('Issues (assigned) - updated');
       expect(groupNames).toContain('Commits');
       expect(groupNames).toContain('Other Events');
     });
@@ -65,8 +65,8 @@ describe('summaryConstants', () => {
       expect(groups).toHaveProperty('PRs - reviewed');
       expect(groups).toHaveProperty('Issues - opened');
       expect(groups).toHaveProperty('Issues - closed');
-      expect(groups).toHaveProperty('Issues - updated (as Author)');
-      expect(groups).toHaveProperty('Issues - updated (as Assignee)');
+      expect(groups).toHaveProperty('Issues (authored) - updated');
+      expect(groups).toHaveProperty('Issues (assigned) - updated');
       expect(groups).toHaveProperty('Commits');
       expect(groups).toHaveProperty('Other Events');
     });
