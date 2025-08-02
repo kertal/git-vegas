@@ -16,6 +16,7 @@ describe('summaryConstants', () => {
       expect(SUMMARY_GROUP_NAMES.ISSUES_CLOSED).toBe('Issues - closed');
       expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR).toBe('Issues (authored) - updated');
       expect(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE).toBe('Issues (assigned) - updated');
+      expect(SUMMARY_GROUP_NAMES.COMMENTS).toBe('Comments');
       expect(SUMMARY_GROUP_NAMES.COMMITS).toBe('Commits');
       expect(SUMMARY_GROUP_NAMES.OTHER_EVENTS).toBe('Other Events');
     });
@@ -31,7 +32,7 @@ describe('summaryConstants', () => {
     it('should return all group names as an array', () => {
       const groupNames = getAllGroupNames();
       
-      expect(groupNames).toHaveLength(11);
+      expect(groupNames).toHaveLength(12);
       expect(groupNames).toContain('PRs - opened');
       expect(groupNames).toContain('PRs - merged');
       expect(groupNames).toContain('PRs - closed');
@@ -41,6 +42,7 @@ describe('summaryConstants', () => {
       expect(groupNames).toContain('Issues - closed');
       expect(groupNames).toContain('Issues (authored) - updated');
       expect(groupNames).toContain('Issues (assigned) - updated');
+      expect(groupNames).toContain('Comments');
       expect(groupNames).toContain('Commits');
       expect(groupNames).toContain('Other Events');
     });
@@ -57,7 +59,7 @@ describe('summaryConstants', () => {
     it('should create an object with all group names as keys', () => {
       const groups = createEmptyGroups();
       
-      expect(Object.keys(groups)).toHaveLength(11);
+      expect(Object.keys(groups)).toHaveLength(12);
       expect(groups).toHaveProperty('PRs - opened');
       expect(groups).toHaveProperty('PRs - merged');
       expect(groups).toHaveProperty('PRs - closed');
@@ -67,6 +69,7 @@ describe('summaryConstants', () => {
       expect(groups).toHaveProperty('Issues - closed');
       expect(groups).toHaveProperty('Issues (authored) - updated');
       expect(groups).toHaveProperty('Issues (assigned) - updated');
+      expect(groups).toHaveProperty('Comments');
       expect(groups).toHaveProperty('Commits');
       expect(groups).toHaveProperty('Other Events');
     });

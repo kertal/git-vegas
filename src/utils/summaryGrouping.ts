@@ -96,7 +96,7 @@ export const categorizeItemWithoutDateFiltering = (
   }
 
   if (type === 'comment') {
-    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
+    return SUMMARY_GROUP_NAMES.COMMENTS;
   }
 
   if (type === 'commit') {
@@ -176,7 +176,7 @@ export const categorizeItem = (
   }
 
   if (type === 'comment') {
-    return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
+    return SUMMARY_GROUP_NAMES.COMMENTS;
   }
 
   if (type === 'commit') {

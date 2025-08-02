@@ -9,6 +9,7 @@ export const SUMMARY_GROUP_NAMES = {
   ISSUES_CLOSED: 'Issues - closed',
   ISSUES_UPDATED_AUTHOR: 'Issues (authored) - updated',
   ISSUES_UPDATED_ASSIGNEE: 'Issues (assigned) - updated',
+  COMMENTS: 'Comments',
   COMMITS: 'Commits',
   OTHER_EVENTS: 'Other Events',
 } as const;
