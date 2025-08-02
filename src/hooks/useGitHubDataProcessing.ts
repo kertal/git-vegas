@@ -92,9 +92,6 @@ export const useGitHubDataProcessing = ({
     return filterItemsByAdvancedSearch(rawEvents, searchText).length;
   }, [indexedDBEvents, startDate, endDate, searchText]);
 
-  // Calculate grouped events count (number of unique URLs after grouping)
-  // (Removed groupedEventsCount)
-
   const rawEventsCount = indexedDBEvents.length;
 
   return {

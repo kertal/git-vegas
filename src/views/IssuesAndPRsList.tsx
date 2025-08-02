@@ -17,7 +17,7 @@ import {
 
 import { GitHubItem } from '../types';
 
-// import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useFormContext } from '../App';
 
@@ -362,11 +362,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
             />
           </>
         }
-        headerRight={
-          <>
-            {/* Search functionality temporarily hidden */}
-          </>
-        }
+        headerRight={null}
       >
         <div className="timeline-container">
           {/* Results List */}

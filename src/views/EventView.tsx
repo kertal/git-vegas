@@ -7,7 +7,7 @@ import {
 } from '@primer/react';
 import { GitHubItem, GitHubEvent } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
-// import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
@@ -64,18 +64,9 @@ const EventView = memo(function EventView({
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
   }, []);
-  
-  // Use debounced search hook (search functionality temporarily hidden)
-  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
-  //   searchText,
-  //   setSearchText,
-  //   300
-  // );
 
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
-
-
 
   // Reset to first page when search changes
   useEffect(() => {
@@ -234,11 +225,7 @@ const EventView = memo(function EventView({
   );
 
   // Header right content
-  const headerRight = (
-    <div className="timeline-header-right">
-      {/* Search functionality temporarily hidden */}
-    </div>
-  );
+  const headerRight = null;
 
   return (
     <ResultsContainer

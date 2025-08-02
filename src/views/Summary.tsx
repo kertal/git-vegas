@@ -85,19 +85,8 @@ const SummaryView = memo(function SummaryView({
     });
   }, []);
 
-  // Use debounced search hook (search functionality temporarily hidden)
-  // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
-  //   searchText,
-  //   setSearchText,
-  //   300
-  // );
-
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
-
-
-
-
 
   // Filter IndexedDB search items with the same search criteria
   const filteredIndexedDBSearchItems = useMemo(() => {
@@ -301,11 +290,7 @@ const SummaryView = memo(function SummaryView({
   );
 
   // Header right content
-  const headerRight = (
-    <div className="timeline-header-right">
-      {/* Search functionality temporarily hidden */}
-    </div>
-  );
+  const headerRight = null;
 
   return (
     <ResultsContainer
