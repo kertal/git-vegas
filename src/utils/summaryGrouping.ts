@@ -74,7 +74,6 @@ export const isDateInRange = (dateStr: string, startDate: string, endDate: strin
  */
 export const categorizeItemWithoutDateFiltering = (
   item: GitHubItem,
-  searchedUsernames: string[],
   addedReviewPRs: Set<string>,
   startDate: string,
   endDate: string
@@ -126,22 +125,17 @@ export const categorizeItemWithoutDateFiltering = (
     }
   }
 
-  // Handle issues - categorize by authorship and recent activity
+  // Handle issues - categorize by recent activity regardless of authorship
   // Ensure this is actually an issue and not a PR
   if (type === 'issue' && !item.pull_request) {
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
 
-    if (isAuthoredBySearchedUser(item, searchedUsernames)) {
-      if (item.state === 'closed' && closedInRange) {
-        return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
-      } else if (createdInRange) {
-        return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
-      } else {
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
-      }
+    if (item.state === 'closed' && closedInRange) {
+      return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
+    } else if (createdInRange) {
+      return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
     } else {
-      // Assigned issue - always goes to updated section
       return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
     }
   }
@@ -154,7 +148,6 @@ export const categorizeItemWithoutDateFiltering = (
  */
 export const categorizeItem = (
   item: GitHubItem,
-  searchedUsernames: string[],
   addedReviewPRs: Set<string>,
   startDate: string,
   endDate: string
@@ -217,31 +210,22 @@ export const categorizeItem = (
     return null;
   }
 
-  // Handle issues - apply date range filtering similar to PRs
+  // Handle issues - apply date range filtering regardless of authorship
   // Ensure this is actually an issue and not a PR
   if (type === 'issue' && !item.pull_request) {
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
     const updatedInRange = isDateInRange(item.updated_at, startDate, endDate);
 
-    if (isAuthoredBySearchedUser(item, searchedUsernames)) {
-      // Issue authored by searched user
-      if (item.state === 'closed' && closedInRange) {
-        // Issue was closed within the timeframe
-        return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
-      } else if (createdInRange) {
-        // Issue was created within the timeframe (regardless of current state)
-        return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
-      } else if (updatedInRange && !createdInRange && !closedInRange) {
-        // Issue had activity but wasn't created/closed within timeframe
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
-      }
-    } else {
-      // Issue not authored by searched user (assigned)
-      if (updatedInRange) {
-        // Any activity on assigned issue goes to updated section
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
-      }
+    if (item.state === 'closed' && closedInRange) {
+      // Issue was closed within the timeframe
+      return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
+    } else if (createdInRange) {
+      // Issue was created within the timeframe (regardless of current state)
+      return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
+    } else if (updatedInRange && !createdInRange && !closedInRange) {
+      // Issue had activity but wasn't created/closed within timeframe
+      return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
     }
     
     // If none of the above conditions are met, filter out the issue
@@ -257,7 +241,6 @@ export const categorizeItem = (
  */
 export const groupItems = (
   items: GitHubItem[],
-  searchedUsernames: string[],
   startDate: string,
   endDate: string,
   applyDateFiltering = true
@@ -267,8 +250,8 @@ export const groupItems = (
 
   items.forEach(item => {
     const groupName = applyDateFiltering 
-      ? categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate)
-      : categorizeItemWithoutDateFiltering(item, searchedUsernames, addedReviewPRs, startDate, endDate);
+      ? categorizeItem(item, addedReviewPRs, startDate, endDate)
+      : categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
     if (groupName) {
       groups[groupName].push(item);
     }
@@ -304,12 +287,11 @@ export const addMergedPRsFromSearchItems = (
 };
 
 /**
- * Adds assigned issues from search items that aren't already included
+ * Adds issues from search items that aren't already included
  */
-export const addAssignedIssuesFromSearchItems = (
+export const addIssuesFromSearchItems = (
   groups: Record<SummaryGroupName, GitHubItem[]>,
   searchItems: GitHubItem[],
-  searchedUsernames: string[],
   startDate: string,
   endDate: string
 ): void => {
@@ -322,14 +304,14 @@ export const addAssignedIssuesFromSearchItems = (
   searchItems.forEach(searchItem => {
     // Explicitly filter out PRs to ensure they don't appear in issue sections
     if (!searchItem.pull_request && !existingIssueUrls.has(searchItem.html_url)) {
-      const itemAuthor = searchItem.user.login.toLowerCase();
-      if (!searchedUsernames.includes(itemAuthor)) {
-        // This is an assigned issue (not authored by searched user)
-        // Only add if it has activity within the timeframe
-        const updatedInRange = isDateInRange(searchItem.updated_at, startDate, endDate);
-        if (updatedInRange) {
-          groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].push(searchItem);
-        }
+      // Categorize the issue using the same logic as other issues
+      const addedReviewPRs = new Set<string>(); // Empty set since we're only dealing with issues
+      const groupName = categorizeItem(searchItem, addedReviewPRs, startDate, endDate);
+      
+      if (groupName && (groupName === SUMMARY_GROUP_NAMES.ISSUES_OPENED || 
+                        groupName === SUMMARY_GROUP_NAMES.ISSUES_CLOSED || 
+                        groupName === SUMMARY_GROUP_NAMES.ISSUES_UPDATED)) {
+        groups[groupName].push(searchItem);
       }
     }
   });
@@ -341,20 +323,17 @@ export const addAssignedIssuesFromSearchItems = (
 export const groupSummaryData = (
   items: GitHubItem[],
   searchItems: GitHubItem[],
-  username: string,
   startDate: string,
   endDate: string
 ): Record<SummaryGroupName, GitHubItem[]> => {
-  const searchedUsernames = parseUsernames(username);
-  
   // Group items first (apply proper date filtering for categorization)
-  const groups = groupItems(items, searchedUsernames, startDate, endDate, true);
+  const groups = groupItems(items, startDate, endDate, true);
   
   // Add merged PRs from search items
   addMergedPRsFromSearchItems(groups, searchItems, startDate, endDate);
   
-  // Add assigned issues from search items
-  addAssignedIssuesFromSearchItems(groups, searchItems, searchedUsernames, startDate, endDate);
+  // Add issues from search items
+  addIssuesFromSearchItems(groups, searchItems, startDate, endDate);
   
 
   

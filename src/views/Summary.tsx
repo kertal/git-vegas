@@ -46,7 +46,7 @@ const SummaryView = memo(function SummaryView({
   indexedDBSearchItems = [],
 }: SummaryProps) {
   // Get form settings from form context
-  const { startDate, endDate, username } = useFormContext();
+  const { startDate, endDate } = useFormContext();
   
   // Internal state for search
   const [searchText] = useLocalStorage<string>('summary-searchText', '');
@@ -107,11 +107,10 @@ const SummaryView = memo(function SummaryView({
     return groupSummaryData(
       sortedItems,
       indexedDBSearchItems,
-      username,
       startDate,
       endDate
     );
-  }, [sortedItems, indexedDBSearchItems, startDate, endDate, username]);
+  }, [sortedItems, indexedDBSearchItems, startDate, endDate]);
 
   // Toggle section collapse state and clear selections when collapsing
   const toggleSectionCollapse = useCallback((sectionName: string) => {
