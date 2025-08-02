@@ -46,7 +46,7 @@ const SummaryView = memo(function SummaryView({
   indexedDBSearchItems = [],
 }: SummaryProps) {
   // Get form settings from form context
-  const { startDate, endDate, searchText } = useFormContext();
+  const { startDate, endDate, searchText, setSearchText } = useFormContext();
   
   // Internal state for selection and collapsed sections
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('summary-selectedItems', new Set());
@@ -326,7 +326,7 @@ const SummaryView = memo(function SummaryView({
             type={hasSearchText ? 'no-search-results' : !hasRawEvents ? 'no-cached-data' : 'no-data'}
             searchText={searchText}
             showClearSearch={!!searchText}
-            onClearSearch={() => {}}
+            onClearSearch={() => setSearchText('')}
           />
         ) : (
           // Grouped view - organize events by individual issues/PRs and by type

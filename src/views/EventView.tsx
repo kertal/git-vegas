@@ -34,7 +34,7 @@ const EventView = memo(function EventView({
   rawEvents = [],
 }: EventViewProps) {
   // Get shared search text from form context
-  const { searchText } = useFormContext();
+  const { searchText, setSearchText } = useFormContext();
 
   
   // Internal state for selection
@@ -258,7 +258,7 @@ const EventView = memo(function EventView({
             type={hasSearchText ? 'no-search-results' : !hasRawEvents ? 'no-cached-data' : 'no-data'}
             searchText={searchText}
             showClearSearch={!!searchText}
-            onClearSearch={() => {}}
+            onClearSearch={() => setSearchText('')}
           />
         ) : (
           // Standard timeline view

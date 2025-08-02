@@ -87,7 +87,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   buttonStyles,
 }: IssuesAndPRsListProps) {
   // Get shared search text from form context
-  const { searchText } = useFormContext();
+  const { searchText, setSearchText } = useFormContext();
 
   // Internal state management (previously from context)
   
@@ -102,6 +102,10 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   const filteredResults = useMemo(() => {
     return filterItemsByAdvancedSearch(results, searchText);
   }, [results, searchText]);
+
+  // Define helper variables for empty state logic (consistent with other views)
+  const hasRawData = results && results.length > 0;
+  const hasSearchText = searchText && searchText.trim().length > 0;
 
   // Group items into sections
   const groupedItems = useMemo(() => {
@@ -370,11 +374,10 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
             if (allDisplayedItems.length === 0) {
               return (
                 <EmptyState
-                  type={results.length === 0 ? 'no-data' : 'no-matches'}
+                  type={hasSearchText ? 'no-search-results' : !hasRawData ? 'no-cached-data' : 'no-data'}
                   searchText={searchText}
-                  totalItems={results.length}
                   showClearSearch={!!searchText}
-                  onClearSearch={() => {}}
+                  onClearSearch={() => setSearchText('')}
                 />
               );
             }
