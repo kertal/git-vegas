@@ -1,10 +1,10 @@
 // Summary view group name constants
 export const SUMMARY_GROUP_NAMES = {
   PRS_OPENED: 'PRs - opened',
-  PRS_MERGED: 'PRs - merged', 
-  PRS_CLOSED: 'PRs - closed',
   PRS_UPDATED: 'PRs - updated',
   PRS_REVIEWED: 'PRs - reviewed',
+  PRS_MERGED: 'PRs - merged', 
+  PRS_CLOSED: 'PRs - closed',
   ISSUES_OPENED: 'Issues - opened',
   ISSUES_CLOSED: 'Issues - closed',
   ISSUES_UPDATED_AUTHOR: 'Issues (authored) - updated',
