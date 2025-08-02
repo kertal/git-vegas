@@ -13,7 +13,7 @@ export const filterItemsByAdvancedSearch = (
     return items;
   }
 
-  const { includedLabels, excludedLabels, userFilters, cleanText } = parseSearchText(searchText);
+  const { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, cleanText } = parseSearchText(searchText);
 
   return items.filter(item => {
     // Check label filters first
@@ -48,6 +48,33 @@ export const filterItemsByAdvancedSearch = (
       if (!matchesUser) return false;
     }
 
+    // Check repository filters
+    if (includedRepos.length > 0 || excludedRepos.length > 0) {
+      // Extract repository name from repository_url (format: https://api.github.com/repos/owner/repo)
+      const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
+      
+      if (!itemRepo) {
+        // If no repository info, exclude if any repo filters are specified
+        if (includedRepos.length > 0) return false;
+      } else {
+        // Check if item has all required included repos
+        if (includedRepos.length > 0) {
+          const hasIncludedRepo = includedRepos.some(repoFilter =>
+            itemRepo.toLowerCase() === repoFilter.toLowerCase()
+          );
+          if (!hasIncludedRepo) return false;
+        }
+
+        // Check if item has any excluded repos
+        if (excludedRepos.length > 0) {
+          const hasExcludedRepo = excludedRepos.some(repoFilter =>
+            itemRepo.toLowerCase() === repoFilter.toLowerCase()
+          );
+          if (hasExcludedRepo) return false;
+        }
+      }
+    }
+
     // If there's clean text remaining, search in title, body, and username
     if (cleanText) {
       const searchLower = cleanText.toLowerCase();
@@ -57,7 +84,7 @@ export const filterItemsByAdvancedSearch = (
       return titleMatch || bodyMatch || userMatch;
     }
 
-    // If only label/user filters were used, item passed checks above
+    // If only label/user/repo filters were used, item passed checks above
     return true;
   });
 };

@@ -749,6 +749,8 @@ describe('resultsUtils', () => {
         includedLabels: [],
         excludedLabels: [],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -759,6 +761,8 @@ describe('resultsUtils', () => {
         includedLabels: [],
         excludedLabels: [],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -769,6 +773,8 @@ describe('resultsUtils', () => {
         includedLabels: ['bug'],
         excludedLabels: [],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -779,6 +785,8 @@ describe('resultsUtils', () => {
         includedLabels: [],
         excludedLabels: ['wontfix'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -789,6 +797,8 @@ describe('resultsUtils', () => {
         includedLabels: ['bug', 'critical'],
         excludedLabels: [],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -799,6 +809,8 @@ describe('resultsUtils', () => {
         includedLabels: [],
         excludedLabels: ['wontfix', 'duplicate'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -809,6 +821,8 @@ describe('resultsUtils', () => {
         includedLabels: ['bug', 'critical'],
         excludedLabels: ['wontfix', 'duplicate'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -819,6 +833,8 @@ describe('resultsUtils', () => {
         includedLabels: ['bug'],
         excludedLabels: ['wontfix'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: 'performance issue',
       });
     });
@@ -829,6 +845,8 @@ describe('resultsUtils', () => {
         includedLabels: ['bug'],
         excludedLabels: ['wontfix'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: 'performance issue',
       });
     });
@@ -839,6 +857,8 @@ describe('resultsUtils', () => {
         includedLabels: ['good_first_issue'],
         excludedLabels: ['help-wanted'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -849,6 +869,8 @@ describe('resultsUtils', () => {
         includedLabels: ['Team:DataDiscovery'],
         excludedLabels: ['v9.0.0'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -859,6 +881,8 @@ describe('resultsUtils', () => {
         includedLabels: ['api.v2:experimental'],
         excludedLabels: ['config.json.deprecated'],
         userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -869,6 +893,8 @@ describe('resultsUtils', () => {
         includedLabels: [],
         excludedLabels: [],
         userFilters: ['octocat'],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -879,6 +905,8 @@ describe('resultsUtils', () => {
         includedLabels: [],
         excludedLabels: [],
         userFilters: ['octocat', 'github-user'],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -889,6 +917,8 @@ describe('resultsUtils', () => {
         includedLabels: ['bug'],
         excludedLabels: ['wontfix'],
         userFilters: ['octocat'],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
       });
     });
@@ -899,6 +929,8 @@ describe('resultsUtils', () => {
         includedLabels: ['bug'],
         excludedLabels: [],
         userFilters: ['octocat'],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: 'performance issue',
       });
     });
@@ -909,7 +941,57 @@ describe('resultsUtils', () => {
         includedLabels: [],
         excludedLabels: [],
         userFilters: ['user-name', 'user.name', 'user_name'],
+        includedRepos: [],
+        excludedRepos: [],
         cleanText: '',
+      });
+    });
+
+    it('should parse repo filters correctly', () => {
+      const result = parseSearchText('repo:owner/repo');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: [],
+        includedRepos: ['owner/repo'],
+        excludedRepos: [],
+        cleanText: '',
+      });
+    });
+
+    it('should parse excluded repo filters correctly', () => {
+      const result = parseSearchText('-repo:owner/repo');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: [],
+        includedRepos: [],
+        excludedRepos: ['owner/repo'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse multiple repo filters correctly', () => {
+      const result = parseSearchText('repo:owner/repo1 repo:owner/repo2 -repo:owner/excluded');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: [],
+        includedRepos: ['owner/repo1', 'owner/repo2'],
+        excludedRepos: ['owner/excluded'],
+        cleanText: '',
+      });
+    });
+
+    it('should handle mixed label, user, and repo filters with text', () => {
+      const result = parseSearchText('authentication label:bug user:alice repo:owner/repo -repo:owner/other');
+      expect(result).toEqual({
+        includedLabels: ['bug'],
+        excludedLabels: [],
+        userFilters: ['alice'],
+        includedRepos: ['owner/repo'],
+        excludedRepos: ['owner/other'],
+        cleanText: 'authentication',
       });
     });
   });

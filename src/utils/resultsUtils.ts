@@ -11,6 +11,8 @@ const parseSearchTextCache = new Map<string, {
   includedLabels: string[];
   excludedLabels: string[];
   userFilters: string[];
+  includedRepos: string[];
+  excludedRepos: string[];
   cleanText: string;
 }>();
 
@@ -222,19 +224,21 @@ export const filterByUser = (
 };
 
 /**
- * Parses search text to extract label filters, user filters, and regular text
+ * Parses search text to extract label filters, user filters, repo filters, and regular text
  * 
  * @param searchText - The search text to parse
- * @returns Object containing includedLabels, excludedLabels, userFilters, and cleanText
+ * @returns Object containing includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, and cleanText
  */
 export const parseSearchText = (searchText: string): {
   includedLabels: string[];
   excludedLabels: string[];
   userFilters: string[];
+  includedRepos: string[];
+  excludedRepos: string[];
   cleanText: string;
 } => {
   if (!searchText.trim()) {
-    return { includedLabels: [], excludedLabels: [], userFilters: [], cleanText: '' };
+    return { includedLabels: [], excludedLabels: [], userFilters: [], includedRepos: [], excludedRepos: [], cleanText: '' };
   }
 
   // Check cache first
@@ -246,6 +250,8 @@ export const parseSearchText = (searchText: string): {
   const includedLabels: string[] = [];
   const excludedLabels: string[] = [];
   const userFilters: string[] = [];
+  const includedRepos: string[] = [];
+  const excludedRepos: string[] = [];
   let cleanText = searchText;
 
   // First, find all -label:{labelname} patterns (excluded labels)
@@ -288,10 +294,36 @@ export const parseSearchText = (searchText: string): {
     cleanText = cleanText.replace(m[0], ' ');
   });
 
+  // Then find all -repo:{reponame} patterns (excluded repos)
+  const excludeRepoRegex = /-repo:([^\s]+)/g;
+  const excludeRepoMatches: RegExpExecArray[] = [];
+  while ((match = excludeRepoRegex.exec(cleanText)) !== null) {
+    excludedRepos.push(match[1]);
+    excludeRepoMatches.push(match);
+  }
+
+  // Remove all excluded repo matches from cleanText
+  excludeRepoMatches.forEach(m => {
+    cleanText = cleanText.replace(m[0], ' ');
+  });
+
+  // Then find all repo:{reponame} patterns from the cleaned text
+  const includeRepoRegex = /\brepo:([^\s]+)/g;
+  const includeRepoMatches: RegExpExecArray[] = [];
+  while ((match = includeRepoRegex.exec(cleanText)) !== null) {
+    includedRepos.push(match[1]);
+    includeRepoMatches.push(match);
+  }
+
+  // Remove all included repo matches from cleanText
+  includeRepoMatches.forEach(m => {
+    cleanText = cleanText.replace(m[0], ' ');
+  });
+
   // Clean up extra whitespace
   cleanText = cleanText.replace(/\s+/g, ' ').trim();
 
-  const result = { includedLabels, excludedLabels, userFilters, cleanText };
+  const result = { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, cleanText };
 
   // Cache the result
   if (parseSearchTextCache.size >= MAX_CACHE_SIZE) {
@@ -307,10 +339,10 @@ export const parseSearchText = (searchText: string): {
 };
 
 /**
- * Filters GitHub items based on text search in title and body, with support for label and user syntax
+ * Filters GitHub items based on text search in title and body, with support for label, user, and repo syntax
  *
  * @param items - Array of GitHub items to filter
- * @param searchText - Text to search for, supporting label:{name}, -label:{name}, and user:{username} syntax
+ * @param searchText - Text to search for, supporting label:{name}, -label:{name}, user:{username}, repo:{owner/repo}, and -repo:{owner/repo} syntax
  * @returns Filtered array of items
  */
 export const filterByText = (
@@ -319,7 +351,7 @@ export const filterByText = (
 ): GitHubItem[] => {
   if (!searchText.trim()) return items;
 
-  const { includedLabels, excludedLabels, userFilters, cleanText } = parseSearchText(searchText);
+  const { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, cleanText } = parseSearchText(searchText);
 
   return items.filter(item => {
     // Check label filters first
@@ -352,6 +384,33 @@ export const filterByText = (
       if (!matchesUser) return false;
     }
 
+    // Check repository filters
+    if (includedRepos.length > 0 || excludedRepos.length > 0) {
+      // Extract repository name from repository_url (format: https://api.github.com/repos/owner/repo)
+      const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
+      
+      if (!itemRepo) {
+        // If no repository info, exclude if any repo filters are specified
+        if (includedRepos.length > 0) return false;
+      } else {
+        // Check if item has all required included repos
+        if (includedRepos.length > 0) {
+          const hasIncludedRepo = includedRepos.some(repoFilter =>
+            itemRepo.toLowerCase() === repoFilter.toLowerCase()
+          );
+          if (!hasIncludedRepo) return false;
+        }
+
+        // Check if item has any excluded repos
+        if (excludedRepos.length > 0) {
+          const hasExcludedRepo = excludedRepos.some(repoFilter =>
+            itemRepo.toLowerCase() === repoFilter.toLowerCase()
+          );
+          if (hasExcludedRepo) return false;
+        }
+      }
+    }
+
     // If there's clean text remaining, search in title and body
     if (cleanText) {
       const searchLower = cleanText.toLowerCase();
@@ -360,7 +419,7 @@ export const filterByText = (
       return titleMatch || bodyMatch;
     }
 
-    // If only label/user filters were used, item passed checks above
+    // If only label/user/repo filters were used, item passed checks above
     return true;
   });
 };

@@ -2,7 +2,6 @@ import React, { memo, useCallback } from 'react';
 import {
   TextInput,
   Box,
-  IconButton,
 } from '@primer/react';
 import { XIcon, SearchIcon } from '@primer/octicons-react';
 
@@ -15,7 +14,7 @@ interface HeaderSearchProps {
 const HeaderSearch = memo(function HeaderSearch({
   searchText,
   onSearchChange,
-  placeholder = 'Search... (try: label:bug user:alice)'
+  placeholder = 'Search... (try: label:bug user:alice repo:owner/repo)'
 }: HeaderSearchProps) {
 
   // Handle input change (when typing new text)
@@ -31,9 +30,6 @@ const HeaderSearch = memo(function HeaderSearch({
   return (
     <Box
       sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
         minWidth: '300px',
         maxWidth: '500px',
         '@media (max-width: 767px)': {
@@ -48,6 +44,16 @@ const HeaderSearch = memo(function HeaderSearch({
         placeholder={placeholder}
         size="small"
         leadingVisual={SearchIcon}
+        {...(searchText && {
+          trailingAction: (
+            <TextInput.Action
+              onClick={handleClearSearch}
+              icon={XIcon}
+              aria-label="Clear search"
+              sx={{ color: 'fg.muted' }}
+            />
+          ),
+        })}
         sx={{
           fontSize: '12px',
           minHeight: '28px',
@@ -59,20 +65,6 @@ const HeaderSearch = memo(function HeaderSearch({
         }}
         block={true}
       />
-      {searchText && (
-        <IconButton
-          icon={XIcon}
-          aria-label="Clear search"
-          onClick={handleClearSearch}
-          size="small"
-          sx={{
-            minWidth: '24px',
-            width: '24px',
-            height: '24px',
-            flexShrink: 0,
-          }}
-        />
-      )}
     </Box>
   );
 });
