@@ -6,6 +6,7 @@ import {
   createContext,
   useContext,
 } from 'react';
+import { useLocalStorage } from './hooks/useLocalStorage';
 import { PageLayout, PageHeader, Box, IconButton, Button } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 
@@ -20,6 +21,7 @@ import IssuesAndPRsList from './views/IssuesAndPRsList';
 import EventView from './views/EventView';
 import SummaryView from './views/Summary';
 import SettingsDialog from './components/SettingsDialog';
+import HeaderSearch from './components/HeaderSearch';
 
 import { LoadingIndicator } from './components/LoadingIndicator';
 import ShareButton from './components/ShareButton';
@@ -35,6 +37,7 @@ interface FormContextType {
   endDate: string;
   githubToken: string;
   apiMode: 'search' | 'events' | 'summary';
+  searchText: string;
   setUsername: (username: string) => void;
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
@@ -42,6 +45,7 @@ interface FormContextType {
   setApiMode: (
     mode: 'search' | 'events' | 'summary'
   ) => void;
+  setSearchText: (searchText: string) => void;
   handleSearch: () => void;
   handleUsernameBlur: () => void;
   validateUsernameFormat: (username: string) => void;
@@ -80,6 +84,7 @@ function App() {
   const [initialLoadingCount, setInitialLoadingCount] = useState(0);
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [isDataLoadingComplete, setIsDataLoadingComplete] = useState(false);
+  const [searchText, setSearchText] = useLocalStorage('header-search-text', '');
 
   const handleUrlParamsProcessed = useCallback(() => {
     setInitialLoadingCount(1);
@@ -125,6 +130,7 @@ function App() {
     startDate,
     endDate,
     apiMode,
+    searchText,
   });
 
   const {
@@ -301,6 +307,12 @@ function App() {
               currentUsername={currentUsername}
             />
             
+            {/* Header search */}
+            <HeaderSearch
+              searchText={searchText}
+              onSearchChange={setSearchText}
+            />
+            
             {/* Mobile-optimized actions */}
             <Box
               sx={{
@@ -361,11 +373,13 @@ function App() {
             endDate,
             githubToken,
             apiMode,
+            searchText,
             setUsername,
             setStartDate,
             setEndDate,
             setGithubToken,
             setApiMode,
+            setSearchText,
             handleSearch,
             handleUsernameBlur,
             validateUsernameFormat,

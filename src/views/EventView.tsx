@@ -20,6 +20,7 @@ import './EventView.css';
 
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DismissibleBanner } from '../components/DismissibleBanner';
+import { useFormContext } from '../App';
 
 
 
@@ -32,13 +33,12 @@ const EventView = memo(function EventView({
   items,
   rawEvents = [],
 }: EventViewProps) {
+  // Get shared search text from form context
+  const { searchText } = useFormContext();
 
   
   // Internal state for selection
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('eventView-selectedItems', new Set());
-  
-  // Internal state for search (search functionality temporarily hidden)
-  const [searchText] = useLocalStorage<string>('eventView-searchText', '');
   
   // Pagination state
   const [currentPage, setCurrentPage] = useLocalStorage<number>('eventView-currentPage', 1);

@@ -19,10 +19,11 @@ import { GitHubItem } from '../types';
 
 // import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
+import { useFormContext } from '../App';
 
-import { filterByText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { sortItemsByUpdatedDate } from '../utils/viewFiltering';
+import { filterItemsByAdvancedSearch } from '../utils/viewFiltering';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 
@@ -85,10 +86,10 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
   buttonStyles,
 }: IssuesAndPRsListProps) {
-  // Note: No longer need form context since we don't separate by authorship
+  // Get shared search text from form context
+  const { searchText } = useFormContext();
 
   // Internal state management (previously from context)
-  const [searchText] = useLocalStorage<string>('issuesAndPRs-searchText', '');
   
   // Internal state for selection and collapsed sections
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('issuesAndPRs-selectedItems', new Set());
@@ -99,7 +100,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 
   // Apply search text filtering to results
   const filteredResults = useMemo(() => {
-    return filterByText(results, searchText);
+    return filterItemsByAdvancedSearch(results, searchText);
   }, [results, searchText]);
 
   // Group items into sections

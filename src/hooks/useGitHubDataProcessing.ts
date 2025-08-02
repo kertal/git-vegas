@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
 import { processRawEvents, categorizeRawSearchItems } from '../utils/rawDataUtils';
+import { filterItemsByAdvancedSearch } from '../utils/viewFiltering';
 
 interface UseGitHubDataProcessingProps {
   indexedDBEvents: GitHubEvent[];
@@ -8,6 +9,7 @@ interface UseGitHubDataProcessingProps {
   startDate: string;
   endDate: string;
   apiMode: 'search' | 'events' | 'summary';
+  searchText: string;
 }
 
 interface UseGitHubDataProcessingReturn {
@@ -23,6 +25,7 @@ export const useGitHubDataProcessing = ({
   startDate,
   endDate,
   apiMode,
+  searchText,
 }: UseGitHubDataProcessingProps): UseGitHubDataProcessingReturn => {
   // Categorize raw data into processed items based on current API mode and date filters
   const results = useMemo(() => {
@@ -74,18 +77,20 @@ export const useGitHubDataProcessing = ({
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
-  // Calculate counts for navigation tabs
+  // Calculate counts for navigation tabs (with search filtering applied)
   const searchItemsCount = useMemo(() => {
-    return categorizeRawSearchItems(
+    const rawSearchItems = categorizeRawSearchItems(
       indexedDBSearchItems as unknown as GitHubItem[],
       startDate,
       endDate
-    ).length;
-  }, [indexedDBSearchItems, startDate, endDate]);
+    );
+    return filterItemsByAdvancedSearch(rawSearchItems, searchText).length;
+  }, [indexedDBSearchItems, startDate, endDate, searchText]);
 
   const eventsCount = useMemo(() => {
-    return processRawEvents(indexedDBEvents, startDate, endDate).length;
-  }, [indexedDBEvents, startDate, endDate]);
+    const rawEvents = processRawEvents(indexedDBEvents, startDate, endDate);
+    return filterItemsByAdvancedSearch(rawEvents, searchText).length;
+  }, [indexedDBEvents, startDate, endDate, searchText]);
 
   // Calculate grouped events count (number of unique URLs after grouping)
   // (Removed groupedEventsCount)
