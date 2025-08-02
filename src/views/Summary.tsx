@@ -88,19 +88,6 @@ const SummaryView = memo(function SummaryView({
     });
   }, []);
 
-  // Toggle section collapse state
-  const toggleSectionCollapse = useCallback((sectionName: string) => {
-    setCollapsedSections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionName)) {
-        newSet.delete(sectionName);
-      } else {
-        newSet.add(sectionName);
-      }
-      return newSet;
-    });
-  }, []);
-  
   // Use debounced search hook (search functionality temporarily hidden)
   // const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
   //   searchText,
@@ -126,11 +113,42 @@ const SummaryView = memo(function SummaryView({
     );
   }, [sortedItems, indexedDBSearchItems, startDate, endDate, username]);
 
-  // Select all items that are actually displayed in the view
+  // Toggle section collapse state and clear selections when collapsing
+  const toggleSectionCollapse = useCallback((sectionName: string) => {
+    setCollapsedSections(prev => {
+      const newSet = new Set(prev);
+      const isCurrentlyCollapsed = newSet.has(sectionName);
+      
+      if (isCurrentlyCollapsed) {
+        // Expanding the section
+        newSet.delete(sectionName);
+      } else {
+        // Collapsing the section - clear any selected items in this section
+        newSet.add(sectionName);
+        
+        // Find all items in this section and remove them from selection
+        const sectionItems = actionGroups[sectionName as keyof typeof actionGroups] || [];
+        if (sectionItems.length > 0) {
+          setSelectedItems(prevSelected => {
+            const newSelected = new Set(prevSelected);
+            sectionItems.forEach(item => {
+              newSelected.delete(item.event_id || item.id);
+            });
+            return newSelected;
+          });
+        }
+      }
+      return newSet;
+    });
+  }, [actionGroups, setSelectedItems]);
+
+  // Select all items that are actually displayed in the view (only from expanded sections)
   const selectAllItems = useCallback(() => {
-    const allDisplayedItems = getAllDisplayedItems(actionGroups);
+    const allDisplayedItems = Object.entries(actionGroups)
+      .filter(([groupName]) => !collapsedSections.has(groupName))
+      .flatMap(([, items]) => items);
     setSelectedItems(new Set(allDisplayedItems.map(item => item.event_id || item.id)));
-  }, [actionGroups]);
+  }, [actionGroups, collapsedSections]);
 
   // Internal copy handler for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
@@ -166,9 +184,12 @@ const SummaryView = memo(function SummaryView({
     return isCopied(itemId);
   }, [isCopied]);
 
-  // Calculate select all checkbox state
+  // Calculate select all checkbox state (only consider expanded sections)
   const selectAllState = useMemo(() => {
-    const allDisplayedItems = Object.values(actionGroups).flat();
+    const allDisplayedItems = Object.entries(actionGroups)
+      .filter(([groupName]) => !collapsedSections.has(groupName))
+      .flatMap(([, items]) => items);
+      
     if (allDisplayedItems.length === 0) {
       return { checked: false, indeterminate: false };
     }
@@ -184,11 +205,14 @@ const SummaryView = memo(function SummaryView({
     } else {
       return { checked: false, indeterminate: true };
     }
-  }, [actionGroups, selectedItems]);
+  }, [actionGroups, selectedItems, collapsedSections]);
 
-  // Handle select all checkbox click
+  // Handle select all checkbox click (only consider expanded sections)
   const handleSelectAllChange = () => {
-    const allDisplayedItems = Object.values(actionGroups).flat();
+    const allDisplayedItems = Object.entries(actionGroups)
+      .filter(([groupName]) => !collapsedSections.has(groupName))
+      .flatMap(([, items]) => items);
+      
     const selectedCount = allDisplayedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
@@ -198,7 +222,7 @@ const SummaryView = memo(function SummaryView({
       clearSelection?.();
     } else {
       // Some or none are selected, select all
-              selectAllItems();
+      selectAllItems();
     }
   };
 
@@ -328,6 +352,9 @@ const SummaryView = memo(function SummaryView({
                       <Checkbox
                         {...getGroupSelectState(groupItems, selectedItems)}
                         onChange={() => {
+                          // Don't allow selection if section is collapsed
+                          if (collapsedSections.has(groupName)) return;
+                          
                           const sectionItemIds = Object.values(urlGroups).map(items => {
                             const mostRecent = items.reduce((latest, current) =>
                               new Date(current.updated_at) > new Date(latest.updated_at)
@@ -342,6 +369,7 @@ const SummaryView = memo(function SummaryView({
                         }}
                         sx={{ flexShrink: 0 }}
                         aria-label={`Select all events in ${groupName} section`}
+                        disabled={collapsedSections.has(groupName)}
                       />
                       <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
                         {groupName}
