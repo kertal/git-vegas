@@ -138,11 +138,11 @@ export const categorizeItemWithoutDateFiltering = (
       } else if (createdInRange) {
         return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
       } else {
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR;
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
       }
     } else {
-      // Assigned issue - always goes to assignee updated section
-      return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
+      // Assigned issue - always goes to updated section
+      return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
     }
   }
 
@@ -234,13 +234,13 @@ export const categorizeItem = (
         return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
       } else if (updatedInRange && !createdInRange && !closedInRange) {
         // Issue had activity but wasn't created/closed within timeframe
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR;
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
       }
     } else {
       // Issue not authored by searched user (assigned)
       if (updatedInRange) {
         // Any activity on assigned issue goes to updated section
-        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE;
+        return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
       }
     }
     
@@ -316,8 +316,7 @@ export const addAssignedIssuesFromSearchItems = (
   const existingIssueUrls = new Set([
     ...groups[SUMMARY_GROUP_NAMES.ISSUES_OPENED].map(item => item.html_url),
     ...groups[SUMMARY_GROUP_NAMES.ISSUES_CLOSED].map(item => item.html_url),
-    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR].map(item => item.html_url),
-    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE].map(item => item.html_url),
+    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].map(item => item.html_url),
   ]);
 
   searchItems.forEach(searchItem => {
@@ -329,7 +328,7 @@ export const addAssignedIssuesFromSearchItems = (
         // Only add if it has activity within the timeframe
         const updatedInRange = isDateInRange(searchItem.updated_at, startDate, endDate);
         if (updatedInRange) {
-          groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE].push(searchItem);
+          groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].push(searchItem);
         }
       }
     }

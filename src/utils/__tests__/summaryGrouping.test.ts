@@ -165,7 +165,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_UPDATED);
   });
 
-  it('should categorize issue created before timeframe as ISSUES_UPDATED_AUTHOR (since it was found by API)', () => {
+  it('should categorize issue created before timeframe as ISSUES_UPDATED (since it was found by API)', () => {
     const item: GitHubItem = {
       id: 1,
       html_url: 'https://github.com/test/repo/issues/1',
@@ -177,7 +177,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
     };
 
     const result = categorizeItemWithoutDateFiltering(item, searchedUsernames, addedReviewPRs, startDate, endDate);
-    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
   it('should still respect date filtering for actions within timeframe', () => {
@@ -195,7 +195,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
   });
 
-  it('should categorize assigned issue as ISSUES_UPDATED_ASSIGNEE regardless of dates', () => {
+  it('should categorize assigned issue as ISSUES_UPDATED regardless of dates', () => {
     const item: GitHubItem = {
       id: 1,
       html_url: 'https://github.com/test/repo/issues/1',
@@ -207,7 +207,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
     };
 
     const result = categorizeItemWithoutDateFiltering(item, searchedUsernames, addedReviewPRs, startDate, endDate);
-    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 });
 
@@ -252,7 +252,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_CLOSED);
   });
 
-  it('should categorize issue updated but not created/closed within timeframe as ISSUES_UPDATED_AUTHOR', () => {
+  it('should categorize issue updated but not created/closed within timeframe as ISSUES_UPDATED', () => {
     const item: GitHubItem = {
       id: 1,
       html_url: 'https://github.com/test/repo/issues/1',
@@ -264,10 +264,10 @@ describe('categorizeItem - Issues with Date Filtering', () => {
     };
 
     const result = categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate);
-    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
-  it('should categorize assigned issue with activity as ISSUES_UPDATED_ASSIGNEE', () => {
+  it('should categorize assigned issue with activity as ISSUES_UPDATED', () => {
     const item: GitHubItem = {
       id: 1,
       html_url: 'https://github.com/test/repo/issues/1',
@@ -279,7 +279,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
     };
 
     const result = categorizeItem(item, searchedUsernames, addedReviewPRs, startDate, endDate);
-    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED_ASSIGNEE);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
   it('should return null for issue with no activity within timeframe', () => {
@@ -437,7 +437,7 @@ describe('groupSummaryData - Integration Test', () => {
     expect(result[SUMMARY_GROUP_NAMES.ISSUES_CLOSED]).toHaveLength(1);
     expect(result[SUMMARY_GROUP_NAMES.ISSUES_CLOSED][0].title).toBe('Closed Issue');
 
-    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR]).toHaveLength(1);
-    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED_AUTHOR][0].title).toBe('Updated Issue');
+    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED]).toHaveLength(1);
+    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED][0].title).toBe('Updated Issue');
   });
 }); 
