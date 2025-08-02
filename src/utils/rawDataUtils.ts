@@ -440,12 +440,12 @@ export const processRawEvents = (
 
 /**
  * Categorizes raw search API results (already in GitHubItem format)
- * This is mainly for consistency and date filtering
+ * This is mainly for consistency, date filtering, and deduplication
  *
  * @param rawItems - Array of raw GitHub items from search API
  * @param startDate - Start date for filtering (YYYY-MM-DD)
  * @param endDate - End date for filtering (YYYY-MM-DD)
- * @returns Array of filtered GitHub items
+ * @returns Array of filtered and deduplicated GitHub items
  */
 export const categorizeRawSearchItems = (
   rawItems: GitHubItem[],
@@ -456,7 +456,8 @@ export const categorizeRawSearchItems = (
   const startDateTime = startDate ? new Date(startDate).getTime() : 0;
   const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
 
-  return rawItems.filter(item => {
+  // First filter by date
+  const dateFilteredItems = rawItems.filter(item => {
     const itemTime = new Date(item.updated_at).getTime();
 
     // Filter by date range if dates are provided
@@ -469,6 +470,19 @@ export const categorizeRawSearchItems = (
 
     return true;
   });
+
+  // Then remove duplicates based on html_url (unique identifier for issues/PRs)
+  const urlSet = new Set<string>();
+  const deduplicatedItems: GitHubItem[] = [];
+  
+  dateFilteredItems.forEach(item => {
+    if (!urlSet.has(item.html_url)) {
+      urlSet.add(item.html_url);
+      deduplicatedItems.push(item);
+    }
+  });
+
+  return deduplicatedItems;
 };
 
 /**

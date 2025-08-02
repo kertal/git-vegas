@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { transformEventToItem, processRawEvents } from '../rawDataUtils';
-import { GitHubEvent } from '../../types';
+import { transformEventToItem, processRawEvents, categorizeRawSearchItems } from '../rawDataUtils';
+import { GitHubEvent, GitHubItem } from '../../types';
 
 describe('rawDataUtils', () => {
   describe('transformEventToItem', () => {
@@ -166,6 +166,160 @@ describe('rawDataUtils', () => {
       expect(results).toHaveLength(1);
       expect(results[0].original).toBeDefined();
       expect(results[0].original).toEqual(mockEvents[0].payload);
+    });
+  });
+
+  describe('categorizeRawSearchItems', () => {
+    it('should remove duplicate items based on html_url', () => {
+      const mockItems: GitHubItem[] = [
+        {
+          id: 1,
+          html_url: 'https://github.com/test/repo/issues/1',
+          title: 'Test Issue',
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+          state: 'open',
+          body: 'Original issue',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: {
+            full_name: 'test/repo',
+            html_url: 'https://github.com/test/repo',
+          },
+          user: {
+            login: 'user1',
+            avatar_url: 'https://github.com/user1.png',
+            html_url: 'https://github.com/user1',
+          },
+          number: 1,
+        },
+        {
+          id: 2, // Different ID
+          html_url: 'https://github.com/test/repo/issues/1', // Same URL (duplicate)
+          title: 'Test Issue',
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+          state: 'open',
+          body: 'Duplicate issue',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: {
+            full_name: 'test/repo',
+            html_url: 'https://github.com/test/repo',
+          },
+          user: {
+            login: 'user2',
+            avatar_url: 'https://github.com/user2.png',
+            html_url: 'https://github.com/user2',
+          },
+          number: 1,
+        },
+        {
+          id: 3,
+          html_url: 'https://github.com/test/repo/issues/2', // Different URL (unique)
+          title: 'Another Issue',
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+          state: 'open',
+          body: 'Unique issue',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: {
+            full_name: 'test/repo',
+            html_url: 'https://github.com/test/repo',
+          },
+          user: {
+            login: 'user1',
+            avatar_url: 'https://github.com/user1.png',
+            html_url: 'https://github.com/user1',
+          },
+          number: 2,
+        },
+      ];
+
+      const results = categorizeRawSearchItems(mockItems);
+
+      // Should have 2 items (first duplicate kept, second duplicate removed)
+      expect(results).toHaveLength(2);
+      expect(results[0].html_url).toBe('https://github.com/test/repo/issues/1');
+      expect(results[0].body).toBe('Original issue'); // First occurrence kept
+      expect(results[1].html_url).toBe('https://github.com/test/repo/issues/2');
+      expect(results[1].body).toBe('Unique issue');
+    });
+
+    it('should filter items by date range and remove duplicates', () => {
+      const mockItems: GitHubItem[] = [
+        {
+          id: 1,
+          html_url: 'https://github.com/test/repo/issues/1',
+          title: 'Old Issue',
+          created_at: '2022-12-01T00:00:00Z',
+          updated_at: '2022-12-01T00:00:00Z', // Before date range
+          state: 'open',
+          body: 'Old issue',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: {
+            full_name: 'test/repo',
+            html_url: 'https://github.com/test/repo',
+          },
+          user: {
+            login: 'user1',
+            avatar_url: 'https://github.com/user1.png',
+            html_url: 'https://github.com/user1',
+          },
+          number: 1,
+        },
+        {
+          id: 2,
+          html_url: 'https://github.com/test/repo/issues/2',
+          title: 'Recent Issue',
+          created_at: '2023-01-15T00:00:00Z',
+          updated_at: '2023-01-15T00:00:00Z', // Within date range
+          state: 'open',
+          body: 'Recent issue',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: {
+            full_name: 'test/repo',
+            html_url: 'https://github.com/test/repo',
+          },
+          user: {
+            login: 'user1',
+            avatar_url: 'https://github.com/user1.png',
+            html_url: 'https://github.com/user1',
+          },
+          number: 2,
+        },
+        {
+          id: 3,
+          html_url: 'https://github.com/test/repo/issues/2', // Duplicate of recent issue
+          title: 'Recent Issue',
+          created_at: '2023-01-15T00:00:00Z',
+          updated_at: '2023-01-15T00:00:00Z',
+          state: 'open',
+          body: 'Duplicate recent issue',
+          labels: [],
+          repository_url: 'https://api.github.com/repos/test/repo',
+          repository: {
+            full_name: 'test/repo',
+            html_url: 'https://github.com/test/repo',
+          },
+          user: {
+            login: 'user2',
+            avatar_url: 'https://github.com/user2.png',
+            html_url: 'https://github.com/user2',
+          },
+          number: 2,
+        },
+      ];
+
+      const results = categorizeRawSearchItems(mockItems, '2023-01-01', '2023-01-31');
+
+      // Should have 1 item (old item filtered out, duplicate removed)
+      expect(results).toHaveLength(1);
+      expect(results[0].html_url).toBe('https://github.com/test/repo/issues/2');
+      expect(results[0].body).toBe('Recent issue'); // First occurrence kept
     });
   });
 }); 

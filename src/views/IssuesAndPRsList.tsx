@@ -19,10 +19,10 @@ import { GitHubItem } from '../types';
 
 // import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import { useFormContext } from '../App';
+
 import { filterByText } from '../utils/resultsUtils';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-import { parseCommaSeparatedUsernames, isItemAuthoredBySearchedUsers, sortItemsByUpdatedDate } from '../utils/viewFiltering';
+import { sortItemsByUpdatedDate } from '../utils/viewFiltering';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 
@@ -85,8 +85,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
   buttonStyles,
 }: IssuesAndPRsListProps) {
-  // Get form context
-  const { username } = useFormContext();
+  // Note: No longer need form context since we don't separate by authorship
 
   // Internal state management (previously from context)
   const [searchText] = useLocalStorage<string>('issuesAndPRs-searchText', '');
@@ -107,29 +106,19 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   const groupedItems = useMemo(() => {
     const groups: {
       'PRs': GitHubItem[];
-      'Issues Authored': GitHubItem[];
-      'Issues Assigned': GitHubItem[];
+      'Issues': GitHubItem[];
     } = {
       'PRs': [],
-      'Issues Authored': [],
-      'Issues Assigned': [],
+      'Issues': [],
     };
-
-    // Parse usernames from the search (can be comma-separated)
-    const searchedUsernames = parseCommaSeparatedUsernames(username);
 
     filteredResults.forEach(item => {
       if (item.pull_request) {
         // All pull requests go to PRs section
         groups['PRs'].push(item);
       } else {
-        // For issues, check if authored by searched user(s) or assigned
-        if (isItemAuthoredBySearchedUsers(item, searchedUsernames)) {
-          groups['Issues Authored'].push(item);
-        } else {
-          // If not authored by searched user, it must be assigned (since our API query uses author OR assignee)
-          groups['Issues Assigned'].push(item);
-        }
+        // All issues go to Issues section regardless of authorship
+        groups['Issues'].push(item);
       }
     });
 
@@ -139,7 +128,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     });
 
     return groups;
-  }, [filteredResults, username]);
+  }, [filteredResults]);
 
   // Selection handlers
   const toggleItemSelection = useCallback((id: string | number) => {
@@ -155,9 +144,11 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   }, []);
 
   const selectAllItems = useCallback(() => {
-    const allDisplayedItems = Object.values(groupedItems).flat();
+    const allDisplayedItems = Object.entries(groupedItems)
+      .filter(([groupName]) => !collapsedSections.has(groupName))
+      .flatMap(([, items]) => items);
     setSelectedItems(new Set(allDisplayedItems.map((item: GitHubItem) => item.event_id || item.id)));
-  }, [groupedItems]);
+  }, [groupedItems, collapsedSections]);
 
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
@@ -175,17 +166,34 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     });
   }, []);
 
+  // Toggle section collapse state and clear selections when collapsing
   const toggleSectionCollapse = useCallback((sectionName: string) => {
     setCollapsedSections(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(sectionName)) {
+      const isCurrentlyCollapsed = newSet.has(sectionName);
+      
+      if (isCurrentlyCollapsed) {
+        // Expanding the section
         newSet.delete(sectionName);
       } else {
+        // Collapsing the section - clear any selected items in this section
         newSet.add(sectionName);
+        
+        // Find all items in this section and remove them from selection
+        const sectionItems = groupedItems[sectionName as keyof typeof groupedItems] || [];
+        if (sectionItems.length > 0) {
+          setSelectedItems(prevSelected => {
+            const newSelected = new Set(prevSelected);
+            sectionItems.forEach(item => {
+              newSelected.delete(item.event_id || item.id);
+            });
+            return newSelected;
+          });
+        }
       }
       return newSet;
     });
-  }, []);
+  }, [groupedItems, setSelectedItems]);
 
   // Copy results to clipboard for content
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
@@ -236,9 +244,12 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     return isCopied(itemId);
   }, [isCopied]);
 
-  // Calculate select all checkbox state
+  // Calculate select all checkbox state (only consider expanded sections)
   const selectAllState = useMemo(() => {
-    const allDisplayedItems = Object.values(groupedItems).flat();
+    const allDisplayedItems = Object.entries(groupedItems)
+      .filter(([groupName]) => !collapsedSections.has(groupName))
+      .flatMap(([, items]) => items);
+      
     if (allDisplayedItems.length === 0) {
       return { checked: false, indeterminate: false };
     }
@@ -254,11 +265,14 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     } else {
       return { checked: false, indeterminate: true };
     }
-  }, [groupedItems, selectedItems]);
+  }, [groupedItems, selectedItems, collapsedSections]);
 
-  // Handle select all checkbox click
+  // Handle select all checkbox click (only consider expanded sections)
   const handleSelectAllChange = () => {
-    const allDisplayedItems = Object.values(groupedItems).flat();
+    const allDisplayedItems = Object.entries(groupedItems)
+      .filter(([groupName]) => !collapsedSections.has(groupName))
+      .flatMap(([, items]) => items);
+      
     const selectedCount = allDisplayedItems.filter(item =>
       selectedItems.has(item.event_id || item.id)
     ).length;
@@ -306,7 +320,9 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     return allItems.findIndex(item => item.id === selectedItemForDialog.id);
   };
 
-  const allDisplayedItems = Object.values(groupedItems).flat();
+  const allDisplayedItems = Object.entries(groupedItems)
+    .filter(([groupName]) => !collapsedSections.has(groupName))
+    .flatMap(([, items]) => items);
 
   return (
     <Box>
@@ -383,6 +399,9 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                                 return selectedCount > 0 && selectedCount < sectionItemIds.length;
                               })()}
                               onChange={() => {
+                                // Don't allow selection if section is collapsed
+                                if (collapsedSections.has(groupName)) return;
+                                
                                 const sectionItemIds = groupItems.map(item => item.event_id || item.id);
                                 const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
                                 const allSelected = selectedCount === sectionItemIds.length;
@@ -390,6 +409,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                               }}
                               sx={{ flexShrink: 0 }}
                               aria-label={`Select all items in ${groupName} section`}
+                              disabled={collapsedSections.has(groupName)}
                             />
                             <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
                               {groupName} ({groupItems.length})
