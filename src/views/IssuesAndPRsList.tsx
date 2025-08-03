@@ -469,7 +469,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         hasPrevious={getCurrentItemIndex() > 0}
         hasNext={getCurrentItemIndex() < allDisplayedItems.length - 1}
         title={selectedItemForDialog ? <DialogTitle item={selectedItemForDialog} /> : undefined}
-        maxHeight="70vh"
+        maxHeight="85vh"
       />
 
 

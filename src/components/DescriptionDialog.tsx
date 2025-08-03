@@ -72,29 +72,70 @@ const DescriptionDialog = memo(function DescriptionDialog({
       title={title || item.title}
       position="right" 
       renderFooter={() => (
-        <div>
-          <IconButton
-            icon={ChevronLeftIcon}
-            aria-label="Previous item"
-            onClick={onPrevious}
-            disabled={!hasPrevious}
-            sx={{
-              color: hasPrevious ? 'fg.default' : 'fg.muted',
-            }}
-          />
-          <IconButton
-            icon={ChevronRightIcon}
-            aria-label="Next item"
-            onClick={onNext}
-            disabled={!hasNext}
-            sx={{
-              color: hasNext ? 'fg.default' : 'fg.muted',
-            }}
-          />
-        </div>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', px: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            opacity: hasPrevious ? 1 : 0.5,
+            cursor: hasPrevious ? 'pointer' : 'default'
+          }}>
+            <IconButton
+              icon={ChevronLeftIcon}
+              aria-label="Previous item"
+              onClick={onPrevious}
+              disabled={!hasPrevious}
+              sx={{
+                color: hasPrevious ? 'fg.default' : 'fg.muted',
+                '&:hover': hasPrevious ? { bg: 'neutral.subtle' } : {},
+              }}
+            />
+            <Text sx={{ 
+              fontSize: 0, 
+              color: hasPrevious ? 'fg.default' : 'fg.muted', 
+              fontWeight: 500,
+              userSelect: 'none'
+            }}>
+              Previous
+            </Text>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            opacity: hasNext ? 1 : 0.5,
+            cursor: hasNext ? 'pointer' : 'default'
+          }}>
+            <Text sx={{ 
+              fontSize: 0, 
+              color: hasNext ? 'fg.default' : 'fg.muted', 
+              fontWeight: 500,
+              userSelect: 'none'
+            }}>
+              Next
+            </Text>
+            <IconButton
+              icon={ChevronRightIcon}
+              aria-label="Next item"
+              onClick={onNext}
+              disabled={!hasNext}
+              sx={{
+                color: hasNext ? 'fg.default' : 'fg.muted',
+                '&:hover': hasNext ? { bg: 'neutral.subtle' } : {},
+              }}
+            />
+          </Box>
+        </Box>
       )}
     >
-      <Box sx={{ p: 3, maxHeight, overflow: 'auto' }}>
+      <Box sx={{ 
+        p: 3, 
+        maxHeight, 
+        overflow: 'auto', 
+        minHeight: '60vh',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
         {/* View Mode Toggle */}
         <Box sx={{ mb: 3 }}>
           <UnderlineNav aria-label="View mode">
@@ -125,18 +166,20 @@ const DescriptionDialog = memo(function DescriptionDialog({
 
         {/* Content */}
         {viewMode === 'description' ? (
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              a: ({ href, children }) => (
-                <Link href={href} target="_blank" rel="noopener noreferrer">
-                  {children}
-                </Link>
-              ),
-            }}
-          >
-            {item.body || 'No description available.'}
-          </ReactMarkdown>
+          <Box sx={{ minHeight: '50vh', flex: 1 }}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ href, children }) => (
+                  <Link href={href} target="_blank" rel="noopener noreferrer">
+                    {children}
+                  </Link>
+                ),
+              }}
+            >
+              {item.body || 'No description available.'}
+            </ReactMarkdown>
+          </Box>
         ) : (
           <Box
             sx={{
@@ -149,7 +192,9 @@ const DescriptionDialog = memo(function DescriptionDialog({
               fontSize: 0,
               whiteSpace: 'pre-wrap',
               overflow: 'auto',
-              maxHeight: 'calc(100vh - 300px)',
+              maxHeight: 'calc(85vh - 200px)',
+              minHeight: '50vh',
+              flex: 1,
             }}
           >
             <Text sx={{ fontSize: 0, color: 'fg.muted', mb: 2, display: 'block' }}>
