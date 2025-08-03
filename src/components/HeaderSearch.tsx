@@ -14,7 +14,7 @@ interface HeaderSearchProps {
 const HeaderSearch = memo(function HeaderSearch({
   searchText,
   onSearchChange,
-  placeholder = 'Search... (try: label:bug user:alice repo:owner/repo)'
+  placeholder = 'Search'
 }: HeaderSearchProps) {
 
   // Handle input change (when typing new text)
