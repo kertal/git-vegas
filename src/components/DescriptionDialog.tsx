@@ -36,7 +36,7 @@ const DescriptionDialog = memo(function DescriptionDialog({
   hasPrevious,
   hasNext,
   title,
-  maxHeight = '40vh',
+  maxHeight = '85vh',
 }: DescriptionDialogProps) {
   const [viewMode, setViewMode] = useState<'description' | 'json'>('description');
 
