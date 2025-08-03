@@ -4,6 +4,7 @@ import {
   Box,
 } from '@primer/react';
 import { XIcon, SearchIcon } from '@primer/octicons-react';
+import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 
 interface HeaderSearchProps {
   searchText: string;
@@ -17,15 +18,22 @@ const HeaderSearch = memo(function HeaderSearch({
   placeholder = 'Search'
 }: HeaderSearchProps) {
 
+  // Use debounced search hook
+  const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
+    searchText,
+    onSearchChange,
+    300 // 300ms debounce delay
+  );
+
   // Handle input change (when typing new text)
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    onSearchChange(event.target.value);
-  }, [onSearchChange]);
+    setInputValue(event.target.value);
+  }, [setInputValue]);
 
   // Clear all search
   const handleClearSearch = useCallback(() => {
-    onSearchChange('');
-  }, [onSearchChange]);
+    clearSearch();
+  }, [clearSearch]);
 
   return (
     <Box
@@ -39,12 +47,12 @@ const HeaderSearch = memo(function HeaderSearch({
       }}
     >
       <TextInput
-        value={searchText}
+        value={inputValue}
         onChange={handleInputChange}
         placeholder={placeholder}
         size="small"
         leadingVisual={SearchIcon}
-        {...(searchText && {
+        {...(inputValue && {
           trailingAction: (
             <TextInput.Action
               onClick={handleClearSearch}
