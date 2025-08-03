@@ -64,6 +64,5 @@
     "vite-plugin-svgr": "^4.3.0",
     "vitest": "^3.1.4",
     "workbox-window": "^7.3.0"
-  },
-  "packageManager": "yarn@4.9.2"
+  }
 }
