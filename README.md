@@ -198,8 +198,36 @@ The project includes comprehensive testing:
 
 - **Unit Tests**: 583+ tests with Vitest
 - **Integration Tests**: React Testing Library
-- **E2E Tests**: Playwright for browser testing
+- **E2E Tests**: Playwright for cross-browser testing
 - **Coverage**: V8 coverage reporting
+
+#### **E2E Test Coverage**
+
+**Application Functionality**:
+- Core app features and form handling
+- Navigation between tabs (Summary, Issues & PRs, Events)
+- Settings dialog and configuration
+- Responsive design across devices
+
+**Search & Filtering**:
+- Basic text search functionality
+- Advanced search syntax (`label:`, `repo:`, `user:`, `-repo:`)
+- Combined filter queries
+- Search persistence across tab switches
+- Performance and edge case handling
+
+**PWA Features**:
+- Service worker registration and functionality
+- Offline mode testing
+- App installation capabilities
+- Caching behavior and performance
+- Mobile PWA features and touch interactions
+
+**Browser Support**:
+- Chrome/Chromium, Firefox, Safari/WebKit
+- Mobile Chrome (Pixel 5), Mobile Safari (iPhone 12)
+- Microsoft Edge
+- Cross-platform compatibility testing
 
 ### Contributing
 
