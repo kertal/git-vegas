@@ -28,7 +28,7 @@ const SearchForm = memo(function SearchForm() {
     error,
     searchItemsCount,
     eventsCount,
-    rawEventsCount = 0,
+    // rawEventsCount removed as it's not used
     githubToken,
   } = useFormContext();
 

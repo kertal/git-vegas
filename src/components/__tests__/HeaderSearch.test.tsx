@@ -1,4 +1,4 @@
-import React from 'react';
+// React import removed as it's not needed
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@primer/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
