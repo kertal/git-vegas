@@ -4,6 +4,11 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      'virtual:pwa-register': '/src/__mocks__/pwa-register.ts',
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

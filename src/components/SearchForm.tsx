@@ -27,6 +27,7 @@ const SearchForm = memo(function SearchForm() {
     loading,
     error,
     searchItemsCount,
+    eventsCount,
     rawEventsCount = 0,
     githubToken,
   } = useFormContext();
@@ -251,7 +252,7 @@ const SearchForm = memo(function SearchForm() {
             <UnderlineNav.Item
               href="#"
               aria-current={apiMode === 'events' ? 'page' : undefined}
-              counter={rawEventsCount > 0 ? rawEventsCount : undefined}
+              counter={eventsCount > 0 ? eventsCount : undefined}
               onSelect={e => {
                 e.preventDefault();
                 setApiMode('events');
