@@ -241,7 +241,7 @@ export interface SlotMachineLoaderProps {
   avatarUrls: string[];
   isLoading: boolean;
   isManuallySpinning?: boolean;
-  size?: 'small' | 'medium' | 'large';
+  size?: 'small' | 'medium' | 'large' | 'huge';
 }
 
 export interface SettingsDialogProps {

@@ -15,7 +15,7 @@ const SlotReel = memo(function SlotReel({
   isSpinning: boolean;
   index: number;
   allItems: string[];
-  size: 'small' | 'medium' | 'large';
+  size: 'small' | 'medium' | 'large' | 'huge';
   isManuallySpinning: boolean;
 }) {
   // Create a sequence of items for the spinning effect
@@ -32,7 +32,7 @@ const SlotReel = memo(function SlotReel({
 
   // Memoize size-based dimensions
   const dimensions = useMemo(() => {
-    const sizeMultiplier = size === 'large' ? 2.5 : size === 'medium' ? 1.5 : 1;
+    const sizeMultiplier = size === 'huge' ? 4 : size === 'large' ? 2.5 : size === 'medium' ? 1.5 : 1;
     const itemHeight = 24 * sizeMultiplier;
     const itemWidth = 24 * sizeMultiplier;
     const totalHeight = 240 * sizeMultiplier;
@@ -45,8 +45,8 @@ const SlotReel = memo(function SlotReel({
       totalHeight,
       visibleItemIndex,
       offset,
-      avatarSize: size === 'large' ? 48 : size === 'medium' ? 32 : 20,
-      fontSize: size === 'large' ? 4 : size === 'medium' ? 3 : 2,
+      avatarSize: size === 'huge' ? 80 : size === 'large' ? 48 : size === 'medium' ? 32 : 20,
+      fontSize: size === 'huge' ? 6 : size === 'large' ? 4 : size === 'medium' ? 3 : 2,
     };
   }, [size, itemSequence.length]);
 
