@@ -2,6 +2,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SearchForm from './SearchForm';
 
+// Mock the GitVegasLogo component
+vi.mock('../assets/GitVegas.svg?react', () => ({
+  default: () => <div data-testid="gitvegas-logo">GitVegas Logo</div>,
+}));
+
 // Mock the debounce function
 vi.mock('../utils', () => ({
   debounce: (fn: (...args: unknown[]) => void, delay: number) => {
