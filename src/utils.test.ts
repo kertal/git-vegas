@@ -467,6 +467,30 @@ describe('validateUsernameList', () => {
     expect(result.usernames).toEqual([]);
     expect(result.errors).toContain('Please enter at least one username');
   });
+
+  it('should enforce 250 character limit for combined usernames', () => {
+    // Create usernames that exceed 250 characters total
+    const longUsernames = Array.from({ length: 10 }, (_, i) => `a${i.toString().padStart(24, '0')}`); // 10 usernames, 25 chars each = 250
+    const validResult = validateUsernameList(longUsernames.join(', '));
+    expect(validResult.errors).toEqual([]);
+
+    // Add one more character to exceed the limit
+    longUsernames.push('a'); 
+    const invalidResult = validateUsernameList(longUsernames.join(', '));
+    expect(invalidResult.errors).toContain('Username list is too long (251 characters). Please limit the combined usernames to 250 characters.');
+  });
+
+  it('should provide accurate character count in error message', () => {
+    const usernames = 'a'.repeat(100) + ', ' + 'b'.repeat(100) + ', ' + 'c'.repeat(60); // 260 total chars
+    const result = validateUsernameList(usernames);
+    expect(result.errors).toContain('Username list is too long (260 characters). Please limit the combined usernames to 250 characters.');
+  });
+
+  it('should allow exactly 250 characters', () => {
+    const usernames = 'a'.repeat(125) + ', ' + 'b'.repeat(125); // exactly 250 chars
+    const result = validateUsernameList(usernames);
+    expect(result.errors).not.toContain(expect.stringContaining('Username list is too long'));
+  });
 });
 
 describe('URL parameter handling', () => {
