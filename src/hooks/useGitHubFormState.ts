@@ -90,7 +90,16 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
       if (!formSettings.username.trim()) return;
 
       const validation = validateUsernameList(formSettings.username);
-      if (validation.errors.length > 0) return;
+      if (validation.errors.length > 0) {
+        // Set error for validation failures (including character limit)
+        setError(validation.errors.join('\n'));
+        
+        // Reset URL params flag even if validation failed
+        if (fromUrlParams) {
+          setFromUrlParams(false);
+        }
+        return;
+      }
 
       const usernames = validation.usernames;
       
