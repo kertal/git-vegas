@@ -140,4 +140,39 @@ describe('useGitHubFormState - URL Parameter Processing', () => {
       'http://localhost:3000/'
     );
   });
+
+  it('should set error when URL contains usernames exceeding character limit', () => {
+    // Create a long username string that exceeds 250 characters
+    // Using valid individual usernames (max 39 chars each) but total > 250 chars
+    const usernames = Array.from({ length: 8 }, (_, i) => `user${i.toString().padStart(35, '0')}`); // 8 usernames, 39 chars each = 312 total
+    const longUsernames = usernames.join(',');
+    mockLocation.search = `?username=${encodeURIComponent(longUsernames)}`;
+    mockLocation.href = `http://localhost:3000/?username=${encodeURIComponent(longUsernames)}`;
+
+    const mockCallback = vi.fn();
+    
+    const { result } = renderHook(() => useGitHubFormState(mockCallback));
+
+    // Check that error is set for character limit
+    expect(result.current.error).toContain('Username list is too long (312 characters)');
+    expect(mockCallback).toHaveBeenCalledTimes(1);
+  });
+
+  it('should allow usernames at exactly 250 character limit from URL', () => {
+    // Create usernames at exactly 250 characters with valid individual lengths
+    // Using 7 usernames of 35 chars each + 1 username of 5 chars = 250 total
+    const usernames = Array.from({ length: 7 }, (_, i) => `user${i.toString().padStart(31, '0')}`); // 35 chars each
+    usernames.push('user7'); // 5 chars
+    const exactLimitUsernames = usernames.join(','); // Total: (7 * 35) + 5 = 250 chars
+    mockLocation.search = `?username=${encodeURIComponent(exactLimitUsernames)}`;
+    mockLocation.href = `http://localhost:3000/?username=${encodeURIComponent(exactLimitUsernames)}`;
+
+    const mockCallback = vi.fn();
+    
+    const { result } = renderHook(() => useGitHubFormState(mockCallback));
+
+    // Should not have character limit error
+    expect(result.current.error).toBeNull();
+    expect(mockCallback).toHaveBeenCalledTimes(1);
+  });
 }); 

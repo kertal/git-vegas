@@ -178,6 +178,12 @@ export const validateUsernameList = (
     return { usernames: usernames.slice(0, 15), errors };
   }
 
+  // Check total character length (250 character limit)
+  const totalCharLength = usernames.join('').length;
+  if (totalCharLength > 250) {
+    errors.push(`Username list is too long (${totalCharLength} characters). Please limit the combined usernames to 250 characters.`);
+  }
+
   // Check for duplicates
   const seen = new Set<string>();
   const duplicates = new Set<string>();

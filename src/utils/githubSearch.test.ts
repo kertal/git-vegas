@@ -147,6 +147,47 @@ describe('githubSearch utilities', () => {
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(3);
     });
+
+    it('should validate username character limit', () => {
+      // Create a long username string that exceeds 250 characters
+      const longUsernames = 'a'.repeat(126) + ',' + 'b'.repeat(126); // 252 characters total
+      
+      // Mock validateUsernameList to return the character limit error
+      vi.mocked(validateUsernameList).mockReturnValue({
+        usernames: ['a'.repeat(126), 'b'.repeat(126)],
+        errors: ['Username list is too long (252 characters). Please limit the combined usernames to 250 characters.'],
+      });
+
+      const params = {
+        ...mockSearchParams,
+        username: longUsernames,
+      };
+
+      const result = validateSearchParams(params);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Username list is too long (252 characters). Please limit the combined usernames to 250 characters.');
+    });
+
+    it('should allow usernames at exactly 250 character limit', () => {
+      const exactLimitUsernames = 'a'.repeat(125) + ',' + 'b'.repeat(125); // exactly 250 characters
+      
+      // Mock validateUsernameList to return no errors for valid length
+      vi.mocked(validateUsernameList).mockReturnValue({
+        usernames: ['a'.repeat(125), 'b'.repeat(125)],
+        errors: [],
+      });
+
+      const params = {
+        ...mockSearchParams,
+        username: exactLimitUsernames,
+      };
+
+      const result = validateSearchParams(params);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toEqual([]);
+    });
   });
 
   describe('validateAndCacheUsernames', () => {

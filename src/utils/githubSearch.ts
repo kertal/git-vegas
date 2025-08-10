@@ -98,6 +98,12 @@ export const validateSearchParams = (
 
   if (!params.username?.trim()) {
     errors.push('Please enter a GitHub username');
+  } else {
+    // Validate username format and character limit
+    const usernameValidation = validateUsernameList(params.username);
+    if (usernameValidation.errors.length > 0) {
+      errors.push(...usernameValidation.errors);
+    }
   }
 
   if (!params.startDate || !params.endDate) {
