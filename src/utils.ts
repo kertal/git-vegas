@@ -1,3 +1,5 @@
+import { MAX_USERNAMES_PER_REQUEST } from './utils/settings';
+
 // Debounce function for rate limiting
 export const debounce = <T extends unknown[]>(fn: (...args: T) => void, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>;
@@ -173,9 +175,9 @@ export const validateUsernameList = (
     return { usernames: [], errors: ['Please enter at least one username'] };
   }
 
-  if (usernames.length > 15) {
-    errors.push('Too many usernames. Please limit to 15 usernames at a time.');
-    return { usernames: usernames.slice(0, 15), errors };
+  if (usernames.length > MAX_USERNAMES_PER_REQUEST) {
+    errors.push(`Too many usernames. Please limit to ${MAX_USERNAMES_PER_REQUEST} usernames at a time.`);
+    return { usernames: usernames.slice(0, MAX_USERNAMES_PER_REQUEST), errors };
   }
 
   // Check for duplicates

@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
 import { EventsData } from '../utils/indexedDB';
+import { validateUsernameList, isValidDateString } from '../utils';
+import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
 
 interface UseGitHubDataFetchingProps {
   username: string;
@@ -50,7 +52,7 @@ export const useGitHubDataFetching = ({
   ): Promise<GitHubEvent[]> => {
     const allEvents: GitHubEvent[] = [];
     let page = 1;
-    const perPage = 100;
+    const perPage = GITHUB_API_PER_PAGE;
     let hasMorePages = true;
 
     while (hasMorePages) {
@@ -93,7 +95,7 @@ export const useGitHubDataFetching = ({
         page++;
         
         // Add a small delay to respect GitHub API rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
         
       } catch (error) {
         console.error(`Error fetching events page ${page} for ${username}:`, error);
@@ -112,6 +114,41 @@ export const useGitHubDataFetching = ({
       return;
     }
 
+    // Validate username format before proceeding
+    const usernameValidation = validateUsernameList(username);
+    if (usernameValidation.errors.length > 0) {
+      onError(`Invalid username format: ${usernameValidation.errors.join(', ')}`);
+      return;
+    }
+
+    if (usernameValidation.usernames.length === 0) {
+      onError('Please enter at least one valid username');
+      return;
+    }
+
+    // Check username count limit
+    if (usernameValidation.usernames.length > MAX_USERNAMES_PER_REQUEST) {
+      onError(`Too many usernames. Please limit to ${MAX_USERNAMES_PER_REQUEST} usernames at a time for performance reasons.`);
+      return;
+    }
+
+    // Validate date parameters
+    if (!isValidDateString(startDate)) {
+      onError('Invalid start date format. Please use YYYY-MM-DD');
+      return;
+    }
+
+    if (!isValidDateString(endDate)) {
+      onError('Invalid end date format. Please use YYYY-MM-DD');
+      return;
+    }
+
+    // Check if start date is before end date
+    if (new Date(startDate) >= new Date(endDate)) {
+      onError('Start date must be before end date');
+      return;
+    }
+
     // Reset loading state if it was stuck
     setLoading(false);
 
@@ -123,10 +160,8 @@ export const useGitHubDataFetching = ({
     setLoadingProgress(hasExistingData ? 'Updating data in background...' : 'Starting search...');
 
     try {
-      const usernames = username
-        .split(',')
-        .map(u => u.trim())
-        .filter(Boolean);
+      // Use the validated usernames instead of manual splitting
+      const usernames = usernameValidation.usernames;
       let currentProgress = 0;
       const totalUsernames = usernames.length;
 
@@ -158,7 +193,7 @@ export const useGitHubDataFetching = ({
           // Fetch issues and PRs with date range filtering
           const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
           const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=100&sort=updated&advanced_search=true`,
+            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&advanced_search=true`,
             {
               headers: {
                 ...(githubToken && { Authorization: `token ${githubToken}` }),

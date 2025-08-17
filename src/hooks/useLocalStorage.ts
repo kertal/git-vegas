@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getParamFromUrl } from '../utils';
+import { getParamFromUrl, isValidDateString, validateUsernameList } from '../utils';
 import { FormSettings } from '../types';
 
 // Enhanced serialization that handles Set and Map objects
@@ -85,11 +85,37 @@ export function useFormSettings(key: string, initialValue: FormSettings, onUrlPa
     if (urlUsername !== null || urlStartDate !== null || urlEndDate !== null) {
       urlParamsProcessedRef.current = true;
       
-      // Apply URL parameters to the form state
+      // Apply URL parameters to the form state with validation
       const updatedSettings = { ...value };
-      if (urlUsername !== null) updatedSettings.username = urlUsername;
-      if (urlStartDate !== null) updatedSettings.startDate = urlStartDate;
-      if (urlEndDate !== null) updatedSettings.endDate = urlEndDate;
+      
+      // Validate and apply username
+      if (urlUsername !== null) {
+        const usernameValidation = validateUsernameList(urlUsername);
+        if (usernameValidation.errors.length === 0 && usernameValidation.usernames.length > 0) {
+          // Use the first validated username (since URL params typically contain single usernames)
+          updatedSettings.username = usernameValidation.usernames[0];
+        } else {
+          console.warn('Invalid username in URL parameter:', urlUsername, usernameValidation.errors);
+        }
+      }
+      
+      // Validate and apply start date
+      if (urlStartDate !== null) {
+        if (isValidDateString(urlStartDate)) {
+          updatedSettings.startDate = urlStartDate;
+        } else {
+          console.warn('Invalid start date in URL parameter:', urlStartDate);
+        }
+      }
+      
+      // Validate and apply end date
+      if (urlEndDate !== null) {
+        if (isValidDateString(urlEndDate)) {
+          updatedSettings.endDate = urlEndDate;
+        } else {
+          console.warn('Invalid end date in URL parameter:', urlEndDate);
+        }
+      }
       
       setValue(updatedSettings);
 

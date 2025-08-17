@@ -2,6 +2,7 @@ import { renderHook } from '@testing-library/react';
 import { useGitHubDataFetching } from './useGitHubDataFetching';
 import { vi } from 'vitest';
 import { GitHubEvent } from '../types';
+import { MAX_USERNAMES_PER_REQUEST } from '../utils/settings';
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -147,5 +148,92 @@ describe('useGitHubDataFetching', () => {
       currentUsername: '',
       handleSearch: expect.any(Function),
     });
+  });
+
+  it('should validate username format before search', async () => {
+    const propsWithInvalidUsername = {
+      ...defaultProps,
+      username: 'invalid--user', // Contains consecutive hyphens
+    };
+
+    const { result } = renderHook(() => useGitHubDataFetching(propsWithInvalidUsername));
+
+    // Call handleSearch and verify validation error
+    await result.current.handleSearch();
+    
+    expect(mockOnError).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid username format')
+    );
+  });
+
+  it('should validate date format before search', async () => {
+    const propsWithInvalidDate = {
+      ...defaultProps,
+      startDate: '2024/01/01', // Invalid format
+    };
+
+    const { result } = renderHook(() => useGitHubDataFetching(propsWithInvalidDate));
+
+    // Call handleSearch and verify validation error
+    await result.current.handleSearch();
+    
+    expect(mockOnError).toHaveBeenCalledWith(
+      'Invalid start date format. Please use YYYY-MM-DD'
+    );
+  });
+
+  it('should validate date range before search', async () => {
+    const propsWithInvalidDateRange = {
+      ...defaultProps,
+      startDate: '2024-01-31',
+      endDate: '2024-01-01', // Start date after end date
+    };
+
+    const { result } = renderHook(() => useGitHubDataFetching(propsWithInvalidDateRange));
+
+    // Call handleSearch and verify validation error
+    await result.current.handleSearch();
+    
+    expect(mockOnError).toHaveBeenCalledWith(
+      'Start date must be before end date'
+    );
+  });
+
+  it('should limit username count', async () => {
+    // Create a string with more usernames than the limit
+    const usernames = Array.from({ length: MAX_USERNAMES_PER_REQUEST + 1 }, (_, i) => `user${i + 1}`).join(',');
+    const propsWithManyUsernames = {
+      ...defaultProps,
+      username: usernames,
+    };
+
+    const { result } = renderHook(() => useGitHubDataFetching(propsWithManyUsernames));
+
+    // Call handleSearch and verify validation error
+    await result.current.handleSearch();
+    
+    expect(mockOnError).toHaveBeenCalledWith(
+      `Invalid username format: Too many usernames. Please limit to ${MAX_USERNAMES_PER_REQUEST} usernames at a time.`
+    );
+  });
+
+  it('should handle valid usernames correctly', () => {
+    const propsWithValidUsernames = {
+      ...defaultProps,
+      username: 'validuser1,validuser2',
+    };
+
+    const { result } = renderHook(() => useGitHubDataFetching(propsWithValidUsernames));
+
+    // Verify the hook returns the expected structure
+    expect(result.current).toEqual({
+      loading: false,
+      loadingProgress: '',
+      currentUsername: '',
+      handleSearch: expect.any(Function),
+    });
+
+    // The validation should pass for valid usernames, so handleSearch should be callable
+    expect(typeof result.current.handleSearch).toBe('function');
   });
 }); 

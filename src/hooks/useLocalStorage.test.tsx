@@ -163,8 +163,8 @@ describe('useFormSettings - URL Parameter Cleanup', () => {
 
   it('should handle URL encoding correctly', () => {
     // Set URL parameters with special characters
-    mockLocation.search = '?username=test%20user&startDate=2024-02-01';
-    mockLocation.href = 'http://localhost:3000/?username=test%20user&startDate=2024-02-01';
+    mockLocation.search = '?username=test-user&startDate=2024-02-01';
+    mockLocation.href = 'http://localhost:3000/?username=test-user&startDate=2024-02-01';
 
     // Render the hook
     const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
@@ -172,8 +172,122 @@ describe('useFormSettings - URL Parameter Cleanup', () => {
     // Check that URL parameters were decoded correctly
     expect(result.current[0]).toEqual({
       ...defaultFormSettings,
-      username: 'test user', // Decoded from test%20user
+      username: 'test-user', // Valid username with hyphen
       startDate: '2024-02-01',
+    });
+
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
+    );
+  });
+
+  it('should reject invalid username in URL parameters', () => {
+    // Set invalid username (contains consecutive hyphens)
+    mockLocation.search = '?username=invalid--user&startDate=2024-02-01';
+    mockLocation.href = 'http://localhost:3000/?username=invalid--user&startDate=2024-02-01';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that invalid username was rejected but valid startDate was applied
+    expect(result.current[0]).toEqual({
+      ...defaultFormSettings,
+      username: '', // Invalid username should not be applied
+      startDate: '2024-02-01', // Valid startDate should be applied
+    });
+
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
+    );
+  });
+
+  it('should reject invalid start date in URL parameters', () => {
+    // Set invalid start date (wrong format)
+    mockLocation.search = '?username=testuser&startDate=2024/02/01&endDate=2024-02-28';
+    mockLocation.href = 'http://localhost:3000/?username=testuser&startDate=2024/02/01&endDate=2024-02-28';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that invalid startDate was rejected but valid username and endDate were applied
+    expect(result.current[0]).toEqual({
+      ...defaultFormSettings,
+      username: 'testuser', // Valid username should be applied
+      startDate: '2024-01-01', // Invalid startDate should not be applied (keep default)
+      endDate: '2024-02-28', // Valid endDate should be applied
+    });
+
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
+    );
+  });
+
+  it('should reject invalid end date in URL parameters', () => {
+    // Set invalid end date (wrong format)
+    mockLocation.search = '?username=testuser&startDate=2024-02-01&endDate=not-a-date';
+    mockLocation.href = 'http://localhost:3000/?username=testuser&startDate=2024-02-01&endDate=not-a-date';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that invalid endDate was rejected but valid username and startDate were applied
+    expect(result.current[0]).toEqual({
+      ...defaultFormSettings,
+      username: 'testuser', // Valid username should be applied
+      startDate: '2024-02-01', // Valid startDate should be applied
+      endDate: '2024-01-31', // Invalid endDate should not be applied (keep default)
+    });
+
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
+    );
+  });
+
+  it('should handle multiple invalid parameters gracefully', () => {
+    // Set multiple invalid parameters
+    mockLocation.search = '?username=invalid--user&startDate=bad-date&endDate=also-bad';
+    mockLocation.href = 'http://localhost:3000/?username=invalid--user&startDate=bad-date&endDate=also-bad';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that all invalid parameters were rejected
+    expect(result.current[0]).toEqual(defaultFormSettings);
+
+    // Check that URL cleanup was called
+    expect(mockHistory.replaceState).toHaveBeenCalledWith(
+      {},
+      '',
+      'http://localhost:3000/'
+    );
+  });
+
+  it('should handle mixed valid and invalid parameters', () => {
+    // Set mix of valid and invalid parameters
+    mockLocation.search = '?username=validuser&startDate=2024-02-01&endDate=bad-date&otherParam=value';
+    mockLocation.href = 'http://localhost:3000/?username=validuser&startDate=2024-02-01&endDate=bad-date&otherParam=value';
+
+    // Render the hook
+    const { result } = renderHook(() => useFormSettings('test-key', defaultFormSettings));
+
+    // Check that only valid parameters were applied
+    expect(result.current[0]).toEqual({
+      ...defaultFormSettings,
+      username: 'validuser', // Valid username should be applied
+      startDate: '2024-02-01', // Valid startDate should be applied
+      endDate: '2024-01-31', // Invalid endDate should not be applied (keep default)
     });
 
     // Check that URL cleanup was called

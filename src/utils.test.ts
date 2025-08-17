@@ -9,6 +9,7 @@ import {
   validateGitHubUsernameFormat,
   validateUsernameList,
 } from './utils';
+import { MAX_USERNAMES_PER_REQUEST } from './utils/settings';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -419,7 +420,7 @@ describe('validateUsernameList', () => {
 
     expect(result.usernames).toHaveLength(15); // Should be limited to first 15
     expect(result.errors).toContain(
-      'Too many usernames. Please limit to 15 usernames at a time.'
+      `Too many usernames. Please limit to ${MAX_USERNAMES_PER_REQUEST} usernames at a time.`
     );
   });
 

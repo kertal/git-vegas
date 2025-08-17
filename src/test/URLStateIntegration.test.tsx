@@ -250,16 +250,16 @@ describe('URL State Integration', () => {
 
   it('should handle URL encoding correctly', async () => {
     // Set URL with encoded characters
-    mockLocation.search = '?username=test%20user&labelFilter=bug%2Bfeature';
+    mockLocation.search = '?username=test-user&labelFilter=bug%2Bfeature';
     mockLocation.href =
-      'http://localhost:3000/?username=test%20user&labelFilter=bug%2Bfeature';
+      'http://localhost:3000/?username=test-user&labelFilter=bug%2Bfeature';
 
     renderApp();
 
     // Verify decoded values are applied
     await waitFor(() => {
       const usernameInput = screen.getByLabelText(/github username/i);
-      expect(usernameInput).toHaveValue('test user'); // Decoded space
+      expect(usernameInput).toHaveValue('test-user'); // Valid username with hyphen
     });
 
     // URL should be cleaned up
