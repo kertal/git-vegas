@@ -48,6 +48,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       assignees: (payload as any).issue?.assignees || [],
       pull_request: issue.pull_request,
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'PullRequestEvent' && payload.pull_request) {
     const pr = payload.pull_request;
@@ -76,6 +77,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         url: pr.html_url,
       },
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'PullRequestReviewEvent' && payload.pull_request) {
     const pr = payload.pull_request;
@@ -104,6 +106,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         url: pr.html_url,
       },
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'IssueCommentEvent' && payload.comment && payload.issue) {
     const comment = payload.comment;
@@ -128,6 +131,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       user: actorUser, // Use event actor instead of comment user
       pull_request: issue.pull_request,
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'PullRequestReviewCommentEvent' && payload.comment && payload.pull_request) {
     const comment = payload.comment;
@@ -157,6 +161,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         url: pr.html_url,
       },
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'PushEvent') {
     // Handle PushEvent - create a GitHubItem from push event data
@@ -201,6 +206,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       user: actorUser,
       original: payload,
+      originalEventType: type,
       // Push events don't have pull_request, closed_at, merged_at, or number
     };
   } else if (type === 'CreateEvent') {
@@ -242,6 +248,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       user: actorUser,
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'ForkEvent') {
     // Handle ForkEvent - create a GitHubItem from fork event data
@@ -266,6 +273,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       user: actorUser,
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'WatchEvent') {
     // Handle WatchEvent - create a GitHubItem from watch event data
@@ -288,6 +296,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       user: actorUser,
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'PublicEvent') {
     // Handle PublicEvent - create a GitHubItem from public event data
@@ -308,6 +317,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       user: actorUser,
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'DeleteEvent') {
     // Handle DeleteEvent - create a GitHubItem from delete event data
@@ -341,6 +351,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       user: actorUser,
       original: payload,
+      originalEventType: type,
     };
   } else if (type === 'GollumEvent') {
     // Handle GollumEvent - create a GitHubItem from gollum event data
@@ -391,6 +402,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       user: actorUser,
       original: payload,
+      originalEventType: type,
     };
   }
 

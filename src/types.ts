@@ -44,6 +44,7 @@ export interface GitHubItem {
   }>;
   draft?: boolean;
   original?: GitHubEvent['payload'] | Record<string, unknown>; // Original payload from GitHub API
+  originalEventType?: string; // Original GitHub event type (e.g., 'PullRequestReviewEvent')
 }
 
 // Raw data storage types
