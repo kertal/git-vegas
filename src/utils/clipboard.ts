@@ -32,34 +32,41 @@ export const formatDateForClipboard = (dateString: string): string => {
  * @returns Array of deduplicated items
  */
 export const deduplicateByTitle = (items: GitHubItem[]): GitHubItem[] => {
-  const titleMap = new Map<string, GitHubItem>();
+  const keyMap = new Map<string, GitHubItem>();
 
   items.forEach(item => {
-    const existing = titleMap.get(item.title);
+    // For reviews, use user+title as the deduplication key to allow multiple reviewers per PR
+    const isReview = item.title.startsWith('Review on:') || item.originalEventType === 'PullRequestReviewEvent';
+    const deduplicationKey = isReview 
+      ? `${item.user.login}:${item.title}` 
+      : item.title;
+    
+    const existing = keyMap.get(deduplicationKey);
     if (!existing) {
-      titleMap.set(item.title, item);
+      keyMap.set(deduplicationKey, item);
     } else {
       // Keep the more recent item based on updated_at
       const itemDate = new Date(item.updated_at).getTime();
       const existingDate = new Date(existing.updated_at).getTime();
       if (itemDate > existingDate) {
-        titleMap.set(item.title, item);
+        keyMap.set(deduplicationKey, item);
       }
     }
   });
 
-  return Array.from(titleMap.values());
+  return Array.from(keyMap.values());
 };
 
 /**
  * Deduplicates items across all groups, removing items that appear in earlier groups
+ * For reviews, deduplicates by user+title to allow multiple people to review the same PR
  * @param groupedData - Array of grouped data with items
  * @returns Array of grouped data with global deduplication applied
  */
 export const deduplicateAcrossGroups = (
   groupedData: Array<{ groupName: string; items: GitHubItem[] }>
 ): Array<{ groupName: string; items: GitHubItem[] }> => {
-  const seenTitles = new Set<string>();
+  const seenKeys = new Set<string>();
   
   return groupedData.map(group => {
     // First deduplicate within the group to get the most recent version of each title
@@ -67,10 +74,16 @@ export const deduplicateAcrossGroups = (
     
     // Then filter out items that were already seen in previous groups
     const globallyDeduplicatedItems = deduplicatedWithinGroup.filter(item => {
-      if (seenTitles.has(item.title)) {
+      // For reviews, use user+title as the deduplication key to allow multiple reviewers per PR
+      const isReview = item.title.startsWith('Review on:') || item.originalEventType === 'PullRequestReviewEvent';
+      const deduplicationKey = isReview 
+        ? `${item.user.login}:${item.title}` 
+        : item.title;
+      
+      if (seenKeys.has(deduplicationKey)) {
         return false; // Skip this item as it was already seen in an earlier group
       }
-      seenTitles.add(item.title);
+      seenKeys.add(deduplicationKey);
       return true;
     });
     
