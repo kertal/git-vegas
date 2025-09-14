@@ -317,17 +317,24 @@ const SummaryView = memo(function SummaryView({
           // Grouped view - organize events by individual issues/PRs and by type
           Object.entries(actionGroups).map(([groupName, groupItems]) => {
             if (groupItems.length === 0) return null;
-            // Group items by URL
+            // Group items by URL (for reviews, include user to allow multiple reviewers per PR)
             const urlGroups: { [url: string]: GitHubItem[] } = {};
             groupItems.forEach(item => {
-              let groupingUrl = item.html_url;
+              let groupingKey = item.html_url;
               if (getEventType(item) === 'comment') {
-                groupingUrl = groupingUrl.split('#')[0];
+                groupingKey = groupingKey.split('#')[0];
               }
-              if (!urlGroups[groupingUrl]) {
-                urlGroups[groupingUrl] = [];
+              
+              // For reviews, include user in grouping key to allow multiple reviewers per PR
+              const isReview = item.title.startsWith('Review on:') || item.originalEventType === 'PullRequestReviewEvent';
+              if (isReview) {
+                groupingKey = `${item.user.login}:${groupingKey}`;
               }
-              urlGroups[groupingUrl].push(item);
+              
+              if (!urlGroups[groupingKey]) {
+                urlGroups[groupingKey] = [];
+              }
+              urlGroups[groupingKey].push(item);
             });
             // Render one ItemRow per group, showing groupCount
             return (
