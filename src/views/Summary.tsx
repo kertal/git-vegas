@@ -5,6 +5,7 @@ import {
   Heading,
   Checkbox,
   Box,
+  Token,
 } from '@primer/react';
 import {
   ChevronDownIcon,
@@ -367,6 +368,29 @@ const SummaryView = memo(function SummaryView({
                       <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
                         {groupName}
                       </Heading>
+                      {(() => {
+                        // Calculate total count (number of URL groups = number of displayed items)
+                        const totalCount = Object.keys(urlGroups).length;
+                        
+                        // Calculate selected count
+                        const sectionItemIds = Object.values(urlGroups).map(items => {
+                          const mostRecent = items.reduce((latest, current) =>
+                            new Date(current.updated_at) > new Date(latest.updated_at)
+                              ? current
+                              : latest
+                          );
+                          return mostRecent.event_id || mostRecent.id;
+                        });
+                        const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                        
+                        return (
+                          <Token
+                            text={selectedCount > 0 ? `${selectedCount} / ${totalCount}` : `${totalCount}`}
+                            size="small"
+                            sx={{ ml: 2, flexShrink: 0 }}
+                          />
+                        );
+                      })()}
                     </Box>
                     <Button
                       variant="invisible"
