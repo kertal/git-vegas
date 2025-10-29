@@ -468,8 +468,14 @@ export const categorizeRawSearchItems = (
   const startDateTime = startDate ? new Date(startDate).getTime() : 0;
   const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
 
-  // First filter by date
+  // First filter by date and validate required fields
   const dateFilteredItems = rawItems.filter(item => {
+    // Validate required fields - skip items with missing title
+    if (!item.title) {
+      console.warn('Skipping item with missing title:', item.html_url || item.id);
+      return false;
+    }
+    
     const itemTime = new Date(item.updated_at).getTime();
 
     // Filter by date range if dates are provided

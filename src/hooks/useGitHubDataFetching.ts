@@ -54,8 +54,9 @@ export const useGitHubDataFetching = ({
     let page = 1;
     const perPage = GITHUB_API_PER_PAGE;
     let hasMorePages = true;
+    const maxPages = 3; // GitHub Events API has pagination limits - stay within safe bounds
 
-    while (hasMorePages) {
+    while (hasMorePages && page <= maxPages) {
       try {
         onProgress(`Fetching events page ${page} for ${username}...`);
         
@@ -71,6 +72,16 @@ export const useGitHubDataFetching = ({
 
         if (!response.ok) {
           const responseJSON = await response.json();
+          
+          // Handle pagination limit error (422) - return what we have so far
+          if (response.status === 422 && responseJSON.message?.includes('pagination is limited')) {
+            console.warn(
+              `GitHub Events API pagination limit reached for ${username} at page ${page}. Returning ${allEvents.length} events collected so far.`
+            );
+            hasMorePages = false;
+            break; // Exit the pagination loop gracefully
+          }
+          
           throw new Error(`Failed to fetch events page ${page}: ${responseJSON.message}`);
         }
 
@@ -103,6 +114,14 @@ export const useGitHubDataFetching = ({
         // Continue with what we have so far
         hasMorePages = false;
       }
+    }
+
+    // Log if we hit the pagination limit
+    if (page > maxPages) {
+      console.warn(
+        `Reached GitHub Events API pagination limit (${maxPages} pages) for ${username}. ` +
+        `Returning ${allEvents.length} events. GitHub API limits pagination for the events endpoint.`
+      );
     }
 
     return allEvents;

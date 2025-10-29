@@ -327,7 +327,7 @@ const SummaryView = memo(function SummaryView({
               }
               
               // For reviews, include user in grouping key to allow multiple reviewers per PR
-              const isReview = item.title.startsWith('Review on:') || item.originalEventType === 'PullRequestReviewEvent';
+              const isReview = (item.title && item.title.startsWith('Review on:')) || item.originalEventType === 'PullRequestReviewEvent';
               if (isReview) {
                 groupingKey = `${item.user.login}:${groupingKey}`;
               }
