@@ -136,40 +136,32 @@ describe('rawDataUtils', () => {
         },
         payload: {
           action: 'labeled',
-          number: 241173,
           pull_request: {
             url: 'https://api.github.com/repos/elastic/kibana/pulls/241173',
             id: 2959929265,
             number: 241173,
-            head: {
-              ref: 'discover-adjust-codeowners-for-tests',
-              sha: 'a62fb4f8cce147da3efd67b67d86d49a578cf850',
-              repo: {
-                id: 884918238,
-                url: 'https://api.github.com/repos/testuser/kibana',
-                name: 'kibana',
+            title: '',
+            html_url: '',
+            state: 'open',
+            body: '',
+            labels: [
+              {
+                id: 1196522308,
+                name: 'release_note:skip',
+                color: '016589',
+                default: false,
+                description: 'Skip the PR/issue when compiling release notes',
               },
+            ],
+            created_at: '2025-10-29T17:13:21Z',
+            updated_at: '2025-10-29T17:13:21Z',
+            user: {
+              login: 'testuser',
+              avatar_url: 'https://avatars.githubusercontent.com/u/63072419?',
+              html_url: 'https://github.com/testuser',
             },
-            base: {
-              ref: 'main',
-              sha: 'd8c514094bf214ad3076479c9a8711c8a83effc4',
-              repo: {
-                id: 7833168,
-                url: 'https://api.github.com/repos/elastic/kibana',
-                name: 'kibana',
-              },
-            },
-          } as any,
-          labels: [
-            {
-              id: 1196522308,
-              name: 'release_note:skip',
-              color: '016589',
-              default: false,
-              description: 'Skip the PR/issue when compiling release notes',
-            },
-          ],
-        },
+          },
+        } as any,
         public: true,
         created_at: '2025-10-29T17:13:21Z',
       };
@@ -181,7 +173,8 @@ describe('rawDataUtils', () => {
       expect(result?.title).toBe('Pull Request #241173 labeled');
       expect(result?.html_url).toBe('https://github.com/elastic/kibana/pull/241173');
       expect(result?.number).toBe(241173);
-      expect(result?.labels).toEqual(mockPREvent.payload.labels);
+      // Labels come from the pull_request object in the payload
+      expect(result?.labels).toEqual((mockPREvent.payload as any).pull_request.labels);
       expect(result?.original).toEqual(mockPREvent.payload);
     });
   });
