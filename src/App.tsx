@@ -124,6 +124,7 @@ function App() {
     searchItemsCount,
     eventsCount,
     rawEventsCount,
+    isEnriching,
   } = useGitHubDataProcessing({
     indexedDBEvents,
     indexedDBSearchItems,
@@ -131,6 +132,7 @@ function App() {
     endDate,
     apiMode,
     searchText,
+    githubToken,
   });
 
   const {
@@ -362,8 +364,8 @@ function App() {
           <PageHeader.Actions>
             {/* Loading indicator - always visible */}
             <LoadingIndicator
-              loadingProgress={loadingProgress}
-              isLoading={loading}
+              loadingProgress={isEnriching ? 'Enriching PR details...' : loadingProgress}
+              isLoading={loading || isEnriching}
               currentUsername={currentUsername}
             />
             

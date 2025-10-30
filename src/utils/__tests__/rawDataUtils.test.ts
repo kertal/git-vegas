@@ -118,6 +118,72 @@ describe('rawDataUtils', () => {
       expect(result?.original).toBeDefined();
       expect(result?.original).toEqual(mockCreateEvent.payload);
     });
+
+    it('should handle new GitHub API format for PullRequestEvent (without full PR details)', () => {
+      const mockPREvent: GitHubEvent = {
+        id: '4340559024',
+        type: 'PullRequestEvent',
+        actor: {
+          id: 63072419,
+          login: 'testuser',
+          avatar_url: 'https://avatars.githubusercontent.com/u/63072419?',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 7833168,
+          name: 'elastic/kibana',
+          url: 'https://api.github.com/repos/elastic/kibana',
+        },
+        payload: {
+          action: 'labeled',
+          number: 241173,
+          pull_request: {
+            url: 'https://api.github.com/repos/elastic/kibana/pulls/241173',
+            id: 2959929265,
+            number: 241173,
+            head: {
+              ref: 'discover-adjust-codeowners-for-tests',
+              sha: 'a62fb4f8cce147da3efd67b67d86d49a578cf850',
+              repo: {
+                id: 884918238,
+                url: 'https://api.github.com/repos/testuser/kibana',
+                name: 'kibana',
+              },
+            },
+            base: {
+              ref: 'main',
+              sha: 'd8c514094bf214ad3076479c9a8711c8a83effc4',
+              repo: {
+                id: 7833168,
+                url: 'https://api.github.com/repos/elastic/kibana',
+                name: 'kibana',
+              },
+            },
+          } as any,
+          labels: [
+            {
+              id: 1196522308,
+              name: 'release_note:skip',
+              color: '016589',
+              default: false,
+              description: 'Skip the PR/issue when compiling release notes',
+            },
+          ],
+        },
+        public: true,
+        created_at: '2025-10-29T17:13:21Z',
+      };
+
+      const result = transformEventToItem(mockPREvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBeDefined();
+      expect(result?.title).toBe('Pull Request #241173 labeled');
+      expect(result?.html_url).toBe('https://github.com/elastic/kibana/pull/241173');
+      expect(result?.number).toBe(241173);
+      expect(result?.labels).toEqual(mockPREvent.payload.labels);
+      expect(result?.original).toEqual(mockPREvent.payload);
+    });
   });
 
   describe('processRawEvents', () => {

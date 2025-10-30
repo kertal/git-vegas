@@ -52,16 +52,27 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     };
   } else if (type === 'PullRequestEvent' && payload.pull_request) {
     const pr = payload.pull_request;
+    const payloadWithAction = payload as { action?: string; number?: number; labels?: any[] };
+    
+    // GitHub API changed format - pr object no longer contains full details
+    // Construct what we can from available data
+    const prNumber = pr.number || payloadWithAction.number;
+    const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
+    const action = payloadWithAction.action || 'updated';
+    
+    // Create a descriptive title based on the action since title is not provided
+    const title = pr.title || `Pull Request #${prNumber} ${action}`;
+    
     return {
       id: pr.id,
       event_id: event.id,
-      html_url: pr.html_url,
-      title: pr.title,
+      html_url: htmlUrl,
+      title: title,
       created_at: event.created_at, // Use event timestamp, not PR timestamp
-      updated_at: pr.updated_at,
-      state: pr.state,
-      body: pr.body,
-      labels: pr.labels,
+      updated_at: pr.updated_at || event.created_at,
+      state: pr.state || 'open',
+      body: pr.body || `Pull request ${action} by ${actorUser.login}`,
+      labels: payloadWithAction.labels || pr.labels || [],
       repository_url: `https://api.github.com/repos/${repo.name}`,
       repository: {
         full_name: repo.name,
@@ -70,27 +81,34 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       closed_at: pr.closed_at,
       merged_at: pr.merged_at,
       merged: pr.merged,
-      number: pr.number,
+      number: prNumber,
       user: actorUser, // Use event actor instead of PR user
       pull_request: {
         merged_at: pr.merged_at,
-        url: pr.html_url,
+        url: htmlUrl,
       },
       original: payload,
       originalEventType: type,
     };
   } else if (type === 'PullRequestReviewEvent' && payload.pull_request) {
     const pr = payload.pull_request;
+    const payloadWithAction = payload as { action?: string; number?: number };
+    
+    // GitHub API changed format - pr object no longer contains full details
+    const prNumber = pr.number || payloadWithAction.number;
+    const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
+    const prTitle = pr.title || `Pull Request #${prNumber}`;
+    
     return {
       id: pr.id,
       event_id: event.id,
-      html_url: pr.html_url,
-      title: `Review on: ${pr.title}`,
+      html_url: htmlUrl,
+      title: `Review on: ${prTitle}`,
       created_at: event.created_at, // Use event timestamp, not PR timestamp
-      updated_at: pr.updated_at,
-      state: pr.state,
-      body: pr.body,
-      labels: pr.labels,
+      updated_at: pr.updated_at || event.created_at,
+      state: pr.state || 'open',
+      body: pr.body || `Review by ${actorUser.login}`,
+      labels: pr.labels || [],
       repository_url: `https://api.github.com/repos/${repo.name}`,
       repository: {
         full_name: repo.name,
@@ -99,11 +117,11 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       closed_at: pr.closed_at,
       merged_at: pr.merged_at,
       merged: pr.merged,
-      number: pr.number,
+      number: prNumber,
       user: actorUser, // Use event actor instead of PR user
       pull_request: {
         merged_at: pr.merged_at,
-        url: pr.html_url,
+        url: htmlUrl,
       },
       original: payload,
       originalEventType: type,
@@ -136,16 +154,23 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   } else if (type === 'PullRequestReviewCommentEvent' && payload.comment && payload.pull_request) {
     const comment = payload.comment;
     const pr = payload.pull_request;
+    const payloadWithAction = payload as { action?: string; number?: number };
+    
+    // GitHub API changed format - pr object no longer contains full details
+    const prNumber = pr.number || payloadWithAction.number;
+    const prHtmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
+    const prTitle = pr.title || `Pull Request #${prNumber}`;
+    
     return {
       id: comment.id,
       event_id: event.id,
       html_url: comment.html_url,
-      title: `Review comment on: ${pr.title}`,
+      title: `Review comment on: ${prTitle}`,
       created_at: event.created_at, // Use event timestamp, not comment timestamp
       updated_at: comment.updated_at,
-      state: pr.state,
+      state: pr.state || 'open',
       body: comment.body,
-      labels: pr.labels,
+      labels: pr.labels || [],
       repository_url: `https://api.github.com/repos/${repo.name}`,
       repository: {
         full_name: repo.name,
@@ -154,11 +179,11 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       closed_at: pr.closed_at,
       merged_at: pr.merged_at,
       merged: pr.merged,
-      number: pr.number,
+      number: prNumber,
       user: actorUser, // Use event actor instead of comment user
       pull_request: {
         merged_at: pr.merged_at,
-        url: pr.html_url,
+        url: prHtmlUrl,
       },
       original: payload,
       originalEventType: type,
@@ -181,7 +206,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     if (pushPayload?.commits && pushPayload.commits.length > 0) {
       body = pushPayload.commits
         .slice(0, 5) // Show first 5 commits
-        .map((commit) => `- ${commit.message.split('\n')[0]}`) // First line of commit message
+        .map((commit) => `- ${commit.message ? commit.message.split('\n')[0] : 'No commit message'}`) // First line of commit message
         .join('\n');
       
       if (pushPayload.commits.length > 5) {
