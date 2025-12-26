@@ -152,14 +152,10 @@ function App() {
     clearSearchItems,
   });
 
-  const avatarUrls = useMemo(() => {
-    // Prioritize cached avatar URLs if they exist, otherwise return empty array
-    // Only return non-empty arrays to prevent unnecessary re-renders
-    if (cachedAvatarUrls && cachedAvatarUrls.length > 0) {
-      return cachedAvatarUrls;
-    }
-    return [];
-  }, [cachedAvatarUrls]);
+  const avatarUrls = useMemo(
+    () => cachedAvatarUrls?.length > 0 ? cachedAvatarUrls : [],
+    [cachedAvatarUrls]
+  );
 
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);
