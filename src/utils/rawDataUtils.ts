@@ -53,18 +53,29 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   } else if (type === 'PullRequestEvent' && payload.pull_request) {
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number; labels?: any[] };
-    
-    // GitHub API changed format - pr object no longer contains full details
-    // Construct what we can from available data
-    const prNumber = pr.number || payloadWithAction.number;
-    const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
+
+    // GitHub API changed format - pr object may only contain url, not full details
+    // Try to extract PR number from various sources
+    let prNumber = pr.number || payloadWithAction.number;
+
+    // If no number, try to extract from pr.url or pr.html_url
+    if (!prNumber && pr.html_url) {
+      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+    if (!prNumber && (pr as { url?: string }).url) {
+      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+
+    const htmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
     const action = payloadWithAction.action || 'updated';
-    
-    // Create a descriptive title based on the action since title is not provided
-    const title = pr.title || `Pull Request #${prNumber} ${action}`;
-    
+
+    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
+    const title = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber} ${action}` : `Pull Request ${action}`);
+
     return {
-      id: pr.id,
+      id: pr.id || parseInt(event.id),
       event_id: event.id,
       html_url: htmlUrl,
       title: title,
@@ -93,14 +104,27 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   } else if (type === 'PullRequestReviewEvent' && payload.pull_request) {
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
-    
-    // GitHub API changed format - pr object no longer contains full details
-    const prNumber = pr.number || payloadWithAction.number;
-    const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
-    const prTitle = pr.title || `Pull Request #${prNumber}`;
-    
+
+    // GitHub API changed format - pr object may only contain url, not full details
+    // Try to extract PR number from various sources
+    let prNumber = pr.number || payloadWithAction.number;
+
+    // If no number, try to extract from pr.url or pr.html_url
+    if (!prNumber && pr.html_url) {
+      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+    if (!prNumber && (pr as { url?: string }).url) {
+      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+
+    const htmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
+    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
+    const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
+
     return {
-      id: pr.id,
+      id: pr.id || parseInt(event.id),
       event_id: event.id,
       html_url: htmlUrl,
       title: `Review on: ${prTitle}`,
@@ -155,12 +179,25 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const comment = payload.comment;
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
-    
-    // GitHub API changed format - pr object no longer contains full details
-    const prNumber = pr.number || payloadWithAction.number;
-    const prHtmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
-    const prTitle = pr.title || `Pull Request #${prNumber}`;
-    
+
+    // GitHub API changed format - pr object may only contain url, not full details
+    // Try to extract PR number from various sources
+    let prNumber = pr.number || payloadWithAction.number;
+
+    // If no number, try to extract from pr.url or pr.html_url
+    if (!prNumber && pr.html_url) {
+      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+    if (!prNumber && (pr as { url?: string }).url) {
+      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+
+    const prHtmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
+    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
+    const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
+
     return {
       id: comment.id,
       event_id: event.id,
@@ -190,15 +227,21 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     };
   } else if (type === 'PushEvent') {
     // Handle PushEvent - create a GitHubItem from push event data
-    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string }>; distinct_size?: number };
+    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string; sha: string }>; distinct_size?: number; size?: number };
     const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
-    const commitCount = pushPayload?.commits?.length || 0;
-    const distinctCount = pushPayload?.distinct_size || 0;
-    
+
+    // GitHub API changes: commits array is the most reliable source
+    // Use commits.length as primary, fall back to distinct_size or size
+    const commitCount = pushPayload?.commits?.length || pushPayload?.size || 0;
+    const distinctCount = pushPayload?.distinct_size ?? commitCount; // Use commitCount as fallback
+
+    // Use the actual commits array length as the display count (most accurate)
+    const displayCount = commitCount > 0 ? commitCount : distinctCount;
+
     // Create a title that describes the push
-    let title = `Pushed ${distinctCount} commit${distinctCount !== 1 ? 's' : ''} to ${branch}`;
-    if (commitCount > distinctCount) {
-      title += ` (${commitCount} total)`;
+    let title = `Pushed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${branch}`;
+    if (distinctCount > 0 && commitCount > distinctCount) {
+      title += ` (${distinctCount} distinct)`;
     }
     
     // Create a body with commit messages if available

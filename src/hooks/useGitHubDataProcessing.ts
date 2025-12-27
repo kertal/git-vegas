@@ -85,6 +85,7 @@ export const useGitHubDataProcessing = ({
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
   // Enrich items with PR details when a token is available
+  // Uses SWR pattern: show cached data immediately, then fetch fresh data in background
   useEffect(() => {
     let cancelled = false;
 
@@ -96,14 +97,22 @@ export const useGitHubDataProcessing = ({
       }
 
       setIsEnriching(true);
-      
+
       try {
         const enriched = await enrichItemsWithPRDetails(
           baseResults,
           githubToken,
+          // Progress callback for background fetches
           (current, total) => {
             if (!cancelled) {
-              console.log(`Enriching PR details: ${current}/${total}`);
+              console.log(`Fetching PR details: ${current}/${total}`);
+            }
+          },
+          // SWR callback: immediately show cached data while fetching fresh data
+          (cachedEnrichedItems) => {
+            if (!cancelled) {
+              setEnrichedResults(cachedEnrichedItems);
+              // Keep isEnriching true since we're still fetching fresh data
             }
           }
         );
