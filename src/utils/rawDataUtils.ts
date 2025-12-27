@@ -53,18 +53,29 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   } else if (type === 'PullRequestEvent' && payload.pull_request) {
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number; labels?: any[] };
-    
-    // GitHub API changed format - pr object no longer contains full details
-    // Construct what we can from available data
-    const prNumber = pr.number || payloadWithAction.number;
-    const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
+
+    // GitHub API changed format - pr object may only contain url, not full details
+    // Try to extract PR number from various sources
+    let prNumber = pr.number || payloadWithAction.number;
+
+    // If no number, try to extract from pr.url or pr.html_url
+    if (!prNumber && pr.html_url) {
+      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+    if (!prNumber && (pr as { url?: string }).url) {
+      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+
+    const htmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
     const action = payloadWithAction.action || 'updated';
-    
-    // Create a descriptive title based on the action since title is not provided
-    const title = pr.title || `Pull Request #${prNumber} ${action}`;
-    
+
+    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
+    const title = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber} ${action}` : `Pull Request ${action}`);
+
     return {
-      id: pr.id,
+      id: pr.id || parseInt(event.id),
       event_id: event.id,
       html_url: htmlUrl,
       title: title,
@@ -93,14 +104,27 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   } else if (type === 'PullRequestReviewEvent' && payload.pull_request) {
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
-    
-    // GitHub API changed format - pr object no longer contains full details
-    const prNumber = pr.number || payloadWithAction.number;
-    const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
-    const prTitle = pr.title || `Pull Request #${prNumber}`;
-    
+
+    // GitHub API changed format - pr object may only contain url, not full details
+    // Try to extract PR number from various sources
+    let prNumber = pr.number || payloadWithAction.number;
+
+    // If no number, try to extract from pr.url or pr.html_url
+    if (!prNumber && pr.html_url) {
+      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+    if (!prNumber && (pr as { url?: string }).url) {
+      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+
+    const htmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
+    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
+    const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
+
     return {
-      id: pr.id,
+      id: pr.id || parseInt(event.id),
       event_id: event.id,
       html_url: htmlUrl,
       title: `Review on: ${prTitle}`,
@@ -155,12 +179,25 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const comment = payload.comment;
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
-    
-    // GitHub API changed format - pr object no longer contains full details
-    const prNumber = pr.number || payloadWithAction.number;
-    const prHtmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
-    const prTitle = pr.title || `Pull Request #${prNumber}`;
-    
+
+    // GitHub API changed format - pr object may only contain url, not full details
+    // Try to extract PR number from various sources
+    let prNumber = pr.number || payloadWithAction.number;
+
+    // If no number, try to extract from pr.url or pr.html_url
+    if (!prNumber && pr.html_url) {
+      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+    if (!prNumber && (pr as { url?: string }).url) {
+      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
+      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    }
+
+    const prHtmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
+    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
+    const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
+
     return {
       id: comment.id,
       event_id: event.id,

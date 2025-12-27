@@ -27,12 +27,33 @@ export const getPRApiUrl = (item: GitHubItem): string | null => {
   // Try to extract PR number from html_url
   // Format: https://github.com/owner/repo/pull/123
   const match = item.html_url?.match(/github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/);
-  if (!match) {
-    return null;
+  if (match) {
+    const [, repoFullName, prNumber] = match;
+    return `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}`;
   }
 
-  const [, repoFullName, prNumber] = match;
-  return `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}`;
+  // Try to extract from pull_request.url if available
+  // Format: https://api.github.com/repos/owner/repo/pulls/123
+  if (item.pull_request?.url) {
+    const apiMatch = item.pull_request.url.match(/api\.github\.com\/repos\/([^/]+\/[^/]+)\/pulls\/(\d+)/);
+    if (apiMatch) {
+      const [, repoFullName, prNumber] = apiMatch;
+      return `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}`;
+    }
+    // If it's a regular GitHub URL in pull_request.url
+    const htmlMatch = item.pull_request.url.match(/github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/);
+    if (htmlMatch) {
+      const [, repoFullName, prNumber] = htmlMatch;
+      return `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}`;
+    }
+  }
+
+  // If we have repository info and PR number, construct the URL
+  if (item.repository?.full_name && item.number) {
+    return `https://api.github.com/repos/${item.repository.full_name}/pulls/${item.number}`;
+  }
+
+  return null;
 };
 
 /**
@@ -56,6 +77,11 @@ export const needsPREnrichment = (item: GitHubItem): boolean => {
     return false;
   }
 
+  // Check if title contains "undefined" (indicates missing data from API)
+  if (item.title?.includes('undefined')) {
+    return true;
+  }
+
   // Check if title is a generic fallback (indicates missing data)
   if (item.title?.match(/^Pull Request #\d+ (opened|closed|labeled|unlabeled|synchronized|reopened|edited|assigned|unassigned|review_requested|review_request_removed)$/)) {
     return true;
@@ -68,6 +94,11 @@ export const needsPREnrichment = (item: GitHubItem): boolean => {
 
   // Check if title starts with "Review comment on: Pull Request #" (indicates missing PR title)
   if (item.title?.startsWith('Review comment on: Pull Request #')) {
+    return true;
+  }
+
+  // Check if title is just "Review on: Pull Request" without a number
+  if (item.title === 'Review on: Pull Request' || item.title === 'Review comment on: Pull Request') {
     return true;
   }
 
@@ -203,11 +234,14 @@ const applyPRDetailsToItem = (item: GitHubItem, prDetails: PRCacheRecord): GitHu
     enrichedItem.title = `Review on: ${prDetails.title}`;
   } else if (item.originalEventType === 'PullRequestReviewCommentEvent') {
     enrichedItem.title = `Review comment on: ${prDetails.title}`;
-  } else if (item.title?.match(/^Pull Request #\d+/)) {
-    // Extract the action from the current title
-    const actionMatch = item.title?.match(/^Pull Request #\d+ (.+)$/);
+  } else if (item.title?.match(/^Pull Request #\d+/) || item.title?.match(/^Pull Request (opened|closed|labeled|unlabeled|synchronized|reopened|edited|assigned|unassigned|review_requested|review_request_removed)$/)) {
+    // Extract the action from the current title (handles both "Pull Request #123 action" and "Pull Request action")
+    const actionMatch = item.title?.match(/^Pull Request (?:#\d+ )?(.+)$/);
     const action = actionMatch ? actionMatch[1] : '';
     enrichedItem.title = action ? `${prDetails.title} (${action})` : prDetails.title;
+  } else if (item.title?.includes('undefined')) {
+    // Handle titles with "undefined" - replace with actual PR title
+    enrichedItem.title = prDetails.title;
   }
 
   return enrichedItem;
