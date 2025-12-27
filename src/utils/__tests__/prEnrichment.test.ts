@@ -8,13 +8,41 @@ import {
 } from '../prEnrichment';
 import { GitHubItem } from '../../types';
 
+// Mock IndexedDB storage
+vi.mock('../indexedDB', () => {
+  const mockCache = new Map();
+  return {
+    prCacheStorage: {
+      store: vi.fn(async (prData) => {
+        mockCache.set(prData.id, prData);
+      }),
+      get: vi.fn(async (apiUrl) => {
+        return mockCache.get(apiUrl) || null;
+      }),
+      getAll: vi.fn(async () => {
+        return Array.from(mockCache.values());
+      }),
+      clear: vi.fn(async () => {
+        mockCache.clear();
+      }),
+    },
+    // Export a way to clear the mock cache for tests
+    __mockCacheClear: () => mockCache.clear(),
+  };
+});
+
 // Mock fetch globally
 global.fetch = vi.fn();
 
 describe('prEnrichment', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    clearPRCache();
+    // Clear the mock cache
+    const indexedDBModule = await import('../indexedDB') as Record<string, unknown>;
+    if (indexedDBModule.__mockCacheClear) {
+      (indexedDBModule.__mockCacheClear as () => void)();
+    }
+    await clearPRCache();
   });
 
   describe('needsPREnrichment', () => {
@@ -247,7 +275,8 @@ describe('prEnrichment', () => {
       expect(global.fetch).toHaveBeenCalledTimes(1); // Still 1, not 2
 
       // Cache should have 1 entry
-      expect(getPRCacheSize()).toBe(1);
+      const cacheSize = await getPRCacheSize();
+      expect(cacheSize).toBe(1);
     });
   });
 
@@ -350,4 +379,3 @@ describe('prEnrichment', () => {
     });
   });
 });
-

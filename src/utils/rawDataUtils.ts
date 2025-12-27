@@ -190,15 +190,21 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     };
   } else if (type === 'PushEvent') {
     // Handle PushEvent - create a GitHubItem from push event data
-    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string }>; distinct_size?: number };
+    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string; sha: string }>; distinct_size?: number; size?: number };
     const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
-    const commitCount = pushPayload?.commits?.length || 0;
-    const distinctCount = pushPayload?.distinct_size || 0;
-    
+
+    // GitHub API changes: commits array is the most reliable source
+    // Use commits.length as primary, fall back to distinct_size or size
+    const commitCount = pushPayload?.commits?.length || pushPayload?.size || 0;
+    const distinctCount = pushPayload?.distinct_size ?? commitCount; // Use commitCount as fallback
+
+    // Use the actual commits array length as the display count (most accurate)
+    const displayCount = commitCount > 0 ? commitCount : distinctCount;
+
     // Create a title that describes the push
-    let title = `Pushed ${distinctCount} commit${distinctCount !== 1 ? 's' : ''} to ${branch}`;
-    if (commitCount > distinctCount) {
-      title += ` (${commitCount} total)`;
+    let title = `Pushed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${branch}`;
+    if (distinctCount > 0 && commitCount > distinctCount) {
+      title += ` (${distinctCount} distinct)`;
     }
     
     // Create a body with commit messages if available

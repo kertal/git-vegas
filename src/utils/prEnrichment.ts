@@ -1,31 +1,24 @@
 import { GitHubItem } from '../types';
+import { prCacheStorage, PRCacheRecord } from './indexedDB';
 
 /**
  * Pull Request Enrichment Utilities
- * 
- * Fetches and caches full PR details when they're not available in the event payload
+ *
+ * Fetches and caches full PR details when they're not available in the event payload.
+ * Uses IndexedDB for persistent caching with SWR (stale-while-revalidate) pattern.
  */
 
-interface PRDetails {
-  title: string;
-  state: string;
-  body: string;
-  html_url: string;
-  labels: Array<{ name: string; color?: string; description?: string }>;
-  updated_at: string;
-  closed_at?: string;
-  merged_at?: string;
-  merged?: boolean;
-}
+// Cache expiry time: 24 hours (PR details don't change frequently)
+const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
-// In-memory cache for PR details to avoid duplicate fetches
-const prCache = new Map<string, PRDetails>();
+// In-memory cache for session-level deduplication of in-flight requests
+const inFlightRequests = new Map<string, Promise<PRCacheRecord | null>>();
 
 /**
  * Extracts PR API URL from a GitHubItem
  * Returns null if the item is not a PR or doesn't have a PR URL
  */
-const getPRApiUrl = (item: GitHubItem): string | null => {
+export const getPRApiUrl = (item: GitHubItem): string | null => {
   // Check if this is a PR-related item
   if (!item.originalEventType?.includes('PullRequest')) {
     return null;
@@ -40,6 +33,18 @@ const getPRApiUrl = (item: GitHubItem): string | null => {
 
   const [, repoFullName, prNumber] = match;
   return `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}`;
+};
+
+/**
+ * Extracts repo info from API URL
+ */
+const extractRepoInfo = (apiUrl: string): { repoFullName: string; prNumber: number } | null => {
+  const match = apiUrl.match(/repos\/([^/]+\/[^/]+)\/pulls\/(\d+)/);
+  if (!match) return null;
+  return {
+    repoFullName: match[1],
+    prNumber: parseInt(match[2], 10),
+  };
 };
 
 /**
@@ -70,87 +75,119 @@ export const needsPREnrichment = (item: GitHubItem): boolean => {
 };
 
 /**
- * Fetches PR details from GitHub API
+ * Checks if cached data is still fresh
  */
-const fetchPRDetails = async (
-  apiUrl: string,
-  githubToken?: string
-): Promise<PRDetails | null> => {
-  // Check cache first
-  if (prCache.has(apiUrl)) {
-    return prCache.get(apiUrl)!;
-  }
-
-  try {
-    const headers: HeadersInit = {
-      Accept: 'application/vnd.github.v3+json',
-    };
-
-    if (githubToken) {
-      headers['Authorization'] = `token ${githubToken}`;
-    }
-
-    const response = await fetch(apiUrl, { headers });
-
-    if (!response.ok) {
-      console.warn(`Failed to fetch PR details from ${apiUrl}: ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-
-    const details: PRDetails = {
-      title: data.title,
-      state: data.state,
-      body: data.body || '',
-      html_url: data.html_url,
-      labels: data.labels || [],
-      updated_at: data.updated_at,
-      closed_at: data.closed_at,
-      merged_at: data.merged_at,
-      merged: data.merged,
-    };
-
-    // Cache the result
-    prCache.set(apiUrl, details);
-
-    return details;
-  } catch (error) {
-    console.warn(`Error fetching PR details from ${apiUrl}:`, error);
-    return null;
-  }
+const isCacheFresh = (cachedAt: number): boolean => {
+  return Date.now() - cachedAt < CACHE_EXPIRY_MS;
 };
 
 /**
- * Enriches a single GitHubItem with full PR details if needed
+ * Fetches PR details from GitHub API and stores in cache
  */
-export const enrichItemWithPRDetails = async (
-  item: GitHubItem,
+const fetchAndCachePRDetails = async (
+  apiUrl: string,
   githubToken?: string
-): Promise<GitHubItem> => {
-  // Don't fetch without a token to respect rate limits
+): Promise<PRCacheRecord | null> => {
+  // Check for in-flight request to avoid duplicate fetches
+  if (inFlightRequests.has(apiUrl)) {
+    return inFlightRequests.get(apiUrl)!;
+  }
+
+  const repoInfo = extractRepoInfo(apiUrl);
+  if (!repoInfo) return null;
+
+  const fetchPromise = (async (): Promise<PRCacheRecord | null> => {
+    try {
+      const headers: HeadersInit = {
+        Accept: 'application/vnd.github.v3+json',
+      };
+
+      if (githubToken) {
+        headers['Authorization'] = `token ${githubToken}`;
+      }
+
+      const response = await fetch(apiUrl, { headers });
+
+      if (!response.ok) {
+        console.warn(`Failed to fetch PR details from ${apiUrl}: ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+
+      const prRecord: PRCacheRecord = {
+        id: apiUrl,
+        prNumber: repoInfo.prNumber,
+        repoFullName: repoInfo.repoFullName,
+        title: data.title,
+        state: data.state,
+        body: data.body || '',
+        html_url: data.html_url,
+        labels: data.labels || [],
+        updated_at: data.updated_at,
+        closed_at: data.closed_at,
+        merged_at: data.merged_at,
+        merged: data.merged,
+        cachedAt: Date.now(),
+      };
+
+      // Store in IndexedDB cache
+      await prCacheStorage.store(prRecord);
+
+      return prRecord;
+    } catch (error) {
+      console.warn(`Error fetching PR details from ${apiUrl}:`, error);
+      return null;
+    } finally {
+      inFlightRequests.delete(apiUrl);
+    }
+  })();
+
+  inFlightRequests.set(apiUrl, fetchPromise);
+  return fetchPromise;
+};
+
+/**
+ * Gets PR details from cache or fetches if not available
+ * Implements SWR pattern: returns cached data immediately if available,
+ * then fetches fresh data in background if cache is stale
+ */
+export const getPRDetails = async (
+  apiUrl: string,
+  githubToken?: string,
+  forceRefresh = false
+): Promise<PRCacheRecord | null> => {
+  // Try to get from cache first
+  const cached = await prCacheStorage.get(apiUrl);
+
+  if (cached && !forceRefresh) {
+    // If cache is fresh, return it directly
+    if (isCacheFresh(cached.cachedAt)) {
+      return cached;
+    }
+
+    // Cache is stale - return stale data but trigger background refresh
+    // Don't await the refresh - let it happen in background
+    if (githubToken) {
+      fetchAndCachePRDetails(apiUrl, githubToken).catch(err => {
+        console.warn('Background PR refresh failed:', err);
+      });
+    }
+    return cached;
+  }
+
+  // No cache or force refresh - fetch fresh data
   if (!githubToken) {
-    return item;
+    return cached; // Return stale cache if no token available
   }
 
-  // Check if enrichment is needed
-  if (!needsPREnrichment(item)) {
-    return item;
-  }
+  return fetchAndCachePRDetails(apiUrl, githubToken);
+};
 
-  // Get PR API URL
-  const apiUrl = getPRApiUrl(item);
-  if (!apiUrl) {
-    return item;
-  }
-
-  // Fetch PR details
-  const prDetails = await fetchPRDetails(apiUrl, githubToken);
-  if (!prDetails) {
-    return item;
-  }
-
-  // Enrich the item
+/**
+ * Applies PR details to a GitHubItem
+ */
+const applyPRDetailsToItem = (item: GitHubItem, prDetails: PRCacheRecord): GitHubItem => {
   const enrichedItem: GitHubItem = {
     ...item,
     labels: prDetails.labels.length > 0 ? prDetails.labels : item.labels,
@@ -177,63 +214,158 @@ export const enrichItemWithPRDetails = async (
 };
 
 /**
+ * Enriches a single GitHubItem with full PR details if needed
+ */
+export const enrichItemWithPRDetails = async (
+  item: GitHubItem,
+  githubToken?: string
+): Promise<GitHubItem> => {
+  // Don't fetch without a token to respect rate limits
+  if (!githubToken) {
+    return item;
+  }
+
+  // Check if enrichment is needed
+  if (!needsPREnrichment(item)) {
+    return item;
+  }
+
+  // Get PR API URL
+  const apiUrl = getPRApiUrl(item);
+  if (!apiUrl) {
+    return item;
+  }
+
+  // Get PR details (from cache or fresh fetch)
+  const prDetails = await getPRDetails(apiUrl, githubToken);
+  if (!prDetails) {
+    return item;
+  }
+
+  return applyPRDetailsToItem(item, prDetails);
+};
+
+/**
+ * Pre-loads PR cache for a set of items that need enrichment
+ * Returns items enriched with cached data (if available)
+ */
+export const preloadPRCache = async (
+  items: GitHubItem[]
+): Promise<{ enrichedItems: GitHubItem[]; itemsNeedingFetch: GitHubItem[] }> => {
+  const enrichedItems: GitHubItem[] = [];
+  const itemsNeedingFetch: GitHubItem[] = [];
+
+  // Get all cached PR data
+  const allCached = await prCacheStorage.getAll();
+  const cacheMap = new Map(allCached.map(pr => [pr.id, pr]));
+
+  for (const item of items) {
+    if (!needsPREnrichment(item)) {
+      enrichedItems.push(item);
+      continue;
+    }
+
+    const apiUrl = getPRApiUrl(item);
+    if (!apiUrl) {
+      enrichedItems.push(item);
+      continue;
+    }
+
+    const cached = cacheMap.get(apiUrl);
+    if (cached) {
+      // Apply cached data
+      enrichedItems.push(applyPRDetailsToItem(item, cached));
+
+      // If cache is stale, mark for background refresh
+      if (!isCacheFresh(cached.cachedAt)) {
+        itemsNeedingFetch.push(item);
+      }
+    } else {
+      // No cache - needs fresh fetch
+      enrichedItems.push(item);
+      itemsNeedingFetch.push(item);
+    }
+  }
+
+  return { enrichedItems, itemsNeedingFetch };
+};
+
+/**
  * Enriches multiple GitHubItems with PR details in batch
- * Only fetches details for items that need enrichment
+ * Implements SWR pattern:
+ * 1. First pass: Apply cached data to all items (instant)
+ * 2. Second pass: Fetch missing/stale data in background
  */
 export const enrichItemsWithPRDetails = async (
   items: GitHubItem[],
   githubToken?: string,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
+  onInitialEnrichmentDone?: (items: GitHubItem[]) => void
 ): Promise<GitHubItem[]> => {
   // Don't fetch without a token
   if (!githubToken) {
     return items;
   }
 
-  // Filter items that need enrichment
-  const itemsNeedingEnrichment = items.filter(needsPREnrichment);
-  
-  if (itemsNeedingEnrichment.length === 0) {
-    return items;
+  // First pass: Apply cached data immediately (SWR - stale data first)
+  const { enrichedItems, itemsNeedingFetch } = await preloadPRCache(items);
+
+  // If we have enriched data, notify immediately (stale-while-revalidate)
+  if (onInitialEnrichmentDone && itemsNeedingFetch.length > 0) {
+    onInitialEnrichmentDone(enrichedItems);
   }
 
-  console.log(`Enriching ${itemsNeedingEnrichment.length} items with PR details...`);
+  // If nothing needs fetching, return enriched items
+  if (itemsNeedingFetch.length === 0) {
+    return enrichedItems;
+  }
 
-  // Create a map for quick lookup
+  console.log(`Fetching ${itemsNeedingFetch.length} PR details...`);
+
+  // Second pass: Fetch missing/stale data
   const enrichmentMap = new Map<number, GitHubItem>();
 
-  // Enrich items that need it (with progress tracking)
   let processed = 0;
-  for (const item of itemsNeedingEnrichment) {
-    const enrichedItem = await enrichItemWithPRDetails(item, githubToken);
-    enrichmentMap.set(item.id, enrichedItem);
-    
+  for (const item of itemsNeedingFetch) {
+    const apiUrl = getPRApiUrl(item);
+    if (!apiUrl) {
+      processed++;
+      continue;
+    }
+
+    // Force refresh for items in the fetch list
+    const prDetails = await fetchAndCachePRDetails(apiUrl, githubToken);
+    if (prDetails) {
+      enrichmentMap.set(item.id, applyPRDetailsToItem(item, prDetails));
+    }
+
     processed++;
     if (onProgress) {
-      onProgress(processed, itemsNeedingEnrichment.length);
+      onProgress(processed, itemsNeedingFetch.length);
     }
 
     // Add a small delay to respect rate limits
-    if (processed < itemsNeedingEnrichment.length) {
+    if (processed < itemsNeedingFetch.length) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
-  // Return all items with enriched ones replaced
-  return items.map(item => enrichmentMap.get(item.id) || item);
+  // Return all items with freshly enriched ones replaced
+  return enrichedItems.map(item => enrichmentMap.get(item.id) || item);
 };
 
 /**
  * Clears the PR details cache
  */
-export const clearPRCache = (): void => {
-  prCache.clear();
+export const clearPRCache = async (): Promise<void> => {
+  await prCacheStorage.clear();
+  inFlightRequests.clear();
 };
 
 /**
  * Gets the current cache size (for debugging/monitoring)
  */
-export const getPRCacheSize = (): number => {
-  return prCache.size;
+export const getPRCacheSize = async (): Promise<number> => {
+  const all = await prCacheStorage.getAll();
+  return all.length;
 };
-
