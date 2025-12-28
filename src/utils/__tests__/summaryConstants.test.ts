@@ -1,8 +1,8 @@
-import { 
-  SUMMARY_GROUP_NAMES, 
-  getAllGroupNames, 
+import {
+  SUMMARY_GROUP_NAMES,
+  getAllGroupNames,
   createEmptyGroups
-} from '../summaryConstants';
+} from '../summary';
 
 describe('summaryConstants', () => {
   describe('SUMMARY_GROUP_NAMES', () => {

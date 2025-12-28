@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
-import { EventsData } from '../utils/indexedDB';
+import { EventsData } from '../utils/storage';
 import { validateUsernameList, isValidDateString } from '../utils';
 import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
 

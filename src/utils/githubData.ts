@@ -1,11 +1,17 @@
+/**
+ * GitHub Data Utilities
+ *
+ * Consolidates all GitHub data transformation and enrichment:
+ * - Event to GitHubItem transformation
+ * - Raw data processing and categorization
+ * - PR detail enrichment
+ */
+
 import { GitHubItem, GitHubEvent } from '../types';
 
-/**
- * Raw Data Utilities
- * 
- * Provides functions for categorizing and processing raw data in the UI
- * instead of on the backend.
- */
+// ============================================================================
+// EVENT TRANSFORMATION
+// ============================================================================
 
 /**
  * Transforms GitHub Event to GitHubItem
@@ -31,7 +37,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: issue.html_url,
       title: issue.title,
-      created_at: event.created_at, // Use event timestamp, not issue timestamp
+      created_at: event.created_at,
       updated_at: issue.updated_at,
       state: issue.state,
       body: issue.body,
@@ -43,32 +49,28 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       closed_at: issue.closed_at,
       number: issue.number,
-      user: actorUser, // Use event actor instead of issue user
-      assignee: (payload as any).issue?.assignee || null, // Extract assignee from original payload
-      assignees: (payload as any).issue?.assignees || [],
+      user: actorUser,
+      assignee: (payload as Record<string, unknown>).issue?.assignee || null,
+      assignees: (payload as Record<string, unknown>).issue?.assignees || [],
       pull_request: issue.pull_request,
       original: payload,
       originalEventType: type,
     };
   } else if (type === 'PullRequestEvent' && payload.pull_request) {
     const pr = payload.pull_request;
-    const payloadWithAction = payload as { action?: string; number?: number; labels?: any[] };
-    
-    // GitHub API changed format - pr object no longer contains full details
-    // Construct what we can from available data
+    const payloadWithAction = payload as { action?: string; number?: number; labels?: { name: string; color?: string; description?: string }[] };
+
     const prNumber = pr.number || payloadWithAction.number;
     const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
     const action = payloadWithAction.action || 'updated';
-    
-    // Create a descriptive title based on the action since title is not provided
     const title = pr.title || `Pull Request #${prNumber} ${action}`;
-    
+
     return {
       id: pr.id,
       event_id: event.id,
       html_url: htmlUrl,
       title: title,
-      created_at: event.created_at, // Use event timestamp, not PR timestamp
+      created_at: event.created_at,
       updated_at: pr.updated_at || event.created_at,
       state: pr.state || 'open',
       body: pr.body || `Pull request ${action} by ${actorUser.login}`,
@@ -82,7 +84,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of PR user
+      user: actorUser,
       pull_request: {
         merged_at: pr.merged_at,
         url: htmlUrl,
@@ -93,18 +95,17 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   } else if (type === 'PullRequestReviewEvent' && payload.pull_request) {
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
-    
-    // GitHub API changed format - pr object no longer contains full details
+
     const prNumber = pr.number || payloadWithAction.number;
     const htmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
     const prTitle = pr.title || `Pull Request #${prNumber}`;
-    
+
     return {
       id: pr.id,
       event_id: event.id,
       html_url: htmlUrl,
       title: `Review on: ${prTitle}`,
-      created_at: event.created_at, // Use event timestamp, not PR timestamp
+      created_at: event.created_at,
       updated_at: pr.updated_at || event.created_at,
       state: pr.state || 'open',
       body: pr.body || `Review by ${actorUser.login}`,
@@ -118,7 +119,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of PR user
+      user: actorUser,
       pull_request: {
         merged_at: pr.merged_at,
         url: htmlUrl,
@@ -134,7 +135,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: comment.html_url,
       title: `Comment on: ${issue.title}`,
-      created_at: event.created_at, // Use event timestamp, not comment timestamp
+      created_at: event.created_at,
       updated_at: comment.updated_at,
       state: issue.state,
       body: comment.body,
@@ -146,7 +147,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       },
       closed_at: issue.closed_at,
       number: issue.number,
-      user: actorUser, // Use event actor instead of comment user
+      user: actorUser,
       pull_request: issue.pull_request,
       original: payload,
       originalEventType: type,
@@ -155,18 +156,17 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const comment = payload.comment;
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
-    
-    // GitHub API changed format - pr object no longer contains full details
+
     const prNumber = pr.number || payloadWithAction.number;
     const prHtmlUrl = pr.html_url || `https://github.com/${repo.name}/pull/${prNumber}`;
     const prTitle = pr.title || `Pull Request #${prNumber}`;
-    
+
     return {
       id: comment.id,
       event_id: event.id,
       html_url: comment.html_url,
       title: `Review comment on: ${prTitle}`,
-      created_at: event.created_at, // Use event timestamp, not comment timestamp
+      created_at: event.created_at,
       updated_at: comment.updated_at,
       state: pr.state || 'open',
       body: comment.body,
@@ -180,7 +180,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of comment user
+      user: actorUser,
       pull_request: {
         merged_at: pr.merged_at,
         url: prHtmlUrl,
@@ -189,41 +189,42 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       originalEventType: type,
     };
   } else if (type === 'PushEvent') {
-    // Handle PushEvent - create a GitHubItem from push event data
-    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string }>; distinct_size?: number };
+    const pushPayload = payload as {
+      ref?: string;
+      commits?: Array<{ message: string }>;
+      distinct_size?: number;
+    };
     const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
     const commitCount = pushPayload?.commits?.length || 0;
     const distinctCount = pushPayload?.distinct_size || 0;
-    
-    // Create a title that describes the push
+
     let title = `Pushed ${distinctCount} commit${distinctCount !== 1 ? 's' : ''} to ${branch}`;
     if (commitCount > distinctCount) {
       title += ` (${commitCount} total)`;
     }
-    
-    // Create a body with commit messages if available
+
     let body = '';
     if (pushPayload?.commits && pushPayload.commits.length > 0) {
       body = pushPayload.commits
-        .slice(0, 5) // Show first 5 commits
-        .map((commit) => `- ${commit.message ? commit.message.split('\n')[0] : 'No commit message'}`) // First line of commit message
+        .slice(0, 5)
+        .map((commit) => `- ${commit.message ? commit.message.split('\n')[0] : 'No commit message'}`)
         .join('\n');
-      
+
       if (pushPayload.commits.length > 5) {
         body += `\n... and ${pushPayload.commits.length - 5} more commits`;
       }
     }
-    
+
     return {
-      id: parseInt(event.id), // Convert string ID to number for GitHubItem
+      id: parseInt(event.id),
       event_id: event.id,
       html_url: `https://github.com/${repo.name}/commits/${branch}`,
       title: title,
       created_at: event.created_at,
-      updated_at: event.created_at, // Push events don't have updated_at, use created_at
-      state: 'open', // Push events are always "open"
+      updated_at: event.created_at,
+      state: 'open',
       body: body,
-      labels: [], // Push events don't have labels
+      labels: [],
       repository_url: `https://api.github.com/repos/${repo.name}`,
       repository: {
         full_name: repo.name,
@@ -232,17 +233,20 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       user: actorUser,
       original: payload,
       originalEventType: type,
-      // Push events don't have pull_request, closed_at, merged_at, or number
     };
   } else if (type === 'CreateEvent') {
-    // Handle CreateEvent - create a GitHubItem from create event data
-    const createPayload = payload as { ref_type?: string; ref?: string; master_branch?: string; description?: string };
+    const createPayload = payload as {
+      ref_type?: string;
+      ref?: string;
+      master_branch?: string;
+      description?: string;
+    };
     const refType = createPayload?.ref_type || 'repository';
     const ref = createPayload?.ref || '';
-    
+
     let title = '';
     let htmlUrl = `https://github.com/${repo.name}`;
-    
+
     if (refType === 'branch') {
       title = `Created branch ${ref}`;
       htmlUrl = `https://github.com/${repo.name}/tree/${ref}`;
@@ -255,7 +259,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         title += `: ${createPayload.description}`;
       }
     }
-    
+
     return {
       id: parseInt(event.id),
       event_id: event.id,
@@ -276,11 +280,10 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       originalEventType: type,
     };
   } else if (type === 'ForkEvent') {
-    // Handle ForkEvent - create a GitHubItem from fork event data
     const forkPayload = payload as { forkee?: { full_name?: string; html_url?: string } };
     const forkeeName = forkPayload?.forkee?.full_name || 'unknown repository';
     const forkeeUrl = forkPayload?.forkee?.html_url || `https://github.com/${repo.name}`;
-    
+
     return {
       id: parseInt(event.id),
       event_id: event.id,
@@ -301,9 +304,8 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       originalEventType: type,
     };
   } else if (type === 'WatchEvent') {
-    // Handle WatchEvent - create a GitHubItem from watch event data
     const action = payload?.action || 'starred';
-    
+
     return {
       id: parseInt(event.id),
       event_id: event.id,
@@ -324,7 +326,6 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       originalEventType: type,
     };
   } else if (type === 'PublicEvent') {
-    // Handle PublicEvent - create a GitHubItem from public event data
     return {
       id: parseInt(event.id),
       event_id: event.id,
@@ -345,11 +346,10 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       originalEventType: type,
     };
   } else if (type === 'DeleteEvent') {
-    // Handle DeleteEvent - create a GitHubItem from delete event data
     const deletePayload = payload as { ref_type?: string; ref?: string };
     const refType = deletePayload?.ref_type || 'branch';
     const ref = deletePayload?.ref || '';
-    
+
     let title = '';
     if (refType === 'branch') {
       title = `Deleted branch ${ref}`;
@@ -358,7 +358,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     } else {
       title = `Deleted ${refType}`;
     }
-    
+
     return {
       id: parseInt(event.id),
       event_id: event.id,
@@ -379,37 +379,38 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       originalEventType: type,
     };
   } else if (type === 'GollumEvent') {
-    // Handle GollumEvent - create a GitHubItem from gollum event data
-    const gollumPayload = payload as { pages?: Array<{ page_name: string; title: string; action: string; html_url: string }> };
+    const gollumPayload = payload as {
+      pages?: Array<{ page_name: string; title: string; action: string; html_url: string }>;
+    };
     const pages = gollumPayload?.pages || [];
-    
+
     if (pages.length === 0) {
-      return null; // No pages to display
+      return null;
     }
-    
-    const page = pages[0]; // Show the first page
+
+    const page = pages[0];
     const action = page.action || 'updated';
     const pageCount = pages.length;
-    
+
     let title = '';
     if (pageCount === 1) {
       title = `${action === 'created' ? 'Created' : action === 'edited' ? 'Updated' : 'Deleted'} wiki page: ${page.title}`;
     } else {
       title = `${action === 'created' ? 'Created' : action === 'edited' ? 'Updated' : 'Deleted'} ${pageCount} wiki pages`;
     }
-    
+
     let body = '';
     if (pages.length > 0) {
       body = pages
         .slice(0, 5)
         .map((p) => `- ${p.title} (${p.action})`)
         .join('\n');
-      
+
       if (pages.length > 5) {
         body += `\n... and ${pages.length - 5} more pages`;
       }
     }
-    
+
     return {
       id: parseInt(event.id),
       event_id: event.id,
@@ -431,17 +432,15 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     };
   }
 
-  // Return null for events that don't contain relevant data
   return null;
 };
 
+// ============================================================================
+// RAW DATA PROCESSING
+// ============================================================================
+
 /**
  * Categorizes raw GitHub events into processed items
- *
- * @param rawEvents - Array of raw GitHub events
- * @param startDate - Start date for filtering (YYYY-MM-DD)
- * @param endDate - End date for filtering (YYYY-MM-DD)
- * @returns Array of processed GitHub items
  */
 export const processRawEvents = (
   rawEvents: GitHubEvent[],
@@ -449,23 +448,20 @@ export const processRawEvents = (
   endDate?: string
 ): GitHubItem[] => {
   const items: GitHubItem[] = [];
-  
-  // Set up date filtering if dates are provided
+
   const startDateTime = startDate ? new Date(startDate).getTime() : 0;
   const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
 
   for (const event of rawEvents) {
     const eventTime = new Date(event.created_at).getTime();
 
-    // Filter by date range if dates are provided
     if (startDate && eventTime < startDateTime) {
-      continue; // Skip events before start date
+      continue;
     }
     if (endDate && eventTime > endDateTime) {
-      continue; // Skip events after end date
+      continue;
     }
 
-    // Transform event to item
     const item = transformEventToItem(event);
     if (item) {
       items.push(item);
@@ -478,47 +474,39 @@ export const processRawEvents = (
 /**
  * Categorizes raw search API results (already in GitHubItem format)
  * This is mainly for consistency, date filtering, and deduplication
- *
- * @param rawItems - Array of raw GitHub items from search API
- * @param startDate - Start date for filtering (YYYY-MM-DD)
- * @param endDate - End date for filtering (YYYY-MM-DD)
- * @returns Array of filtered and deduplicated GitHub items
  */
 export const categorizeRawSearchItems = (
   rawItems: GitHubItem[],
   startDate?: string,
   endDate?: string
 ): GitHubItem[] => {
-  // Set up date filtering if dates are provided
   const startDateTime = startDate ? new Date(startDate).getTime() : 0;
   const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
 
   // First filter by date and validate required fields
-  const dateFilteredItems = rawItems.filter(item => {
-    // Validate required fields - skip items with missing title
+  const dateFilteredItems = rawItems.filter((item) => {
     if (!item.title) {
       console.warn('Skipping item with missing title:', item.html_url || item.id);
       return false;
     }
-    
+
     const itemTime = new Date(item.updated_at).getTime();
 
-    // Filter by date range if dates are provided
     if (startDate && itemTime < startDateTime) {
-      return false; // Skip items before start date
+      return false;
     }
     if (endDate && itemTime > endDateTime) {
-      return false; // Skip items after end date
+      return false;
     }
 
     return true;
   });
 
-  // Then remove duplicates based on html_url (unique identifier for issues/PRs)
+  // Then remove duplicates based on html_url
   const urlSet = new Set<string>();
   const deduplicatedItems: GitHubItem[] = [];
-  
-  dateFilteredItems.forEach(item => {
+
+  dateFilteredItems.forEach((item) => {
     if (!urlSet.has(item.html_url)) {
       urlSet.add(item.html_url);
       deduplicatedItems.push(item);
@@ -530,9 +518,6 @@ export const categorizeRawSearchItems = (
 
 /**
  * Gets all available labels from raw events
- *
- * @param rawEvents - Array of raw GitHub events
- * @returns Array of unique label names
  */
 export const getAvailableLabelsFromRawEvents = (rawEvents: GitHubEvent[]): string[] => {
   const labelSet = new Set<string>();
@@ -551,9 +536,6 @@ export const getAvailableLabelsFromRawEvents = (rawEvents: GitHubEvent[]): strin
 
 /**
  * Gets all available repositories from raw events
- *
- * @param rawEvents - Array of raw GitHub events
- * @returns Array of unique repository names
  */
 export const getAvailableReposFromRawEvents = (rawEvents: GitHubEvent[]): string[] => {
   const repoSet = new Set<string>();
@@ -570,9 +552,6 @@ export const getAvailableReposFromRawEvents = (rawEvents: GitHubEvent[]): string
 
 /**
  * Gets all available users from raw events
- *
- * @param rawEvents - Array of raw GitHub events
- * @returns Array of unique usernames
  */
 export const getAvailableUsersFromRawEvents = (rawEvents: GitHubEvent[]): string[] => {
   const userSet = new Set<string>();
@@ -585,4 +564,223 @@ export const getAvailableUsersFromRawEvents = (rawEvents: GitHubEvent[]): string
   }
 
   return Array.from(userSet).sort();
-}; 
+};
+
+// ============================================================================
+// PR ENRICHMENT
+// ============================================================================
+
+interface PRDetails {
+  title: string;
+  state: string;
+  body: string;
+  html_url: string;
+  labels: Array<{ name: string; color?: string; description?: string }>;
+  updated_at: string;
+  closed_at?: string;
+  merged_at?: string;
+  merged?: boolean;
+}
+
+// In-memory cache for PR details to avoid duplicate fetches
+const prCache = new Map<string, PRDetails>();
+
+/**
+ * Extracts PR API URL from a GitHubItem
+ * Returns null if the item is not a PR or doesn't have a PR URL
+ */
+const getPRApiUrl = (item: GitHubItem): string | null => {
+  if (!item.originalEventType?.includes('PullRequest')) {
+    return null;
+  }
+
+  const match = item.html_url?.match(/github\.com\/([^/]+\/[^/]+)\/pull\/(\d+)/);
+  if (!match) {
+    return null;
+  }
+
+  const [, repoFullName, prNumber] = match;
+  return `https://api.github.com/repos/${repoFullName}/pulls/${prNumber}`;
+};
+
+/**
+ * Checks if an item needs PR details enrichment
+ */
+export const needsPREnrichment = (item: GitHubItem): boolean => {
+  if (!item.originalEventType?.includes('PullRequest')) {
+    return false;
+  }
+
+  // Check if title is a generic fallback (indicates missing data)
+  if (
+    item.title?.match(
+      /^Pull Request #\d+ (opened|closed|labeled|unlabeled|synchronized|reopened|edited|assigned|unassigned|review_requested|review_request_removed)$/
+    )
+  ) {
+    return true;
+  }
+
+  // Check if title starts with "Review on: Pull Request #" (indicates missing PR title)
+  if (item.title?.startsWith('Review on: Pull Request #')) {
+    return true;
+  }
+
+  // Check if title starts with "Review comment on: Pull Request #" (indicates missing PR title)
+  if (item.title?.startsWith('Review comment on: Pull Request #')) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Fetches PR details from GitHub API
+ */
+const fetchPRDetails = async (apiUrl: string, githubToken?: string): Promise<PRDetails | null> => {
+  if (prCache.has(apiUrl)) {
+    return prCache.get(apiUrl)!;
+  }
+
+  try {
+    const headers: HeadersInit = {
+      Accept: 'application/vnd.github.v3+json',
+    };
+
+    if (githubToken) {
+      headers['Authorization'] = `token ${githubToken}`;
+    }
+
+    const response = await fetch(apiUrl, { headers });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch PR details from ${apiUrl}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    const details: PRDetails = {
+      title: data.title,
+      state: data.state,
+      body: data.body || '',
+      html_url: data.html_url,
+      labels: data.labels || [],
+      updated_at: data.updated_at,
+      closed_at: data.closed_at,
+      merged_at: data.merged_at,
+      merged: data.merged,
+    };
+
+    prCache.set(apiUrl, details);
+
+    return details;
+  } catch (error) {
+    console.warn(`Error fetching PR details from ${apiUrl}:`, error);
+    return null;
+  }
+};
+
+/**
+ * Enriches a single GitHubItem with full PR details if needed
+ */
+export const enrichItemWithPRDetails = async (
+  item: GitHubItem,
+  githubToken?: string
+): Promise<GitHubItem> => {
+  if (!githubToken) {
+    return item;
+  }
+
+  if (!needsPREnrichment(item)) {
+    return item;
+  }
+
+  const apiUrl = getPRApiUrl(item);
+  if (!apiUrl) {
+    return item;
+  }
+
+  const prDetails = await fetchPRDetails(apiUrl, githubToken);
+  if (!prDetails) {
+    return item;
+  }
+
+  const enrichedItem: GitHubItem = {
+    ...item,
+    labels: prDetails.labels.length > 0 ? prDetails.labels : item.labels,
+    updated_at: prDetails.updated_at || item.updated_at,
+    closed_at: prDetails.closed_at || item.closed_at,
+    merged_at: prDetails.merged_at || item.merged_at,
+    merged: prDetails.merged !== undefined ? prDetails.merged : item.merged,
+    state: prDetails.state || item.state,
+  };
+
+  // Update title based on event type
+  if (item.originalEventType === 'PullRequestReviewEvent') {
+    enrichedItem.title = `Review on: ${prDetails.title}`;
+  } else if (item.originalEventType === 'PullRequestReviewCommentEvent') {
+    enrichedItem.title = `Review comment on: ${prDetails.title}`;
+  } else if (item.title?.match(/^Pull Request #\d+/)) {
+    const actionMatch = item.title?.match(/^Pull Request #\d+ (.+)$/);
+    const action = actionMatch ? actionMatch[1] : '';
+    enrichedItem.title = action ? `${prDetails.title} (${action})` : prDetails.title;
+  }
+
+  return enrichedItem;
+};
+
+/**
+ * Enriches multiple GitHubItems with PR details in batch
+ * Only fetches details for items that need enrichment
+ */
+export const enrichItemsWithPRDetails = async (
+  items: GitHubItem[],
+  githubToken?: string,
+  onProgress?: (current: number, total: number) => void
+): Promise<GitHubItem[]> => {
+  if (!githubToken) {
+    return items;
+  }
+
+  const itemsNeedingEnrichment = items.filter(needsPREnrichment);
+
+  if (itemsNeedingEnrichment.length === 0) {
+    return items;
+  }
+
+  console.log(`Enriching ${itemsNeedingEnrichment.length} items with PR details...`);
+
+  const enrichmentMap = new Map<number, GitHubItem>();
+
+  let processed = 0;
+  for (const item of itemsNeedingEnrichment) {
+    const enrichedItem = await enrichItemWithPRDetails(item, githubToken);
+    enrichmentMap.set(item.id, enrichedItem);
+
+    processed++;
+    if (onProgress) {
+      onProgress(processed, itemsNeedingEnrichment.length);
+    }
+
+    // Add a small delay to respect rate limits
+    if (processed < itemsNeedingEnrichment.length) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+  }
+
+  return items.map((item) => enrichmentMap.get(item.id) || item);
+};
+
+/**
+ * Clears the PR details cache
+ */
+export const clearPRCache = (): void => {
+  prCache.clear();
+};
+
+/**
+ * Gets the current cache size (for debugging/monitoring)
+ */
+export const getPRCacheSize = (): number => {
+  return prCache.size;
+};

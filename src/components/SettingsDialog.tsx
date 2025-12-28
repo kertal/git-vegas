@@ -13,8 +13,7 @@ import {
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { useFormContext } from '../App';
 import { SettingsDialogProps } from '../types';
-import { clearAllGitHubData } from '../utils/storageUtils';
-import { eventsStorage } from '../utils/indexedDB';
+import { clearAllGitHubData, eventsStorage } from '../utils/storage';
 
 const SettingsDialog = memo(function SettingsDialog({
   isOpen,

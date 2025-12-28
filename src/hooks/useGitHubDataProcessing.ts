@@ -1,8 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
-import { processRawEvents, categorizeRawSearchItems } from '../utils/rawDataUtils';
-import { filterItemsByAdvancedSearch } from '../utils/viewFiltering';
-import { enrichItemsWithPRDetails } from '../utils/prEnrichment';
+import { processRawEvents, categorizeRawSearchItems, enrichItemsWithPRDetails } from '../utils/githubData';
+import { filterItemsByAdvancedSearch } from '../utils/filtering';
 
 interface UseGitHubDataProcessingProps {
   indexedDBEvents: GitHubEvent[];

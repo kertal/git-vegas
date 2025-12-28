@@ -5,7 +5,7 @@ import {
   enrichItemsWithPRDetails,
   clearPRCache,
   getPRCacheSize,
-} from '../prEnrichment';
+} from '../githubData';
 import { GitHubItem } from '../../types';
 
 // Mock fetch globally

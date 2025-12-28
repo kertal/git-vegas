@@ -4,8 +4,8 @@ import {
   categorizeItemWithoutDateFiltering,
   groupSummaryData,
   isDateInRange,
-} from '../summaryGrouping';
-import { SUMMARY_GROUP_NAMES } from '../summaryConstants';
+  SUMMARY_GROUP_NAMES,
+} from '../summary';
 import { GitHubItem } from '../../types';
 
 describe('categorizeItem - PRs Updated', () => {

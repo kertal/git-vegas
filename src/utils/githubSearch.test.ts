@@ -20,7 +20,7 @@ vi.mock('../utils', () => ({
   updateUrlParams: vi.fn(),
 }));
 
-vi.mock('./usernameCache', () => ({
+vi.mock('./storage', () => ({
   categorizeUsernames: vi.fn(),
   getInvalidUsernames: vi.fn(),
 }));
@@ -36,7 +36,7 @@ import {
   validateUsernameList,
   updateUrlParams,
 } from '../utils';
-import { categorizeUsernames, getInvalidUsernames } from './usernameCache';
+import { categorizeUsernames, getInvalidUsernames } from './storage';
 
 describe('githubSearch utilities', () => {
   const mockCache: UsernameCache = {

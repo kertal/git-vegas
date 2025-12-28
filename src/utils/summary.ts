@@ -1,5 +1,61 @@
+/**
+ * Summary View Utilities
+ *
+ * Consolidates all summary-related functionality:
+ * - Group name constants and types
+ * - Event categorization and grouping logic
+ * - Clipboard formatting helpers
+ * - UI state helpers for summary sections
+ */
+
 import { GitHubItem } from '../types';
-import { SUMMARY_GROUP_NAMES, createEmptyGroups, type SummaryGroupName } from './summaryConstants';
+
+// ============================================================================
+// CONSTANTS & TYPES
+// ============================================================================
+
+/**
+ * Summary view group name constants
+ */
+export const SUMMARY_GROUP_NAMES = {
+  PRS_OPENED: 'PRs - opened',
+  PRS_UPDATED: 'PRs - updated',
+  PRS_REVIEWED: 'PRs - reviewed',
+  PRS_MERGED: 'PRs - merged',
+  PRS_CLOSED: 'PRs - closed',
+  ISSUES_OPENED: 'Issues - opened',
+  ISSUES_UPDATED: 'Issues - updated',
+  ISSUES_CLOSED: 'Issues - closed',
+  COMMENTS: 'Comments',
+  COMMITS: 'Commits',
+  OTHER_EVENTS: 'Other Events',
+} as const;
+
+export type SummaryGroupName = (typeof SUMMARY_GROUP_NAMES)[keyof typeof SUMMARY_GROUP_NAMES];
+
+/**
+ * Returns all group names as an array
+ */
+export const getAllGroupNames = (): SummaryGroupName[] => {
+  return Object.values(SUMMARY_GROUP_NAMES);
+};
+
+/**
+ * Creates an empty groups object with all summary categories
+ */
+export const createEmptyGroups = <T = unknown>(): Record<SummaryGroupName, T[]> => {
+  return Object.values(SUMMARY_GROUP_NAMES).reduce(
+    (acc, groupName) => {
+      acc[groupName] = [];
+      return acc;
+    },
+    {} as Record<SummaryGroupName, T[]>
+  );
+};
+
+// ============================================================================
+// GROUPING LOGIC
+// ============================================================================
 
 /**
  * Extracts the base PR URL by removing fragments (e.g., #pullrequestreview-123456)
@@ -12,7 +68,7 @@ export const getBasePRUrl = (htmlUrl: string): string => {
  * Parses usernames from a comma-separated string
  */
 export const parseUsernames = (username: string): string[] => {
-  return username.split(',').map(u => u.trim().toLowerCase());
+  return username.split(',').map((u) => u.trim().toLowerCase());
 };
 
 /**
@@ -57,23 +113,18 @@ export const getEventType = (item: GitHubItem): string => {
   }
 
   // Fallback to title parsing for items without originalEventType (e.g., from Search API)
-  // Check if this is a pull request review (title starts with "Review on:")
   if (item.title.startsWith('Review on:')) {
     return 'pull_request';
   }
-  // Check if this is a review comment (title starts with "Review comment on:")
   if (item.title.startsWith('Review comment on:')) {
     return 'comment';
   }
-  // Check if this is a comment event (title starts with "Comment on:")
   if (item.title.startsWith('Comment on:')) {
     return 'comment';
   }
-  // Check if this is a push event (title starts with "Pushed")
   if (item.title.startsWith('Pushed')) {
     return 'commit';
   }
-  // Check for other event types that don't belong to issues/PRs
   if (
     item.title.startsWith('Created branch') ||
     item.title.startsWith('Created tag') ||
@@ -104,7 +155,7 @@ export const isDateInRange = (dateStr: string, startDate: string, endDate: strin
 };
 
 /**
- * Categories a GitHub item without date filtering (for already date-filtered results)
+ * Categorizes a GitHub item without date filtering (for already date-filtered results)
  */
 export const categorizeItemWithoutDateFiltering = (
   item: GitHubItem,
@@ -161,7 +212,6 @@ export const categorizeItemWithoutDateFiltering = (
   }
 
   // Handle issues - categorize by recent activity regardless of authorship
-  // Ensure this is actually an issue and not a PR
   if (type === 'issue' && !item.pull_request) {
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
@@ -179,7 +229,7 @@ export const categorizeItemWithoutDateFiltering = (
 };
 
 /**
- * Categories a GitHub item based on its type and content
+ * Categorizes a GitHub item based on its type and content with date filtering
  */
 export const categorizeItem = (
   item: GitHubItem,
@@ -223,31 +273,28 @@ export const categorizeItem = (
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
     const updatedInRange = isDateInRange(item.updated_at, startDate, endDate);
 
-
-
     // Check if PR was merged within the timeframe
     if (mergedAt && mergedInRange) {
       return SUMMARY_GROUP_NAMES.PRS_MERGED;
-    } 
+    }
     // Check if PR was closed within the timeframe (and not merged)
     else if (item.state === 'closed' && closedInRange && !mergedAt) {
       return SUMMARY_GROUP_NAMES.PRS_CLOSED;
-    } 
+    }
     // Check if PR was created within the timeframe
     else if (createdInRange) {
       return SUMMARY_GROUP_NAMES.PRS_OPENED;
-    } 
+    }
     // Check if PR was updated but not created/merged/closed within the timeframe
     else if (updatedInRange && !createdInRange && !mergedInRange && !closedInRange) {
       return SUMMARY_GROUP_NAMES.PRS_UPDATED;
     }
-    
+
     // If none of the above, this PR doesn't belong in this timeframe summary
     return null;
   }
 
   // Handle issues - apply date range filtering regardless of authorship
-  // Ensure this is actually an issue and not a PR
   if (type === 'issue' && !item.pull_request) {
     const createdInRange = isDateInRange(item.created_at, startDate, endDate);
     const closedInRange = item.closed_at && isDateInRange(item.closed_at, startDate, endDate);
@@ -263,7 +310,7 @@ export const categorizeItem = (
       // Issue had activity but wasn't created/closed within timeframe
       return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
     }
-    
+
     // If none of the above conditions are met, filter out the issue
     return null;
   }
@@ -284,8 +331,8 @@ export const groupItems = (
   const groups = createEmptyGroups<GitHubItem>();
   const addedReviewKeys = new Set<string>(); // Tracks person:PR combinations for review deduplication
 
-  items.forEach(item => {
-    const groupName = applyDateFiltering 
+  items.forEach((item) => {
+    const groupName = applyDateFiltering
       ? categorizeItem(item, addedReviewKeys, startDate, endDate)
       : categorizeItemWithoutDateFiltering(item, addedReviewKeys, startDate, endDate);
     if (groupName) {
@@ -308,9 +355,11 @@ export const addMergedPRsFromSearchItems = (
   const startDateTime = new Date(startDate).getTime();
   const endDateTime = new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1; // End of day
 
-  const existingMergedPRUrls = new Set(groups[SUMMARY_GROUP_NAMES.PRS_MERGED].map(item => item.html_url));
-  
-  searchItems.forEach(searchItem => {
+  const existingMergedPRUrls = new Set(
+    groups[SUMMARY_GROUP_NAMES.PRS_MERGED].map((item) => item.html_url)
+  );
+
+  searchItems.forEach((searchItem) => {
     const mergedAt = searchItem.merged_at || searchItem.pull_request?.merged_at;
     if (searchItem.pull_request && mergedAt && !existingMergedPRUrls.has(searchItem.html_url)) {
       const mergeDate = new Date(mergedAt);
@@ -332,21 +381,24 @@ export const addIssuesFromSearchItems = (
   endDate: string
 ): void => {
   const existingIssueUrls = new Set([
-    ...groups[SUMMARY_GROUP_NAMES.ISSUES_OPENED].map(item => item.html_url),
-    ...groups[SUMMARY_GROUP_NAMES.ISSUES_CLOSED].map(item => item.html_url),
-    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].map(item => item.html_url),
+    ...groups[SUMMARY_GROUP_NAMES.ISSUES_OPENED].map((item) => item.html_url),
+    ...groups[SUMMARY_GROUP_NAMES.ISSUES_CLOSED].map((item) => item.html_url),
+    ...groups[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].map((item) => item.html_url),
   ]);
 
-  searchItems.forEach(searchItem => {
+  searchItems.forEach((searchItem) => {
     // Explicitly filter out PRs to ensure they don't appear in issue sections
     if (!searchItem.pull_request && !existingIssueUrls.has(searchItem.html_url)) {
       // Categorize the issue using the same logic as other issues
       const addedReviewPRs = new Set<string>(); // Empty set since we're only dealing with issues
       const groupName = categorizeItem(searchItem, addedReviewPRs, startDate, endDate);
-      
-      if (groupName && (groupName === SUMMARY_GROUP_NAMES.ISSUES_OPENED || 
-                        groupName === SUMMARY_GROUP_NAMES.ISSUES_CLOSED || 
-                        groupName === SUMMARY_GROUP_NAMES.ISSUES_UPDATED)) {
+
+      if (
+        groupName &&
+        (groupName === SUMMARY_GROUP_NAMES.ISSUES_OPENED ||
+          groupName === SUMMARY_GROUP_NAMES.ISSUES_CLOSED ||
+          groupName === SUMMARY_GROUP_NAMES.ISSUES_UPDATED)
+      ) {
         groups[groupName].push(searchItem);
       }
     }
@@ -364,14 +416,95 @@ export const groupSummaryData = (
 ): Record<SummaryGroupName, GitHubItem[]> => {
   // Group items first (apply proper date filtering for categorization)
   const groups = groupItems(items, startDate, endDate, true);
-  
+
   // Add merged PRs from search items
   addMergedPRsFromSearchItems(groups, searchItems, startDate, endDate);
-  
+
   // Add issues from search items
   addIssuesFromSearchItems(groups, searchItems, startDate, endDate);
-  
 
-  
   return groups;
-}; 
+};
+
+// ============================================================================
+// CLIPBOARD & UI HELPERS
+// ============================================================================
+
+/**
+ * Creates a formatted group data structure for clipboard operations
+ */
+export const formatGroupedDataForClipboard = (
+  actionGroups: Record<string, GitHubItem[]>,
+  selectedItems?: Set<string | number>
+): Array<{ groupName: string; items: GitHubItem[] }> => {
+  let groupedData = Object.entries(actionGroups)
+    .filter(([, items]) => items.length > 0)
+    .map(([groupName, items]) => ({
+      groupName,
+      items,
+    }));
+
+  // Filter to only selected items if any are selected
+  if (selectedItems && selectedItems.size > 0) {
+    groupedData = groupedData
+      .map(({ groupName, items }) => ({
+        groupName,
+        items: items.filter((item) => selectedItems.has(item.event_id || item.id)),
+      }))
+      .filter(({ items }) => items.length > 0);
+  }
+
+  return groupedData;
+};
+
+/**
+ * Gets all displayed items from grouped data
+ */
+export const getAllDisplayedItems = (actionGroups: Record<string, GitHubItem[]>): GitHubItem[] => {
+  return Object.values(actionGroups).flat();
+};
+
+/**
+ * Checks if any groups have items
+ */
+export const hasAnyItems = (actionGroups: Record<string, GitHubItem[]>): boolean => {
+  return Object.values(actionGroups).some((items) => items.length > 0);
+};
+
+/**
+ * Gets total count of all items across groups
+ */
+export const getTotalItemCount = (actionGroups: Record<string, GitHubItem[]>): number => {
+  return Object.values(actionGroups).reduce((total, items) => total + items.length, 0);
+};
+
+/**
+ * Checks if a section should be collapsed based on stored preferences
+ */
+export const isSectionCollapsed = (sectionName: string, collapsedSections: Set<string>): boolean => {
+  return collapsedSections.has(sectionName);
+};
+
+/**
+ * Gets the select all state for a specific group
+ */
+export const getGroupSelectState = (
+  groupItems: GitHubItem[],
+  selectedItems: Set<string | number>
+): { checked: boolean; indeterminate: boolean } => {
+  if (groupItems.length === 0) {
+    return { checked: false, indeterminate: false };
+  }
+
+  const selectedCount = groupItems.filter((item) =>
+    selectedItems.has(item.event_id || item.id)
+  ).length;
+
+  if (selectedCount === 0) {
+    return { checked: false, indeterminate: false };
+  } else if (selectedCount === groupItems.length) {
+    return { checked: true, indeterminate: false };
+  } else {
+    return { checked: false, indeterminate: true };
+  }
+};
