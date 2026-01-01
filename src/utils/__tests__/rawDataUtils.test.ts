@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { transformEventToItem, processRawEvents, categorizeRawSearchItems } from '../rawDataUtils';
+import { transformEventToItem, processRawEvents, categorizeRawSearchItems } from '../githubData';
 import { GitHubEvent, GitHubItem } from '../../types';
 
 describe('rawDataUtils', () => {

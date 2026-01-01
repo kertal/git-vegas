@@ -5,7 +5,7 @@ import {
   categorizeUsernames,
   needsValidation,
   getInvalidUsernames,
-} from './usernameCache';
+} from './storage';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

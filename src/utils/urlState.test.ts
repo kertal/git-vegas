@@ -12,7 +12,7 @@ import {
   ShareableState,
 } from './urlState';
 import { FormSettings } from '../types';
-import { createDefaultFilter } from './resultsUtils';
+import { createDefaultFilter } from './filtering';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

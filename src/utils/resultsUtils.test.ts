@@ -16,7 +16,7 @@ import {
   getItemType,
   ResultsFilter,
   parseSearchText,
-} from './resultsUtils';
+} from './filtering';
 import type { GitHubItem } from '../types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

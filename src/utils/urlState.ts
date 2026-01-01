@@ -1,5 +1,5 @@
 import { FormSettings } from '../types';
-import { ResultsFilter } from './resultsUtils';
+import { ResultsFilter } from './filtering';
 
 // Define which app state properties can be shared via URL
 export interface ShareableState {

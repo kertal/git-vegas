@@ -5,7 +5,7 @@ import {
   validateUsernameList,
   type BatchValidationResult,
 } from '../utils';
-import { categorizeUsernames, getInvalidUsernames } from './usernameCache';
+import { categorizeUsernames, getInvalidUsernames } from './storage';
 import type { UsernameCache } from '../types';
 
 /**

@@ -2,14 +2,14 @@ import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { validateUsernameList } from '../utils';
 import { useFormSettings } from './useLocalStorage';
 import { FormSettings } from '../types';
-import { 
+import {
   validateGitHubUsernames,
-  type BatchValidationResult 
+  type BatchValidationResult
 } from '../utils';
-import { 
+import {
   getCachedAvatarUrls,
   createAddAvatarsToCache
-} from '../utils/usernameCache';
+} from '../utils/storage';
 import { useLocalStorage } from './useLocalStorage';
 
 interface UseGitHubFormStateReturn {

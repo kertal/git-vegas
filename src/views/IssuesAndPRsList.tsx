@@ -22,8 +22,7 @@ import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useFormContext } from '../App';
 
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
-import { sortItemsByUpdatedDate } from '../utils/viewFiltering';
-import { filterItemsByAdvancedSearch } from '../utils/viewFiltering';
+import { sortItemsByUpdatedDate, filterItemsByAdvancedSearch } from '../utils/filtering';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 

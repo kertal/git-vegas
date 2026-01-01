@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useIndexedDBStorage } from '../hooks/useIndexedDBStorage';
-import { eventsStorage } from '../utils/indexedDB';
+import { eventsStorage } from '../utils/storage';
 import { GitHubEvent } from '../types';
 
 // Mock IndexedDB

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { eventsStorage, type EventsData } from '../utils/indexedDB';
+import { eventsStorage, type EventsData } from '../utils/storage';
 import { GitHubEvent } from '../types';
 
 interface UseIndexedDBStorageReturn {

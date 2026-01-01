@@ -16,7 +16,15 @@ import { GitHubItem, GitHubEvent } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
+import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/filtering';
+import {
+  groupSummaryData,
+  getEventType,
+  formatGroupedDataForClipboard,
+  getAllDisplayedItems,
+  hasAnyItems,
+  getGroupSelectState,
+} from '../utils/summary';
 
 import DescriptionDialog from '../components/DescriptionDialog';
 import BulkCopyButtons from '../components/BulkCopyButtons';
@@ -25,13 +33,6 @@ import EmptyState from '../components/EmptyState';
 import './Summary.css';
 import { useFormContext } from '../App';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { groupSummaryData, getEventType } from '../utils/summaryGrouping';
-import { 
-  formatGroupedDataForClipboard, 
-  getAllDisplayedItems, 
-  hasAnyItems,
-  getGroupSelectState 
-} from '../utils/summaryHelpers';
 import { DismissibleBanner } from '../components/DismissibleBanner';
 
 

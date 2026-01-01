@@ -3,7 +3,7 @@ import {
   sortItemsByUpdatedDate,
   parseCommaSeparatedUsernames,
   isItemAuthoredBySearchedUsers
-} from '../viewFiltering';
+} from '../filtering';
 import { GitHubItem } from '../../types';
 
 // Mock data helper

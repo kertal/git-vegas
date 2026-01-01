@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countItemsMatchingFilter, FilterType } from './filterUtils';
+import { countItemsMatchingFilter, FilterType } from './filtering';
 import { GitHubItem } from '../types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

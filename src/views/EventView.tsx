@@ -9,7 +9,7 @@ import { GitHubItem, GitHubEvent } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
 
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
+import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/filtering';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
 import DescriptionDialog from '../components/DescriptionDialog';

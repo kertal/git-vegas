@@ -5,7 +5,7 @@ import {
   getTotalItemCount,
   isSectionCollapsed,
   getGroupSelectState
-} from '../summaryHelpers';
+} from '../summary';
 import { GitHubItem } from '../../types';
 
 // Mock data helper
