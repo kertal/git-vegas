@@ -101,6 +101,16 @@ export interface GitHubEvent {
         avatar_url: string;
         html_url: string;
       };
+      assignee?: {
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      };
+      assignees?: Array<{
+        login: string;
+        avatar_url: string;
+        html_url: string;
+      }>;
     };
     pull_request?: {
       id: number;

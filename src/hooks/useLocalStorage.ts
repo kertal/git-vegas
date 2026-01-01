@@ -138,7 +138,7 @@ export function useFormSettings(key: string, initialValue: FormSettings, onUrlPa
         // Run cache cleanup in background (don't await to avoid blocking the URL processing)
         (async () => {
           try {
-            const { clearCachesKeepToken } = await import('../utils/storageUtils');
+            const { clearCachesKeepToken } = await import('../utils/storage');
             const preservedToken = await clearCachesKeepToken();
             
             // Update the form settings to preserve the token if we have one
