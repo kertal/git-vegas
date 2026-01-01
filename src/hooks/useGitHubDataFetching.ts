@@ -177,8 +177,8 @@ export const useGitHubDataFetching = ({
 
     // LOCAL-FIRST: Check if we have fresh cached data that matches the query
     const usernames = usernameValidation.usernames;
-    const hasCachedEvents = indexedDBEvents.length > 0 && !!eventsMetadata;
-    const hasCachedSearchItems = indexedDBSearchItems.length > 0 && !!searchItemsMetadata;
+    const hasCachedEvents = indexedDBEvents.length > 0 && eventsMetadata;
+    const hasCachedSearchItems = indexedDBSearchItems.length > 0 && searchItemsMetadata;
 
     // Check if either cache is fresh and matches the current query
     const eventsCacheFresh =
@@ -203,11 +203,13 @@ export const useGitHubDataFetching = ({
       setLoading(true);
       
       // Check if cache exists and matches the current query
-      const cacheMatchesQuery = 
-        (hasCachedEvents && eventsMetadata && 
-          cacheUtils.matchesQuery(eventsMetadata, usernames, startDate, endDate)) ||
-        (hasCachedSearchItems && searchItemsMetadata && 
-          cacheUtils.matchesQuery(searchItemsMetadata, usernames, startDate, endDate));
+      const eventsCacheMatchesQuery = hasCachedEvents && eventsMetadata
+        ? cacheUtils.matchesQuery(eventsMetadata, usernames, startDate, endDate)
+        : false;
+      const searchItemsCacheMatchesQuery = hasCachedSearchItems && searchItemsMetadata
+        ? cacheUtils.matchesQuery(searchItemsMetadata, usernames, startDate, endDate)
+        : false;
+      const cacheMatchesQuery = eventsCacheMatchesQuery || searchItemsCacheMatchesQuery;
       
       // Only show "Cache outdated" if cache exists AND matches the query
       setLoadingProgress(cacheMatchesQuery ?
