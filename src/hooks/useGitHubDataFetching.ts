@@ -181,10 +181,14 @@ export const useGitHubDataFetching = ({
     const hasCachedSearchItems = indexedDBSearchItems.length > 0 && searchItemsMetadata;
 
     // Check if either cache is fresh and matches the current query
-    const eventsCacheFresh = hasCachedEvents &&
-      cacheUtils.isValidCache(eventsMetadata!, usernames, startDate, endDate);
-    const searchItemsCacheFresh = hasCachedSearchItems &&
-      cacheUtils.isValidCache(searchItemsMetadata!, usernames, startDate, endDate);
+    const eventsCacheFresh =
+      hasCachedEvents && eventsMetadata
+        ? cacheUtils.isValidCache(eventsMetadata, usernames, startDate, endDate)
+        : false;
+    const searchItemsCacheFresh =
+      hasCachedSearchItems && searchItemsMetadata
+        ? cacheUtils.isValidCache(searchItemsMetadata, usernames, startDate, endDate)
+        : false;
 
     const hasFreshCache = eventsCacheFresh || searchItemsCacheFresh;
 
@@ -197,7 +201,18 @@ export const useGitHubDataFetching = ({
     } else {
       // Blocking initial load or stale cache
       setLoading(true);
-      setLoadingProgress(hasCachedEvents || hasCachedSearchItems ?
+      
+      // Check if cache exists and matches the current query
+      const eventsCacheMatchesQuery = hasCachedEvents && eventsMetadata
+        ? cacheUtils.matchesQuery(eventsMetadata, usernames, startDate, endDate)
+        : false;
+      const searchItemsCacheMatchesQuery = hasCachedSearchItems && searchItemsMetadata
+        ? cacheUtils.matchesQuery(searchItemsMetadata, usernames, startDate, endDate)
+        : false;
+      const cacheMatchesQuery = eventsCacheMatchesQuery || searchItemsCacheMatchesQuery;
+      
+      // Only show "Cache outdated" if cache exists AND matches the query
+      setLoadingProgress(cacheMatchesQuery ?
         'Cache outdated, fetching fresh data...' :
         'Starting search...'
       );
