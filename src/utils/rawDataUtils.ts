@@ -227,34 +227,54 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     };
   } else if (type === 'PushEvent') {
     // Handle PushEvent - create a GitHubItem from push event data
-    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string; sha: string }>; distinct_size?: number; size?: number };
+    const pushPayload = payload as { ref?: string; commits?: Array<{ message: string; sha: string }>; distinct_size?: number; size?: number; head?: string; before?: string };
     const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
 
     // GitHub API changes: commits array is the most reliable source
     // Use commits.length as primary, fall back to distinct_size or size
+    // If none available but head/before are different, we know there's at least 1 commit
     const commitCount = pushPayload?.commits?.length || pushPayload?.size || 0;
     const distinctCount = pushPayload?.distinct_size ?? commitCount; // Use commitCount as fallback
+
+    // Check if we have head/before indicating commits exist even without exact count
+    const hasCommitIndicator = pushPayload?.head && pushPayload?.before && pushPayload.head !== pushPayload.before;
 
     // Use the actual commits array length as the display count (most accurate)
     const displayCount = commitCount > 0 ? commitCount : distinctCount;
 
-    // Create a title that describes the push
-    let title = `Pushed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${branch}`;
-    if (distinctCount > 0 && commitCount > distinctCount) {
-      title += ` (${distinctCount} distinct)`;
+    // Create a title that describes the push (include repo owner for context)
+    const repoOwner = repo.name.split('/')[0];
+    let title: string;
+    if (displayCount > 0) {
+      title = `Pushed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${repoOwner}/${branch}`;
+      if (distinctCount > 0 && commitCount > distinctCount) {
+        title += ` (${distinctCount} distinct)`;
+      }
+    } else if (hasCommitIndicator) {
+      // We know commits were pushed but don't have the count
+      title = `Pushed to ${repoOwner}/${branch}`;
+    } else {
+      title = `Pushed 0 commits to ${repoOwner}/${branch}`;
     }
     
-    // Create a body with commit messages if available
-    let body = '';
+    // Create a body with commit messages if available, or show commit range
+    // Always include the repository name for context
+    let body = `**Repository:** [${repo.name}](https://github.com/${repo.name})\n\n`;
+
     if (pushPayload?.commits && pushPayload.commits.length > 0) {
-      body = pushPayload.commits
+      body += pushPayload.commits
         .slice(0, 5) // Show first 5 commits
         .map((commit) => `- ${commit.message ? commit.message.split('\n')[0] : 'No commit message'}`) // First line of commit message
         .join('\n');
-      
+
       if (pushPayload.commits.length > 5) {
         body += `\n... and ${pushPayload.commits.length - 5} more commits`;
       }
+    } else if (hasCommitIndicator) {
+      // Show commit range when we don't have commit details
+      const shortHead = pushPayload.head!.substring(0, 7);
+      const shortBefore = pushPayload.before!.substring(0, 7);
+      body += `**Commits:** ${shortBefore}...${shortHead}`;
     }
     
     return {
@@ -273,7 +293,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         html_url: `https://github.com/${repo.name}`,
       },
       user: actorUser,
-      original: payload,
+      original: event as unknown as Record<string, unknown>,
       originalEventType: type,
       // Push events don't have pull_request, closed_at, merged_at, or number
     };
