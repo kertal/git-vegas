@@ -229,19 +229,23 @@ const applyPRDetailsToItem = (item: GitHubItem, prDetails: PRCacheRecord): GitHu
     state: prDetails.state || item.state,
   };
 
-  // Update title based on event type
-  if (item.originalEventType === 'PullRequestReviewEvent') {
-    enrichedItem.title = `Review on: ${prDetails.title}`;
-  } else if (item.originalEventType === 'PullRequestReviewCommentEvent') {
-    enrichedItem.title = `Review comment on: ${prDetails.title}`;
-  } else if (item.title?.match(/^Pull Request #\d+/) || item.title?.match(/^Pull Request (opened|closed|labeled|unlabeled|synchronized|reopened|edited|assigned|unassigned|review_requested|review_request_removed)$/)) {
-    // Extract the action from the current title (handles both "Pull Request #123 action" and "Pull Request action")
-    const actionMatch = item.title?.match(/^Pull Request (?:#\d+ )?(.+)$/);
-    const action = actionMatch ? actionMatch[1] : '';
-    enrichedItem.title = action ? `${prDetails.title} (${action})` : prDetails.title;
-  } else if (item.title?.includes('undefined')) {
-    // Handle titles with "undefined" - replace with actual PR title
-    enrichedItem.title = prDetails.title;
+  // Update title based on event type (only if we have a valid PR title)
+  const hasValidTitle = prDetails.title && prDetails.title !== 'undefined' && prDetails.title.trim() !== '';
+
+  if (hasValidTitle) {
+    if (item.originalEventType === 'PullRequestReviewEvent') {
+      enrichedItem.title = `Review on: ${prDetails.title}`;
+    } else if (item.originalEventType === 'PullRequestReviewCommentEvent') {
+      enrichedItem.title = `Review comment on: ${prDetails.title}`;
+    } else if (item.title?.match(/^Pull Request #\d+/) || item.title?.match(/^Pull Request (opened|closed|labeled|unlabeled|synchronized|reopened|edited|assigned|unassigned|review_requested|review_request_removed)$/)) {
+      // Extract the action from the current title (handles both "Pull Request #123 action" and "Pull Request action")
+      const actionMatch = item.title?.match(/^Pull Request (?:#\d+ )?(.+)$/);
+      const action = actionMatch ? actionMatch[1] : '';
+      enrichedItem.title = action ? `${prDetails.title} (${action})` : prDetails.title;
+    } else if (item.title?.includes('undefined')) {
+      // Handle titles with "undefined" - replace with actual PR title
+      enrichedItem.title = prDetails.title;
+    }
   }
 
   return enrichedItem;
