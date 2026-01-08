@@ -14,6 +14,28 @@ const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 // In-memory cache for session-level deduplication of in-flight requests
 const inFlightRequests = new Map<string, Promise<PRCacheRecord | null>>();
 
+// Known GitHub PR actions for validation
+const VALID_PR_ACTIONS = [
+  'opened', 'closed', 'labeled', 'unlabeled', 'synchronized', 'reopened',
+  'edited', 'assigned', 'unassigned', 'review_requested', 'review_request_removed'
+] as const;
+
+/**
+ * Checks if a title matches the generic PR fallback pattern with a known action
+ * Returns the matched action or null if pattern doesn't match or action is unknown
+ */
+const matchGenericPRAction = (title: string | undefined): string | null => {
+  if (!title) return null;
+  
+  // Match pattern: "Pull Request #123 action" or "Pull Request action"
+  const match = title.match(/^Pull Request (?:#\d+ )?(.+)$/);
+  if (!match) return null;
+  
+  const action = match[1];
+  // Only return action if it's a known GitHub PR action
+  return (VALID_PR_ACTIONS as readonly string[]).includes(action) ? action : null;
+};
+
 /**
  * Extracts PR API URL from a GitHubItem
  * Returns null if the item is not a PR or doesn't have a PR URL
@@ -82,8 +104,8 @@ export const needsPREnrichment = (item: GitHubItem): boolean => {
     return true;
   }
 
-  // Check if title is a generic fallback (indicates missing data)
-  if (item.title?.match(/^Pull Request #\d+ (opened|closed|labeled|unlabeled|synchronized|reopened|edited|assigned|unassigned|review_requested|review_request_removed)$/)) {
+  // Check if title is a generic fallback with known PR action (indicates missing data)
+  if (matchGenericPRAction(item.title)) {
     return true;
   }
 
@@ -237,14 +259,16 @@ const applyPRDetailsToItem = (item: GitHubItem, prDetails: PRCacheRecord): GitHu
       enrichedItem.title = `Review on: ${prDetails.title}`;
     } else if (item.originalEventType === 'PullRequestReviewCommentEvent') {
       enrichedItem.title = `Review comment on: ${prDetails.title}`;
-    } else if (item.title?.match(/^Pull Request #\d+/) || item.title?.match(/^Pull Request (opened|closed|labeled|unlabeled|synchronized|reopened|edited|assigned|unassigned|review_requested|review_request_removed)$/)) {
-      // Extract the action from the current title (handles both "Pull Request #123 action" and "Pull Request action")
-      const actionMatch = item.title?.match(/^Pull Request (?:#\d+ )?(.+)$/);
-      const action = actionMatch ? actionMatch[1] : '';
-      enrichedItem.title = action ? `${prDetails.title} (${action})` : prDetails.title;
-    } else if (item.title?.includes('undefined')) {
-      // Handle titles with "undefined" - replace with actual PR title
-      enrichedItem.title = prDetails.title;
+    } else {
+      // Check if title has a generic PR pattern with action
+      const action = matchGenericPRAction(item.title);
+      if (action) {
+        // Use the actual PR title with the action appended
+        enrichedItem.title = `${prDetails.title} (${action})`;
+      } else if (item.title?.includes('undefined')) {
+        // Handle titles with "undefined" - replace with actual PR title
+        enrichedItem.title = prDetails.title;
+      }
     }
   }
 

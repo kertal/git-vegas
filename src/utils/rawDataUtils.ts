@@ -8,6 +8,30 @@ import { GitHubItem, GitHubEvent } from '../types';
  */
 
 /**
+ * Extracts PR number from GitHub URLs
+ * Handles both HTML URLs (github.com/.../pull/123) and API URLs (api.github.com/.../pulls/123)
+ * 
+ * @param htmlUrl - GitHub HTML URL (e.g., https://github.com/owner/repo/pull/123)
+ * @param apiUrl - GitHub API URL (e.g., https://api.github.com/repos/owner/repo/pulls/123)
+ * @returns PR number or undefined if not found
+ */
+const extractPRNumber = (htmlUrl?: string, apiUrl?: string): number | undefined => {
+  // Try HTML URL first (uses /pull/ singular)
+  if (htmlUrl) {
+    const match = htmlUrl.match(/\/pull\/(\d+)/);
+    if (match) return parseInt(match[1], 10);
+  }
+  
+  // Try API URL (uses /pulls/ plural)
+  if (apiUrl) {
+    const match = apiUrl.match(/\/pulls\/(\d+)/);
+    if (match) return parseInt(match[1], 10);
+  }
+  
+  return undefined;
+};
+
+/**
  * Transforms GitHub Event to GitHubItem
  *
  * @param event - GitHub event from Events API
@@ -58,14 +82,9 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     // Try to extract PR number from various sources
     let prNumber = pr.number || payloadWithAction.number;
 
-    // If no number, try to extract from pr.url or pr.html_url
-    if (!prNumber && pr.html_url) {
-      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
-      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
-    }
-    if (!prNumber && (pr as { url?: string }).url) {
-      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
-      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    // If no number, try to extract from URLs
+    if (!prNumber) {
+      prNumber = extractPRNumber(pr.html_url, (pr as { url?: string }).url);
     }
 
     const htmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
@@ -109,14 +128,9 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     // Try to extract PR number from various sources
     let prNumber = pr.number || payloadWithAction.number;
 
-    // If no number, try to extract from pr.url or pr.html_url
-    if (!prNumber && pr.html_url) {
-      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
-      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
-    }
-    if (!prNumber && (pr as { url?: string }).url) {
-      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
-      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    // If no number, try to extract from URLs
+    if (!prNumber) {
+      prNumber = extractPRNumber(pr.html_url, (pr as { url?: string }).url);
     }
 
     const htmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
@@ -184,14 +198,9 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     // Try to extract PR number from various sources
     let prNumber = pr.number || payloadWithAction.number;
 
-    // If no number, try to extract from pr.url or pr.html_url
-    if (!prNumber && pr.html_url) {
-      const urlMatch = pr.html_url.match(/\/pull\/(\d+)/);
-      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
-    }
-    if (!prNumber && (pr as { url?: string }).url) {
-      const urlMatch = (pr as { url?: string }).url?.match(/\/pulls\/(\d+)/);
-      if (urlMatch) prNumber = parseInt(urlMatch[1], 10);
+    // If no number, try to extract from URLs
+    if (!prNumber) {
+      prNumber = extractPRNumber(pr.html_url, (pr as { url?: string }).url);
     }
 
     const prHtmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
@@ -230,24 +239,33 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const pushPayload = payload as { ref?: string; commits?: Array<{ message: string; sha: string }>; distinct_size?: number; size?: number; head?: string; before?: string };
     const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
 
-    // GitHub API changes: commits array is the most reliable source
-    // Use commits.length as primary, fall back to distinct_size or size
-    // If none available but head/before are different, we know there's at least 1 commit
-    const commitCount = pushPayload?.commits?.length || pushPayload?.size || 0;
-    const distinctCount = pushPayload?.distinct_size ?? commitCount; // Use commitCount as fallback
+    // GitHub API changes: the commits array is the most reliable source.
+    // Fallback chain for total commit count:
+    //   1. commits.length (most accurate when provided)
+    //   2. payload.size (total commits reported by GitHub)
+    //   3. 0 if neither is present
+    const totalCommitCount =
+      (pushPayload?.commits?.length ?? 0) || (pushPayload?.size ?? 0);
+
+    // distinct_size represents the number of distinct commits in the push.
+    // If it is missing, fall back to the totalCommitCount so both values stay in sync.
+    const distinctCount =
+      pushPayload?.distinct_size !== undefined
+        ? pushPayload.distinct_size
+        : totalCommitCount;
+
+    // Use the totalCommitCount as the display count when available; otherwise use distinctCount.
+    const displayCount = totalCommitCount > 0 ? totalCommitCount : distinctCount;
 
     // Check if we have head/before indicating commits exist even without exact count
     const hasCommitIndicator = pushPayload?.head && pushPayload?.before && pushPayload.head !== pushPayload.before;
-
-    // Use the actual commits array length as the display count (most accurate)
-    const displayCount = commitCount > 0 ? commitCount : distinctCount;
 
     // Create a title that describes the push (include repo owner for context)
     const repoOwner = repo.name.split('/')[0];
     let title: string;
     if (displayCount > 0) {
       title = `Pushed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${repoOwner}/${branch}`;
-      if (distinctCount > 0 && commitCount > distinctCount) {
+      if (distinctCount > 0 && totalCommitCount > distinctCount) {
         title += ` (${distinctCount} distinct)`;
       }
     } else if (hasCommitIndicator) {
