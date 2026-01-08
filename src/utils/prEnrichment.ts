@@ -19,8 +19,17 @@ const inFlightRequests = new Map<string, Promise<PRCacheRecord | null>>();
 // like 'ready_for_review', 'converted_to_draft', etc. are not included as they
 // rarely appear in event titles but could be added if needed.
 const VALID_PR_ACTIONS = [
-  'opened', 'closed', 'labeled', 'unlabeled', 'synchronized', 'reopened',
-  'edited', 'assigned', 'unassigned', 'review_requested', 'review_request_removed'
+  'opened',
+  'closed',
+  'labeled',
+  'unlabeled',
+  'synchronized',
+  'reopened',
+  'edited',
+  'assigned',
+  'unassigned',
+  'review_requested',
+  'review_request_removed',
 ] as const;
 
 /**
