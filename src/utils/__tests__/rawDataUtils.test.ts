@@ -84,7 +84,41 @@ describe('rawDataUtils', () => {
 
       expect(result).toBeTruthy();
       expect(result?.original).toBeDefined();
-      expect(result?.original).toEqual(mockPushEvent.payload);
+      expect(result?.original).toEqual(mockPushEvent);
+    });
+
+    it('should handle PushEvent with minimal payload (only head/before, no commits array)', () => {
+      const mockPushEventMinimal: GitHubEvent = {
+        id: '6817699748',
+        type: 'PushEvent',
+        actor: {
+          id: 1178348,
+          login: 'testuser',
+          avatar_url: 'https://avatars.githubusercontent.com/u/1178348?',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 26142062,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          repository_id: 26142062,
+          push_id: 29111594769,
+          ref: 'refs/heads/feature_branch',
+          head: 'bd48e854193a21d7c0b25028b69031792121f929',
+          before: '587796ff64140ea15f47b6f4a7c0069f09ee43d9',
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2025-12-17T23:09:40Z',
+      };
+
+      const result = transformEventToItem(mockPushEventMinimal);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Pushed to testuser/feature_branch');
+      expect(result?.body).toBe('**Repository:** [testuser/repo](https://github.com/testuser/repo)\n\n**Commits:** 587796f...bd48e85');
+      expect(result?.original).toEqual(mockPushEventMinimal);
     });
 
     it('should include original payload in CreateEvent items', () => {
