@@ -292,6 +292,7 @@ export const preloadPRCache = async (
 ): Promise<{ enrichedItems: GitHubItem[]; itemsNeedingFetch: GitHubItem[] }> => {
   const enrichedItems: GitHubItem[] = [];
   const itemsNeedingFetch: GitHubItem[] = [];
+  const urlsMarkedForFetch = new Set<string>(); // Track URLs already marked to avoid duplicates
 
   // Get all cached PR data
   const allCached = await prCacheStorage.getAll();
@@ -314,14 +315,18 @@ export const preloadPRCache = async (
       // Apply cached data
       enrichedItems.push(applyPRDetailsToItem(item, cached));
 
-      // If cache is stale, mark for background refresh
-      if (!isCacheFresh(cached.cachedAt)) {
+      // If cache is stale (older than 24h), mark for background refresh (only once per URL)
+      if (!isCacheFresh(cached.cachedAt) && !urlsMarkedForFetch.has(apiUrl)) {
         itemsNeedingFetch.push(item);
+        urlsMarkedForFetch.add(apiUrl);
       }
     } else {
-      // No cache - needs fresh fetch
+      // No cache - needs fresh fetch (only once per URL)
       enrichedItems.push(item);
-      itemsNeedingFetch.push(item);
+      if (!urlsMarkedForFetch.has(apiUrl)) {
+        itemsNeedingFetch.push(item);
+        urlsMarkedForFetch.add(apiUrl);
+      }
     }
   }
 
@@ -358,32 +363,55 @@ export const enrichItemsWithPRDetails = async (
     return enrichedItems;
   }
 
-  console.log(`Fetching ${itemsNeedingFetch.length} PR details...`);
+  // Build a map of URL -> all items that need enrichment (from original items list)
+  // This ensures we enrich ALL items referencing a PR, not just the one in itemsNeedingFetch
+  const urlToAllItems = new Map<string, GitHubItem[]>();
+  for (const item of items) {
+    if (needsPREnrichment(item)) {
+      const apiUrl = getPRApiUrl(item);
+      if (apiUrl) {
+        const existing = urlToAllItems.get(apiUrl) || [];
+        existing.push(item);
+        urlToAllItems.set(apiUrl, existing);
+      }
+    }
+  }
 
-  // Second pass: Fetch missing/stale data
+  // Get unique URLs that need fetching (from itemsNeedingFetch which is already deduplicated)
+  const urlsToFetch = new Set<string>();
+  for (const item of itemsNeedingFetch) {
+    const apiUrl = getPRApiUrl(item);
+    if (apiUrl) {
+      urlsToFetch.add(apiUrl);
+    }
+  }
+
+  const uniqueUrls = Array.from(urlsToFetch);
+  console.log(`Fetching ${uniqueUrls.length} unique PR details (from ${itemsNeedingFetch.length} items)...`);
+
+  // Second pass: Fetch missing/stale data (deduplicated)
   const enrichmentMap = new Map<number, GitHubItem>();
 
   let processed = 0;
-  for (const item of itemsNeedingFetch) {
-    const apiUrl = getPRApiUrl(item);
-    if (!apiUrl) {
-      processed++;
-      continue;
-    }
-
-    // Force refresh for items in the fetch list
+  for (const apiUrl of uniqueUrls) {
+    // Fetch PR details once per unique URL
     const prDetails = await fetchAndCachePRDetails(apiUrl, githubToken);
+
+    // Apply to ALL items that reference this PR (not just the one in itemsNeedingFetch)
     if (prDetails) {
-      enrichmentMap.set(item.id, applyPRDetailsToItem(item, prDetails));
+      const allItemsForUrl = urlToAllItems.get(apiUrl) || [];
+      for (const item of allItemsForUrl) {
+        enrichmentMap.set(item.id, applyPRDetailsToItem(item, prDetails));
+      }
     }
 
     processed++;
     if (onProgress) {
-      onProgress(processed, itemsNeedingFetch.length);
+      onProgress(processed, uniqueUrls.length);
     }
 
     // Add a small delay to respect rate limits
-    if (processed < itemsNeedingFetch.length) {
+    if (processed < uniqueUrls.length) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
