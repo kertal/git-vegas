@@ -26,8 +26,6 @@ vi.mock('../indexedDB', () => {
         mockCache.clear();
       }),
     },
-    // Export a type-safe way to clear the mock cache for tests
-    clearMockCache: () => mockCache.clear(),
   };
 });
 
@@ -37,9 +35,7 @@ global.fetch = vi.fn();
 describe('prEnrichment', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    // Clear the mock cache using the exported helper
-    const { clearMockCache } = await import('../indexedDB');
-    clearMockCache();
+    // Clear the mock cache
     await clearPRCache();
   });
 
