@@ -245,7 +245,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     //   2. payload.size (total commits reported by GitHub)
     //   3. 0 if neither is present
     const totalCommitCount =
-      (pushPayload?.commits?.length ?? 0) || (pushPayload?.size ?? 0);
+      pushPayload?.commits?.length ?? pushPayload?.size ?? 0;
 
     // distinct_size represents the number of distinct commits in the push.
     // If it is missing, fall back to the totalCommitCount so both values stay in sync.
@@ -255,6 +255,8 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         : totalCommitCount;
 
     // Use the totalCommitCount as the display count when available; otherwise use distinctCount.
+    // We prefer totalCommitCount because it represents the actual number of commits in the push,
+    // while distinctCount excludes commits that already exist in other branches.
     const displayCount = totalCommitCount > 0 ? totalCommitCount : distinctCount;
 
     // Check if we have head/before indicating commits exist even without exact count

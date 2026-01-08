@@ -15,6 +15,9 @@ const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const inFlightRequests = new Map<string, Promise<PRCacheRecord | null>>();
 
 // Known GitHub PR actions for validation
+// Note: This list covers the most common PR actions. Some webhook-only actions
+// like 'ready_for_review', 'converted_to_draft', etc. are not included as they
+// rarely appear in event titles but could be added if needed.
 const VALID_PR_ACTIONS = [
   'opened', 'closed', 'labeled', 'unlabeled', 'synchronized', 'reopened',
   'edited', 'assigned', 'unassigned', 'review_requested', 'review_request_removed'
