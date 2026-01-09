@@ -1,6 +1,7 @@
-import { Box, Avatar, Link, Text, Checkbox, Token } from '@primer/react';
+import { Box, Avatar, Link, Text, Checkbox, Token, Label } from '@primer/react';
 import { GitHubItem } from '../types';
 import ActionButtonsRow from './ActionButtonsRow';
+import { getActionVariant } from '../utils/actionUtils';
 
 // Helper functions to determine display avatar and user
 const getDisplayAvatar = (item: GitHubItem): string => {
@@ -186,6 +187,15 @@ const ItemRow = ({
                   sx={{ flexShrink: 0 }}
                 />
               )}
+              {item.action && (
+                <Label
+                  variant={getActionVariant(item.action)}
+                  size="small"
+                  sx={{ flexShrink: 0 }}
+                >
+                  {item.action}
+                </Label>
+              )}
             </Box>
           </Box>
 
@@ -351,6 +361,15 @@ const ItemRow = ({
                     size="small"
                     sx={{ flexShrink: 0 }}
                   />
+                )}
+                {item.action && (
+                  <Label
+                    variant={getActionVariant(item.action)}
+                    size="small"
+                    sx={{ flexShrink: 0 }}
+                  >
+                    {item.action}
+                  </Label>
                 )}
               </Box>
             </Box>
