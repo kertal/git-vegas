@@ -1,4 +1,4 @@
-import { GitHubItem, GitHubEvent } from '../types';
+import { GitHubItem, GitHubEvent, GitHubOrgMember, GitHubOrganization } from '../types';
 import {
   validateGitHubUsernames,
   isValidDateString,
@@ -606,3 +606,147 @@ export const createSearchCacheParams = (params: GitHubSearchParams) => ({
   endDate: params.endDate,
   timestamp: Date.now(),
 });
+
+/**
+ * Result interface for fetching organization members
+ */
+export interface FetchOrgMembersResult {
+  members: GitHubOrgMember[];
+  organization: GitHubOrganization | null;
+  totalCount: number;
+}
+
+/**
+ * Validates a GitHub organization name
+ *
+ * @param orgName - Organization name to validate
+ * @param githubToken - GitHub token for authentication
+ * @returns Promise with organization data or throws an error
+ */
+export const validateGitHubOrganization = async (
+  orgName: string,
+  githubToken?: string
+): Promise<GitHubOrganization> => {
+  const headers: HeadersInit = {
+    Accept: 'application/vnd.github.v3+json',
+  };
+
+  if (githubToken) {
+    headers['Authorization'] = `token ${githubToken}`;
+  }
+
+  const response = await fetch(`https://api.github.com/orgs/${orgName}`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error(`Organization "${orgName}" not found`);
+    }
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText}`
+    );
+  }
+
+  return response.json();
+};
+
+/**
+ * Fetches public members of a GitHub organization
+ *
+ * @param orgName - Organization name
+ * @param githubToken - GitHub token for authentication (required for private orgs)
+ * @param onProgress - Optional progress callback
+ * @returns Promise with organization members
+ */
+export const fetchOrgMembers = async (
+  orgName: string,
+  githubToken?: string,
+  onProgress?: SearchProgressCallback
+): Promise<FetchOrgMembersResult> => {
+  const headers: HeadersInit = {
+    Accept: 'application/vnd.github.v3+json',
+  };
+
+  if (githubToken) {
+    headers['Authorization'] = `token ${githubToken}`;
+  }
+
+  // First, validate the organization exists
+  onProgress?.(`Validating organization "${orgName}"...`);
+  const organization = await validateGitHubOrganization(orgName, githubToken);
+
+  // Fetch members with pagination
+  onProgress?.(`Fetching members for organization "${orgName}"...`);
+  const allMembers: GitHubOrgMember[] = [];
+  let page = 1;
+  const maxPages = 10; // Limit to 1000 members (100 per page * 10 pages)
+
+  while (page <= maxPages) {
+    // Use /public_members for unauthenticated requests, /members for authenticated
+    // Note: /members requires org:read scope for the authenticated user
+    const endpoint = githubToken
+      ? `https://api.github.com/orgs/${orgName}/members`
+      : `https://api.github.com/orgs/${orgName}/public_members`;
+
+    const response = await fetch(`${endpoint}?page=${page}&per_page=100`, {
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(`Organization "${orgName}" not found or you don't have access`);
+      }
+      if (response.status === 403) {
+        // If we can't access /members, try /public_members
+        if (githubToken && endpoint.includes('/members')) {
+          onProgress?.('Switching to public members endpoint...');
+          const publicResponse = await fetch(
+            `https://api.github.com/orgs/${orgName}/public_members?page=${page}&per_page=100`,
+            { headers }
+          );
+          if (publicResponse.ok) {
+            const publicMembers: GitHubOrgMember[] = await publicResponse.json();
+            if (publicMembers.length === 0) break;
+            allMembers.push(...publicMembers);
+            onProgress?.(`Found ${allMembers.length} public members...`);
+            page++;
+            await new Promise(resolve => setTimeout(resolve, 100)); // Rate limit delay
+            continue;
+          }
+        }
+        throw new Error(
+          'Access denied. You may need a GitHub token with org:read scope.'
+        );
+      }
+      throw new Error(
+        `GitHub API error: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const members: GitHubOrgMember[] = await response.json();
+
+    if (members.length === 0) {
+      break; // No more members
+    }
+
+    allMembers.push(...members);
+    onProgress?.(`Found ${allMembers.length} members...`);
+
+    if (members.length < 100) {
+      break; // Last page
+    }
+
+    page++;
+    // Rate limit delay
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  onProgress?.(`Successfully loaded ${allMembers.length} members from ${orgName}`);
+
+  return {
+    members: allMembers,
+    organization,
+    totalCount: allMembers.length,
+  };
+};

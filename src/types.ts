@@ -284,6 +284,26 @@ export interface UsernameCache {
   lastFetched: Map<string, number>; // Track when each username was last validated
 }
 
+// GitHub Organization types
+export interface GitHubOrgMember {
+  login: string;
+  id: number;
+  avatar_url: string;
+  html_url: string;
+  type: string;
+  site_admin: boolean;
+}
+
+export interface GitHubOrganization {
+  login: string;
+  id: number;
+  description: string | null;
+  avatar_url: string;
+  html_url: string;
+  public_members_url: string;
+  members_url: string;
+}
+
 
 
 
