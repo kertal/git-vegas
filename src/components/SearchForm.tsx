@@ -9,7 +9,7 @@ import {
 } from '@primer/react';
 import { useFormContext } from '../App';
 import { validateUsernameList, validateGitHubUsernames } from '../utils';
-import { OrgMemberLookup } from './OrgMemberLookup';
+import { OrgActivityFilter } from './OrgMemberLookup';
 
 const SearchForm = memo(function SearchForm() {
   const {
@@ -21,6 +21,8 @@ const SearchForm = memo(function SearchForm() {
     setEndDate,
     apiMode,
     setApiMode,
+    organization,
+    setOrganization,
     handleSearch,
     handleUsernameBlur,
     validateUsernameFormat,
@@ -44,19 +46,6 @@ const SearchForm = memo(function SearchForm() {
       // Removed localStorage saving - now only saves when validation passes
     },
     [setUsername]
-  );
-
-  // Handle usernames selected from organization lookup
-  const handleOrgUsernamesSelected = useCallback(
-    (usernames: string[]) => {
-      const newUsername = usernames.join(', ');
-      setUsername(newUsername);
-      // Clear any existing errors
-      validateUsernameFormat('');
-      // Save to localStorage
-      localStorage.setItem('github-username', newUsername);
-    },
-    [setUsername, validateUsernameFormat]
   );
 
   const handleUsernameBlurEvent = useCallback(
@@ -222,12 +211,12 @@ const SearchForm = memo(function SearchForm() {
           </FormControl>
         </Box>
 
-        {/* Organization Member Lookup */}
+        {/* Organization Activity Filter */}
         <Box sx={{ mt: 2 }}>
-          <OrgMemberLookup
-            onUsernamesSelected={handleOrgUsernamesSelected}
+          <OrgActivityFilter
+            organization={organization}
+            onOrganizationChange={setOrganization}
             githubToken={githubToken}
-            currentUsernames={username}
           />
         </Box>
 

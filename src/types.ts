@@ -263,6 +263,8 @@ export interface FormSettings {
   endDate: string;
   githubToken: string;
   apiMode: 'search' | 'events' | 'summary';
+  /** Organization to filter results by (optional) */
+  organization?: string;
 }
 
 // UI/Display settings that control how data is presented

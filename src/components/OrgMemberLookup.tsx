@@ -5,255 +5,132 @@ import {
   FormControl,
   TextInput,
   Flash,
-  ActionList,
-  ActionMenu,
-  Avatar,
-  Checkbox,
-  Label,
-  Spinner,
   Text,
 } from '@primer/react';
-import { OrganizationIcon, PeopleIcon } from '@primer/octicons-react';
-import { fetchOrgMembers, FetchOrgMembersResult } from '../utils/githubSearch';
-import { GitHubOrgMember, GitHubOrganization } from '../types';
+import { OrganizationIcon, XIcon } from '@primer/octicons-react';
+import { validateGitHubOrganization } from '../utils/githubSearch';
+import { GitHubOrganization } from '../types';
 
-interface OrgMemberLookupProps {
-  /** Callback when usernames are selected and confirmed */
-  onUsernamesSelected: (usernames: string[]) => void;
+interface OrgActivityFilterProps {
+  /** Current organization filter value */
+  organization: string;
+  /** Callback when organization filter changes */
+  onOrganizationChange: (org: string) => void;
   /** GitHub token for authenticated requests */
   githubToken?: string;
-  /** Current usernames in the search field */
-  currentUsernames?: string;
 }
 
 /**
- * Component for looking up GitHub organization members and selecting them
- * to populate the username search field.
+ * Component for filtering GitHub activity by organization.
+ * When an organization is set, search results will be filtered to only
+ * show issues, PRs, and events within that organization's repositories.
  */
-export const OrgMemberLookup: React.FC<OrgMemberLookupProps> = ({
-  onUsernamesSelected,
+export const OrgActivityFilter: React.FC<OrgActivityFilterProps> = ({
+  organization,
+  onOrganizationChange,
   githubToken,
-  currentUsernames = '',
 }) => {
-  const [orgName, setOrgName] = useState('');
+  const [inputValue, setInputValue] = useState(organization || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<string>('');
-  const [members, setMembers] = useState<GitHubOrgMember[]>([]);
-  const [organization, setOrganization] = useState<GitHubOrganization | null>(null);
-  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
-  const [isOpen, setIsOpen] = useState(false);
+  const [validatedOrg, setValidatedOrg] = useState<GitHubOrganization | null>(null);
 
-  const handleFetchMembers = useCallback(async () => {
-    if (!orgName.trim()) {
+  const handleValidateOrg = useCallback(async () => {
+    if (!inputValue.trim()) {
       setError('Please enter an organization name');
       return;
     }
 
     setLoading(true);
     setError(null);
-    setProgress('');
-    setMembers([]);
-    setOrganization(null);
-    setSelectedMembers(new Set());
 
     try {
-      const result: FetchOrgMembersResult = await fetchOrgMembers(
-        orgName.trim(),
-        githubToken,
-        setProgress
-      );
-
-      setMembers(result.members);
-      setOrganization(result.organization);
-      // Select all members by default
-      setSelectedMembers(new Set(result.members.map(m => m.login)));
-      setIsOpen(true);
+      const org = await validateGitHubOrganization(inputValue.trim(), githubToken);
+      setValidatedOrg(org);
+      onOrganizationChange(org.login);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch organization members');
+      setError(err instanceof Error ? err.message : 'Failed to validate organization');
+      setValidatedOrg(null);
     } finally {
       setLoading(false);
-      setProgress('');
     }
-  }, [orgName, githubToken]);
+  }, [inputValue, githubToken, onOrganizationChange]);
 
-  const handleToggleMember = useCallback((login: string) => {
-    setSelectedMembers(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(login)) {
-        newSet.delete(login);
-      } else {
-        newSet.add(login);
-      }
-      return newSet;
-    });
-  }, []);
-
-  const handleSelectAll = useCallback(() => {
-    setSelectedMembers(new Set(members.map(m => m.login)));
-  }, [members]);
-
-  const handleSelectNone = useCallback(() => {
-    setSelectedMembers(new Set());
-  }, []);
-
-  const handleConfirmSelection = useCallback(() => {
-    const selectedUsernames = Array.from(selectedMembers);
-    if (selectedUsernames.length > 0) {
-      // Merge with existing usernames
-      const existingUsernames = currentUsernames
-        .split(',')
-        .map(u => u.trim())
-        .filter(u => u);
-      const allUsernames = [...new Set([...existingUsernames, ...selectedUsernames])];
-      onUsernamesSelected(allUsernames);
-    }
-    setIsOpen(false);
-  }, [selectedMembers, currentUsernames, onUsernamesSelected]);
+  const handleClear = useCallback(() => {
+    setInputValue('');
+    setValidatedOrg(null);
+    setError(null);
+    onOrganizationChange('');
+  }, [onOrganizationChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        handleFetchMembers();
+        handleValidateOrg();
       }
     },
-    [handleFetchMembers]
+    [handleValidateOrg]
   );
 
   return (
     <Box>
-      <ActionMenu open={isOpen} onOpenChange={setIsOpen}>
-        <ActionMenu.Anchor>
-          <Box
-            sx={{
-              display: 'flex',
-              gap: 2,
-              alignItems: 'flex-end',
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 2,
+          alignItems: 'flex-end',
+        }}
+      >
+        <FormControl>
+          <FormControl.Label>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <OrganizationIcon size={16} />
+              Filter by Organization (optional)
+            </Box>
+          </FormControl.Label>
+          <FormControl.Caption>
+            Only show activity in this organization's repositories
+          </FormControl.Caption>
+          <TextInput
+            placeholder="e.g., facebook, microsoft, google"
+            value={inputValue}
+            onChange={e => {
+              setInputValue(e.target.value);
+              if (validatedOrg) {
+                setValidatedOrg(null);
+                onOrganizationChange('');
+              }
             }}
+            onKeyDown={handleKeyDown}
+            disabled={loading}
+            sx={{ minWidth: '250px' }}
+          />
+        </FormControl>
+
+        {!validatedOrg ? (
+          <Button
+            onClick={handleValidateOrg}
+            disabled={loading || !inputValue.trim()}
+            loading={loading}
           >
-            <FormControl>
-              <FormControl.Label>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <OrganizationIcon size={16} />
-                  Organization Members Lookup
-                </Box>
-              </FormControl.Label>
-              <TextInput
-                placeholder="Enter organization name (e.g., facebook)"
-                value={orgName}
-                onChange={e => setOrgName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={loading}
-                sx={{ minWidth: '250px' }}
-              />
-            </FormControl>
-            <Button
-              onClick={handleFetchMembers}
-              disabled={loading || !orgName.trim()}
-              leadingVisual={loading ? Spinner : PeopleIcon}
-            >
-              {loading ? 'Loading...' : 'Fetch Members'}
-            </Button>
-          </Box>
-        </ActionMenu.Anchor>
+            {loading ? 'Validating...' : 'Apply Filter'}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleClear}
+            leadingVisual={XIcon}
+            variant="danger"
+          >
+            Clear Filter
+          </Button>
+        )}
+      </Box>
 
-        <ActionMenu.Overlay width="large">
-          <Box sx={{ p: 3, maxHeight: '500px', overflow: 'auto' }}>
-            {organization && (
-              <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Avatar src={organization.avatar_url} size={40} />
-                <Box>
-                  <Text sx={{ fontWeight: 'bold', display: 'block' }}>
-                    {organization.login}
-                  </Text>
-                  {organization.description && (
-                    <Text sx={{ color: 'fg.muted', fontSize: 1 }}>
-                      {organization.description}
-                    </Text>
-                  )}
-                </Box>
-              </Box>
-            )}
-
-            {members.length > 0 && (
-              <>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mb: 2,
-                    pb: 2,
-                    borderBottom: '1px solid',
-                    borderColor: 'border.default',
-                  }}
-                >
-                  <Text sx={{ fontWeight: 'bold' }}>
-                    {selectedMembers.size} of {members.length} members selected
-                  </Text>
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button size="small" onClick={handleSelectAll}>
-                      Select All
-                    </Button>
-                    <Button size="small" onClick={handleSelectNone}>
-                      Select None
-                    </Button>
-                  </Box>
-                </Box>
-
-                <ActionList>
-                  {members.map(member => (
-                    <ActionList.Item
-                      key={member.id}
-                      onSelect={() => handleToggleMember(member.login)}
-                    >
-                      <ActionList.LeadingVisual>
-                        <Checkbox
-                          checked={selectedMembers.has(member.login)}
-                          onChange={() => {}} // Handled by onSelect
-                        />
-                      </ActionList.LeadingVisual>
-                      <Avatar src={member.avatar_url} size={20} sx={{ mr: 2 }} />
-                      <Text>{member.login}</Text>
-                      {member.site_admin && (
-                        <Label sx={{ ml: 2 }} variant="accent">
-                          Admin
-                        </Label>
-                      )}
-                    </ActionList.Item>
-                  ))}
-                </ActionList>
-
-                <Box
-                  sx={{
-                    mt: 3,
-                    pt: 2,
-                    borderTop: '1px solid',
-                    borderColor: 'border.default',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: 2,
-                  }}
-                >
-                  <Button onClick={() => setIsOpen(false)}>Cancel</Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleConfirmSelection}
-                    disabled={selectedMembers.size === 0}
-                  >
-                    Add {selectedMembers.size} Member{selectedMembers.size !== 1 ? 's' : ''} to Search
-                  </Button>
-                </Box>
-              </>
-            )}
-          </Box>
-        </ActionMenu.Overlay>
-      </ActionMenu>
-
-      {loading && progress && (
-        <Text sx={{ mt: 2, color: 'fg.muted', fontSize: 1, display: 'block' }}>
-          {progress}
+      {validatedOrg && (
+        <Text sx={{ mt: 2, color: 'success.fg', fontSize: 1, display: 'block' }}>
+          Filtering results to organization: <strong>{validatedOrg.login}</strong>
         </Text>
       )}
 
@@ -266,4 +143,7 @@ export const OrgMemberLookup: React.FC<OrgMemberLookupProps> = ({
   );
 };
 
-export default OrgMemberLookup;
+// Keep backward compatibility with old name
+export const OrgMemberLookup = OrgActivityFilter;
+
+export default OrgActivityFilter;

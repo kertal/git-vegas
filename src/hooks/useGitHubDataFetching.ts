@@ -9,6 +9,7 @@ interface UseGitHubDataFetchingProps {
   githubToken: string;
   startDate: string;
   endDate: string;
+  organization?: string;
   indexedDBEvents: GitHubEvent[];
   indexedDBSearchItems: GitHubEvent[];
   onError: (error: string) => void;
@@ -30,6 +31,7 @@ export const useGitHubDataFetching = ({
   githubToken,
   startDate,
   endDate,
+  organization,
   indexedDBEvents,
   indexedDBSearchItems,
   onError,
@@ -48,7 +50,8 @@ export const useGitHubDataFetching = ({
     token: string,
     startDate: string,
     endDate: string,
-    onProgress: (message: string) => void
+    onProgress: (message: string) => void,
+    orgFilter?: string
   ): Promise<GitHubEvent[]> => {
     const allEvents: GitHubEvent[] = [];
     let page = 1;
@@ -86,16 +89,24 @@ export const useGitHubDataFetching = ({
         }
 
         const events = await response.json();
-        
+
         // Filter events by date range
         const startDateTime = new Date(startDate).getTime();
         const endDateTime = new Date(endDate).getTime() + 24 * 60 * 60 * 1000; // Add 24 hours to include end date
-        
+
         const filteredEvents = events.filter((event: GitHubEvent) => {
           const eventTime = new Date(event.created_at).getTime();
-          return eventTime >= startDateTime && eventTime <= endDateTime;
+          const inDateRange = eventTime >= startDateTime && eventTime <= endDateTime;
+
+          // Filter by organization if specified (repo.name is in format "org/repo")
+          if (orgFilter && inDateRange) {
+            const repoName = event.repo?.name || '';
+            return repoName.toLowerCase().startsWith(`${orgFilter.toLowerCase()}/`);
+          }
+
+          return inDateRange;
         });
-        
+
         allEvents.push(...filteredEvents);
         
         // If we get fewer events than requested, we've reached the end
@@ -210,7 +221,9 @@ export const useGitHubDataFetching = ({
         try {
 
           // Fetch issues and PRs with date range filtering
-          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
+          // Include organization filter if specified
+          const orgFilter = organization ? ` AND org:${organization}` : '';
+          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND (is:issue OR is:pr)${orgFilter}`;
           const searchResponse = await fetch(
             `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&advanced_search=true`,
             {
@@ -239,7 +252,7 @@ export const useGitHubDataFetching = ({
           onProgress(`Fetched issues/PRs for ${singleUsername}`);
 
            // Fetch all events with pagination
-           const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
+           const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress, organization);
            allEvents.push(...userEvents);
            onProgress(`Fetched ${userEvents.length} events for ${singleUsername}`);
 
@@ -307,6 +320,7 @@ export const useGitHubDataFetching = ({
     githubToken,
     startDate,
     endDate,
+    organization,
     indexedDBEvents.length,
     indexedDBSearchItems.length,
     onError,

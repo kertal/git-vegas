@@ -20,6 +20,7 @@ interface UseGitHubFormStateReturn {
   setEndDate: (endDate: string) => void;
   setGithubToken: (githubToken: string) => void;
   setApiMode: (apiMode: 'search' | 'events' | 'summary') => void;
+  setOrganization: (organization: string) => void;
   handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
   addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
@@ -49,6 +50,7 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
       endDate: new Date().toISOString().split('T')[0],
       githubToken: '',
       apiMode: 'summary',
+      organization: '',
     },
     () => {
       setFromUrlParams(true);
@@ -207,6 +209,13 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
     [setFormSettings]
   );
 
+  const setOrganization = useCallback(
+    (organization: string) => {
+      setFormSettings(prev => ({ ...prev, organization }));
+    },
+    [setFormSettings]
+  );
+
   // Real-time username format validation
   const validateUsernameFormat = useCallback(
     (usernameString: string) => {
@@ -240,6 +249,7 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
     setEndDate,
     setGithubToken,
     setApiMode,
+    setOrganization,
     handleUsernameBlur,
     validateUsernameFormat,
     addAvatarsToCache,

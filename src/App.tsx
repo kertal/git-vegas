@@ -37,6 +37,7 @@ interface FormContextType {
   endDate: string;
   githubToken: string;
   apiMode: 'search' | 'events' | 'summary';
+  organization: string;
   searchText: string;
   setUsername: (username: string) => void;
   setStartDate: (date: string) => void;
@@ -45,6 +46,7 @@ interface FormContextType {
   setApiMode: (
     mode: 'search' | 'events' | 'summary'
   ) => void;
+  setOrganization: (org: string) => void;
   setSearchText: (searchText: string) => void;
   handleSearch: () => void;
   handleUsernameBlur: () => void;
@@ -97,6 +99,7 @@ function App() {
     setEndDate,
     setGithubToken,
     setApiMode,
+    setOrganization,
     handleUsernameBlur,
     validateUsernameFormat,
     addAvatarsToCache,
@@ -117,7 +120,7 @@ function App() {
     clearEvents: clearSearchItems,
   } = useIndexedDBStorage('github-search-items-indexeddb');
 
-  const { username, startDate, endDate, githubToken, apiMode } = formSettings;
+  const { username, startDate, endDate, githubToken, apiMode, organization } = formSettings;
 
   const {
     results,
@@ -145,6 +148,7 @@ function App() {
     githubToken,
     startDate,
     endDate,
+    organization: organization || undefined,
     indexedDBEvents,
     indexedDBSearchItems,
     onError: setError,
@@ -435,12 +439,14 @@ function App() {
             endDate,
             githubToken,
             apiMode,
+            organization: organization || '',
             searchText,
             setUsername,
             setStartDate,
             setEndDate,
             setGithubToken,
             setApiMode,
+            setOrganization,
             setSearchText,
             handleSearch,
             handleUsernameBlur,

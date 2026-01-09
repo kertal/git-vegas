@@ -29,6 +29,8 @@ export interface GitHubSearchParams {
   githubToken?: string;
   /** API mode to use */
   apiMode?: 'search' | 'events' | 'summary';
+  /** Organization to filter results by (optional) */
+  organization?: string;
 }
 
 /**
@@ -226,6 +228,7 @@ export const validateAndCacheUsernames = async (
  * @param githubToken - GitHub token for authentication
  * @param cache - Username validation cache
  * @param cacheCallbacks - Callbacks for cache updates
+ * @param organization - Organization to filter results by (optional)
  * @returns Promise with GitHub items
  */
 export const fetchUserItems = async (
@@ -234,7 +237,8 @@ export const fetchUserItems = async (
   _endDate: string,
   githubToken?: string,
   cache?: UsernameCache,
-  cacheCallbacks?: CacheCallbacks
+  cacheCallbacks?: CacheCallbacks,
+  organization?: string
 ): Promise<GitHubItem[]> => {
   const headers: HeadersInit = {
     Accept: 'application/vnd.github.v3+json',
@@ -244,8 +248,14 @@ export const fetchUserItems = async (
     headers['Authorization'] = `token ${githubToken}`;
   }
 
+  // Build query with optional organization filter
+  let query = `author:${username}+updated:${_startDate}..${_endDate}`;
+  if (organization) {
+    query += `+org:${organization}`;
+  }
+
   const response = await fetch(
-    `https://api.github.com/search/issues?q=author:${username}+updated:${_startDate}..${_endDate}&per_page=100`,
+    `https://api.github.com/search/issues?q=${query}&per_page=100`,
     { headers }
   );
 
@@ -285,6 +295,7 @@ export interface FetchEventsResult {
  * @param githubToken - GitHub token for authentication
  * @param cache - Username validation cache
  * @param cacheCallbacks - Callbacks for cache updates
+ * @param organization - Organization to filter results by (optional)
  * @returns Promise with GitHub items and raw events
  */
 export const fetchUserEvents = async (
@@ -293,7 +304,8 @@ export const fetchUserEvents = async (
   _endDate: string,
   githubToken?: string,
   cache?: UsernameCache,
-  cacheCallbacks?: CacheCallbacks
+  cacheCallbacks?: CacheCallbacks,
+  organization?: string
 ): Promise<FetchEventsResult> => {
   const headers: HeadersInit = {
     Accept: 'application/vnd.github.v3+json',
@@ -350,8 +362,16 @@ export const fetchUserEvents = async (
       break; // No more events
     }
 
-    // Store all raw events (no filtering or transformation here)
-    allRawEvents.push(...events);
+    // Filter by organization if specified (repo.name is in format "org/repo")
+    const filteredEvents = organization
+      ? events.filter(event => {
+          const repoName = event.repo?.name || '';
+          return repoName.toLowerCase().startsWith(`${organization.toLowerCase()}/`);
+        })
+      : events;
+
+    // Store filtered events
+    allRawEvents.push(...filteredEvents);
 
     page++;
   }
@@ -434,8 +454,10 @@ export const performCombinedGitHubSearch = async (
   const allRawEvents: GitHubEvent[] = [];
   const allRawSearchItems: GitHubItem[] = [];
 
+  const orgFilter = params.organization ? ` in ${params.organization}` : '';
+
   for (const username of usernames) {
-    onProgress?.(`Fetching events for ${username}...`);
+    onProgress?.(`Fetching events for ${username}${orgFilter}...`);
 
     try {
       // Fetch events
@@ -445,9 +467,10 @@ export const performCombinedGitHubSearch = async (
         params.endDate,
         params.githubToken,
         cache,
-        cacheCallbacks
+        cacheCallbacks,
+        params.organization
       );
-      
+
       allRawEvents.push(...eventsResult.rawEvents);
       onProgress?.(`Found ${eventsResult.rawEvents.length} events for ${username}`);
 
@@ -457,16 +480,17 @@ export const performCombinedGitHubSearch = async (
       }
 
       // Fetch issues/PRs
-      onProgress?.(`Fetching issues/PRs for ${username}...`);
+      onProgress?.(`Fetching issues/PRs for ${username}${orgFilter}...`);
       const searchItems = await fetchUserItems(
         username,
         params.startDate,
         params.endDate,
         params.githubToken,
         cache,
-        cacheCallbacks
+        cacheCallbacks,
+        params.organization
       );
-      
+
       allRawSearchItems.push(...searchItems);
       onProgress?.(`Found ${searchItems.length} issues/PRs for ${username}`);
 
@@ -537,12 +561,13 @@ export const performGitHubSearch = async (
 
   // Fetch data for all users
   const apiMode = params.apiMode || 'search';
+  const orgFilter = params.organization ? ` in ${params.organization}` : '';
   onProgress?.(`Starting ${apiMode === 'events' ? 'events' : 'search'} API...`);
   const allRawEvents: GitHubEvent[] = [];
   const allRawSearchItems: GitHubItem[] = [];
 
   for (const username of usernames) {
-    onProgress?.(`Fetching data for ${username}...`);
+    onProgress?.(`Fetching data for ${username}${orgFilter}...`);
 
     try {
       if (apiMode === 'events') {
@@ -552,9 +577,10 @@ export const performGitHubSearch = async (
           params.endDate,
           params.githubToken,
           cache,
-          cacheCallbacks
+          cacheCallbacks,
+          params.organization
         );
-        
+
         allRawEvents.push(...eventsResult.rawEvents);
         onProgress?.(`Found ${eventsResult.rawEvents.length} raw events for ${username}`);
       } else {
@@ -564,9 +590,10 @@ export const performGitHubSearch = async (
           params.endDate,
           params.githubToken,
           cache,
-          cacheCallbacks
+          cacheCallbacks,
+          params.organization
         );
-        
+
         allRawSearchItems.push(...searchItems);
         onProgress?.(`Found ${searchItems.length} items for ${username}`);
       }
