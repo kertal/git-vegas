@@ -4,6 +4,7 @@ export interface GitHubItem {
   event_id?: string;
   html_url: string;
   title: string;
+  action?: string; // Action that triggered the event (e.g., 'opened', 'closed', 'reopened', 'synchronize')
   pull_request?: {
     merged_at?: string;
     url?: string;
