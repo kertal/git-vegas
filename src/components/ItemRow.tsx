@@ -1,4 +1,11 @@
 import { Box, Avatar, AvatarStack, Link, Text, Checkbox, Token, Label } from '@primer/react';
+import {
+  GitMergeIcon,
+  GitPullRequestIcon,
+  GitPullRequestDraftIcon,
+  IssueOpenedIcon,
+  RepoIcon,
+} from '@primer/octicons-react';
 import { GitHubItem } from '../types';
 import ActionButtonsRow from './ActionButtonsRow';
 import { getActionVariant } from '../utils/actionUtils';
@@ -10,13 +17,6 @@ const isIssue = (item: GitHubItem): boolean => !item.pull_request;
 const hasDistinctAssignee = (item: GitHubItem): boolean => {
   return isIssue(item) && !!item.assignee && item.assignee.login !== item.user.login;
 };
-import {
-  GitMergeIcon,
-  GitPullRequestIcon,
-  GitPullRequestDraftIcon,
-  IssueOpenedIcon,
-  RepoIcon,
-} from '@primer/octicons-react';
 
 interface ItemRowProps {
   item: GitHubItem;
