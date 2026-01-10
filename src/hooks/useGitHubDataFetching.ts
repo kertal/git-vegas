@@ -140,22 +140,20 @@ export const useGitHubDataFetching = ({
     const perPage = GITHUB_API_PER_PAGE;
 
     // GitHub Apps with user access tokens require separate queries for issues and PRs
-    // Also need separate queries for author and assignee since parentheses aren't supported
+    // Use "involves:" to match author, assignee, commenter, and mentions in one query
     const queries = [
-      { type: 'issue', role: 'author', query: `author:${username} updated:${startDate}..${endDate} is:issue` },
-      { type: 'issue', role: 'assignee', query: `assignee:${username} updated:${startDate}..${endDate} is:issue` },
-      { type: 'pull-request', role: 'author', query: `author:${username} updated:${startDate}..${endDate} is:pull-request` },
-      { type: 'pull-request', role: 'assignee', query: `assignee:${username} updated:${startDate}..${endDate} is:pull-request` },
+      { type: 'issue', query: `involves:${username} updated:${startDate}..${endDate} is:issue` },
+      { type: 'pull-request', query: `involves:${username} updated:${startDate}..${endDate} is:pull-request` },
     ];
 
-    for (const { type, role, query: searchQuery } of queries) {
+    for (const { type, query: searchQuery } of queries) {
       let page = 1;
       let itemsFetchedForQuery = 0;
 
       while (page <= GITHUB_SEARCH_API_MAX_PAGES) {
         try {
           const typeLabel = type === 'pull-request' ? 'PRs' : 'issues';
-          onProgress(`Fetching ${typeLabel} (${role}) page ${page} for ${username}...`);
+          onProgress(`Fetching ${typeLabel} page ${page} for ${username}...`);
 
           const response = await fetch(
             `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${perPage}&page=${page}&sort=updated`,
@@ -173,12 +171,12 @@ export const useGitHubDataFetching = ({
             // Handle pagination limit error (422) - continue with next query
             if (response.status === 422 && responseJSON.message?.includes('pagination')) {
               console.warn(
-                `GitHub Search API pagination limit reached for ${username} ${type} (${role}) at page ${page}.`
+                `GitHub Search API pagination limit reached for ${username} ${type} at page ${page}.`
               );
               break;
             }
 
-            throw new Error(`Failed to fetch ${type} (${role}) page ${page}: ${responseJSON.message}`);
+            throw new Error(`Failed to fetch ${type} page ${page}: ${responseJSON.message}`);
           }
 
           const searchData = await response.json();
@@ -213,7 +211,7 @@ export const useGitHubDataFetching = ({
           await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
 
         } catch (error) {
-          console.error(`Error fetching ${type} (${role}) page ${page} for ${username}:`, error);
+          console.error(`Error fetching ${type} page ${page} for ${username}:`, error);
           // Return partial results if we have any, otherwise throw
           if (allItems.length > 0) {
             console.warn(`Returning ${allItems.length} items collected before error`);
