@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:web": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "predeploy": "npm run build",
@@ -18,13 +19,17 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx}\"",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@primer/css": "^22.0.0",
     "@primer/octicons-react": "^19.15.2",
     "@primer/primitives": "^10.7.0",
     "@primer/react": "^37.22.0",
+    "@tauri-apps/api": "^2.9.1",
     "date-fns": "^4.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -36,6 +41,7 @@
   "devDependencies": {
     "@eslint/js": "^9.25.0",
     "@playwright/test": "^1.53.1",
+    "@tauri-apps/cli": "^2.9.6",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
