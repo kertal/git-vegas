@@ -107,12 +107,14 @@ function App() {
 
   const {
     events: indexedDBEvents,
+    metadata: eventsMetadata,
     storeEvents,
     clearEvents,
   } = useIndexedDBStorage('github-events-indexeddb');
 
   const {
     events: indexedDBSearchItems,
+    metadata: searchItemsMetadata,
     storeEvents: storeSearchItems,
     clearEvents: clearSearchItems,
   } = useIndexedDBStorage('github-search-items-indexeddb');
@@ -147,6 +149,8 @@ function App() {
     endDate,
     indexedDBEvents,
     indexedDBSearchItems,
+    eventsMetadata,
+    searchItemsMetadata,
     onError: setError,
     storeEvents,
     clearEvents,
