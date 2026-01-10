@@ -141,7 +141,7 @@ export const useGitHubDataFetching = ({
     const maxPages = 10; // GitHub Search API allows up to 1000 results (10 pages * 100 per page)
     let totalCount = 0;
 
-    const searchQuery = `(author:${username} OR assignee:${username}) AND updated:${startDate}..${endDate} AND (is:issue OR is:pr)`;
+    const searchQuery = `(author:${username} OR assignee:${username}) updated:${startDate}..${endDate} (is:issue OR is:pull-request)`;
 
     while (page <= maxPages) {
       try {
