@@ -280,25 +280,33 @@ describe('useGitHubDataFetching', () => {
     });
 
     it('should fetch multiple pages when total_count exceeds per_page', async () => {
-      // Create 150 items total - should require 2 pages
+      // Create 150 issues total - should require 2 pages for issues
       const page1Items = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
       const page2Items = Array.from({ length: 50 }, (_, i) => createMockItem(i + 101));
 
-      let searchCallCount = 0;
+      let issueCallCount = 0;
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
         if (url.includes('/search/issues')) {
-          searchCallCount++;
-          if (searchCallCount === 1) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve(createMockSearchResponse(page1Items, 150)),
-            });
-          } else {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve(createMockSearchResponse(page2Items, 150)),
-            });
+          // Check if this is an issue or PR query
+          if (url.includes('is%3Aissue')) {
+            issueCallCount++;
+            if (issueCallCount === 1) {
+              return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(createMockSearchResponse(page1Items, 150)),
+              });
+            } else {
+              return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(createMockSearchResponse(page2Items, 150)),
+              });
+            }
           }
+          // PR query - return empty
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(createMockSearchResponse([], 0)),
+          });
         }
         // Events API - return empty
         return Promise.resolve({
@@ -316,15 +324,15 @@ describe('useGitHubDataFetching', () => {
       await vi.runAllTimersAsync();
       await searchPromise;
 
-      // Verify search API was called twice (2 pages)
-      const searchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
-        (call: string[]) => call[0].includes('/search/issues')
+      // Verify search API was called for issues (2 pages) + PRs (1 page)
+      const issueCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call: string[]) => call[0].includes('/search/issues') && call[0].includes('is%3Aissue')
       );
-      expect(searchCalls.length).toBe(2);
+      expect(issueCalls.length).toBe(2);
 
-      // Verify page parameter increments
-      expect(searchCalls[0][0]).toContain('page=1');
-      expect(searchCalls[1][0]).toContain('page=2');
+      // Verify page parameter increments for issues
+      expect(issueCalls[0][0]).toContain('page=1');
+      expect(issueCalls[1][0]).toContain('page=2');
 
       // Verify storeSearchItems was called with all 150 items
       expect(mockStoreSearchItems).toHaveBeenCalled();
@@ -333,14 +341,21 @@ describe('useGitHubDataFetching', () => {
     });
 
     it('should stop fetching when all items are retrieved (items.length < perPage)', async () => {
-      // Only 50 items total - single page
+      // Only 50 issues total - single page per type
       const items = Array.from({ length: 50 }, (_, i) => createMockItem(i + 1));
 
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
         if (url.includes('/search/issues')) {
+          if (url.includes('is%3Aissue')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(createMockSearchResponse(items, 50)),
+            });
+          }
+          // PR query - return empty
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(createMockSearchResponse(items, 50)),
+            json: () => Promise.resolve(createMockSearchResponse([], 0)),
           });
         }
         return Promise.resolve({
@@ -355,14 +370,14 @@ describe('useGitHubDataFetching', () => {
       await vi.runAllTimersAsync();
       await searchPromise;
 
-      // Should only call search API once since items < 100
+      // Should call search API twice (once for issues, once for PRs)
       const searchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
         (call: string[]) => call[0].includes('/search/issues')
       );
-      expect(searchCalls.length).toBe(1);
+      expect(searchCalls.length).toBe(2); // 1 for issues + 1 for PRs
     });
 
-    it('should stop at max pages limit (10 pages)', async () => {
+    it('should stop at max pages limit (10 pages per type)', async () => {
       // Simulate a response that always returns 100 items with huge total_count
       const pageItems = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
 
@@ -385,11 +400,11 @@ describe('useGitHubDataFetching', () => {
       await vi.runAllTimersAsync();
       await searchPromise;
 
-      // Should stop at 10 pages max
+      // Should stop at 10 pages max per type (10 for issues + 10 for PRs = 20)
       const searchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
         (call: string[]) => call[0].includes('/search/issues')
       );
-      expect(searchCalls.length).toBe(10);
+      expect(searchCalls.length).toBe(20);
     });
 
     it('should preserve assignee data and add original property', async () => {
@@ -408,9 +423,16 @@ describe('useGitHubDataFetching', () => {
 
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
         if (url.includes('/search/issues')) {
+          if (url.includes('is%3Aissue')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(createMockSearchResponse([itemWithAssignee], 1)),
+            });
+          }
+          // PR query - return empty
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve(createMockSearchResponse([itemWithAssignee], 1)),
+            json: () => Promise.resolve(createMockSearchResponse([], 0)),
           });
         }
         return Promise.resolve({
@@ -437,23 +459,30 @@ describe('useGitHubDataFetching', () => {
       // First page succeeds, second page returns 422
       const page1Items = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
 
-      let searchCallCount = 0;
+      let issueCallCount = 0;
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
         if (url.includes('/search/issues')) {
-          searchCallCount++;
-          if (searchCallCount === 1) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve(createMockSearchResponse(page1Items, 200)),
-            });
-          } else {
-            // Return 422 pagination limit error
-            return Promise.resolve({
-              ok: false,
-              status: 422,
-              json: () => Promise.resolve({ message: 'Only the first 1000 search results are available. pagination is limited.' }),
-            });
+          if (url.includes('is%3Aissue')) {
+            issueCallCount++;
+            if (issueCallCount === 1) {
+              return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(createMockSearchResponse(page1Items, 200)),
+              });
+            } else {
+              // Return 422 pagination limit error
+              return Promise.resolve({
+                ok: false,
+                status: 422,
+                json: () => Promise.resolve({ message: 'Only the first 1000 search results are available. pagination is limited.' }),
+              });
+            }
           }
+          // PR query - return empty
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(createMockSearchResponse([], 0)),
+          });
         }
         return Promise.resolve({
           ok: true,
@@ -477,19 +506,26 @@ describe('useGitHubDataFetching', () => {
       // First page succeeds, second page throws network error
       const page1Items = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
 
-      let searchCallCount = 0;
+      let issueCallCount = 0;
       (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
         if (url.includes('/search/issues')) {
-          searchCallCount++;
-          if (searchCallCount === 1) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve(createMockSearchResponse(page1Items, 200)),
-            });
-          } else {
-            // Simulate network error
-            return Promise.reject(new Error('Network error'));
+          if (url.includes('is%3Aissue')) {
+            issueCallCount++;
+            if (issueCallCount === 1) {
+              return Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve(createMockSearchResponse(page1Items, 200)),
+              });
+            } else {
+              // Simulate network error
+              return Promise.reject(new Error('Network error'));
+            }
           }
+          // PR query - return empty
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(createMockSearchResponse([], 0)),
+          });
         }
         return Promise.resolve({
           ok: true,
