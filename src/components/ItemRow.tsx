@@ -1,25 +1,14 @@
-import { Box, Avatar, Link, Text, Checkbox, Token, Label } from '@primer/react';
+import { Box, Avatar, AvatarStack, Link, Text, Checkbox, Token, Label } from '@primer/react';
 import { GitHubItem } from '../types';
 import ActionButtonsRow from './ActionButtonsRow';
 import { getActionVariant } from '../utils/actionUtils';
 
-// Helper functions to determine display avatar and user
-const getDisplayAvatar = (item: GitHubItem): string => {
-  // For issues that have an assignee and the user is not the author, show assignee avatar
-  if (!item.pull_request && item.assignee && item.assignee.login !== item.user.login) {
-    return item.assignee.avatar_url;
-  }
-  // Otherwise show the author avatar
-  return item.user.avatar_url;
-};
+// Helper to check if item is an issue (not a PR)
+const isIssue = (item: GitHubItem): boolean => !item.pull_request;
 
-const getDisplayUser = (item: GitHubItem): string => {
-  // For issues that have an assignee and the user is not the author, show assignee name
-  if (!item.pull_request && item.assignee && item.assignee.login !== item.user.login) {
-    return item.assignee.login;
-  }
-  // Otherwise show the author name
-  return item.user.login;
+// Helper to check if issue has a different assignee than the actor
+const hasDistinctAssignee = (item: GitHubItem): boolean => {
+  return isIssue(item) && !!item.assignee && item.assignee.login !== item.user.login;
 };
 import {
   GitMergeIcon,
@@ -158,12 +147,28 @@ const ItemRow = ({
             </Box>
           )}
 
-          <Avatar
-            src={getDisplayAvatar(item)}
-            alt={`${getDisplayUser(item)}'s avatar`}
-            size={size === 'small' ? 24 : 32}
-            sx={{ flexShrink: 0 }}
-          />
+          {/* Avatar(s) - show actor first, then assignee if different for issues */}
+          {hasDistinctAssignee(item) ? (
+            <AvatarStack disableExpand>
+              <Avatar
+                src={item.user.avatar_url}
+                alt={`${item.user.login}'s avatar (actor)`}
+                size={size === 'small' ? 24 : 32}
+              />
+              <Avatar
+                src={item.assignee!.avatar_url}
+                alt={`${item.assignee!.login}'s avatar (assignee)`}
+                size={size === 'small' ? 24 : 32}
+              />
+            </AvatarStack>
+          ) : (
+            <Avatar
+              src={item.user.avatar_url}
+              alt={`${item.user.login}'s avatar`}
+              size={size === 'small' ? 24 : 32}
+              sx={{ flexShrink: 0 }}
+            />
+          )}
 
           {/* Main content - takes remaining space */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -335,11 +340,27 @@ const ItemRow = ({
               </Box>
             )}
 
-            <Avatar
-              src={getDisplayAvatar(item)}
-              alt={`${getDisplayUser(item)}'s avatar`}
-              size={size === 'small' ? 24 : 32}
-            />
+            {/* Avatar(s) - show actor first, then assignee if different for issues */}
+            {hasDistinctAssignee(item) ? (
+              <AvatarStack disableExpand>
+                <Avatar
+                  src={item.user.avatar_url}
+                  alt={`${item.user.login}'s avatar (actor)`}
+                  size={size === 'small' ? 24 : 32}
+                />
+                <Avatar
+                  src={item.assignee!.avatar_url}
+                  alt={`${item.assignee!.login}'s avatar (assignee)`}
+                  size={size === 'small' ? 24 : 32}
+                />
+              </AvatarStack>
+            ) : (
+              <Avatar
+                src={item.user.avatar_url}
+                alt={`${item.user.login}'s avatar`}
+                size={size === 'small' ? 24 : 32}
+              />
+            )}
 
             {/* Main content */}
             <Box sx={{ flex: 1, minWidth: 0 }}>

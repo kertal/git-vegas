@@ -275,8 +275,8 @@ const applyPRDetailsToItem = (item: GitHubItem, prDetails: PRCacheRecord): GitHu
       // Check if title has a generic PR pattern with action
       const action = matchGenericPRAction(item.title);
       if (action) {
-        // Use the actual PR title with the action appended
-        enrichedItem.title = `${prDetails.title} (${action})`;
+        // Use the actual PR title only - action is displayed separately as a badge
+        enrichedItem.title = prDetails.title;
       } else if (item.title?.includes('undefined')) {
         // Handle titles with "undefined" - replace with actual PR title
         enrichedItem.title = prDetails.title;

@@ -271,15 +271,15 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const repoOwner = repo.name.split('/')[0];
     let title: string;
     if (displayCount > 0) {
-      title = `Pushed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${repoOwner}/${branch}`;
+      title = `Committed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${repoOwner}/${branch}`;
       if (distinctCount > 0 && totalCommitCount > distinctCount) {
         title += ` (${distinctCount} distinct)`;
       }
     } else if (hasCommitIndicator) {
       // We know commits were pushed but don't have the count
-      title = `Pushed to ${repoOwner}/${branch}`;
+      title = `Committed to ${repoOwner}/${branch}`;
     } else {
-      title = `Pushed 0 commits to ${repoOwner}/${branch}`;
+      title = `Committed 0 commits to ${repoOwner}/${branch}`;
     }
     
     // Create a body with commit messages if available, or show commit range
