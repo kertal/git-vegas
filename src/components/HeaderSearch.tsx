@@ -1,7 +1,8 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import {
   TextInput,
   Box,
+  Text,
 } from '@primer/react';
 import { XIcon, SearchIcon } from '@primer/octicons-react';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
@@ -17,6 +18,7 @@ const HeaderSearch = memo(function HeaderSearch({
   onSearchChange,
   placeholder = 'Search'
 }: HeaderSearchProps) {
+  const [isFocused, setIsFocused] = useState(false);
 
   // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
@@ -35,6 +37,15 @@ const HeaderSearch = memo(function HeaderSearch({
     clearSearch();
   }, [clearSearch]);
 
+  // Handle focus state
+  const handleFocus = useCallback(() => {
+    setIsFocused(true);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setIsFocused(false);
+  }, []);
+
   return (
     <Box
       sx={{
@@ -49,6 +60,8 @@ const HeaderSearch = memo(function HeaderSearch({
       <TextInput
         value={inputValue}
         onChange={handleInputChange}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder={placeholder}
         size="small"
         leadingVisual={SearchIcon}
@@ -73,6 +86,18 @@ const HeaderSearch = memo(function HeaderSearch({
         }}
         block={true}
       />
+      {!isFocused && !inputValue && (
+        <Text
+          sx={{
+            fontSize: '11px',
+            color: 'fg.muted',
+            mt: 1,
+            display: 'block',
+          }}
+        >
+          Syntax: label:name, -label:name, user:name, repo:owner/repo
+        </Text>
+      )}
     </Box>
   );
 });
