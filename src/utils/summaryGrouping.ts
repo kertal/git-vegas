@@ -261,7 +261,7 @@ export const categorizeItem = (
       // Issue was created in range - either explicitly opened or no action specified (from Search API)
       return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
     } else if (updatedInRange) {
-      // Issue had activity (labeled, assigned, etc.) but wasn't opened/closed within timeframe
+      // Issue was updated in the timeframe (labeled, assigned, etc.) but was not categorized as opened/closed in this summary
       return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
     }
 
