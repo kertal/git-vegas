@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
 import { EventsData } from '../utils/indexedDB';
 import { validateUsernameList, isValidDateString } from '../utils';
-import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
+import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS, GITHUB_SEARCH_API_MAX_PAGES } from '../utils/settings';
 
 interface UseGitHubDataFetchingProps {
   username: string;
@@ -127,6 +127,101 @@ export const useGitHubDataFetching = ({
     return allEvents;
   };
 
+  // Fetch all search items (issues/PRs) for multiple usernames with pagination
+  // Combines users with OR in a single query to reduce API calls
+  const fetchAllSearchItems = async (
+    usernames: string[],
+    token: string,
+    startDate: string,
+    endDate: string,
+    onProgress: (message: string) => void
+  ): Promise<GitHubItem[]> => {
+    const allItems: GitHubItem[] = [];
+    const seenIds = new Set<number>();
+    const perPage = GITHUB_API_PER_PAGE;
+
+    // Build query with multiple involves: joined by OR
+    // Format: "is:issue updated:... involves:user1 OR involves:user2 OR involves:user3"
+    const involvesClause = usernames.map(u => `involves:${u}`).join(' OR ');
+
+    const queries = [
+      { type: 'issue', query: `is:issue updated:${startDate}..${endDate} ${involvesClause}` },
+      { type: 'pull-request', query: `is:pull-request updated:${startDate}..${endDate} ${involvesClause}` },
+    ];
+
+    for (const { type, query: searchQuery } of queries) {
+      let page = 1;
+      let itemsFetchedForQuery = 0;
+      const usersLabel = usernames.length === 1 ? usernames[0] : `${usernames.length} users`;
+
+      while (page <= GITHUB_SEARCH_API_MAX_PAGES) {
+        try {
+          const typeLabel = type === 'pull-request' ? 'PRs' : 'issues';
+          onProgress(`Fetching ${typeLabel} page ${page} for ${usersLabel}...`);
+
+          const response = await fetch(
+            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${perPage}&page=${page}&sort=updated`,
+            {
+              headers: {
+                ...(token && { Authorization: `token ${token}` }),
+                Accept: 'application/vnd.github.v3+json',
+              },
+            }
+          );
+
+          if (!response.ok) {
+            const responseJSON = await response.json();
+
+            // Handle pagination limit error (422) - continue with next query
+            if (response.status === 422 && responseJSON.message?.includes('pagination')) {
+              console.warn(`GitHub Search API pagination limit reached for ${type} at page ${page}.`);
+              break;
+            }
+
+            throw new Error(`Failed to fetch ${type} page ${page}: ${responseJSON.message}`);
+          }
+
+          const searchData = await response.json();
+          const totalCount = searchData.total_count;
+          const items = searchData.items;
+
+          itemsFetchedForQuery += items.length;
+
+          // Add items, deduplicating by id
+          for (const item of items) {
+            if (!seenIds.has(item.id)) {
+              seenIds.add(item.id);
+              allItems.push({
+                ...item,
+                assignee: item.assignee || null,
+                assignees: item.assignees || [],
+                original: item,
+              });
+            }
+          }
+
+          if (items.length < perPage || itemsFetchedForQuery >= totalCount) {
+            break;
+          }
+
+          page++;
+          await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
+
+        } catch (error) {
+          console.error(`Error fetching ${type} page ${page}:`, error);
+          // Return partial results if we have any, otherwise throw
+          if (allItems.length > 0) {
+            console.warn(`Returning ${allItems.length} items collected before error`);
+            return allItems;
+          }
+          throw error;
+        }
+      }
+    }
+
+    return allItems;
+  };
+
   const handleSearch = useCallback(async () => {
     if (!username.trim()) {
       onError('Please enter a GitHub username');
@@ -201,55 +296,32 @@ export const useGitHubDataFetching = ({
 
       // Accumulate all data from all users
       const allEvents: GitHubEvent[] = [];
-      const allSearchItems: GitHubItem[] = [];
 
-      // Fetch events for each username with pagination
+      // Fetch all issues/PRs for all users in a single combined query (2 API calls total)
+      // Query format: "is:issue updated:... involves:user1 OR involves:user2 OR involves:user3"
+      setCurrentUsername(usernames.length === 1 ? usernames[0] : `${usernames.length} users`);
+      let allSearchItems: GitHubItem[] = [];
+      try {
+        allSearchItems = await fetchAllSearchItems(usernames, githubToken, startDate, endDate, onProgress);
+        onProgress(`Fetched ${allSearchItems.length} issues/PRs for ${usernames.length} user(s)`);
+      } catch (error) {
+        console.error('Error fetching issues/PRs:', error);
+        onError(`Error fetching issues/PRs: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // Fetch events for each username (Events API doesn't support combined queries)
       for (const singleUsername of usernames) {
         setCurrentUsername(singleUsername);
 
         try {
-
-          // Fetch issues and PRs with date range filtering
-          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
-          const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&advanced_search=true`,
-            {
-              headers: {
-                ...(githubToken && { Authorization: `token ${githubToken}` }),
-                Accept: 'application/vnd.github.v3+json',
-              },
-            }
-          );
-
-          if (!searchResponse.ok) {
-            const responseJSON = await searchResponse.json();
-            throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
-          }
-
-          const searchData = await searchResponse.json();
-          // Add original property to search items and ensure assignee data is preserved
-          const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
-            ...item,
-            // Ensure assignee information is preserved from the API response
-            assignee: item.assignee || null,
-            assignees: item.assignees || [],
-            original: item, // Store the original item as the original payload
-          }));
-          allSearchItems.push(...searchItemsWithOriginal);
-          onProgress(`Fetched issues/PRs for ${singleUsername}`);
-
-           // Fetch all events with pagination
-           const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
-           allEvents.push(...userEvents);
-           onProgress(`Fetched ${userEvents.length} events for ${singleUsername}`);
-
-
+          const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
+          allEvents.push(...userEvents);
+          onProgress(`Fetched ${userEvents.length} events for ${singleUsername}`);
         } catch (error) {
-          console.error(`Error fetching data for ${singleUsername}:`, error);
+          console.error(`Error fetching events for ${singleUsername}:`, error);
           onError(
-            `Error fetching data for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Error fetching events for ${singleUsername}: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
-          // Continue with other usernames instead of breaking
           continue;
         }
       }
