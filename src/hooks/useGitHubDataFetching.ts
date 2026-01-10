@@ -136,20 +136,26 @@ export const useGitHubDataFetching = ({
     onProgress: (message: string) => void
   ): Promise<GitHubItem[]> => {
     const allItems: GitHubItem[] = [];
+    const seenIds = new Set<number>();
     const perPage = GITHUB_API_PER_PAGE;
     const maxPages = 10; // GitHub Search API allows up to 1000 results (10 pages * 100 per page)
 
     // GitHub Apps with user access tokens require separate queries for issues and PRs
-    const types = ['issue', 'pull-request'] as const;
+    // Also need separate queries for author and assignee since parentheses aren't supported
+    const queries = [
+      { type: 'issue', role: 'author', query: `author:${username} updated:${startDate}..${endDate} is:issue` },
+      { type: 'issue', role: 'assignee', query: `assignee:${username} updated:${startDate}..${endDate} is:issue` },
+      { type: 'pull-request', role: 'author', query: `author:${username} updated:${startDate}..${endDate} is:pull-request` },
+      { type: 'pull-request', role: 'assignee', query: `assignee:${username} updated:${startDate}..${endDate} is:pull-request` },
+    ];
 
-    for (const type of types) {
+    for (const { type, role, query: searchQuery } of queries) {
       let page = 1;
-      let totalCount = 0;
-      const searchQuery = `(author:${username} OR assignee:${username}) updated:${startDate}..${endDate} is:${type}`;
 
       while (page <= maxPages) {
         try {
-          onProgress(`Fetching ${type === 'pull-request' ? 'PRs' : 'issues'} page ${page} for ${username}...`);
+          const typeLabel = type === 'pull-request' ? 'PRs' : 'issues';
+          onProgress(`Fetching ${typeLabel} (${role}) page ${page} for ${username}...`);
 
           const response = await fetch(
             `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${perPage}&page=${page}&sort=updated`,
@@ -164,36 +170,36 @@ export const useGitHubDataFetching = ({
           if (!response.ok) {
             const responseJSON = await response.json();
 
-            // Handle pagination limit error (422) - continue with next type
+            // Handle pagination limit error (422) - continue with next query
             if (response.status === 422 && responseJSON.message?.includes('pagination')) {
               console.warn(
-                `GitHub Search API pagination limit reached for ${username} ${type} at page ${page}.`
+                `GitHub Search API pagination limit reached for ${username} ${type} (${role}) at page ${page}.`
               );
               break;
             }
 
-            throw new Error(`Failed to fetch ${type} page ${page}: ${responseJSON.message}`);
+            throw new Error(`Failed to fetch ${type} (${role}) page ${page}: ${responseJSON.message}`);
           }
 
           const searchData = await response.json();
-          totalCount = searchData.total_count;
+          const totalCount = searchData.total_count;
           const items = searchData.items;
 
-          // Add original property to search items and ensure assignee data is preserved
-          const itemsWithOriginal = items.map((item: Record<string, unknown>) => ({
-            ...item,
-            assignee: item.assignee || null,
-            assignees: item.assignees || [],
-            original: item,
-          }));
+          // Add items, deduplicating by id
+          for (const item of items) {
+            if (!seenIds.has(item.id)) {
+              seenIds.add(item.id);
+              allItems.push({
+                ...item,
+                assignee: item.assignee || null,
+                assignees: item.assignees || [],
+                original: item,
+              });
+            }
+          }
 
-          allItems.push(...itemsWithOriginal);
-
-          // Check if we've fetched all items for this type
-          const itemsForType = allItems.filter((item: GitHubItem) =>
-            type === 'pull-request' ? item.pull_request : !item.pull_request
-          ).length;
-          if (itemsForType >= totalCount || items.length < perPage) {
+          // Check if we've fetched all items for this query
+          if (page * perPage >= totalCount || items.length < perPage) {
             break;
           }
 
@@ -203,7 +209,7 @@ export const useGitHubDataFetching = ({
           await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
 
         } catch (error) {
-          console.error(`Error fetching ${type} page ${page} for ${username}:`, error);
+          console.error(`Error fetching ${type} (${role}) page ${page} for ${username}:`, error);
           // Return partial results if we have any, otherwise throw
           if (allItems.length > 0) {
             console.warn(`Returning ${allItems.length} items collected before error`);
