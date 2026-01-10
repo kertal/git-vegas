@@ -1,10 +1,11 @@
-import React, { memo, useState, useMemo, useCallback } from 'react';
+import React, { memo, useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Box,
   Text,
   Checkbox,
   Button,
   Heading,
+  Pagination,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -95,6 +96,10 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('issuesAndPRs-selectedItems', new Set());
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('issuesAndPRs-collapsedSections', new Set());
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useLocalStorage<number>('issuesAndPRs-currentPage', 1);
+  const itemsPerPage = 100;
+
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
@@ -103,11 +108,27 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     return filterItemsByAdvancedSearch(results, searchText);
   }, [results, searchText]);
 
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchText]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedResults = filteredResults.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = useCallback((_event: React.MouseEvent, page: number) => {
+    setCurrentPage(page);
+  }, []);
+
   // Define helper variables for empty state logic (consistent with other views)
   const hasRawData = results && results.length > 0;
   const hasSearchText = searchText && searchText.trim().length > 0;
 
-  // Group items into sections
+  // Group items into sections (uses paginated results)
   const groupedItems = useMemo(() => {
     const groups: {
       'PRs': GitHubItem[];
@@ -117,7 +138,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       'Issues': [],
     };
 
-    filteredResults.forEach(item => {
+    paginatedResults.forEach(item => {
       if (item.pull_request) {
         // All pull requests go to PRs section
         groups['PRs'].push(item);
@@ -133,7 +154,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     });
 
     return groups;
-  }, [filteredResults]);
+  }, [paginatedResults]);
 
   // Selection handlers
   const toggleItemSelection = useCallback((id: string | number) => {
@@ -350,6 +371,11 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                 }}
               >
                 Select All
+                {totalPages > 1 && (
+                  <Text as="span" sx={{ fontSize: 1, color: 'fg.muted', ml: 2 }}>
+                    (Page {currentPage} of {totalPages})
+                  </Text>
+                )}
               </Text>
             </Box>
             <BulkCopyButtons
@@ -454,6 +480,25 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                     </div>
                   );
                 })}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    mt: 4,
+                    pb: 3
+                  }}>
+                    <Pagination
+                      pageCount={totalPages}
+                      currentPage={currentPage}
+                      onPageChange={handlePageChange}
+                      showPages={{ narrow: false }}
+                      marginPageCount={2}
+                      surroundingPageCount={2}
+                    />
+                  </Box>
+                )}
               </div>
             );
           })()}
