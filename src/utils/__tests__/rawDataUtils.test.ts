@@ -116,7 +116,7 @@ describe('rawDataUtils', () => {
       const result = transformEventToItem(mockPushEventMinimal);
 
       expect(result).toBeTruthy();
-      expect(result?.title).toBe('Pushed to testuser/feature_branch');
+      expect(result?.title).toBe('Committed to testuser/feature_branch');
       expect(result?.body).toBe('**Repository:** [testuser/repo](https://github.com/testuser/repo)\n\n**Commits:** 587796f...bd48e85');
       expect(result?.original).toEqual(mockPushEventMinimal);
     });
@@ -259,6 +259,108 @@ describe('rawDataUtils', () => {
       expect(results).toHaveLength(1);
       expect(results[0].original).toBeDefined();
       expect(results[0].original).toEqual(mockEvents[0].payload);
+    });
+  });
+
+  describe('PushEvent title format', () => {
+    it('should use "Committed" instead of "Pushed" for push events with commit count', () => {
+      const mockPushEvent: GitHubEvent = {
+        id: '456',
+        type: 'PushEvent',
+        actor: {
+          id: 1,
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 1,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          ref: 'refs/heads/main',
+          size: 3,
+          distinct_size: 3,
+          commits: [
+            { sha: 'abc123', message: 'First commit', author: { name: 'Test User', email: 'test@example.com' } },
+            { sha: 'def456', message: 'Second commit', author: { name: 'Test User', email: 'test@example.com' } },
+            { sha: 'ghi789', message: 'Third commit', author: { name: 'Test User', email: 'test@example.com' } },
+          ],
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2023-01-01T00:00:00Z',
+      };
+
+      const result = transformEventToItem(mockPushEvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Committed 3 commits to testuser/main');
+      expect(result?.title).not.toContain('Pushed');
+    });
+
+    it('should use "Committed 1 commit" (singular) for single commit push', () => {
+      const mockPushEvent: GitHubEvent = {
+        id: '456',
+        type: 'PushEvent',
+        actor: {
+          id: 1,
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 1,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          ref: 'refs/heads/feature',
+          size: 1,
+          distinct_size: 1,
+          commits: [
+            { sha: 'abc123', message: 'Single commit', author: { name: 'Test User', email: 'test@example.com' } },
+          ],
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2023-01-01T00:00:00Z',
+      };
+
+      const result = transformEventToItem(mockPushEvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Committed 1 commit to testuser/feature');
+    });
+
+    it('should use "Committed 0 commits" for push with no commits', () => {
+      const mockPushEvent: GitHubEvent = {
+        id: '456',
+        type: 'PushEvent',
+        actor: {
+          id: 1,
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 1,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          ref: 'refs/heads/main',
+          size: 0,
+          distinct_size: 0,
+          commits: [],
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2023-01-01T00:00:00Z',
+      };
+
+      const result = transformEventToItem(mockPushEvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Committed 0 commits to testuser/main');
     });
   });
 

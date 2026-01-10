@@ -184,7 +184,8 @@ describe('prEnrichment', () => {
         })
       );
 
-      expect(result.title).toBe('Fix bug in parser (labeled)');
+      // Action is displayed separately as a badge, not appended to title
+      expect(result.title).toBe('Fix bug in parser');
       expect(result.labels).toEqual(mockPRDetails.labels);
       expect(result.updated_at).toBe(mockPRDetails.updated_at);
     });
@@ -222,6 +223,93 @@ describe('prEnrichment', () => {
       const result = await enrichItemWithPRDetails(item, 'test-token');
 
       expect(result.title).toBe('Review on: Fix bug in parser');
+    });
+
+    it('should NOT append action to title (action is displayed as separate badge)', async () => {
+      // Test various PR actions to ensure none of them get appended to the title
+      const actions = ['labeled', 'opened', 'closed', 'reopened', 'synchronized', 'edited'];
+
+      for (const action of actions) {
+        await clearPRCache();
+        vi.clearAllMocks();
+
+        const item: GitHubItem = {
+          id: 123,
+          html_url: 'https://github.com/owner/repo/pull/456',
+          title: `Pull Request #456 ${action}`,
+          created_at: '2023-01-01T00:00:00Z',
+          updated_at: '2023-01-01T00:00:00Z',
+          state: 'open',
+          action: action, // Action field for badge display
+          user: {
+            login: 'testuser',
+            avatar_url: 'https://github.com/testuser.png',
+            html_url: 'https://github.com/testuser',
+          },
+          originalEventType: 'PullRequestEvent',
+        };
+
+        const mockPRDetails = {
+          title: 'Fix bug in parser',
+          state: 'open',
+          body: 'This PR fixes...',
+          html_url: 'https://github.com/owner/repo/pull/456',
+          labels: [],
+          updated_at: '2023-01-02T00:00:00Z',
+        };
+
+        (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(mockPRDetails),
+        });
+
+        const result = await enrichItemWithPRDetails(item, 'test-token');
+
+        // Title should be the PR title only, without action appended
+        expect(result.title).toBe('Fix bug in parser');
+        expect(result.title).not.toContain(`(${action})`);
+        // Action should remain in the action field for badge display
+        expect(result.action).toBe(action);
+      }
+    });
+
+    it('should preserve action field when enriching PR details', async () => {
+      const item: GitHubItem = {
+        id: 123,
+        html_url: 'https://github.com/owner/repo/pull/456',
+        title: 'Pull Request #456 labeled',
+        created_at: '2023-01-01T00:00:00Z',
+        updated_at: '2023-01-01T00:00:00Z',
+        state: 'open',
+        action: 'labeled',
+        user: {
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          html_url: 'https://github.com/testuser',
+        },
+        originalEventType: 'PullRequestEvent',
+      };
+
+      const mockPRDetails = {
+        title: 'Add new feature',
+        state: 'open',
+        body: 'This PR adds...',
+        html_url: 'https://github.com/owner/repo/pull/456',
+        labels: [{ name: 'enhancement', color: 'blue' }],
+        updated_at: '2023-01-02T00:00:00Z',
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockPRDetails),
+      });
+
+      const result = await enrichItemWithPRDetails(item, 'test-token');
+
+      // Action field should be preserved for badge display
+      expect(result.action).toBe('labeled');
+      // Title should not include action
+      expect(result.title).toBe('Add new feature');
     });
 
     it('should cache PR details to avoid duplicate fetches', async () => {
@@ -439,10 +527,10 @@ describe('prEnrichment', () => {
         // Only 1 fetch for 3 items referencing the same PR
         expect(global.fetch).toHaveBeenCalledTimes(1);
 
-        // All items should be enriched with the PR title
+        // All items should be enriched with the PR title (action displayed separately as badge)
         expect(results[0].title).toBe('Review on: Add new feature');
         expect(results[1].title).toBe('Review comment on: Add new feature');
-        expect(results[2].title).toBe('Add new feature (labeled)');
+        expect(results[2].title).toBe('Add new feature');
       });
 
       /**
@@ -498,12 +586,12 @@ describe('prEnrichment', () => {
         // 2 fetches: one for PR #100, one for PR #200 (not 3)
         expect(global.fetch).toHaveBeenCalledTimes(2);
 
-        // Items for PR #100 should have Feature A title
-        expect(results[0].title).toBe('Feature A (opened)');
+        // Items for PR #100 should have Feature A title (action displayed separately as badge)
+        expect(results[0].title).toBe('Feature A');
         expect(results[1].title).toBe('Review on: Feature A');
 
-        // Item for PR #200 should have Feature B title
-        expect(results[2].title).toBe('Feature B (closed)');
+        // Item for PR #200 should have Feature B title (action displayed separately as badge)
+        expect(results[2].title).toBe('Feature B');
       });
 
       /**
@@ -545,7 +633,8 @@ describe('prEnrichment', () => {
 
         // Still only 1 fetch (cache was used)
         expect(global.fetch).toHaveBeenCalledTimes(1);
-        expect(results[0].title).toBe('Cached PR Title (closed)');
+        // Action is displayed separately as a badge, not appended to title
+        expect(results[0].title).toBe('Cached PR Title');
       });
     });
   });

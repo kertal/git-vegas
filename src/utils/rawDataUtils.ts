@@ -55,6 +55,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: issue.html_url,
       title: issue.title,
+      action: payload.action, // e.g., 'opened', 'closed', 'reopened', 'labeled', 'assigned'
       created_at: event.created_at, // Use event timestamp, not issue timestamp
       updated_at: issue.updated_at,
       state: issue.state,
@@ -98,6 +99,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: htmlUrl,
       title: title,
+      action: payloadWithAction.action, // e.g., 'opened', 'closed', 'reopened', 'synchronize', 'ready_for_review'
       created_at: event.created_at, // Use event timestamp, not PR timestamp
       updated_at: pr.updated_at || event.created_at,
       state: pr.state || 'open',
@@ -142,6 +144,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: htmlUrl,
       title: `Review on: ${prTitle}`,
+      action: payloadWithAction.action, // e.g., 'submitted', 'edited', 'dismissed'
       created_at: event.created_at, // Use event timestamp, not PR timestamp
       updated_at: pr.updated_at || event.created_at,
       state: pr.state || 'open',
@@ -172,6 +175,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: comment.html_url,
       title: `Comment on: ${issue.title}`,
+      action: payload.action, // e.g., 'created', 'edited', 'deleted'
       created_at: event.created_at, // Use event timestamp, not comment timestamp
       updated_at: comment.updated_at,
       state: issue.state,
@@ -212,6 +216,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: comment.html_url,
       title: `Review comment on: ${prTitle}`,
+      action: payloadWithAction.action, // e.g., 'created', 'edited', 'deleted'
       created_at: event.created_at, // Use event timestamp, not comment timestamp
       updated_at: comment.updated_at,
       state: pr.state || 'open',
@@ -266,15 +271,15 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const repoOwner = repo.name.split('/')[0];
     let title: string;
     if (displayCount > 0) {
-      title = `Pushed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${repoOwner}/${branch}`;
+      title = `Committed ${displayCount} commit${displayCount !== 1 ? 's' : ''} to ${repoOwner}/${branch}`;
       if (distinctCount > 0 && totalCommitCount > distinctCount) {
         title += ` (${distinctCount} distinct)`;
       }
     } else if (hasCommitIndicator) {
       // We know commits were pushed but don't have the count
-      title = `Pushed to ${repoOwner}/${branch}`;
+      title = `Committed to ${repoOwner}/${branch}`;
     } else {
-      title = `Pushed 0 commits to ${repoOwner}/${branch}`;
+      title = `Committed 0 commits to ${repoOwner}/${branch}`;
     }
     
     // Create a body with commit messages if available, or show commit range
@@ -302,6 +307,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: `https://github.com/${repo.name}/commits/${branch}`,
       title: title,
+      action: 'pushed', // PushEvent doesn't have payload.action, using semantic action
       created_at: event.created_at,
       updated_at: event.created_at, // Push events don't have updated_at, use created_at
       state: 'open', // Push events are always "open"
@@ -344,6 +350,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: htmlUrl,
       title: title,
+      action: 'created', // CreateEvent doesn't have payload.action, using semantic action
       created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
@@ -369,6 +376,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: forkeeUrl,
       title: `Forked repository to ${forkeeName}`,
+      action: 'forked', // ForkEvent doesn't have payload.action, using semantic action
       created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
@@ -386,12 +394,13 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
   } else if (type === 'WatchEvent') {
     // Handle WatchEvent - create a GitHubItem from watch event data
     const action = payload?.action || 'starred';
-    
+
     return {
       id: parseInt(event.id),
       event_id: event.id,
       html_url: `https://github.com/${repo.name}`,
       title: `${action === 'started' ? 'Starred' : 'Unstarred'} repository`,
+      action: action, // e.g., 'started' (starred)
       created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
@@ -413,6 +422,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: `https://github.com/${repo.name}`,
       title: 'Made repository public',
+      action: 'publicized', // PublicEvent doesn't have payload.action, using semantic action
       created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
@@ -447,6 +457,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: `https://github.com/${repo.name}`,
       title: title,
+      action: 'deleted', // DeleteEvent doesn't have payload.action, using semantic action
       created_at: event.created_at,
       updated_at: event.created_at,
       state: 'closed',
@@ -498,6 +509,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       event_id: event.id,
       html_url: page.html_url || `https://github.com/${repo.name}/wiki`,
       title: title,
+      action: action, // e.g., 'created', 'edited' (from the first wiki page)
       created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
