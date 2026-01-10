@@ -249,8 +249,188 @@ describe('useGitHubDataFetching', () => {
       currentUsername: '',
       handleSearch: expect.any(Function),
     });
-    
+
     // The implementation should stop at page 3 even if more pages are available
     // This is handled internally by the maxPages constant in fetchAllEvents
+  });
+
+  describe('search items pagination', () => {
+    const createMockSearchResponse = (items: object[], totalCount: number) => ({
+      total_count: totalCount,
+      incomplete_results: false,
+      items: items,
+    });
+
+    const createMockItem = (id: number) => ({
+      id,
+      number: id,
+      title: `Issue ${id}`,
+      html_url: `https://github.com/test/repo/issues/${id}`,
+      state: 'open',
+      created_at: '2024-01-15T10:00:00Z',
+      updated_at: '2024-01-15T10:00:00Z',
+      user: { login: 'testuser', id: 1 },
+    });
+
+    const createMockEventsResponse = () => [];
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      (global.fetch as ReturnType<typeof vi.fn>).mockReset();
+    });
+
+    it('should fetch multiple pages when total_count exceeds per_page', async () => {
+      // Create 150 items total - should require 2 pages
+      const page1Items = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
+      const page2Items = Array.from({ length: 50 }, (_, i) => createMockItem(i + 101));
+
+      let searchCallCount = 0;
+      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+        if (url.includes('/search/issues')) {
+          searchCallCount++;
+          if (searchCallCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(createMockSearchResponse(page1Items, 150)),
+            });
+          } else {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(createMockSearchResponse(page2Items, 150)),
+            });
+          }
+        }
+        // Events API - return empty
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(createMockEventsResponse()),
+        });
+      });
+
+      const { result } = renderHook(() => useGitHubDataFetching(defaultProps));
+
+      // Start the search
+      const searchPromise = result.current.handleSearch();
+
+      // Advance timers to allow async operations
+      await vi.runAllTimersAsync();
+      await searchPromise;
+
+      // Verify search API was called twice (2 pages)
+      const searchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call: string[]) => call[0].includes('/search/issues')
+      );
+      expect(searchCalls.length).toBe(2);
+
+      // Verify page parameter increments
+      expect(searchCalls[0][0]).toContain('page=1');
+      expect(searchCalls[1][0]).toContain('page=2');
+
+      // Verify storeSearchItems was called with all 150 items
+      expect(mockStoreSearchItems).toHaveBeenCalled();
+      const storedItems = mockStoreSearchItems.mock.calls[0][1];
+      expect(storedItems.length).toBe(150);
+    });
+
+    it('should stop fetching when all items are retrieved (items.length < perPage)', async () => {
+      // Only 50 items total - single page
+      const items = Array.from({ length: 50 }, (_, i) => createMockItem(i + 1));
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+        if (url.includes('/search/issues')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(createMockSearchResponse(items, 50)),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(createMockEventsResponse()),
+        });
+      });
+
+      const { result } = renderHook(() => useGitHubDataFetching(defaultProps));
+
+      const searchPromise = result.current.handleSearch();
+      await vi.runAllTimersAsync();
+      await searchPromise;
+
+      // Should only call search API once since items < 100
+      const searchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call: string[]) => call[0].includes('/search/issues')
+      );
+      expect(searchCalls.length).toBe(1);
+    });
+
+    it('should stop at max pages limit (10 pages)', async () => {
+      // Simulate a response that always returns 100 items with huge total_count
+      const pageItems = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+        if (url.includes('/search/issues')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(createMockSearchResponse(pageItems, 5000)), // More than 1000
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(createMockEventsResponse()),
+        });
+      });
+
+      const { result } = renderHook(() => useGitHubDataFetching(defaultProps));
+
+      const searchPromise = result.current.handleSearch();
+      await vi.runAllTimersAsync();
+      await searchPromise;
+
+      // Should stop at 10 pages max
+      const searchCalls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        (call: string[]) => call[0].includes('/search/issues')
+      );
+      expect(searchCalls.length).toBe(10);
+    });
+
+    it('should preserve assignee data and add original property', async () => {
+      const itemWithAssignee = {
+        id: 1,
+        number: 1,
+        title: 'Test Issue',
+        html_url: 'https://github.com/test/repo/issues/1',
+        state: 'open',
+        created_at: '2024-01-15T10:00:00Z',
+        updated_at: '2024-01-15T10:00:00Z',
+        user: { login: 'testuser', id: 1 },
+        assignee: { login: 'assignee1', id: 2 },
+        assignees: [{ login: 'assignee1', id: 2 }, { login: 'assignee2', id: 3 }],
+      };
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+        if (url.includes('/search/issues')) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(createMockSearchResponse([itemWithAssignee], 1)),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(createMockEventsResponse()),
+        });
+      });
+
+      const { result } = renderHook(() => useGitHubDataFetching(defaultProps));
+
+      const searchPromise = result.current.handleSearch();
+      await vi.runAllTimersAsync();
+      await searchPromise;
+
+      expect(mockStoreSearchItems).toHaveBeenCalled();
+      const storedItems = mockStoreSearchItems.mock.calls[0][1];
+      expect(storedItems.length).toBe(1);
+      expect(storedItems[0].assignee).toEqual({ login: 'assignee1', id: 2 });
+      expect(storedItems[0].assignees).toEqual([{ login: 'assignee1', id: 2 }, { login: 'assignee2', id: 3 }]);
+      expect(storedItems[0].original).toBeDefined();
+    });
   });
 }); 
