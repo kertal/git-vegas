@@ -127,6 +127,81 @@ export const useGitHubDataFetching = ({
     return allEvents;
   };
 
+  // Fetch all search items (issues/PRs) for a username with pagination
+  const fetchAllSearchItems = async (
+    username: string,
+    token: string,
+    startDate: string,
+    endDate: string,
+    onProgress: (message: string) => void
+  ): Promise<GitHubItem[]> => {
+    const allItems: GitHubItem[] = [];
+    let page = 1;
+    const perPage = GITHUB_API_PER_PAGE;
+    const maxPages = 10; // GitHub Search API allows up to 1000 results (10 pages * 100 per page)
+
+    const searchQuery = `(author:${username} OR assignee:${username}) AND updated:${startDate}..${endDate} AND (is:issue OR is:pr)`;
+
+    while (page <= maxPages) {
+      try {
+        onProgress(`Fetching issues/PRs page ${page} for ${username}...`);
+
+        const response = await fetch(
+          `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${perPage}&page=${page}&sort=updated`,
+          {
+            headers: {
+              ...(token && { Authorization: `token ${token}` }),
+              Accept: 'application/vnd.github.v3+json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          const responseJSON = await response.json();
+          throw new Error(`Failed to fetch issues/PRs page ${page}: ${responseJSON.message}`);
+        }
+
+        const searchData = await response.json();
+        const totalCount = searchData.total_count;
+        const items = searchData.items;
+
+        // Add original property to search items and ensure assignee data is preserved
+        const itemsWithOriginal = items.map((item: Record<string, unknown>) => ({
+          ...item,
+          assignee: item.assignee || null,
+          assignees: item.assignees || [],
+          original: item,
+        }));
+
+        allItems.push(...itemsWithOriginal);
+
+        // Check if we've fetched all items
+        if (allItems.length >= totalCount || items.length < perPage) {
+          break;
+        }
+
+        page++;
+
+        // Add a small delay to respect GitHub API rate limits
+        await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
+
+      } catch (error) {
+        console.error(`Error fetching issues/PRs page ${page} for ${username}:`, error);
+        throw error;
+      }
+    }
+
+    // Log if we hit the pagination limit
+    if (page > maxPages) {
+      console.warn(
+        `Reached GitHub Search API pagination limit (${maxPages} pages) for ${username}. ` +
+        `Returning ${allItems.length} items. GitHub API limits search results to 1000 items.`
+      );
+    }
+
+    return allItems;
+  };
+
   const handleSearch = useCallback(async () => {
     if (!username.trim()) {
       onError('Please enter a GitHub username');
@@ -208,35 +283,10 @@ export const useGitHubDataFetching = ({
         setCurrentUsername(singleUsername);
 
         try {
-
-          // Fetch issues and PRs with date range filtering
-          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
-          const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&advanced_search=true`,
-            {
-              headers: {
-                ...(githubToken && { Authorization: `token ${githubToken}` }),
-                Accept: 'application/vnd.github.v3+json',
-              },
-            }
-          );
-
-          if (!searchResponse.ok) {
-            const responseJSON = await searchResponse.json();
-            throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
-          }
-
-          const searchData = await searchResponse.json();
-          // Add original property to search items and ensure assignee data is preserved
-          const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
-            ...item,
-            // Ensure assignee information is preserved from the API response
-            assignee: item.assignee || null,
-            assignees: item.assignees || [],
-            original: item, // Store the original item as the original payload
-          }));
-          allSearchItems.push(...searchItemsWithOriginal);
-          onProgress(`Fetched issues/PRs for ${singleUsername}`);
+          // Fetch all issues and PRs with pagination
+          const userSearchItems = await fetchAllSearchItems(singleUsername, githubToken, startDate, endDate, onProgress);
+          allSearchItems.push(...userSearchItems);
+          onProgress(`Fetched ${userSearchItems.length} issues/PRs for ${singleUsername}`);
 
            // Fetch all events with pagination
            const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
