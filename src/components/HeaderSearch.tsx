@@ -4,17 +4,24 @@ import {
   Box,
   Text,
   Popover,
-  ActionList,
+  Avatar,
+  Token,
+  Tooltip,
 } from '@primer/react';
 import { XIcon, SearchIcon } from '@primer/octicons-react';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
+
+interface UserSuggestion {
+  login: string;
+  avatar_url: string;
+}
 
 interface HeaderSearchProps {
   searchText: string;
   onSearchChange: (value: string) => void;
   placeholder?: string;
   /** Available users for suggestions */
-  availableUsers?: string[];
+  availableUsers?: UserSuggestion[];
   /** Available labels for suggestions */
   availableLabels?: string[];
   /** Available repos for suggestions */
@@ -75,8 +82,8 @@ const HeaderSearch = memo(function HeaderSearch({
   const showSyntaxHelp = isFocused;
 
   // Get top suggestions (limit to prevent huge lists)
-  const topUsers = availableUsers.slice(0, 5);
-  const topLabels = availableLabels.slice(0, 8);
+  const topUsers = availableUsers.slice(0, 8);
+  const topLabels = availableLabels.slice(0, 10);
   const topRepos = availableRepos.slice(0, 5);
 
   return (
@@ -126,81 +133,196 @@ const HeaderSearch = memo(function HeaderSearch({
           <Popover.Content
             data-search-popover
             sx={{
-              p: 2,
+              p: 3,
               mt: 1,
               fontSize: '12px',
-              maxHeight: '400px',
+              maxHeight: '450px',
               overflowY: 'auto',
-              minWidth: '280px',
+              minWidth: '320px',
+              boxShadow: 'shadow.large',
             }}
           >
-            <Text sx={{ fontWeight: 'bold', display: 'block', mb: 1, color: 'fg.default' }}>
-              Search syntax:
-            </Text>
-            <Box as="ul" sx={{ m: 0, pl: 3, mb: 2, color: 'fg.muted' }}>
-              <li><code>label:name</code> - include label</li>
-              <li><code>-label:name</code> - exclude label</li>
-              <li><code>user:name</code> - filter by author</li>
-              <li><code>repo:org/repo</code> - filter by repo</li>
-              <li><code>-repo:org/repo</code> - exclude repo</li>
-              <li><em>free text</em> - search in title/body</li>
+            {/* Search Syntax Section */}
+            <Box sx={{ mb: 3 }}>
+              <Text
+                sx={{
+                  fontSize: '11px',
+                  fontWeight: 'semibold',
+                  color: 'fg.muted',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  display: 'block',
+                  mb: 2,
+                }}
+              >
+                Search Syntax
+              </Text>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 1,
+                  fontSize: '11px',
+                  color: 'fg.muted',
+                }}
+              >
+                <Text><code>label:name</code></Text>
+                <Text><code>-label:name</code></Text>
+                <Text><code>user:name</code></Text>
+                <Text><code>repo:org/repo</code></Text>
+              </Box>
             </Box>
 
+            {/* Users Section - Avatars */}
             {topUsers.length > 0 && (
-              <>
-                <Text sx={{ fontWeight: 'bold', display: 'block', mb: 1, mt: 2, color: 'fg.default' }}>
-                  Filter by user:
+              <Box sx={{ mb: 3 }}>
+                <Text
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 'semibold',
+                    color: 'fg.muted',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    display: 'block',
+                    mb: 2,
+                  }}
+                >
+                  Filter by User
                 </Text>
-                <ActionList sx={{ py: 0 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 2,
+                  }}
+                >
                   {topUsers.map(user => (
-                    <ActionList.Item
-                      key={user}
-                      onSelect={() => addFilterText(`user:${user}`)}
-                      sx={{ fontSize: '12px', py: 1 }}
-                    >
-                      user:{user}
-                    </ActionList.Item>
+                    <Tooltip key={user.login} text={`user:${user.login}`} direction="s">
+                      <Box
+                        as="button"
+                        onClick={() => addFilterText(`user:${user.login}`)}
+                        sx={{
+                          border: 'none',
+                          background: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          borderRadius: '50%',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                          ':hover': {
+                            transform: 'scale(1.15)',
+                            boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
+                          },
+                          ':focus': {
+                            outline: 'none',
+                            boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
+                          },
+                        }}
+                      >
+                        <Avatar src={user.avatar_url} size={32} alt={user.login} />
+                      </Box>
+                    </Tooltip>
                   ))}
-                </ActionList>
-              </>
+                </Box>
+              </Box>
             )}
 
+            {/* Labels Section - Pills */}
             {topLabels.length > 0 && (
-              <>
-                <Text sx={{ fontWeight: 'bold', display: 'block', mb: 1, mt: 2, color: 'fg.default' }}>
-                  Filter by label:
+              <Box sx={{ mb: 3 }}>
+                <Text
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 'semibold',
+                    color: 'fg.muted',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    display: 'block',
+                    mb: 2,
+                  }}
+                >
+                  Filter by Label
                 </Text>
-                <ActionList sx={{ py: 0 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                  }}
+                >
                   {topLabels.map(label => (
-                    <ActionList.Item
+                    <Token
                       key={label}
-                      onSelect={() => addFilterText(`label:${label}`)}
-                      sx={{ fontSize: '12px', py: 1 }}
-                    >
-                      label:{label}
-                    </ActionList.Item>
+                      text={label}
+                      onClick={() => addFilterText(`label:${label}`)}
+                      sx={{
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        transition: 'transform 0.1s ease',
+                        ':hover': {
+                          transform: 'scale(1.05)',
+                        },
+                      }}
+                    />
                   ))}
-                </ActionList>
-              </>
+                </Box>
+              </Box>
             )}
 
+            {/* Repos Section */}
             {topRepos.length > 0 && (
-              <>
-                <Text sx={{ fontWeight: 'bold', display: 'block', mb: 1, mt: 2, color: 'fg.default' }}>
-                  Filter by repo:
+              <Box>
+                <Text
+                  sx={{
+                    fontSize: '11px',
+                    fontWeight: 'semibold',
+                    color: 'fg.muted',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    display: 'block',
+                    mb: 2,
+                  }}
+                >
+                  Filter by Repository
                 </Text>
-                <ActionList sx={{ py: 0 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1,
+                  }}
+                >
                   {topRepos.map(repo => (
-                    <ActionList.Item
+                    <Box
                       key={repo}
-                      onSelect={() => addFilterText(`repo:${repo}`)}
-                      sx={{ fontSize: '12px', py: 1 }}
+                      as="button"
+                      onClick={() => addFilterText(`repo:${repo}`)}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'border.default',
+                        background: 'canvas.subtle',
+                        borderRadius: 2,
+                        px: 2,
+                        py: 1,
+                        fontSize: '11px',
+                        color: 'fg.default',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background 0.1s ease, border-color 0.1s ease',
+                        ':hover': {
+                          background: 'canvas.default',
+                          borderColor: 'border.muted',
+                        },
+                        ':focus': {
+                          outline: 'none',
+                          boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
+                        },
+                      }}
                     >
-                      repo:{repo}
-                    </ActionList.Item>
+                      {repo}
+                    </Box>
                   ))}
-                </ActionList>
-              </>
+                </Box>
+              </Box>
             )}
           </Popover.Content>
         </Popover>

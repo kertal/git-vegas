@@ -163,15 +163,20 @@ function App() {
     return [];
   }, [cachedAvatarUrls]);
 
-  // Extract unique users from results for search suggestions
+  // Extract unique users from results for search suggestions (with avatars)
   const availableUsers = useMemo(() => {
-    const users = new Set<string>();
+    const userMap = new Map<string, { login: string; avatar_url: string }>();
     results.forEach(item => {
-      if (item.user?.login) {
-        users.add(item.user.login);
+      if (item.user?.login && !userMap.has(item.user.login)) {
+        userMap.set(item.user.login, {
+          login: item.user.login,
+          avatar_url: item.user.avatar_url || '',
+        });
       }
     });
-    return Array.from(users).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    return Array.from(userMap.values()).sort((a, b) =>
+      a.login.toLowerCase().localeCompare(b.login.toLowerCase())
+    );
   }, [results]);
 
   // Extract unique labels from results for search suggestions
