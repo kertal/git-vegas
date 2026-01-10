@@ -163,6 +163,38 @@ function App() {
     return [];
   }, [cachedAvatarUrls]);
 
+  // Extract unique users from results for search suggestions
+  const availableUsers = useMemo(() => {
+    const users = new Set<string>();
+    results.forEach(item => {
+      if (item.user?.login) {
+        users.add(item.user.login);
+      }
+    });
+    return Array.from(users).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [results]);
+
+  // Extract unique labels from results for search suggestions
+  const availableLabels = useMemo(() => {
+    const labels = new Set<string>();
+    results.forEach(item => {
+      item.labels?.forEach(label => labels.add(label.name));
+    });
+    return Array.from(labels).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [results]);
+
+  // Extract unique repos from results for search suggestions
+  const availableRepos = useMemo(() => {
+    const repos = new Set<string>();
+    results.forEach(item => {
+      if (item.repository_url) {
+        const repoName = item.repository_url.replace('https://api.github.com/repos/', '');
+        repos.add(repoName);
+      }
+    });
+    return Array.from(repos).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [results]);
+
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);
     setTimeout(() => setIsManuallySpinning(false), 2000);
@@ -373,6 +405,9 @@ function App() {
             <HeaderSearch
               searchText={searchText}
               onSearchChange={setSearchText}
+              availableUsers={availableUsers}
+              availableLabels={availableLabels}
+              availableRepos={availableRepos}
             />
             
             {/* Mobile-optimized actions */}
