@@ -159,6 +159,15 @@ export const useGitHubDataFetching = ({
 
         if (!response.ok) {
           const responseJSON = await response.json();
+
+          // Handle pagination limit error (422) - return what we have so far
+          if (response.status === 422 && responseJSON.message?.includes('pagination')) {
+            console.warn(
+              `GitHub Search API pagination limit reached for ${username} at page ${page}. Returning ${allItems.length} items collected so far.`
+            );
+            break;
+          }
+
           throw new Error(`Failed to fetch issues/PRs page ${page}: ${responseJSON.message}`);
         }
 
@@ -188,6 +197,11 @@ export const useGitHubDataFetching = ({
 
       } catch (error) {
         console.error(`Error fetching issues/PRs page ${page} for ${username}:`, error);
+        // Return partial results if we have any, otherwise throw
+        if (allItems.length > 0) {
+          console.warn(`Returning ${allItems.length} items collected before error`);
+          return allItems;
+        }
         throw error;
       }
     }

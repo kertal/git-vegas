@@ -432,5 +432,81 @@ describe('useGitHubDataFetching', () => {
       expect(storedItems[0].assignees).toEqual([{ login: 'assignee1', id: 2 }, { login: 'assignee2', id: 3 }]);
       expect(storedItems[0].original).toBeDefined();
     });
+
+    it('should handle 422 pagination limit error gracefully', async () => {
+      // First page succeeds, second page returns 422
+      const page1Items = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
+
+      let searchCallCount = 0;
+      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+        if (url.includes('/search/issues')) {
+          searchCallCount++;
+          if (searchCallCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(createMockSearchResponse(page1Items, 200)),
+            });
+          } else {
+            // Return 422 pagination limit error
+            return Promise.resolve({
+              ok: false,
+              status: 422,
+              json: () => Promise.resolve({ message: 'Only the first 1000 search results are available. pagination is limited.' }),
+            });
+          }
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(createMockEventsResponse()),
+        });
+      });
+
+      const { result } = renderHook(() => useGitHubDataFetching(defaultProps));
+
+      const searchPromise = result.current.handleSearch();
+      await vi.runAllTimersAsync();
+      await searchPromise;
+
+      // Should store the 100 items from page 1
+      expect(mockStoreSearchItems).toHaveBeenCalled();
+      const storedItems = mockStoreSearchItems.mock.calls[0][1];
+      expect(storedItems.length).toBe(100);
+    });
+
+    it('should return partial results when error occurs mid-pagination', async () => {
+      // First page succeeds, second page throws network error
+      const page1Items = Array.from({ length: 100 }, (_, i) => createMockItem(i + 1));
+
+      let searchCallCount = 0;
+      (global.fetch as ReturnType<typeof vi.fn>).mockImplementation((url: string) => {
+        if (url.includes('/search/issues')) {
+          searchCallCount++;
+          if (searchCallCount === 1) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve(createMockSearchResponse(page1Items, 200)),
+            });
+          } else {
+            // Simulate network error
+            return Promise.reject(new Error('Network error'));
+          }
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(createMockEventsResponse()),
+        });
+      });
+
+      const { result } = renderHook(() => useGitHubDataFetching(defaultProps));
+
+      const searchPromise = result.current.handleSearch();
+      await vi.runAllTimersAsync();
+      await searchPromise;
+
+      // Should store the 100 items from page 1 (partial results)
+      expect(mockStoreSearchItems).toHaveBeenCalled();
+      const storedItems = mockStoreSearchItems.mock.calls[0][1];
+      expect(storedItems.length).toBe(100);
+    });
   });
 }); 
