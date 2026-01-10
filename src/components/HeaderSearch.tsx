@@ -3,6 +3,7 @@ import {
   TextInput,
   Box,
   Text,
+  Popover,
 } from '@primer/react';
 import { XIcon, SearchIcon } from '@primer/octicons-react';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
@@ -46,11 +47,14 @@ const HeaderSearch = memo(function HeaderSearch({
     setIsFocused(false);
   }, []);
 
+  const showSyntaxHelp = !isFocused && !inputValue;
+
   return (
     <Box
       sx={{
         minWidth: '300px',
         maxWidth: '500px',
+        position: 'relative',
         '@media (max-width: 767px)': {
           minWidth: '200px',
           maxWidth: '280px',
@@ -86,17 +90,18 @@ const HeaderSearch = memo(function HeaderSearch({
         }}
         block={true}
       />
-      {!isFocused && !inputValue && (
-        <Text
-          sx={{
-            fontSize: '11px',
-            color: 'fg.muted',
-            mt: 1,
-            display: 'block',
-          }}
-        >
-          Syntax: label:name, -label:name, user:name, repo:owner/repo
-        </Text>
+      {showSyntaxHelp && (
+        <Popover open={true} caret="top">
+          <Popover.Content sx={{ p: 2, mt: 1, fontSize: '12px' }}>
+            <Text sx={{ fontWeight: 'bold', display: 'block', mb: 1 }}>Search syntax:</Text>
+            <Box as="ul" sx={{ m: 0, pl: 3 }}>
+              <li><code>label:name</code> - include label</li>
+              <li><code>-label:name</code> - exclude label</li>
+              <li><code>user:name</code> - filter by author</li>
+              <li><code>repo:owner/repo</code> - filter by repo</li>
+            </Box>
+          </Popover.Content>
+        </Popover>
       )}
     </Box>
   );
