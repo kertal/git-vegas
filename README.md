@@ -1,5 +1,7 @@
 # GitVegas 🎰
 
+[![Run Tests](https://github.com/kertal/git-vegas/actions/workflows/test.yml/badge.svg)](https://github.com/kertal/git-vegas/actions/workflows/test.yml)
+
 > **Local-First GitHub Activity Explorer & Search Tool**
 
 GitVegas was started around an offsite in Las Vegas, started on a flight, iterated during a sleepless jet lag night, refined in the weeks and month after. 
