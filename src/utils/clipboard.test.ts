@@ -142,6 +142,11 @@ describe('generatePlainTextFormat', () => {
     expect(result).toContain('Status: closed (merged)');
     expect(result).toContain('Link: https://github.com/user/repo/issues/1');
 
+    // Should contain author information
+    expect(result).toContain('Author: testuser (https://github.com/testuser)');
+    expect(result).toContain('Author: developer (https://github.com/developer)');
+    expect(result).toContain('Author: docwriter (https://github.com/docwriter)');
+
     // Should contain labels for items that have them
     expect(result).toContain('Labels: bug, priority-high');
     expect(result).toContain('Labels: feature');
@@ -207,6 +212,14 @@ describe('generateHtmlFormat', () => {
     expect(result).toContain(
       '2. <a href="https://github.com/user/repo/pull/2"'
     );
+
+    // Should contain author information with links
+    expect(result).toContain('Author: <a href="https://github.com/testuser"');
+    expect(result).toContain('>testuser</a>');
+    expect(result).toContain('Author: <a href="https://github.com/developer"');
+    expect(result).toContain('>developer</a>');
+    expect(result).toContain('Author: <a href="https://github.com/docwriter"');
+    expect(result).toContain('>docwriter</a>');
 
     // Should contain type information
     expect(result).toContain('Type: Issue');
