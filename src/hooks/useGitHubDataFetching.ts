@@ -139,6 +139,7 @@ export const useGitHubDataFetching = ({
     let page = 1;
     const perPage = GITHUB_API_PER_PAGE;
     const maxPages = 10; // GitHub Search API allows up to 1000 results (10 pages * 100 per page)
+    let totalCount = 0;
 
     const searchQuery = `(author:${username} OR assignee:${username}) AND updated:${startDate}..${endDate} AND (is:issue OR is:pr)`;
 
@@ -162,7 +163,7 @@ export const useGitHubDataFetching = ({
         }
 
         const searchData = await response.json();
-        const totalCount = searchData.total_count;
+        totalCount = searchData.total_count;
         const items = searchData.items;
 
         // Add original property to search items and ensure assignee data is preserved
@@ -191,11 +192,11 @@ export const useGitHubDataFetching = ({
       }
     }
 
-    // Log if we hit the pagination limit
-    if (page > maxPages) {
+    // Log if we hit the pagination limit but there are more items available
+    if (allItems.length < totalCount) {
       console.warn(
         `Reached GitHub Search API pagination limit (${maxPages} pages) for ${username}. ` +
-        `Returning ${allItems.length} items. GitHub API limits search results to 1000 items.`
+        `Returning ${allItems.length} items out of ${totalCount} total. GitHub API limits search results to 1000 items.`
       );
     }
 
