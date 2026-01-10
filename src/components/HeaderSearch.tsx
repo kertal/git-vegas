@@ -83,8 +83,8 @@ const HeaderSearch = memo(function HeaderSearch({
 
   // Get top suggestions (limit to prevent huge lists)
   const topUsers = availableUsers.slice(0, 8);
-  const topLabels = availableLabels.slice(0, 10);
-  const topRepos = availableRepos.slice(0, 5);
+  const topLabels = availableLabels.slice(0, 12);
+  const topRepos = availableRepos.slice(0, 8);
 
   return (
     <Box
@@ -268,7 +268,7 @@ const HeaderSearch = memo(function HeaderSearch({
               </Box>
             )}
 
-            {/* Repos Section */}
+            {/* Repos Section - Pills */}
             {topRepos.length > 0 && (
               <Box>
                 <Text
@@ -287,39 +287,24 @@ const HeaderSearch = memo(function HeaderSearch({
                 <Box
                   sx={{
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexWrap: 'wrap',
                     gap: 1,
                   }}
                 >
                   {topRepos.map(repo => (
-                    <Box
+                    <Token
                       key={repo}
-                      as="button"
+                      text={repo}
                       onClick={() => addFilterText(`repo:${repo}`)}
                       sx={{
-                        border: '1px solid',
-                        borderColor: 'border.default',
-                        background: 'canvas.subtle',
-                        borderRadius: 2,
-                        px: 2,
-                        py: 1,
-                        fontSize: '11px',
-                        color: 'fg.default',
                         cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'background 0.1s ease, border-color 0.1s ease',
+                        fontSize: '11px',
+                        transition: 'transform 0.1s ease',
                         ':hover': {
-                          background: 'canvas.default',
-                          borderColor: 'border.muted',
-                        },
-                        ':focus': {
-                          outline: 'none',
-                          boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
+                          transform: 'scale(1.05)',
                         },
                       }}
-                    >
-                      {repo}
-                    </Box>
+                    />
                   ))}
                 </Box>
               </Box>

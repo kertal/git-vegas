@@ -179,13 +179,21 @@ function App() {
     );
   }, [results]);
 
-  // Extract unique labels from results for search suggestions
+  // Extract labels from results sorted by frequency (most used first)
   const availableLabels = useMemo(() => {
-    const labels = new Set<string>();
+    const labelCounts = new Map<string, number>();
     results.forEach(item => {
-      item.labels?.forEach(label => labels.add(label.name));
+      item.labels?.forEach(label => {
+        labelCounts.set(label.name, (labelCounts.get(label.name) || 0) + 1);
+      });
     });
-    return Array.from(labels).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    // Sort by frequency (descending), then alphabetically for ties
+    return Array.from(labelCounts.entries())
+      .sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1]; // Sort by count descending
+        return a[0].toLowerCase().localeCompare(b[0].toLowerCase()); // Then alphabetically
+      })
+      .map(([label]) => label);
   }, [results]);
 
   // Extract unique repos from results for search suggestions
