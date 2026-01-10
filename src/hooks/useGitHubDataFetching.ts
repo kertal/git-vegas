@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
 import { EventsData } from '../utils/indexedDB';
 import { validateUsernameList, isValidDateString } from '../utils';
-import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
+import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS, GITHUB_SEARCH_API_MAX_PAGES } from '../utils/settings';
 
 interface UseGitHubDataFetchingProps {
   username: string;
@@ -138,7 +138,6 @@ export const useGitHubDataFetching = ({
     const allItems: GitHubItem[] = [];
     const seenIds = new Set<number>();
     const perPage = GITHUB_API_PER_PAGE;
-    const maxPages = 10; // GitHub Search API allows up to 1000 results (10 pages * 100 per page)
 
     // GitHub Apps with user access tokens require separate queries for issues and PRs
     // Also need separate queries for author and assignee since parentheses aren't supported
@@ -151,8 +150,9 @@ export const useGitHubDataFetching = ({
 
     for (const { type, role, query: searchQuery } of queries) {
       let page = 1;
+      let itemsFetchedForQuery = 0;
 
-      while (page <= maxPages) {
+      while (page <= GITHUB_SEARCH_API_MAX_PAGES) {
         try {
           const typeLabel = type === 'pull-request' ? 'PRs' : 'issues';
           onProgress(`Fetching ${typeLabel} (${role}) page ${page} for ${username}...`);
@@ -185,6 +185,9 @@ export const useGitHubDataFetching = ({
           const totalCount = searchData.total_count;
           const items = searchData.items;
 
+          // Track items fetched for this query (before deduplication)
+          itemsFetchedForQuery += items.length;
+
           // Add items, deduplicating by id
           for (const item of items) {
             if (!seenIds.has(item.id)) {
@@ -199,7 +202,8 @@ export const useGitHubDataFetching = ({
           }
 
           // Check if we've fetched all items for this query
-          if (page * perPage >= totalCount || items.length < perPage) {
+          // Stop if we got fewer items than requested OR if we've fetched all available items for this query
+          if (items.length < perPage || itemsFetchedForQuery >= totalCount) {
             break;
           }
 
