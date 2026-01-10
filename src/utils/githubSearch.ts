@@ -659,7 +659,7 @@ export const validateGitHubOrganization = async (
   };
 
   if (githubToken) {
-    headers['Authorization'] = `token ${githubToken}`;
+    headers['Authorization'] = `Bearer ${githubToken}`;
   }
 
   const response = await fetch(`https://api.github.com/orgs/${orgName}`, {
@@ -696,7 +696,7 @@ export const fetchOrgMembers = async (
   };
 
   if (githubToken) {
-    headers['Authorization'] = `token ${githubToken}`;
+    headers['Authorization'] = `Bearer ${githubToken}`;
   }
 
   // First, validate the organization exists
@@ -707,7 +707,12 @@ export const fetchOrgMembers = async (
   onProgress?.(`Fetching members for organization "${orgName}"...`);
   const allMembers: GitHubOrgMember[] = [];
   let page = 1;
-  const maxPages = 10; // Limit to 1000 members (100 per page * 10 pages)
+  // NOTE: We intentionally cap pagination to 10 pages (100 members per page)
+  // to avoid unbounded API calls and hitting GitHub rate limits. This means
+  // that at most 1000 members will be loaded for a single organization.
+  // If you need to support very large organizations with more than 1000
+  // members, this limit will need to be reviewed and potentially increased.
+  const maxPages = 10;
 
   while (page <= maxPages) {
     // Use /public_members for unauthenticated requests, /members for authenticated
@@ -722,7 +727,9 @@ export const fetchOrgMembers = async (
 
     if (!response.ok) {
       if (response.status === 404) {
-        throw new Error(`Organization "${orgName}" not found or you don't have access`);
+        throw new Error(
+          `You don't have access to view members of organization "${orgName}". It may be private or require additional permissions.`
+        );
       }
       if (response.status === 403) {
         // If we can't access /members, try /public_members
