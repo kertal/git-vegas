@@ -163,6 +163,51 @@ function App() {
     return [];
   }, [cachedAvatarUrls]);
 
+  // Extract unique users from results for search suggestions (with avatars)
+  const availableUsers = useMemo(() => {
+    const userMap = new Map<string, { login: string; avatar_url: string }>();
+    results.forEach(item => {
+      if (item.user?.login && !userMap.has(item.user.login)) {
+        userMap.set(item.user.login, {
+          login: item.user.login,
+          avatar_url: item.user.avatar_url || '',
+        });
+      }
+    });
+    return Array.from(userMap.values()).sort((a, b) =>
+      a.login.toLowerCase().localeCompare(b.login.toLowerCase())
+    );
+  }, [results]);
+
+  // Extract labels from results sorted by frequency (most used first)
+  const availableLabels = useMemo(() => {
+    const labelCounts = new Map<string, number>();
+    results.forEach(item => {
+      item.labels?.forEach(label => {
+        labelCounts.set(label.name, (labelCounts.get(label.name) || 0) + 1);
+      });
+    });
+    // Sort by frequency (descending), then alphabetically for ties
+    return Array.from(labelCounts.entries())
+      .sort((a, b) => {
+        if (b[1] !== a[1]) return b[1] - a[1]; // Sort by count descending
+        return a[0].toLowerCase().localeCompare(b[0].toLowerCase()); // Then alphabetically
+      })
+      .map(([label]) => label);
+  }, [results]);
+
+  // Extract unique repos from results for search suggestions
+  const availableRepos = useMemo(() => {
+    const repos = new Set<string>();
+    results.forEach(item => {
+      if (item.repository_url) {
+        const repoName = item.repository_url.replace('https://api.github.com/repos/', '');
+        repos.add(repoName);
+      }
+    });
+    return Array.from(repos).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  }, [results]);
+
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);
     setTimeout(() => setIsManuallySpinning(false), 2000);
@@ -373,6 +418,9 @@ function App() {
             <HeaderSearch
               searchText={searchText}
               onSearchChange={setSearchText}
+              availableUsers={availableUsers}
+              availableLabels={availableLabels}
+              availableRepos={availableRepos}
             />
             
             {/* Mobile-optimized actions */}
