@@ -44,12 +44,23 @@ const avatarButtonStyles: SxProp['sx'] = {
   },
 };
 
-const tokenStyles: SxProp['sx'] = {
+const pillButtonStyles: SxProp['sx'] = {
   cursor: 'pointer',
-  fontSize: '11px',
-  transition: 'transform 0.1s ease',
+  fontSize: '10px',
+  fontWeight: 500,
+  border: '1px solid',
+  borderColor: 'border.default',
+  borderRadius: '2em',
+  px: '6px',
+  py: '1px',
+  background: 'canvas.subtle',
+  color: 'fg.muted',
+  whiteSpace: 'nowrap',
+  transition: 'all 0.1s ease',
   ':hover': {
-    transform: 'scale(1.05)',
+    background: 'canvas.default',
+    borderColor: 'accent.emphasis',
+    color: 'fg.default',
   },
 };
 
@@ -269,24 +280,15 @@ const HeaderSearch = memo(function HeaderSearch({
 
             {/* Labels Section */}
             {hasLabels && (
-              <Box sx={{ mb: 3 }}>
+              <Box sx={{ mb: 2 }}>
                 <SectionHeader>Filter by Label</SectionHeader>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                   {topLabels.map(label => (
                     <Box
                       key={label}
                       as="button"
                       onMouseDown={createLabelMouseDownHandler(label)}
-                      sx={{
-                        ...tokenStyles,
-                        border: '1px solid',
-                        borderColor: 'border.default',
-                        borderRadius: '2em',
-                        px: 2,
-                        py: '2px',
-                        background: 'canvas.subtle',
-                        color: 'fg.default',
-                      }}
+                      sx={pillButtonStyles}
                     >
                       {label}
                     </Box>
@@ -299,22 +301,13 @@ const HeaderSearch = memo(function HeaderSearch({
             {hasRepos && (
               <Box>
                 <SectionHeader>Filter by Repository</SectionHeader>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                   {topRepos.map(repo => (
                     <Box
                       key={repo}
                       as="button"
                       onMouseDown={createRepoMouseDownHandler(repo)}
-                      sx={{
-                        ...tokenStyles,
-                        border: '1px solid',
-                        borderColor: 'border.default',
-                        borderRadius: '2em',
-                        px: 2,
-                        py: '2px',
-                        background: 'canvas.subtle',
-                        color: 'fg.default',
-                      }}
+                      sx={pillButtonStyles}
                     >
                       {repo}
                     </Box>
