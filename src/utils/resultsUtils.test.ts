@@ -751,6 +751,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -763,6 +765,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -775,6 +779,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -787,6 +793,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -799,6 +807,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -811,6 +821,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -823,6 +835,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -835,6 +849,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: 'performance issue',
       });
     });
@@ -847,6 +863,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: 'performance issue',
       });
     });
@@ -859,6 +877,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -871,6 +891,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -883,6 +905,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -895,6 +919,8 @@ describe('resultsUtils', () => {
         userFilters: ['octocat'],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -907,6 +933,8 @@ describe('resultsUtils', () => {
         userFilters: ['octocat', 'github-user'],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -919,6 +947,8 @@ describe('resultsUtils', () => {
         userFilters: ['octocat'],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -931,6 +961,8 @@ describe('resultsUtils', () => {
         userFilters: ['octocat'],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: 'performance issue',
       });
     });
@@ -943,6 +975,8 @@ describe('resultsUtils', () => {
         userFilters: ['user-name', 'user.name', 'user_name'],
         includedRepos: [],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -955,6 +989,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: ['owner/repo'],
         excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -967,6 +1003,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: [],
         excludedRepos: ['owner/repo'],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -979,6 +1017,8 @@ describe('resultsUtils', () => {
         userFilters: [],
         includedRepos: ['owner/repo1', 'owner/repo2'],
         excludedRepos: ['owner/excluded'],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: '',
       });
     });
@@ -991,7 +1031,65 @@ describe('resultsUtils', () => {
         userFilters: ['alice'],
         includedRepos: ['owner/repo'],
         excludedRepos: ['owner/other'],
+        includedOrgs: [],
+        excludedOrgs: [],
         cleanText: 'authentication',
+      });
+    });
+
+    it('should parse single org filter', () => {
+      const result = parseSearchText('org:elastic');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
+        includedOrgs: ['elastic'],
+        excludedOrgs: [],
+        cleanText: '',
+      });
+    });
+
+    it('should parse excluded org filter', () => {
+      const result = parseSearchText('-org:facebook');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
+        includedOrgs: [],
+        excludedOrgs: ['facebook'],
+        cleanText: '',
+      });
+    });
+
+    it('should parse multiple org filters', () => {
+      const result = parseSearchText('org:elastic org:github -org:microsoft');
+      expect(result).toEqual({
+        includedLabels: [],
+        excludedLabels: [],
+        userFilters: [],
+        includedRepos: [],
+        excludedRepos: [],
+        includedOrgs: ['elastic', 'github'],
+        excludedOrgs: ['microsoft'],
+        cleanText: '',
+      });
+    });
+
+    it('should handle mixed label, user, repo, and org filters', () => {
+      const result = parseSearchText('bug fix label:bug user:alice org:elastic -org:microsoft');
+      expect(result).toEqual({
+        includedLabels: ['bug'],
+        excludedLabels: [],
+        userFilters: ['alice'],
+        includedRepos: [],
+        excludedRepos: [],
+        includedOrgs: ['elastic'],
+        excludedOrgs: ['microsoft'],
+        cleanText: 'bug fix',
       });
     });
   });
@@ -1196,6 +1294,111 @@ describe('resultsUtils', () => {
       const result = filterByText(mockItemsWithLabels, 'user:USER1');
       expect(result).toHaveLength(1);
       expect(result[0].user.login).toBe('user1');
+    });
+  });
+
+  describe('filterByText with org syntax', () => {
+    const mockItemsWithOrgs: GitHubItem[] = [
+      {
+        ...mockGitHubItems[0],
+        title: 'Elastic issue',
+        body: 'Issue in elastic org',
+        repository_url: 'https://api.github.com/repos/elastic/elasticsearch',
+        user: {
+          login: 'user1',
+          avatar_url: 'https://github.com/user1.png',
+          html_url: 'https://github.com/user1',
+        },
+        labels: [],
+      },
+      {
+        ...mockGitHubItems[1],
+        title: 'GitHub issue',
+        body: 'Issue in github org',
+        repository_url: 'https://api.github.com/repos/github/hub',
+        user: {
+          login: 'user2',
+          avatar_url: 'https://github.com/user2.png',
+          html_url: 'https://github.com/user2',
+        },
+        labels: [],
+      },
+      {
+        ...mockGitHubItems[2],
+        title: 'Microsoft issue',
+        body: 'Issue in microsoft org',
+        repository_url: 'https://api.github.com/repos/microsoft/vscode',
+        user: {
+          login: 'user3',
+          avatar_url: 'https://github.com/user3.png',
+          html_url: 'https://github.com/user3',
+        },
+        labels: [],
+      },
+      {
+        ...mockGitHubItems[0],
+        title: 'Another Elastic issue',
+        body: 'Another issue in elastic org',
+        repository_url: 'https://api.github.com/repos/elastic/kibana',
+        user: {
+          login: 'user4',
+          avatar_url: 'https://github.com/user4.png',
+          html_url: 'https://github.com/user4',
+        },
+        labels: [],
+      },
+    ];
+
+    it('should filter by single org', () => {
+      const result = filterByText(mockItemsWithOrgs, 'org:elastic');
+      expect(result).toHaveLength(2);
+      expect(result.every(item => item.repository_url?.includes('/elastic/'))).toBe(true);
+    });
+
+    it('should filter by excluded org', () => {
+      const result = filterByText(mockItemsWithOrgs, '-org:elastic');
+      expect(result).toHaveLength(2);
+      expect(result.every(item => !item.repository_url?.includes('/elastic/'))).toBe(true);
+    });
+
+    it('should filter by multiple orgs (OR logic)', () => {
+      const result = filterByText(mockItemsWithOrgs, 'org:elastic org:github');
+      expect(result).toHaveLength(3);
+    });
+
+    it('should filter by mixed included and excluded orgs', () => {
+      const result = filterByText(mockItemsWithOrgs, 'org:elastic -org:microsoft');
+      expect(result).toHaveLength(2);
+      expect(result.every(item => item.repository_url?.includes('/elastic/'))).toBe(true);
+    });
+
+    it('should combine org filter with text search', () => {
+      const result = filterByText(mockItemsWithOrgs, 'org:elastic Another');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Another Elastic issue');
+    });
+
+    it('should handle case-insensitive org matching', () => {
+      const result = filterByText(mockItemsWithOrgs, 'org:ELASTIC');
+      expect(result).toHaveLength(2);
+    });
+
+    it('should handle items without repository_url', () => {
+      const itemsWithoutRepo = [
+        { ...mockGitHubItems[0], repository_url: undefined },
+      ];
+      const result = filterByText(itemsWithoutRepo, 'org:elastic');
+      expect(result).toHaveLength(0);
+    });
+
+    it('should combine org, repo, user, and label filters', () => {
+      const itemsWithLabels = mockItemsWithOrgs.map((item, idx) => ({
+        ...item,
+        labels: idx === 0 ? [{ name: 'bug', color: 'red' }] : [],
+      }));
+      const result = filterByText(itemsWithLabels, 'org:elastic label:bug');
+      expect(result).toHaveLength(1);
+      expect(result[0].title).toBe('Elastic issue');
     });
   });
 });

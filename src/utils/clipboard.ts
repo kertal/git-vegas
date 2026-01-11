@@ -139,6 +139,7 @@ export const generatePlainTextFormat = (
         group.items.forEach((item, index) => {
           plainText += `${index + 1}. ${item.title}\n`;
           plainText += `   Link: ${item.html_url}\n`;
+          plainText += `   Author: ${item.user.login} (${item.user.html_url})\n`;
           plainText += `   Type: ${item.pull_request ? 'Pull Request' : 'Issue'}${item.pull_request && (item.draft || item.pull_request.draft) ? ' (DRAFT)' : ''}\n`;
           plainText += `   Status: ${item.state}${item.merged ? ' (merged)' : ''}\n`;
           plainText += `   Created: ${formatDateForClipboard(item.created_at)}\n`;
@@ -180,6 +181,7 @@ export const generatePlainTextFormat = (
   items.forEach((item, index) => {
     plainText += `${index + 1}. ${item.title}\n`;
     plainText += `   Link: ${item.html_url}\n`;
+    plainText += `   Author: ${item.user.login} (${item.user.html_url})\n`;
     plainText += `   Type: ${item.pull_request ? 'Pull Request' : 'Issue'}${item.pull_request && (item.draft || item.pull_request.draft) ? ' (DRAFT)' : ''}\n`;
     plainText += `   Status: ${item.state}${item.merged ? ' (merged)' : ''}\n`;
     plainText += `   Created: ${formatDateForClipboard(item.created_at)}\n`;
@@ -279,6 +281,7 @@ export const generateHtmlFormat = (
     htmlContent += `    ${index + 1}. <a href="${item.html_url}" style="color: #0969da; text-decoration: none;">${item.title}</a>\n`;
     htmlContent += `  </div>\n`;
     htmlContent += `  <div style="color: #57606a; font-size: 14px; margin-left: 24px;">\n`;
+    htmlContent += `    <div>Author: <a href="${item.user.html_url}" style="color: #0969da; text-decoration: none;">${item.user.login}</a></div>\n`;
     htmlContent += `    <div>Type: ${item.pull_request ? 'Pull Request' : 'Issue'}${item.pull_request && (item.draft || item.pull_request.draft) ? ' <span style="color: #9a6700; font-weight: bold;">(DRAFT)</span>' : ''}</div>\n`;
     htmlContent += `    <div>Status: <span style="color: ${
       item.merged ? '#8250df' : item.state === 'closed' ? '#cf222e' : '#1a7f37'

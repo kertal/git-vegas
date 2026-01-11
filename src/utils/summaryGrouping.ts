@@ -69,8 +69,8 @@ export const getEventType = (item: GitHubItem): string => {
   if (item.title.startsWith('Comment on:')) {
     return 'comment';
   }
-  // Check if this is a push event (title starts with "Pushed")
-  if (item.title.startsWith('Pushed')) {
+  // Check if this is a push event (title starts with "Committed")
+  if (item.title.startsWith('Committed')) {
     return 'commit';
   }
   // Check for other event types that don't belong to issues/PRs
@@ -168,7 +168,8 @@ export const categorizeItemWithoutDateFiltering = (
 
     if (item.state === 'closed' && closedInRange) {
       return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
-    } else if (createdInRange) {
+    } else if (createdInRange && (!item.action || item.action === 'opened')) {
+      // Issue was created in range - either explicitly opened or no action specified (from Search API)
       return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
     } else {
       return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
@@ -256,14 +257,14 @@ export const categorizeItem = (
     if (item.state === 'closed' && closedInRange) {
       // Issue was closed within the timeframe
       return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
-    } else if (createdInRange) {
-      // Issue was created within the timeframe (regardless of current state)
+    } else if (createdInRange && (!item.action || item.action === 'opened')) {
+      // Issue was created in range - either explicitly opened or no action specified (from Search API)
       return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
-    } else if (updatedInRange && !createdInRange && !closedInRange) {
-      // Issue had activity but wasn't created/closed within timeframe
+    } else if (updatedInRange) {
+      // Issue was updated in the timeframe (labeled, assigned, etc.) but was not categorized as opened/closed in this summary
       return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
     }
-    
+
     // If none of the above conditions are met, filter out the issue
     return null;
   }

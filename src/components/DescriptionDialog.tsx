@@ -3,6 +3,7 @@ import {
   Box,
   Dialog,
   IconButton,
+  Label,
   Link,
   Text,
   UnderlineNav,
@@ -16,6 +17,7 @@ import {
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { GitHubItem } from '../types';
+import { getActionVariant } from '../utils/actionUtils';
 
 interface DescriptionDialogProps {
   item: GitHubItem | null;
@@ -136,6 +138,36 @@ const DescriptionDialog = memo(function DescriptionDialog({
         display: 'flex',
         flexDirection: 'column'
       }}>
+        {/* Event Metadata */}
+        {(item.action || item.originalEventType) && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              mb: 3,
+              flexWrap: 'wrap'
+            }}
+          >
+            {item.action && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Text sx={{ fontSize: 0, color: 'fg.muted' }}>Action:</Text>
+                <Label variant={getActionVariant(item.action)} size="small">
+                  {item.action}
+                </Label>
+              </Box>
+            )}
+            {item.originalEventType && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Text sx={{ fontSize: 0, color: 'fg.muted' }}>Event:</Text>
+                <Label variant="secondary" size="small">
+                  {item.originalEventType}
+                </Label>
+              </Box>
+            )}
+          </Box>
+        )}
+
         {/* View Mode Toggle */}
         <Box sx={{ mb: 3 }}>
           <UnderlineNav aria-label="View mode">

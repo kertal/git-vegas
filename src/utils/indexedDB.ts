@@ -6,9 +6,10 @@ import { GitHubEvent } from '../types';
  */
 
 const DB_NAME = 'GitVegasDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for PR cache store
 const EVENTS_STORE = 'events';
 const METADATA_STORE = 'metadata';
+const PR_CACHE_STORE = 'prCache';
 
 /**
  * Cache time-to-live in milliseconds (30 minutes)
@@ -32,6 +33,22 @@ export interface MetadataRecord {
   id: string;
   value: unknown;
   timestamp: number;
+}
+
+export interface PRCacheRecord {
+  id: string; // PR API URL (e.g., https://api.github.com/repos/owner/repo/pulls/123)
+  prNumber: number;
+  repoFullName: string;
+  title: string;
+  state: string;
+  body: string;
+  html_url: string;
+  labels: Array<{ name: string; color?: string; description?: string }>;
+  updated_at: string;
+  closed_at?: string;
+  merged_at?: string;
+  merged?: boolean;
+  cachedAt: number; // Timestamp when this was cached
 }
 
 class IndexedDBManager {
@@ -71,6 +88,13 @@ class IndexedDBManager {
         if (!db.objectStoreNames.contains(METADATA_STORE)) {
           const metadataStore = db.createObjectStore(METADATA_STORE, { keyPath: 'id' });
           metadataStore.createIndex('timestamp', 'timestamp', { unique: false });
+        }
+
+        // Create PR cache store (added in version 2)
+        if (!db.objectStoreNames.contains(PR_CACHE_STORE)) {
+          const prCacheStore = db.createObjectStore(PR_CACHE_STORE, { keyPath: 'id' });
+          prCacheStore.createIndex('cachedAt', 'cachedAt', { unique: false });
+          prCacheStore.createIndex('repoFullName', 'repoFullName', { unique: false });
         }
       };
     });
@@ -205,17 +229,24 @@ class IndexedDBManager {
         return;
       }
 
-      const transaction = this.db.transaction([EVENTS_STORE, METADATA_STORE], 'readwrite');
+      const stores = [EVENTS_STORE, METADATA_STORE];
+      // Add PR_CACHE_STORE if it exists (may not exist if upgrading from older version)
+      if (this.db.objectStoreNames.contains(PR_CACHE_STORE)) {
+        stores.push(PR_CACHE_STORE);
+      }
+
+      const transaction = this.db.transaction(stores, 'readwrite');
       const eventsStore = transaction.objectStore(EVENTS_STORE);
       const metadataStore = transaction.objectStore(METADATA_STORE);
 
       const eventsRequest = eventsStore.clear();
       const metadataRequest = metadataStore.clear();
 
+      const totalStores = stores.length;
       let completed = 0;
       const checkComplete = () => {
         completed++;
-        if (completed === 2) resolve();
+        if (completed === totalStores) resolve();
       };
 
       eventsRequest.onsuccess = checkComplete;
@@ -223,6 +254,117 @@ class IndexedDBManager {
 
       eventsRequest.onerror = () => reject(eventsRequest.error);
       metadataRequest.onerror = () => reject(metadataRequest.error);
+
+      // Clear PR cache if store exists
+      if (stores.includes(PR_CACHE_STORE)) {
+        const prCacheStore = transaction.objectStore(PR_CACHE_STORE);
+        const prCacheRequest = prCacheStore.clear();
+        prCacheRequest.onsuccess = checkComplete;
+        prCacheRequest.onerror = () => reject(prCacheRequest.error);
+      }
+    });
+  }
+
+  /**
+   * Store PR details in cache
+   */
+  async storePRCache(prData: PRCacheRecord): Promise<void> {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction([PR_CACHE_STORE], 'readwrite');
+      const store = transaction.objectStore(PR_CACHE_STORE);
+
+      const request = store.put(prData);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => {
+        console.error('Failed to store PR cache:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Get PR details from cache
+   */
+  async getPRCache(apiUrl: string): Promise<PRCacheRecord | null> {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction([PR_CACHE_STORE], 'readonly');
+      const store = transaction.objectStore(PR_CACHE_STORE);
+      const request = store.get(apiUrl);
+
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+
+      request.onerror = () => {
+        console.error('Failed to retrieve PR cache:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Get all PR cache records
+   */
+  async getAllPRCache(): Promise<PRCacheRecord[]> {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction([PR_CACHE_STORE], 'readonly');
+      const store = transaction.objectStore(PR_CACHE_STORE);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        resolve(request.result || []);
+      };
+
+      request.onerror = () => {
+        console.error('Failed to retrieve all PR cache:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Clear PR cache
+   */
+  async clearPRCache(): Promise<void> {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not initialized'));
+        return;
+      }
+
+      const transaction = this.db.transaction([PR_CACHE_STORE], 'readwrite');
+      const store = transaction.objectStore(PR_CACHE_STORE);
+      const request = store.clear();
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => {
+        console.error('Failed to clear PR cache:', request.error);
+        reject(request.error);
+      };
     });
   }
 
@@ -441,5 +583,96 @@ export const cacheUtils = {
       this.isFresh(metadata.lastFetch, ttlMs) &&
       this.matchesQuery(metadata, currentUsernames, currentStartDate, currentEndDate)
     );
+  },
+};
+
+/**
+ * Convenience functions for PR cache storage
+ */
+export const prCacheStorage = {
+  /**
+   * Store PR details in cache
+   */
+  async store(prData: PRCacheRecord): Promise<void> {
+    if (!IndexedDBManager.isSupported()) {
+      // Fallback to localStorage with a key based on PR URL
+      try {
+        const cacheKey = `pr-cache-${prData.id}`;
+        localStorage.setItem(cacheKey, JSON.stringify(prData));
+      } catch (error) {
+        console.error('Failed to store PR cache in localStorage:', error);
+      }
+      return;
+    }
+
+    try {
+      await indexedDBManager.storePRCache(prData);
+    } catch (error) {
+      console.error('Failed to store PR cache in IndexedDB:', error);
+    }
+  },
+
+  /**
+   * Retrieve PR details from cache
+   */
+  async get(apiUrl: string): Promise<PRCacheRecord | null> {
+    if (!IndexedDBManager.isSupported()) {
+      try {
+        const cacheKey = `pr-cache-${apiUrl}`;
+        const data = localStorage.getItem(cacheKey);
+        return data ? JSON.parse(data) : null;
+      } catch (error) {
+        console.error('Failed to retrieve PR cache from localStorage:', error);
+        return null;
+      }
+    }
+
+    try {
+      return await indexedDBManager.getPRCache(apiUrl);
+    } catch (error) {
+      console.error('Failed to retrieve PR cache from IndexedDB:', error);
+      return null;
+    }
+  },
+
+  /**
+   * Get all cached PR details
+   */
+  async getAll(): Promise<PRCacheRecord[]> {
+    if (!IndexedDBManager.isSupported()) {
+      // In localStorage fallback, we'd need to iterate all keys - not efficient
+      return [];
+    }
+
+    try {
+      return await indexedDBManager.getAllPRCache();
+    } catch (error) {
+      console.error('Failed to get all PR cache from IndexedDB:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Clear all PR cache
+   */
+  async clear(): Promise<void> {
+    if (!IndexedDBManager.isSupported()) {
+      // Clear localStorage PR cache entries
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('pr-cache-')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      return;
+    }
+
+    try {
+      await indexedDBManager.clearPRCache();
+    } catch (error) {
+      console.error('Failed to clear PR cache from IndexedDB:', error);
+    }
   },
 }; 
