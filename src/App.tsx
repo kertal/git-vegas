@@ -1,8 +1,9 @@
 import {
   useState,
-  useEffect,  
+  useEffect,
   useCallback,
   useMemo,
+  useRef,
   createContext,
   useContext,
 } from 'react';
@@ -168,28 +169,34 @@ function App() {
     setTimeout(() => setIsManuallySpinning(false), 2000);
   }, []);
 
+  // Track if initial fetch has been triggered to prevent double fetches
+  const initialFetchTriggeredRef = useRef(false);
+
   useEffect(() => {
-    if (initialLoadingCount === 1) {
+    if (initialLoadingCount === 1 && !initialFetchTriggeredRef.current) {
+      // Mark as triggered immediately to prevent duplicate calls
+      initialFetchTriggeredRef.current = true;
+
       // Skip initial loading in test environment
-      const isTestEnvironment = typeof window !== 'undefined' && 
-        (window.navigator?.userAgent?.includes('jsdom') || 
+      const isTestEnvironment = typeof window !== 'undefined' &&
+        (window.navigator?.userAgent?.includes('jsdom') ||
          process.env.NODE_ENV === 'test' ||
          import.meta.env?.MODE === 'test');
-      
+
       if (isTestEnvironment) {
         // In tests, immediately exit loading mode
         setInitialLoadingCount(0);
         setIsDataLoadingComplete(false);
         return;
       }
-      
+
       const startTime = Date.now();
       const minLoadingTime = 3000; // 3 seconds minimum for better UX
-      
+
       handleSearch().then(() => {
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
-        
+
         // Instead of automatically switching, mark data loading as complete
         setTimeout(() => {
           setIsDataLoadingComplete(true);
@@ -201,6 +208,8 @@ function App() {
   const handleStartClick = useCallback(() => {
     setInitialLoadingCount(0);
     setIsDataLoadingComplete(false);
+    // Reset the fetch trigger ref so a new fetch can happen
+    initialFetchTriggeredRef.current = false;
   }, []);
 
   if (initialLoadingCount === 1) {
