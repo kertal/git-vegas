@@ -13,7 +13,7 @@ export const filterItemsByAdvancedSearch = (
     return items;
   }
 
-  const { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, cleanText } = parseSearchText(searchText);
+  const { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, includedOrgs, excludedOrgs, cleanText } = parseSearchText(searchText);
 
   return items.filter(item => {
     // Check label filters first
@@ -75,6 +75,34 @@ export const filterItemsByAdvancedSearch = (
       }
     }
 
+    // Check organization filters
+    // Organization is extracted from repository_url: https://api.github.com/repos/{org}/{repo}
+    if (includedOrgs.length > 0 || excludedOrgs.length > 0) {
+      const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
+      const itemOrg = itemRepo?.split('/')[0]; // Extract org from "org/repo"
+
+      if (!itemOrg) {
+        // If no organization info, exclude if any org filters are specified
+        if (includedOrgs.length > 0) return false;
+      } else {
+        // Check if item belongs to an included org
+        if (includedOrgs.length > 0) {
+          const hasIncludedOrg = includedOrgs.some(orgFilter =>
+            itemOrg.toLowerCase() === orgFilter.toLowerCase()
+          );
+          if (!hasIncludedOrg) return false;
+        }
+
+        // Check if item belongs to an excluded org
+        if (excludedOrgs.length > 0) {
+          const hasExcludedOrg = excludedOrgs.some(orgFilter =>
+            itemOrg.toLowerCase() === orgFilter.toLowerCase()
+          );
+          if (hasExcludedOrg) return false;
+        }
+      }
+    }
+
     // If there's clean text remaining, search in title, body, and username
     if (cleanText) {
       const searchLower = cleanText.toLowerCase();
@@ -84,7 +112,7 @@ export const filterItemsByAdvancedSearch = (
       return titleMatch || bodyMatch || userMatch;
     }
 
-    // If only label/user/repo filters were used, item passed checks above
+    // If only label/user/repo/org filters were used, item passed checks above
     return true;
   });
 };

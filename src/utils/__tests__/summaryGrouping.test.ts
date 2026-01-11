@@ -178,7 +178,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
-  it('should still respect date filtering for actions within timeframe', () => {
+  it('should categorize issue created in timeframe as ISSUES_OPENED when action is opened', () => {
     const item: GitHubItem = {
       id: 1,
       html_url: 'https://github.com/test/repo/issues/1',
@@ -186,11 +186,44 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
       created_at: '2024-01-15T00:00:00Z', // Within timeframe
       updated_at: '2024-01-16T00:00:00Z', // Within timeframe
       state: 'open',
+      action: 'opened', // Explicitly opened action
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
     const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
+  });
+
+  it('should categorize issue created in timeframe as ISSUES_OPENED when no action specified (Search API)', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z', // Within timeframe
+      updated_at: '2024-01-16T00:00:00Z', // Within timeframe
+      state: 'open',
+      // No action field - simulates Search API results
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
+  });
+
+  it('should categorize labeled issue as ISSUES_UPDATED even if created in timeframe', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z', // Within timeframe
+      updated_at: '2024-01-16T00:00:00Z', // Within timeframe
+      state: 'open',
+      action: 'labeled', // Not an 'opened' action
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
   it('should categorize any issue as ISSUES_UPDATED regardless of authorship', () => {
@@ -218,7 +251,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
     addedReviewPRs.clear();
   });
 
-  it('should categorize issue created within timeframe as ISSUES_OPENED', () => {
+  it('should categorize issue created within timeframe as ISSUES_OPENED when action is opened', () => {
     const item: GitHubItem = {
       id: 1,
       html_url: 'https://github.com/test/repo/issues/1',
@@ -226,11 +259,44 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       created_at: '2024-01-15T00:00:00Z', // Within timeframe
       updated_at: '2024-01-16T00:00:00Z', // Within timeframe
       state: 'open',
+      action: 'opened', // Explicitly opened action
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
     const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
+  });
+
+  it('should categorize issue created within timeframe as ISSUES_OPENED when no action specified (Search API)', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z', // Within timeframe
+      updated_at: '2024-01-16T00:00:00Z', // Within timeframe
+      state: 'open',
+      // No action field - simulates Search API results
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
+  });
+
+  it('should categorize labeled issue as ISSUES_UPDATED even if created in timeframe', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z', // Within timeframe
+      updated_at: '2024-01-16T00:00:00Z', // Within timeframe
+      state: 'open',
+      action: 'labeled', // Not an 'opened' action - should go to ISSUES_UPDATED
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
   it('should categorize issue closed within timeframe as ISSUES_CLOSED', () => {
@@ -307,6 +373,97 @@ describe('categorizeItem - Issues with Date Filtering', () => {
 
     const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
     expect(result).toBeNull();
+  });
+});
+
+describe('categorizeItem - Issue Action Handling', () => {
+  const addedReviewPRs = new Set<string>();
+  const startDate = '2024-01-10';
+  const endDate = '2024-01-20';
+
+  beforeEach(() => {
+    addedReviewPRs.clear();
+  });
+
+  it('should categorize issue with action=assigned as ISSUES_UPDATED even if created in range', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z', // Within timeframe
+      updated_at: '2024-01-16T00:00:00Z',
+      state: 'open',
+      action: 'assigned',
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
+  });
+
+  it('should categorize issue with action=unassigned as ISSUES_UPDATED even if created in range', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z',
+      updated_at: '2024-01-16T00:00:00Z',
+      state: 'open',
+      action: 'unassigned',
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
+  });
+
+  it('should categorize issue with action=unlabeled as ISSUES_UPDATED even if created in range', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z',
+      updated_at: '2024-01-16T00:00:00Z',
+      state: 'open',
+      action: 'unlabeled',
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
+  });
+
+  it('should categorize issue with action=edited as ISSUES_UPDATED even if created in range', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z',
+      updated_at: '2024-01-16T00:00:00Z',
+      state: 'open',
+      action: 'edited',
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
+  });
+
+  it('should prioritize ISSUES_CLOSED over action type when closed in range', () => {
+    const item: GitHubItem = {
+      id: 1,
+      html_url: 'https://github.com/test/repo/issues/1',
+      title: 'Test Issue',
+      created_at: '2024-01-15T00:00:00Z',
+      updated_at: '2024-01-16T00:00:00Z',
+      closed_at: '2024-01-16T00:00:00Z',
+      state: 'closed',
+      action: 'closed', // Even with closed action, should be categorized by state
+      user: { login: 'testuser', avatar_url: '', html_url: '' },
+    };
+
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_CLOSED);
   });
 });
 
@@ -390,9 +547,9 @@ describe('groupSummaryData - Integration Test', () => {
     expect(result[SUMMARY_GROUP_NAMES.PRS_UPDATED]).toHaveLength(0);
   });
 
-  it('should populate ISSUES_OPENED with issues created in timeframe', () => {
+  it('should populate ISSUES_OPENED with issues explicitly opened in timeframe', () => {
     const items: GitHubItem[] = [
-      // Issue created within timeframe
+      // Issue explicitly opened within timeframe
       {
         id: 1,
         html_url: 'https://github.com/test/repo/issues/1',
@@ -400,6 +557,18 @@ describe('groupSummaryData - Integration Test', () => {
         created_at: '2024-01-15T00:00:00Z', // Within timeframe
         updated_at: '2024-01-16T00:00:00Z', // Within timeframe
         state: 'open',
+        action: 'opened', // Explicitly opened action
+        user: { login: 'testuser', avatar_url: '', html_url: '' },
+      },
+      // Issue labeled within timeframe (should go to ISSUES_UPDATED, not OPENED)
+      {
+        id: 4,
+        html_url: 'https://github.com/test/repo/issues/4',
+        title: 'Labeled Issue',
+        created_at: '2024-01-15T00:00:00Z', // Within timeframe
+        updated_at: '2024-01-16T00:00:00Z', // Within timeframe
+        state: 'open',
+        action: 'labeled', // Not an 'opened' action
         user: { login: 'testuser', avatar_url: '', html_url: '' },
       },
       // Issue closed within timeframe
@@ -433,7 +602,9 @@ describe('groupSummaryData - Integration Test', () => {
     expect(result[SUMMARY_GROUP_NAMES.ISSUES_CLOSED]).toHaveLength(1);
     expect(result[SUMMARY_GROUP_NAMES.ISSUES_CLOSED][0].title).toBe('Closed Issue');
 
-    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED]).toHaveLength(1);
-    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED][0].title).toBe('Updated Issue');
+    // Should include both 'Updated Issue' and 'Labeled Issue'
+    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED]).toHaveLength(2);
+    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].map(i => i.title)).toContain('Updated Issue');
+    expect(result[SUMMARY_GROUP_NAMES.ISSUES_UPDATED].map(i => i.title)).toContain('Labeled Issue');
   });
 }); 
