@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useState, useRef } from 'react';
+import React, { memo, useCallback, useState, useRef, useMemo } from 'react';
 import {
   TextInput,
   Box,
@@ -7,11 +7,59 @@ import {
   Avatar,
   Token,
   Tooltip,
+  type SxProp,
 } from '@primer/react';
 import { XIcon, SearchIcon } from '@primer/octicons-react';
 import { useDebouncedSearch } from '../hooks/useDebouncedSearch';
 
-interface UserSuggestion {
+// Constants with semantic meaning
+const MAX_USER_SUGGESTIONS = 8;
+const MAX_LABEL_SUGGESTIONS = 12;
+const MAX_REPO_SUGGESTIONS = 8;
+
+// Shared styles extracted for reuse (DRY principle)
+const sectionHeaderStyles: SxProp['sx'] = {
+  fontSize: '11px',
+  fontWeight: 'semibold',
+  color: 'fg.muted',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  display: 'block',
+  mb: 2,
+};
+
+const avatarButtonStyles: SxProp['sx'] = {
+  border: 'none',
+  background: 'none',
+  padding: 0,
+  cursor: 'pointer',
+  borderRadius: '50%',
+  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+  ':hover': {
+    transform: 'scale(1.15)',
+    boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
+  },
+  ':focus': {
+    outline: 'none',
+    boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
+  },
+};
+
+const tokenStyles: SxProp['sx'] = {
+  cursor: 'pointer',
+  fontSize: '11px',
+  transition: 'transform 0.1s ease',
+  ':hover': {
+    transform: 'scale(1.05)',
+  },
+};
+
+// Pure component for section headers
+const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Text sx={sectionHeaderStyles}>{children}</Text>
+);
+
+export interface UserSuggestion {
   login: string;
   avatar_url: string;
 }
@@ -20,13 +68,14 @@ interface HeaderSearchProps {
   searchText: string;
   onSearchChange: (value: string) => void;
   placeholder?: string;
-  /** Available users for suggestions */
   availableUsers?: UserSuggestion[];
-  /** Available labels for suggestions */
   availableLabels?: string[];
-  /** Available repos for suggestions */
   availableRepos?: string[];
 }
+
+// Pure function for building filter text
+const buildFilterText = (current: string, addition: string): string =>
+  current ? `${current} ${addition}` : addition;
 
 const HeaderSearch = memo(function HeaderSearch({
   searchText,
@@ -39,52 +88,79 @@ const HeaderSearch = memo(function HeaderSearch({
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Use debounced search hook
   const { inputValue, setInputValue, clearSearch } = useDebouncedSearch(
     searchText,
     onSearchChange,
-    300 // 300ms debounce delay
+    300
   );
 
-  // Handle input change (when typing new text)
-  const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(event.target.value);
-  }, [setInputValue]);
+  // Memoized sliced suggestions to avoid recalculation on each render
+  const topUsers = useMemo(
+    () => availableUsers.slice(0, MAX_USER_SUGGESTIONS),
+    [availableUsers]
+  );
+  const topLabels = useMemo(
+    () => availableLabels.slice(0, MAX_LABEL_SUGGESTIONS),
+    [availableLabels]
+  );
+  const topRepos = useMemo(
+    () => availableRepos.slice(0, MAX_REPO_SUGGESTIONS),
+    [availableRepos]
+  );
 
-  // Clear all search
+  const handleInputChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setInputValue(event.target.value);
+    },
+    [setInputValue]
+  );
+
   const handleClearSearch = useCallback(() => {
     clearSearch();
   }, [clearSearch]);
 
-  // Handle focus state
   const handleFocus = useCallback(() => {
     setIsFocused(true);
   }, []);
 
   const handleBlur = useCallback((event: React.FocusEvent) => {
-    // Check if focus is moving to the popover content
-    const relatedTarget = event.relatedTarget as HTMLElement;
-    if (relatedTarget?.closest('[data-search-popover]')) {
-      // Keep popover open, refocus input
+    const relatedTarget = event.relatedTarget;
+    // Type-safe check instead of unsafe type assertion
+    if (relatedTarget instanceof HTMLElement && relatedTarget.closest('[data-search-popover]')) {
       return;
     }
     setIsFocused(false);
   }, []);
 
-  // Add filter text to search input
-  const addFilterText = useCallback((filterText: string) => {
-    const newValue = inputValue ? `${inputValue} ${filterText}` : filterText;
-    setInputValue(newValue);
-    // Keep focus on input
-    inputRef.current?.focus();
-  }, [inputValue, setInputValue]);
+  const addFilterText = useCallback(
+    (filterText: string) => {
+      setInputValue(buildFilterText(inputValue, filterText));
+      // Separate side effect using requestAnimationFrame for proper timing
+      requestAnimationFrame(() => inputRef.current?.focus());
+    },
+    [inputValue, setInputValue]
+  );
 
-  const showSyntaxHelp = isFocused;
+  // Factory functions for click handlers to avoid inline closures in render
+  const createUserClickHandler = useCallback(
+    (login: string) => () => addFilterText(`user:${login}`),
+    [addFilterText]
+  );
 
-  // Get top suggestions (limit to prevent huge lists)
-  const topUsers = availableUsers.slice(0, 8);
-  const topLabels = availableLabels.slice(0, 12);
-  const topRepos = availableRepos.slice(0, 8);
+  const createLabelClickHandler = useCallback(
+    (label: string) => () => addFilterText(`label:${label}`),
+    [addFilterText]
+  );
+
+  const createRepoClickHandler = useCallback(
+    (repo: string) => () => addFilterText(`repo:${repo}`),
+    [addFilterText]
+  );
+
+  // Semantic boolean flags for readability
+  const hasUsers = topUsers.length > 0;
+  const hasLabels = topLabels.length > 0;
+  const hasRepos = topRepos.length > 0;
 
   return (
     <Box
@@ -107,16 +183,16 @@ const HeaderSearch = memo(function HeaderSearch({
         placeholder={placeholder}
         size="small"
         leadingVisual={SearchIcon}
-        {...(inputValue && {
-          trailingAction: (
+        trailingAction={
+          inputValue ? (
             <TextInput.Action
               onClick={handleClearSearch}
               icon={XIcon}
               aria-label="Clear search"
               sx={{ color: 'fg.muted' }}
             />
-          ),
-        })}
+          ) : undefined
+        }
         sx={{
           fontSize: '12px',
           minHeight: '28px',
@@ -126,10 +202,11 @@ const HeaderSearch = memo(function HeaderSearch({
             py: '4px',
           },
         }}
-        block={true}
+        block
       />
-      {showSyntaxHelp && (
-        <Popover open={true} caret="top">
+
+      {isFocused && (
+        <Popover open caret="top">
           <Popover.Content
             data-search-popover
             sx={{
@@ -144,19 +221,7 @@ const HeaderSearch = memo(function HeaderSearch({
           >
             {/* Search Syntax Section */}
             <Box sx={{ mb: 3 }}>
-              <Text
-                sx={{
-                  fontSize: '11px',
-                  fontWeight: 'semibold',
-                  color: 'fg.muted',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  display: 'block',
-                  mb: 2,
-                }}
-              >
-                Search Syntax
-              </Text>
+              <SectionHeader>Search Syntax</SectionHeader>
               <Box
                 sx={{
                   display: 'grid',
@@ -173,50 +238,17 @@ const HeaderSearch = memo(function HeaderSearch({
               </Box>
             </Box>
 
-            {/* Users Section - Avatars */}
-            {topUsers.length > 0 && (
+            {/* Users Section */}
+            {hasUsers && (
               <Box sx={{ mb: 3 }}>
-                <Text
-                  sx={{
-                    fontSize: '11px',
-                    fontWeight: 'semibold',
-                    color: 'fg.muted',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    display: 'block',
-                    mb: 2,
-                  }}
-                >
-                  Filter by User
-                </Text>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 2,
-                  }}
-                >
+                <SectionHeader>Filter by User</SectionHeader>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                   {topUsers.map(user => (
                     <Tooltip key={user.login} text={`user:${user.login}`} direction="s">
                       <Box
                         as="button"
-                        onClick={() => addFilterText(`user:${user.login}`)}
-                        sx={{
-                          border: 'none',
-                          background: 'none',
-                          padding: 0,
-                          cursor: 'pointer',
-                          borderRadius: '50%',
-                          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                          ':hover': {
-                            transform: 'scale(1.15)',
-                            boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
-                          },
-                          ':focus': {
-                            outline: 'none',
-                            boxShadow: '0 0 0 2px var(--bgColor-accent-emphasis, #0969da)',
-                          },
-                        }}
+                        onClick={createUserClickHandler(user.login)}
+                        sx={avatarButtonStyles}
                       >
                         <Avatar src={user.avatar_url} size={32} alt={user.login} />
                       </Box>
@@ -226,84 +258,34 @@ const HeaderSearch = memo(function HeaderSearch({
               </Box>
             )}
 
-            {/* Labels Section - Pills */}
-            {topLabels.length > 0 && (
+            {/* Labels Section */}
+            {hasLabels && (
               <Box sx={{ mb: 3 }}>
-                <Text
-                  sx={{
-                    fontSize: '11px',
-                    fontWeight: 'semibold',
-                    color: 'fg.muted',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    display: 'block',
-                    mb: 2,
-                  }}
-                >
-                  Filter by Label
-                </Text>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 1,
-                  }}
-                >
+                <SectionHeader>Filter by Label</SectionHeader>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {topLabels.map(label => (
                     <Token
                       key={label}
                       text={label}
-                      onClick={() => addFilterText(`label:${label}`)}
-                      sx={{
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        transition: 'transform 0.1s ease',
-                        ':hover': {
-                          transform: 'scale(1.05)',
-                        },
-                      }}
+                      onClick={createLabelClickHandler(label)}
+                      sx={tokenStyles}
                     />
                   ))}
                 </Box>
               </Box>
             )}
 
-            {/* Repos Section - Pills */}
-            {topRepos.length > 0 && (
+            {/* Repos Section */}
+            {hasRepos && (
               <Box>
-                <Text
-                  sx={{
-                    fontSize: '11px',
-                    fontWeight: 'semibold',
-                    color: 'fg.muted',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    display: 'block',
-                    mb: 2,
-                  }}
-                >
-                  Filter by Repository
-                </Text>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 1,
-                  }}
-                >
+                <SectionHeader>Filter by Repository</SectionHeader>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {topRepos.map(repo => (
                     <Token
                       key={repo}
                       text={repo}
-                      onClick={() => addFilterText(`repo:${repo}`)}
-                      sx={{
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        transition: 'transform 0.1s ease',
-                        ':hover': {
-                          transform: 'scale(1.05)',
-                        },
-                      }}
+                      onClick={createRepoClickHandler(repo)}
+                      sx={tokenStyles}
                     />
                   ))}
                 </Box>

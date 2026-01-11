@@ -163,50 +163,51 @@ function App() {
     return [];
   }, [cachedAvatarUrls]);
 
+  // Pure comparator for case-insensitive string sorting
+  const caseInsensitiveCompare = (a: string, b: string): number =>
+    a.toLowerCase().localeCompare(b.toLowerCase());
+
   // Extract unique users from results for search suggestions (with avatars)
   const availableUsers = useMemo(() => {
-    const userMap = new Map<string, { login: string; avatar_url: string }>();
-    results.forEach(item => {
-      if (item.user?.login && !userMap.has(item.user.login)) {
-        userMap.set(item.user.login, {
-          login: item.user.login,
-          avatar_url: item.user.avatar_url || '',
-        });
-      }
-    });
-    return Array.from(userMap.values()).sort((a, b) =>
-      a.login.toLowerCase().localeCompare(b.login.toLowerCase())
-    );
+    const seen = new Set<string>();
+    return results
+      .filter(item => {
+        if (!item.user?.login || seen.has(item.user.login)) return false;
+        seen.add(item.user.login);
+        return true;
+      })
+      .map(item => ({
+        login: item.user.login,
+        avatar_url: item.user.avatar_url || '',
+      }))
+      .sort((a, b) => caseInsensitiveCompare(a.login, b.login));
   }, [results]);
 
   // Extract labels from results sorted by frequency (most used first)
   const availableLabels = useMemo(() => {
-    const labelCounts = new Map<string, number>();
-    results.forEach(item => {
-      item.labels?.forEach(label => {
-        labelCounts.set(label.name, (labelCounts.get(label.name) || 0) + 1);
-      });
-    });
+    // Build frequency map using reduce (functional approach)
+    const labelCounts = results
+      .flatMap(item => item.labels?.map(label => label.name) ?? [])
+      .reduce((acc, label) => {
+        acc.set(label, (acc.get(label) || 0) + 1);
+        return acc;
+      }, new Map<string, number>());
+
     // Sort by frequency (descending), then alphabetically for ties
     return Array.from(labelCounts.entries())
-      .sort((a, b) => {
-        if (b[1] !== a[1]) return b[1] - a[1]; // Sort by count descending
-        return a[0].toLowerCase().localeCompare(b[0].toLowerCase()); // Then alphabetically
-      })
+      .sort((a, b) => b[1] - a[1] || caseInsensitiveCompare(a[0], b[0]))
       .map(([label]) => label);
   }, [results]);
 
   // Extract unique repos from results for search suggestions
-  const availableRepos = useMemo(() => {
-    const repos = new Set<string>();
-    results.forEach(item => {
-      if (item.repository_url) {
-        const repoName = item.repository_url.replace('https://api.github.com/repos/', '');
-        repos.add(repoName);
-      }
-    });
-    return Array.from(repos).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  }, [results]);
+  const availableRepos = useMemo(() =>
+    [...new Set(
+      results
+        .map(item => item.repository_url?.replace('https://api.github.com/repos/', ''))
+        .filter((repo): repo is string => Boolean(repo))
+    )].sort(caseInsensitiveCompare),
+    [results]
+  );
 
   const handleManualSpin = useCallback(() => {
     setIsManuallySpinning(true);
