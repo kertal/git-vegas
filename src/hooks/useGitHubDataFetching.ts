@@ -235,7 +235,21 @@ export const useGitHubDataFetching = ({
             assignees: item.assignees || [],
             original: item, // Store the original item as the original payload
           }));
-          allSearchItems.push(...searchItemsWithOriginal);
+
+          // Filter to only include items where user is author or assignee
+          const filteredSearchItems = searchItemsWithOriginal.filter((item: Record<string, unknown>) => {
+            const user = item.user as { login: string } | null;
+            const assignee = item.assignee as { login: string } | null;
+            const assignees = item.assignees as Array<{ login: string }> | null;
+
+            const isAuthor = user?.login?.toLowerCase() === singleUsername.toLowerCase();
+            const isAssignee = assignee?.login?.toLowerCase() === singleUsername.toLowerCase();
+            const isInAssignees = assignees?.some(a => a.login?.toLowerCase() === singleUsername.toLowerCase()) ?? false;
+
+            return isAuthor || isAssignee || isInAssignees;
+          });
+
+          allSearchItems.push(...filteredSearchItems);
           onProgress(`Fetched issues/PRs for ${singleUsername}`);
 
            // Fetch all events with pagination
