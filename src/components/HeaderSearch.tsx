@@ -5,7 +5,6 @@ import {
   Text,
   Popover,
   Avatar,
-  Token,
   Tooltip,
   type SxProp,
 } from '@primer/react';
@@ -134,26 +133,36 @@ const HeaderSearch = memo(function HeaderSearch({
 
   const addFilterText = useCallback(
     (filterText: string) => {
-      setInputValue(buildFilterText(inputValue, filterText));
-      // Separate side effect using requestAnimationFrame for proper timing
-      requestAnimationFrame(() => inputRef.current?.focus());
+      const newValue = buildFilterText(inputValue, filterText);
+      setInputValue(newValue);
+      // Close popover after selection
+      setIsFocused(false);
     },
     [inputValue, setInputValue]
   );
 
-  // Factory functions for click handlers to avoid inline closures in render
-  const createUserClickHandler = useCallback(
-    (login: string) => () => addFilterText(`user:${login}`),
+  // Factory functions for mousedown handlers (mousedown fires before blur)
+  const createUserMouseDownHandler = useCallback(
+    (login: string) => (e: React.MouseEvent) => {
+      e.preventDefault(); // Prevent blur
+      addFilterText(`user:${login}`);
+    },
     [addFilterText]
   );
 
-  const createLabelClickHandler = useCallback(
-    (label: string) => () => addFilterText(`label:${label}`),
+  const createLabelMouseDownHandler = useCallback(
+    (label: string) => (e: React.MouseEvent) => {
+      e.preventDefault(); // Prevent blur
+      addFilterText(`label:${label}`);
+    },
     [addFilterText]
   );
 
-  const createRepoClickHandler = useCallback(
-    (repo: string) => () => addFilterText(`repo:${repo}`),
+  const createRepoMouseDownHandler = useCallback(
+    (repo: string) => (e: React.MouseEvent) => {
+      e.preventDefault(); // Prevent blur
+      addFilterText(`repo:${repo}`);
+    },
     [addFilterText]
   );
 
@@ -247,7 +256,7 @@ const HeaderSearch = memo(function HeaderSearch({
                     <Tooltip key={user.login} text={`user:${user.login}`} direction="s">
                       <Box
                         as="button"
-                        onClick={createUserClickHandler(user.login)}
+                        onMouseDown={createUserMouseDownHandler(user.login)}
                         sx={avatarButtonStyles}
                       >
                         <Avatar src={user.avatar_url} size={32} alt={user.login} />
@@ -264,12 +273,23 @@ const HeaderSearch = memo(function HeaderSearch({
                 <SectionHeader>Filter by Label</SectionHeader>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {topLabels.map(label => (
-                    <Token
+                    <Box
                       key={label}
-                      text={label}
-                      onClick={createLabelClickHandler(label)}
-                      sx={tokenStyles}
-                    />
+                      as="button"
+                      onMouseDown={createLabelMouseDownHandler(label)}
+                      sx={{
+                        ...tokenStyles,
+                        border: '1px solid',
+                        borderColor: 'border.default',
+                        borderRadius: '2em',
+                        px: 2,
+                        py: '2px',
+                        background: 'canvas.subtle',
+                        color: 'fg.default',
+                      }}
+                    >
+                      {label}
+                    </Box>
                   ))}
                 </Box>
               </Box>
@@ -281,12 +301,23 @@ const HeaderSearch = memo(function HeaderSearch({
                 <SectionHeader>Filter by Repository</SectionHeader>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                   {topRepos.map(repo => (
-                    <Token
+                    <Box
                       key={repo}
-                      text={repo}
-                      onClick={createRepoClickHandler(repo)}
-                      sx={tokenStyles}
-                    />
+                      as="button"
+                      onMouseDown={createRepoMouseDownHandler(repo)}
+                      sx={{
+                        ...tokenStyles,
+                        border: '1px solid',
+                        borderColor: 'border.default',
+                        borderRadius: '2em',
+                        px: 2,
+                        py: '2px',
+                        background: 'canvas.subtle',
+                        color: 'fg.default',
+                      }}
+                    >
+                      {repo}
+                    </Box>
                   ))}
                 </Box>
               </Box>
