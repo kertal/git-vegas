@@ -7,11 +7,15 @@ import svgr from 'vite-plugin-svgr'
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory
   const env = loadEnv(mode, process.cwd(), '')
-  
+
+  // Check if building for Tauri (Tauri sets this env var)
+  const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined
+
   // Determine base and scope from environment
-  const base = env.VITE_BASE_PATH || '/git-vegas/'
-  const scope = env.VITE_SCOPE || '/git-vegas/'
-  const startUrl = env.VITE_START_URL || '/git-vegas/'
+  // Use '/' for Tauri builds, '/git-vegas/' for web builds
+  const base = isTauri ? '/' : (env.VITE_BASE_PATH || '/git-vegas/')
+  const scope = isTauri ? '/' : (env.VITE_SCOPE || '/git-vegas/')
+  const startUrl = isTauri ? '/' : (env.VITE_START_URL || '/git-vegas/')
   
   return {
     plugins: [
