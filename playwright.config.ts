@@ -26,7 +26,14 @@ export default defineConfig({
   },
 
   /* Configure projects for major browsers */
-  projects: [
+  projects: process.env.CI ? [
+    // On CI, only test on Chromium for speed and reliability
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ] : [
+    // Locally, test on all browsers
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
