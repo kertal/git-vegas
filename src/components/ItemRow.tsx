@@ -25,7 +25,6 @@ interface ItemRowProps {
   onSelect?: (id: string | number) => void;
   showCheckbox?: boolean;
   showRepo?: boolean;
-  showUser?: boolean;
   showTime?: boolean;
   size?: 'small' | 'medium';
   groupCount?: number;

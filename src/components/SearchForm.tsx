@@ -21,7 +21,6 @@ const SearchForm = memo(function SearchForm() {
     apiMode,
     setApiMode,
     handleSearch,
-    handleUsernameBlur,
     validateUsernameFormat,
     addAvatarsToCache,
     loading,
@@ -48,16 +47,12 @@ const SearchForm = memo(function SearchForm() {
   const handleUsernameBlurEvent = useCallback(
     async (e: React.FocusEvent<HTMLInputElement>) => {
       const username = e.target.value.trim();
-      if (!username) {
-        handleUsernameBlur();
-        return;
-      }
+      if (!username) return;
 
       // First validate format
       const validation = validateUsernameList(username);
       if (validation.errors.length > 0) {
-        validateUsernameFormat(username); // This will set the error
-        handleUsernameBlur();
+        validateUsernameFormat(username);
         return;
       }
 
@@ -70,38 +65,29 @@ const SearchForm = memo(function SearchForm() {
         );
 
         if (result.invalid.length > 0) {
-          const invalidUsernames = result.invalid;
-          const errorMessages = invalidUsernames.map(username => {
-            const errorMsg = result.errors[username] || 'Username validation failed';
-            return `${username}: ${errorMsg}`;
+          const errorMessages = result.invalid.map(u => {
+            const errorMsg = result.errors[u] || 'Username validation failed';
+            return `${u}: ${errorMsg}`;
           });
-          
-          // Set API validation error - use a simpler approach
-          const errorMessage = `Invalid GitHub username${invalidUsernames.length > 1 ? 's' : ''}:\n${errorMessages.join('\n')}`;
-          validateUsernameFormat(errorMessage); // Just pass the error message
+          validateUsernameFormat(
+            `Invalid GitHub username${result.invalid.length > 1 ? 's' : ''}:\n${errorMessages.join('\n')}`
+          );
         } else {
-          // All usernames are valid
           validateUsernameFormat(''); // Clear any errors
-          // Save avatars to cache for slot machine display
           if (Object.keys(result.avatarUrls).length > 0) {
             addAvatarsToCache(result.avatarUrls);
           }
-          // Save to localStorage only if validation passes
           localStorage.setItem('github-username', username);
         }
       } catch (error) {
         console.warn('GitHub API validation failed:', error);
-        // Don't block form submission for network errors - just log them
-        validateUsernameFormat(''); // Clear errors for network issues
-        // Still save to localStorage for format-valid usernames
+        validateUsernameFormat('');
         localStorage.setItem('github-username', username);
       } finally {
         setIsValidating(false);
       }
-
-      handleUsernameBlur();
     },
-    [validateUsernameFormat, handleUsernameBlur, githubToken]
+    [validateUsernameFormat, githubToken, addAvatarsToCache]
   );
 
   // Effect to handle pending search after validation completes

@@ -193,7 +193,6 @@ export interface FormContextType {
   setGithubToken: (value: string) => void;
   setApiMode: (value: 'search' | 'events' | 'summary') => void;
   handleSearch: (forceRefresh?: boolean) => void;
-  handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
   addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   loading: boolean;

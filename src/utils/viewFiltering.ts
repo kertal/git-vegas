@@ -127,18 +127,4 @@ export const sortItemsByUpdatedDate = (items: GitHubItem[]): GitHubItem[] => {
   );
 };
 
-/**
- * Parses comma-separated usernames (common pattern in IssuesAndPRsList)
- */
-export const parseCommaSeparatedUsernames = (username: string): string[] => {
-  return username.split(',').map(u => u.trim().toLowerCase());
-};
-
-/**
- * Checks if an item is authored by any of the searched users (common pattern)
- */
-export const isItemAuthoredBySearchedUsers = (item: GitHubItem, searchedUsernames: string[]): boolean => {
-  const itemAuthor = item.user.login.toLowerCase();
-  const searchedUsernamesLower = searchedUsernames.map(username => username.toLowerCase());
-  return searchedUsernamesLower.includes(itemAuthor);
-}; 
+ 

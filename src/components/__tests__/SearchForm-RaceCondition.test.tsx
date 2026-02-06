@@ -5,7 +5,6 @@ import SearchForm from '../SearchForm';
 
 // Mock the form context
 const mockHandleSearch = vi.fn();
-const mockHandleUsernameBlur = vi.fn();
 const mockValidateUsernameFormat = vi.fn();
 const mockAddAvatarsToCache = vi.fn();
 const mockSetUsername = vi.fn();
@@ -38,7 +37,6 @@ vi.mock('../../App', () => ({
     apiMode: 'summary',
     setApiMode: mockSetApiMode,
     handleSearch: mockHandleSearch,
-    handleUsernameBlur: mockHandleUsernameBlur,
     validateUsernameFormat: mockValidateUsernameFormat,
     addAvatarsToCache: mockAddAvatarsToCache,
     loading: false,
