@@ -195,7 +195,7 @@ describe('rawDataUtils', () => {
               html_url: 'https://github.com/testuser',
             },
           },
-        } as any,
+        },
         public: true,
         created_at: '2025-10-29T17:13:21Z',
       };
@@ -208,7 +208,7 @@ describe('rawDataUtils', () => {
       expect(result?.html_url).toBe('https://github.com/elastic/kibana/pull/241173');
       expect(result?.number).toBe(241173);
       // Labels come from the pull_request object in the payload
-      expect(result?.labels).toEqual((mockPREvent.payload as any).pull_request.labels);
+      expect(result?.labels).toEqual(mockPREvent.payload.pull_request?.labels);
       expect(result?.original).toEqual(mockPREvent.payload);
     });
   });

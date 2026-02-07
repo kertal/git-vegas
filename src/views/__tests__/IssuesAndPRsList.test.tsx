@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { ThemeProvider } from '@primer/react';
 import IssuesAndPRsList from '../IssuesAndPRsList';
 import { GitHubItem } from '../../types';
@@ -16,7 +17,6 @@ vi.mock('../../App', () => ({
 // Mock useLocalStorage to use plain useState
 vi.mock('../../hooks/useLocalStorage', () => ({
   useLocalStorage: (_key: string, initial: unknown) => {
-    const { useState } = require('react');
     return useState(initial);
   },
 }));

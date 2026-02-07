@@ -77,7 +77,7 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     };
   } else if (type === 'PullRequestEvent' && payload.pull_request) {
     const pr = payload.pull_request;
-    const payloadWithAction = payload as { action?: string; number?: number; labels?: any[] };
+    const payloadWithAction = payload as { action?: string; number?: number; labels?: Array<{ name: string; color?: string; description?: string }> };
 
     // GitHub API changed format - pr object may only contain url, not full details
     // Try to extract PR number from various sources
