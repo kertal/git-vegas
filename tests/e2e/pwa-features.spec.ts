@@ -221,9 +221,9 @@ test.describe('GitVegas PWA Features', () => {
       // Fetch the manifest
       const manifestResponse = await page.request.get('/git-vegas/manifest.webmanifest');
       const manifest = await manifestResponse.json();
-      
+
       // Check that icons array has required sizes
-      const iconSizes = manifest.icons.map((icon: any) => icon.sizes);
+      const iconSizes = manifest.icons.map((icon: { sizes: string }) => icon.sizes);
       expect(iconSizes).toContain('192x192');
       expect(iconSizes).toContain('512x512');
     });
@@ -233,11 +233,11 @@ test.describe('GitVegas PWA Features', () => {
     test('should handle background sync gracefully', async ({ page }) => {
       // This test checks for background sync support
       // Currently, this is a placeholder for future PWA features
-      
-      const hasBackgroundSync = await page.evaluate(() => {
+
+      await page.evaluate(() => {
         return 'serviceWorker' in navigator && 'sync' in navigator.serviceWorker;
       });
-      
+
       // Background sync is not required for basic PWA functionality
       // This test ensures the app doesn't break if background sync is not available
       expect(true).toBeTruthy(); // Always pass for now

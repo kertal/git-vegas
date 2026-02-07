@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Avatar, Text } from '@primer/react';
 
 interface LoadingIndicatorProps {
@@ -7,11 +6,11 @@ interface LoadingIndicatorProps {
   currentUsername?: string;
 }
 
-export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
+export const LoadingIndicator = ({
   loadingProgress,
   isLoading,
   currentUsername,
-}) => {
+}: LoadingIndicatorProps) => {
   if (!isLoading || !loadingProgress) {
     return null;
   }

@@ -69,15 +69,15 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       closed_at: issue.closed_at,
       number: issue.number,
       user: actorUser, // Use event actor instead of issue user
-      assignee: (payload as any).issue?.assignee || null, // Extract assignee from original payload
-      assignees: (payload as any).issue?.assignees || [],
+      assignee: issue.user || null,
+      assignees: [],
       pull_request: issue.pull_request,
       original: payload,
       originalEventType: type,
     };
   } else if (type === 'PullRequestEvent' && payload.pull_request) {
     const pr = payload.pull_request;
-    const payloadWithAction = payload as { action?: string; number?: number; labels?: any[] };
+    const payloadWithAction = payload as { action?: string; number?: number; labels?: Array<{ name: string; color?: string; description?: string }> };
 
     // GitHub API changed format - pr object may only contain url, not full details
     // Try to extract PR number from various sources
