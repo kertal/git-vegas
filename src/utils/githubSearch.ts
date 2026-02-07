@@ -244,28 +244,44 @@ export const fetchUserItems = async (
     headers['Authorization'] = `token ${githubToken}`;
   }
 
-  const response = await fetch(
-    `https://api.github.com/search/issues?q=author:${username}+updated:${_startDate}..${_endDate}&per_page=100`,
-    { headers }
-  );
+  const allItems: GitHubItem[] = [];
+  let page = 1;
+  const perPage = 100;
 
-  if (!response.ok) {
-    // If a previously validated username now fails, remove it from cache
-    if (
-      response.status === 404 &&
-      cache?.validatedUsernames.has(username) &&
-      cacheCallbacks
-    ) {
-      cacheCallbacks.removeFromValidated(username);
-      cacheCallbacks.addToInvalid([username]);
-    }
-    throw new Error(
-      `GitHub API error: ${response.status} ${response.statusText}`
+  while (true) {
+    const response = await fetch(
+      `https://api.github.com/search/issues?q=author:${username}+updated:${_startDate}..${_endDate}&per_page=${perPage}&page=${page}`,
+      { headers }
     );
+
+    if (!response.ok) {
+      // If a previously validated username now fails, remove it from cache
+      if (
+        response.status === 404 &&
+        cache?.validatedUsernames.has(username) &&
+        cacheCallbacks
+      ) {
+        cacheCallbacks.removeFromValidated(username);
+        cacheCallbacks.addToInvalid([username]);
+      }
+      throw new Error(
+        `GitHub API error: ${response.status} ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    const items = data.items || [];
+    allItems.push(...items);
+
+    if (allItems.length >= data.total_count || items.length < perPage || allItems.length >= 1000) {
+      break;
+    }
+
+    page++;
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
 
-  const data = await response.json();
-  return data.items || [];
+  return allItems;
 };
 
 /**

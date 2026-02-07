@@ -24,9 +24,43 @@ export const isAuthoredBySearchedUser = (item: GitHubItem, searchedUsernames: st
 };
 
 /**
- * Determines the event type based on item properties (exact copy of original getEventType logic)
+ * Determines the event type based on item properties using stable GitHub event types
+ * Falls back to title parsing for items without originalEventType (e.g., from Search API)
  */
 export const getEventType = (item: GitHubItem): string => {
+  // Use original GitHub event type if available (from Events API)
+  if (item.originalEventType) {
+    switch (item.originalEventType) {
+      case 'PullRequestReviewEvent':
+        return 'pull_request';
+      case 'PullRequestReviewCommentEvent':
+        return 'comment';
+      case 'PullRequestEvent':
+        return 'pull_request';
+      case 'IssuesEvent':
+        return 'issue';
+      case 'IssueCommentEvent':
+        return 'comment';
+      case 'PushEvent':
+        return 'commit';
+      case 'CreateEvent':
+      case 'DeleteEvent':
+      case 'ForkEvent':
+      case 'WatchEvent':
+      case 'PublicEvent':
+      case 'GollumEvent':
+        return 'other';
+      default:
+        // Unknown event type, fall back to title parsing
+        break;
+    }
+  }
+
+  // Fallback to title parsing for items without originalEventType (e.g., from Search API)
+  // Check if this is a pull request review (title starts with "Review on:")
+  if (item.title.startsWith('Review on:')) {
+    return 'pull_request';
+  }
   // Check if this is a review comment (title starts with "Review comment on:")
   if (item.title.startsWith('Review comment on:')) {
     return 'comment';
@@ -35,8 +69,8 @@ export const getEventType = (item: GitHubItem): string => {
   if (item.title.startsWith('Comment on:')) {
     return 'comment';
   }
-  // Check if this is a push event (title starts with "Pushed")
-  if (item.title.startsWith('Pushed')) {
+  // Check if this is a push event (title starts with "Committed")
+  if (item.title.startsWith('Committed')) {
     return 'commit';
   }
   // Check for other event types that don't belong to issues/PRs
@@ -82,11 +116,12 @@ export const categorizeItemWithoutDateFiltering = (
 
   if (type === 'pull_request' && item.title?.startsWith('Review on:')) {
     const basePRUrl = getBasePRUrl(item.html_url);
-    if (!addedReviewPRs.has(basePRUrl)) {
-      addedReviewPRs.add(basePRUrl);
+    const reviewKey = `${item.user.login}:${basePRUrl}`; // Deduplicate per person per PR
+    if (!addedReviewPRs.has(reviewKey)) {
+      addedReviewPRs.add(reviewKey);
       return SUMMARY_GROUP_NAMES.PRS_REVIEWED;
     }
-    return null; // Skip duplicate reviews
+    return null; // Skip duplicate reviews from same person on same PR
   }
 
   if (type === 'comment' && item.title?.startsWith('Review comment on:')) {
@@ -133,7 +168,8 @@ export const categorizeItemWithoutDateFiltering = (
 
     if (item.state === 'closed' && closedInRange) {
       return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
-    } else if (createdInRange) {
+    } else if (createdInRange && (!item.action || item.action === 'opened')) {
+      // Issue was created in range - either explicitly opened or no action specified (from Search API)
       return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
     } else {
       return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
@@ -156,11 +192,12 @@ export const categorizeItem = (
 
   if (type === 'pull_request' && item.title?.startsWith('Review on:')) {
     const basePRUrl = getBasePRUrl(item.html_url);
-    if (!addedReviewPRs.has(basePRUrl)) {
-      addedReviewPRs.add(basePRUrl);
+    const reviewKey = `${item.user.login}:${basePRUrl}`; // Deduplicate per person per PR
+    if (!addedReviewPRs.has(reviewKey)) {
+      addedReviewPRs.add(reviewKey);
       return SUMMARY_GROUP_NAMES.PRS_REVIEWED;
     }
-    return null; // Skip duplicate reviews
+    return null; // Skip duplicate reviews from same person on same PR
   }
 
   if (type === 'comment' && item.title?.startsWith('Review comment on:')) {
@@ -220,14 +257,14 @@ export const categorizeItem = (
     if (item.state === 'closed' && closedInRange) {
       // Issue was closed within the timeframe
       return SUMMARY_GROUP_NAMES.ISSUES_CLOSED;
-    } else if (createdInRange) {
-      // Issue was created within the timeframe (regardless of current state)
+    } else if (createdInRange && (!item.action || item.action === 'opened')) {
+      // Issue was created in range - either explicitly opened or no action specified (from Search API)
       return SUMMARY_GROUP_NAMES.ISSUES_OPENED;
-    } else if (updatedInRange && !createdInRange && !closedInRange) {
-      // Issue had activity but wasn't created/closed within timeframe
+    } else if (updatedInRange) {
+      // Issue was updated in the timeframe (labeled, assigned, etc.) but was not categorized as opened/closed in this summary
       return SUMMARY_GROUP_NAMES.ISSUES_UPDATED;
     }
-    
+
     // If none of the above conditions are met, filter out the issue
     return null;
   }
@@ -246,12 +283,12 @@ export const groupItems = (
   applyDateFiltering = true
 ): Record<SummaryGroupName, GitHubItem[]> => {
   const groups = createEmptyGroups<GitHubItem>();
-  const addedReviewPRs = new Set<string>();
+  const addedReviewKeys = new Set<string>(); // Tracks person:PR combinations for review deduplication
 
   items.forEach(item => {
     const groupName = applyDateFiltering 
-      ? categorizeItem(item, addedReviewPRs, startDate, endDate)
-      : categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+      ? categorizeItem(item, addedReviewKeys, startDate, endDate)
+      : categorizeItemWithoutDateFiltering(item, addedReviewKeys, startDate, endDate);
     if (groupName) {
       groups[groupName].push(item);
     }

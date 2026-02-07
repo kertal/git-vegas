@@ -1,10 +1,11 @@
-import React, { memo, useState, useMemo, useCallback } from 'react';
+import React, { memo, useState, useMemo, useCallback, useEffect } from 'react';
 import {
   Box,
   Text,
   Checkbox,
   Button,
   Heading,
+  Pagination,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -94,6 +95,23 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   // Internal state for selection and collapsed sections
   const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('issuesAndPRs-selectedItems', new Set());
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('issuesAndPRs-collapsedSections', new Set());
+
+  // Per-section pagination state
+  const [sectionPages, setSectionPages] = useLocalStorage<Record<string, number>>('issuesAndPRs-sectionPages', {});
+  const itemsPerPage = 100;
+
+  const getSectionPage = useCallback((sectionName: string) => {
+    return sectionPages[sectionName] || 1;
+  }, [sectionPages]);
+
+  const setSectionPage = useCallback((sectionName: string, page: number) => {
+    setSectionPages(prev => ({ ...prev, [sectionName]: page }));
+  }, []);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setSectionPages({});
+  }, [searchText]);
 
   // Use copy feedback hook
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
@@ -432,25 +450,49 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                           </Button>
                         </Box>
                       </div>
-                      {!collapsedSections.has(groupName) && (
-                        <div className="timeline-section-content">
-                          {groupItems.map((item: GitHubItem) => (
-                            <div key={item.id} className="timeline-group">
-                              <ItemRow
-                                item={item}
-                                onShowDescription={setSelectedItemForDialog}
-                                selected={selectedItems.has(item.event_id || item.id)}
-                                onSelect={toggleItemSelection}
-                                showCheckbox={true}
-                                showRepo={true}
-                                showUser={true}
-                                showTime={true}
-                                size="small"
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      {!collapsedSections.has(groupName) && (() => {
+                        const sectionPage = getSectionPage(groupName);
+                        const sectionTotalPages = Math.ceil(groupItems.length / itemsPerPage);
+                        const startIndex = (sectionPage - 1) * itemsPerPage;
+                        const paginatedGroupItems = groupItems.slice(startIndex, startIndex + itemsPerPage);
+
+                        return (
+                          <div className="timeline-section-content">
+                            {paginatedGroupItems.map((item: GitHubItem) => (
+                              <div key={item.id} className="timeline-group">
+                                <ItemRow
+                                  item={item}
+                                  onShowDescription={setSelectedItemForDialog}
+                                  selected={selectedItems.has(item.event_id || item.id)}
+                                  onSelect={toggleItemSelection}
+                                  showCheckbox={true}
+                                  showRepo={true}
+                                  showUser={true}
+                                  showTime={true}
+                                  size="small"
+                                />
+                              </div>
+                            ))}
+                            {sectionTotalPages > 1 && (
+                              <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                mt: 3,
+                                pb: 2
+                              }}>
+                                <Pagination
+                                  pageCount={sectionTotalPages}
+                                  currentPage={sectionPage}
+                                  onPageChange={(_e: React.MouseEvent, page: number) => setSectionPage(groupName, page)}
+                                  showPages={{ narrow: false }}
+                                  marginPageCount={2}
+                                  surroundingPageCount={2}
+                                />
+                              </Box>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}

@@ -124,6 +124,7 @@ function App() {
     searchItemsCount,
     eventsCount,
     rawEventsCount,
+    isEnriching,
   } = useGitHubDataProcessing({
     indexedDBEvents,
     indexedDBSearchItems,
@@ -131,6 +132,7 @@ function App() {
     endDate,
     apiMode,
     searchText,
+    githubToken,
   });
 
   const {
@@ -155,6 +157,52 @@ function App() {
   const avatarUrls = useMemo(
     () => cachedAvatarUrls?.length > 0 ? cachedAvatarUrls : [],
     [cachedAvatarUrls]
+  );
+
+  // Pure comparator for case-insensitive string sorting
+  const caseInsensitiveCompare = (a: string, b: string): number =>
+    a.toLowerCase().localeCompare(b.toLowerCase());
+
+  // Extract unique users from results for search suggestions (with avatars)
+  const availableUsers = useMemo(() => {
+    const seen = new Set<string>();
+    return results
+      .filter(item => {
+        if (!item.user?.login || seen.has(item.user.login)) return false;
+        seen.add(item.user.login);
+        return true;
+      })
+      .map(item => ({
+        login: item.user.login,
+        avatar_url: item.user.avatar_url || '',
+      }))
+      .sort((a, b) => caseInsensitiveCompare(a.login, b.login));
+  }, [results]);
+
+  // Extract labels from results sorted by frequency (most used first)
+  const availableLabels = useMemo(() => {
+    // Build frequency map using reduce (functional approach)
+    const labelCounts = results
+      .flatMap(item => item.labels?.map(label => label.name) ?? [])
+      .reduce((acc, label) => {
+        acc.set(label, (acc.get(label) || 0) + 1);
+        return acc;
+      }, new Map<string, number>());
+
+    // Sort by frequency (descending), then alphabetically for ties
+    return Array.from(labelCounts.entries())
+      .sort((a, b) => b[1] - a[1] || caseInsensitiveCompare(a[0], b[0]))
+      .map(([label]) => label);
+  }, [results]);
+
+  // Extract unique repos from results for search suggestions
+  const availableRepos = useMemo(() =>
+    [...new Set(
+      results
+        .map(item => item.repository_url?.replace('https://api.github.com/repos/', ''))
+        .filter((repo): repo is string => Boolean(repo))
+    )].sort(caseInsensitiveCompare),
+    [results]
   );
 
   const handleManualSpin = useCallback(() => {
@@ -358,8 +406,8 @@ function App() {
           <PageHeader.Actions>
             {/* Loading indicator - always visible */}
             <LoadingIndicator
-              loadingProgress={loadingProgress}
-              isLoading={loading}
+              loadingProgress={isEnriching ? 'Enriching PR details...' : loadingProgress}
+              isLoading={loading || isEnriching}
               currentUsername={currentUsername}
             />
             
@@ -367,6 +415,9 @@ function App() {
             <HeaderSearch
               searchText={searchText}
               onSearchChange={setSearchText}
+              availableUsers={availableUsers}
+              availableLabels={availableLabels}
+              availableRepos={availableRepos}
             />
             
             {/* Mobile-optimized actions */}

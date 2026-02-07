@@ -4,6 +4,7 @@ export interface GitHubItem {
   event_id?: string;
   html_url: string;
   title: string;
+  action?: string; // Action that triggered the event (e.g., 'opened', 'closed', 'reopened', 'synchronize')
   pull_request?: {
     merged_at?: string;
     url?: string;
@@ -44,6 +45,7 @@ export interface GitHubItem {
   }>;
   draft?: boolean;
   original?: GitHubEvent['payload'] | Record<string, unknown>; // Original payload from GitHub API
+  originalEventType?: string; // Original GitHub event type (e.g., 'PullRequestReviewEvent')
 }
 
 // Raw data storage types

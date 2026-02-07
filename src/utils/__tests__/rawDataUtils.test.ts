@@ -84,7 +84,41 @@ describe('rawDataUtils', () => {
 
       expect(result).toBeTruthy();
       expect(result?.original).toBeDefined();
-      expect(result?.original).toEqual(mockPushEvent.payload);
+      expect(result?.original).toEqual(mockPushEvent);
+    });
+
+    it('should handle PushEvent with minimal payload (only head/before, no commits array)', () => {
+      const mockPushEventMinimal: GitHubEvent = {
+        id: '6817699748',
+        type: 'PushEvent',
+        actor: {
+          id: 1178348,
+          login: 'testuser',
+          avatar_url: 'https://avatars.githubusercontent.com/u/1178348?',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 26142062,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          repository_id: 26142062,
+          push_id: 29111594769,
+          ref: 'refs/heads/feature_branch',
+          head: 'bd48e854193a21d7c0b25028b69031792121f929',
+          before: '587796ff64140ea15f47b6f4a7c0069f09ee43d9',
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2025-12-17T23:09:40Z',
+      };
+
+      const result = transformEventToItem(mockPushEventMinimal);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Committed to testuser/feature_branch');
+      expect(result?.body).toBe('**Repository:** [testuser/repo](https://github.com/testuser/repo)\n\n**Commits:** 587796f...bd48e85');
+      expect(result?.original).toEqual(mockPushEventMinimal);
     });
 
     it('should include original payload in CreateEvent items', () => {
@@ -117,6 +151,65 @@ describe('rawDataUtils', () => {
       expect(result).toBeTruthy();
       expect(result?.original).toBeDefined();
       expect(result?.original).toEqual(mockCreateEvent.payload);
+    });
+
+    it('should handle new GitHub API format for PullRequestEvent (without full PR details)', () => {
+      const mockPREvent: GitHubEvent = {
+        id: '4340559024',
+        type: 'PullRequestEvent',
+        actor: {
+          id: 63072419,
+          login: 'testuser',
+          avatar_url: 'https://avatars.githubusercontent.com/u/63072419?',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 7833168,
+          name: 'elastic/kibana',
+          url: 'https://api.github.com/repos/elastic/kibana',
+        },
+        payload: {
+          action: 'labeled',
+          pull_request: {
+            url: 'https://api.github.com/repos/elastic/kibana/pulls/241173',
+            id: 2959929265,
+            number: 241173,
+            title: '',
+            html_url: '',
+            state: 'open',
+            body: '',
+            labels: [
+              {
+                id: 1196522308,
+                name: 'release_note:skip',
+                color: '016589',
+                default: false,
+                description: 'Skip the PR/issue when compiling release notes',
+              },
+            ],
+            created_at: '2025-10-29T17:13:21Z',
+            updated_at: '2025-10-29T17:13:21Z',
+            user: {
+              login: 'testuser',
+              avatar_url: 'https://avatars.githubusercontent.com/u/63072419?',
+              html_url: 'https://github.com/testuser',
+            },
+          },
+        } as any,
+        public: true,
+        created_at: '2025-10-29T17:13:21Z',
+      };
+
+      const result = transformEventToItem(mockPREvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBeDefined();
+      expect(result?.title).toBe('Pull Request #241173 labeled');
+      expect(result?.html_url).toBe('https://github.com/elastic/kibana/pull/241173');
+      expect(result?.number).toBe(241173);
+      // Labels come from the pull_request object in the payload
+      expect(result?.labels).toEqual((mockPREvent.payload as any).pull_request.labels);
+      expect(result?.original).toEqual(mockPREvent.payload);
     });
   });
 
@@ -166,6 +259,108 @@ describe('rawDataUtils', () => {
       expect(results).toHaveLength(1);
       expect(results[0].original).toBeDefined();
       expect(results[0].original).toEqual(mockEvents[0].payload);
+    });
+  });
+
+  describe('PushEvent title format', () => {
+    it('should use "Committed" instead of "Pushed" for push events with commit count', () => {
+      const mockPushEvent: GitHubEvent = {
+        id: '456',
+        type: 'PushEvent',
+        actor: {
+          id: 1,
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 1,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          ref: 'refs/heads/main',
+          size: 3,
+          distinct_size: 3,
+          commits: [
+            { sha: 'abc123', message: 'First commit', author: { name: 'Test User', email: 'test@example.com' } },
+            { sha: 'def456', message: 'Second commit', author: { name: 'Test User', email: 'test@example.com' } },
+            { sha: 'ghi789', message: 'Third commit', author: { name: 'Test User', email: 'test@example.com' } },
+          ],
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2023-01-01T00:00:00Z',
+      };
+
+      const result = transformEventToItem(mockPushEvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Committed 3 commits to testuser/main');
+      expect(result?.title).not.toContain('Pushed');
+    });
+
+    it('should use "Committed 1 commit" (singular) for single commit push', () => {
+      const mockPushEvent: GitHubEvent = {
+        id: '456',
+        type: 'PushEvent',
+        actor: {
+          id: 1,
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 1,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          ref: 'refs/heads/feature',
+          size: 1,
+          distinct_size: 1,
+          commits: [
+            { sha: 'abc123', message: 'Single commit', author: { name: 'Test User', email: 'test@example.com' } },
+          ],
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2023-01-01T00:00:00Z',
+      };
+
+      const result = transformEventToItem(mockPushEvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Committed 1 commit to testuser/feature');
+    });
+
+    it('should use "Committed 0 commits" for push with no commits', () => {
+      const mockPushEvent: GitHubEvent = {
+        id: '456',
+        type: 'PushEvent',
+        actor: {
+          id: 1,
+          login: 'testuser',
+          avatar_url: 'https://github.com/testuser.png',
+          url: 'https://api.github.com/users/testuser',
+        },
+        repo: {
+          id: 1,
+          name: 'testuser/repo',
+          url: 'https://api.github.com/repos/testuser/repo',
+        },
+        payload: {
+          ref: 'refs/heads/main',
+          size: 0,
+          distinct_size: 0,
+          commits: [],
+        } as Record<string, unknown>,
+        public: true,
+        created_at: '2023-01-01T00:00:00Z',
+      };
+
+      const result = transformEventToItem(mockPushEvent);
+
+      expect(result).toBeTruthy();
+      expect(result?.title).toBe('Committed 0 commits to testuser/main');
     });
   });
 

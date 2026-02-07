@@ -329,7 +329,7 @@ describe('githubSearch utilities', () => {
     it('should fetch user items successfully', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ items: mockItems }),
+        json: () => Promise.resolve({ items: mockItems, total_count: mockItems.length }),
       });
 
       const result = await fetchUserItems(
@@ -341,7 +341,7 @@ describe('githubSearch utilities', () => {
 
       expect(result).toEqual(mockItems);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.github.com/search/issues?q=author:testuser+updated:2023-01-01..2023-12-31&per_page=100',
+        'https://api.github.com/search/issues?q=author:testuser+updated:2023-01-01..2023-12-31&per_page=100&page=1',
         {
           headers: {
             Accept: 'application/vnd.github.v3+json',
@@ -354,7 +354,7 @@ describe('githubSearch utilities', () => {
     it('should work without authentication token', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ items: mockItems }),
+        json: () => Promise.resolve({ items: mockItems, total_count: mockItems.length }),
       });
 
       const result = await fetchUserItems(

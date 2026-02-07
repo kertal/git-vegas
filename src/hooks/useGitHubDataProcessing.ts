@@ -1,7 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
 import { processRawEvents, categorizeRawSearchItems } from '../utils/rawDataUtils';
 import { filterItemsByAdvancedSearch } from '../utils/viewFiltering';
+import { enrichItemsWithPRDetails } from '../utils/prEnrichment';
 
 interface UseGitHubDataProcessingProps {
   indexedDBEvents: GitHubEvent[];
@@ -10,6 +11,7 @@ interface UseGitHubDataProcessingProps {
   endDate: string;
   apiMode: 'search' | 'events' | 'summary';
   searchText: string;
+  githubToken?: string;
 }
 
 interface UseGitHubDataProcessingReturn {
@@ -17,6 +19,7 @@ interface UseGitHubDataProcessingReturn {
   searchItemsCount: number;
   eventsCount: number;
   rawEventsCount: number;
+  isEnriching: boolean;
 }
 
 export const useGitHubDataProcessing = ({
@@ -26,9 +29,13 @@ export const useGitHubDataProcessing = ({
   endDate,
   apiMode,
   searchText,
+  githubToken,
 }: UseGitHubDataProcessingProps): UseGitHubDataProcessingReturn => {
+  const [enrichedResults, setEnrichedResults] = useState<GitHubItem[]>([]);
+  const [isEnriching, setIsEnriching] = useState(false);
+
   // Categorize raw data into processed items based on current API mode and date filters
-  const results = useMemo(() => {
+  const baseResults = useMemo(() => {
     if (apiMode === 'events') {
       // Events view: only processed events
       return processRawEvents(indexedDBEvents, startDate, endDate);
@@ -77,6 +84,65 @@ export const useGitHubDataProcessing = ({
     }
   }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
 
+  // Enrich items with PR details when a token is available
+  // Uses SWR pattern: show cached data immediately, then fetch fresh data in background
+  useEffect(() => {
+    let cancelled = false;
+
+    const enrichItems = async () => {
+      // If no token or no items, just use base results
+      if (!githubToken || baseResults.length === 0) {
+        setEnrichedResults(baseResults);
+        return;
+      }
+
+      setIsEnriching(true);
+
+      try {
+        const enriched = await enrichItemsWithPRDetails(
+          baseResults,
+          githubToken,
+          // Progress callback for background fetches
+          (current, total) => {
+            if (!cancelled) {
+              console.log(`Fetching PR details: ${current}/${total}`);
+            }
+          },
+          // SWR callback: immediately show cached data while fetching fresh data
+          (cachedEnrichedItems) => {
+            if (!cancelled) {
+              setEnrichedResults(cachedEnrichedItems);
+              // Keep isEnriching true since we're still fetching fresh data
+            }
+          }
+        );
+
+        if (!cancelled) {
+          setEnrichedResults(enriched);
+        }
+      } catch (error) {
+        console.error('Error enriching items with PR details:', error);
+        // Fall back to base results on error
+        if (!cancelled) {
+          setEnrichedResults(baseResults);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsEnriching(false);
+        }
+      }
+    };
+
+    enrichItems();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [baseResults, githubToken]);
+
+  // Use enriched results if available, otherwise use base results
+  const results = enrichedResults.length > 0 ? enrichedResults : baseResults;
+
   // Calculate counts for navigation tabs (with search filtering applied)
   const searchItemsCount = useMemo(() => {
     const rawSearchItems = categorizeRawSearchItems(
@@ -99,5 +165,6 @@ export const useGitHubDataProcessing = ({
     searchItemsCount,
     eventsCount,
     rawEventsCount,
+    isEnriching,
   };
 }; 

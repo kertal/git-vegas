@@ -13,6 +13,8 @@ const parseSearchTextCache = new Map<string, {
   userFilters: string[];
   includedRepos: string[];
   excludedRepos: string[];
+  includedOrgs: string[];
+  excludedOrgs: string[];
   cleanText: string;
 }>();
 
@@ -235,10 +237,12 @@ export const parseSearchText = (searchText: string): {
   userFilters: string[];
   includedRepos: string[];
   excludedRepos: string[];
+  includedOrgs: string[];
+  excludedOrgs: string[];
   cleanText: string;
 } => {
   if (!searchText.trim()) {
-    return { includedLabels: [], excludedLabels: [], userFilters: [], includedRepos: [], excludedRepos: [], cleanText: '' };
+    return { includedLabels: [], excludedLabels: [], userFilters: [], includedRepos: [], excludedRepos: [], includedOrgs: [], excludedOrgs: [], cleanText: '' };
   }
 
   // Check cache first
@@ -252,6 +256,8 @@ export const parseSearchText = (searchText: string): {
   const userFilters: string[] = [];
   const includedRepos: string[] = [];
   const excludedRepos: string[] = [];
+  const includedOrgs: string[] = [];
+  const excludedOrgs: string[] = [];
   let cleanText = searchText;
 
   // First, find all -label:{labelname} patterns (excluded labels)
@@ -320,10 +326,36 @@ export const parseSearchText = (searchText: string): {
     cleanText = cleanText.replace(m[0], ' ');
   });
 
+  // Find all -org:{orgname} patterns (excluded orgs)
+  const excludeOrgRegex = /-org:([^\s]+)/g;
+  const excludeOrgMatches: RegExpExecArray[] = [];
+  while ((match = excludeOrgRegex.exec(cleanText)) !== null) {
+    excludedOrgs.push(match[1]);
+    excludeOrgMatches.push(match);
+  }
+
+  // Remove all excluded org matches from cleanText
+  excludeOrgMatches.forEach(m => {
+    cleanText = cleanText.replace(m[0], ' ');
+  });
+
+  // Find all org:{orgname} patterns from the cleaned text
+  const includeOrgRegex = /\borg:([^\s]+)/g;
+  const includeOrgMatches: RegExpExecArray[] = [];
+  while ((match = includeOrgRegex.exec(cleanText)) !== null) {
+    includedOrgs.push(match[1]);
+    includeOrgMatches.push(match);
+  }
+
+  // Remove all included org matches from cleanText
+  includeOrgMatches.forEach(m => {
+    cleanText = cleanText.replace(m[0], ' ');
+  });
+
   // Clean up extra whitespace
   cleanText = cleanText.replace(/\s+/g, ' ').trim();
 
-  const result = { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, cleanText };
+  const result = { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, includedOrgs, excludedOrgs, cleanText };
 
   // Cache the result
   if (parseSearchTextCache.size >= MAX_CACHE_SIZE) {
@@ -339,10 +371,10 @@ export const parseSearchText = (searchText: string): {
 };
 
 /**
- * Filters GitHub items based on text search in title and body, with support for label, user, and repo syntax
+ * Filters GitHub items based on text search in title and body, with support for label, user, repo, and org syntax
  *
  * @param items - Array of GitHub items to filter
- * @param searchText - Text to search for, supporting label:{name}, -label:{name}, user:{username}, repo:{owner/repo}, and -repo:{owner/repo} syntax
+ * @param searchText - Text to search for, supporting label:{name}, -label:{name}, user:{username}, repo:{owner/repo}, -repo:{owner/repo}, org:{organization}, and -org:{organization} syntax
  * @returns Filtered array of items
  */
 export const filterByText = (
@@ -351,7 +383,7 @@ export const filterByText = (
 ): GitHubItem[] => {
   if (!searchText.trim()) return items;
 
-  const { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, cleanText } = parseSearchText(searchText);
+  const { includedLabels, excludedLabels, userFilters, includedRepos, excludedRepos, includedOrgs, excludedOrgs, cleanText } = parseSearchText(searchText);
 
   return items.filter(item => {
     // Check label filters first
@@ -411,6 +443,34 @@ export const filterByText = (
       }
     }
 
+    // Check organization filters
+    // Organization is extracted from repository_url: https://api.github.com/repos/{org}/{repo}
+    if (includedOrgs.length > 0 || excludedOrgs.length > 0) {
+      const itemRepo = item.repository_url?.replace('https://api.github.com/repos/', '');
+      const itemOrg = itemRepo?.split('/')[0]; // Extract org from "org/repo"
+
+      if (!itemOrg) {
+        // If no organization info, exclude if any org filters are specified
+        if (includedOrgs.length > 0) return false;
+      } else {
+        // Check if item belongs to an included org
+        if (includedOrgs.length > 0) {
+          const hasIncludedOrg = includedOrgs.some(orgFilter =>
+            itemOrg.toLowerCase() === orgFilter.toLowerCase()
+          );
+          if (!hasIncludedOrg) return false;
+        }
+
+        // Check if item belongs to an excluded org
+        if (excludedOrgs.length > 0) {
+          const hasExcludedOrg = excludedOrgs.some(orgFilter =>
+            itemOrg.toLowerCase() === orgFilter.toLowerCase()
+          );
+          if (hasExcludedOrg) return false;
+        }
+      }
+    }
+
     // If there's clean text remaining, search in title and body
     if (cleanText) {
       const searchLower = cleanText.toLowerCase();
@@ -419,7 +479,7 @@ export const filterByText = (
       return titleMatch || bodyMatch;
     }
 
-    // If only label/user/repo filters were used, item passed checks above
+    // If only label/user/repo/org filters were used, item passed checks above
     return true;
   });
 };

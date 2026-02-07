@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
 import { EventsData } from '../utils/indexedDB';
+import { validateUsernameList, isValidDateString } from '../utils';
+import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
 
 interface UseGitHubDataFetchingProps {
   username: string;
@@ -50,10 +52,11 @@ export const useGitHubDataFetching = ({
   ): Promise<GitHubEvent[]> => {
     const allEvents: GitHubEvent[] = [];
     let page = 1;
-    const perPage = 100;
+    const perPage = GITHUB_API_PER_PAGE;
     let hasMorePages = true;
+    const maxPages = 3; // GitHub Events API has pagination limits - stay within safe bounds
 
-    while (hasMorePages) {
+    while (hasMorePages && page <= maxPages) {
       try {
         onProgress(`Fetching events page ${page} for ${username}...`);
         
@@ -69,6 +72,16 @@ export const useGitHubDataFetching = ({
 
         if (!response.ok) {
           const responseJSON = await response.json();
+          
+          // Handle pagination limit error (422) - return what we have so far
+          if (response.status === 422 && responseJSON.message?.includes('pagination is limited')) {
+            console.warn(
+              `GitHub Events API pagination limit reached for ${username} at page ${page}. Returning ${allEvents.length} events collected so far.`
+            );
+            hasMorePages = false;
+            break; // Exit the pagination loop gracefully
+          }
+          
           throw new Error(`Failed to fetch events page ${page}: ${responseJSON.message}`);
         }
 
@@ -93,7 +106,7 @@ export const useGitHubDataFetching = ({
         page++;
         
         // Add a small delay to respect GitHub API rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
         
       } catch (error) {
         console.error(`Error fetching events page ${page} for ${username}:`, error);
@@ -103,12 +116,55 @@ export const useGitHubDataFetching = ({
       }
     }
 
+    // Log if we hit the pagination limit
+    if (page > maxPages) {
+      console.warn(
+        `Reached GitHub Events API pagination limit (${maxPages} pages) for ${username}. ` +
+        `Returning ${allEvents.length} events. GitHub API limits pagination for the events endpoint.`
+      );
+    }
+
     return allEvents;
   };
 
   const handleSearch = useCallback(async () => {
     if (!username.trim()) {
       onError('Please enter a GitHub username');
+      return;
+    }
+
+    // Validate username format before proceeding
+    const usernameValidation = validateUsernameList(username);
+    if (usernameValidation.errors.length > 0) {
+      onError(`Invalid username format: ${usernameValidation.errors.join(', ')}`);
+      return;
+    }
+
+    if (usernameValidation.usernames.length === 0) {
+      onError('Please enter at least one valid username');
+      return;
+    }
+
+    // Check username count limit
+    if (usernameValidation.usernames.length > MAX_USERNAMES_PER_REQUEST) {
+      onError(`Too many usernames. Please limit to ${MAX_USERNAMES_PER_REQUEST} usernames at a time for performance reasons.`);
+      return;
+    }
+
+    // Validate date parameters
+    if (!isValidDateString(startDate)) {
+      onError('Invalid start date format. Please use YYYY-MM-DD');
+      return;
+    }
+
+    if (!isValidDateString(endDate)) {
+      onError('Invalid end date format. Please use YYYY-MM-DD');
+      return;
+    }
+
+    // Check if start date is before end date
+    if (new Date(startDate) >= new Date(endDate)) {
+      onError('Start date must be before end date');
       return;
     }
 
@@ -123,10 +179,8 @@ export const useGitHubDataFetching = ({
     setLoadingProgress(hasExistingData ? 'Updating data in background...' : 'Starting search...');
 
     try {
-      const usernames = username
-        .split(',')
-        .map(u => u.trim())
-        .filter(Boolean);
+      // Use the validated usernames instead of manual splitting
+      const usernames = usernameValidation.usernames;
       let currentProgress = 0;
       const totalUsernames = usernames.length;
 
@@ -155,34 +209,48 @@ export const useGitHubDataFetching = ({
 
         try {
 
-          // Fetch issues and PRs with date range filtering
+          // Fetch issues and PRs with date range filtering (with pagination)
           const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
-          const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=100&sort=updated&advanced_search=true`,
-            {
-              headers: {
-                ...(githubToken && { Authorization: `token ${githubToken}` }),
-                Accept: 'application/vnd.github.v3+json',
-              },
+          const searchHeaders = {
+            ...(githubToken && { Authorization: `token ${githubToken}` }),
+            Accept: 'application/vnd.github.v3+json',
+          };
+          let searchPage = 1;
+          let totalSearchItems = 0;
+
+          while (true) {
+            const searchResponse = await fetch(
+              `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&advanced_search=true&page=${searchPage}`,
+              { headers: searchHeaders }
+            );
+
+            if (!searchResponse.ok) {
+              const responseJSON = await searchResponse.json();
+              throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
             }
-          );
 
-          if (!searchResponse.ok) {
-            const responseJSON = await searchResponse.json();
-            throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
+            const searchData = await searchResponse.json();
+            const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
+              ...item,
+              assignee: item.assignee || null,
+              assignees: item.assignees || [],
+              original: item,
+            }));
+            allSearchItems.push(...searchItemsWithOriginal);
+            totalSearchItems += searchData.items.length;
+
+            if (totalSearchItems >= searchData.total_count || searchData.items.length < GITHUB_API_PER_PAGE) {
+              break;
+            }
+
+            searchPage++;
+            // GitHub Search API has a max of 1000 results
+            if (totalSearchItems >= 1000) {
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
           }
-
-          const searchData = await searchResponse.json();
-          // Add original property to search items and ensure assignee data is preserved
-          const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
-            ...item,
-            // Ensure assignee information is preserved from the API response
-            assignee: item.assignee || null,
-            assignees: item.assignees || [],
-            original: item, // Store the original item as the original payload
-          }));
-          allSearchItems.push(...searchItemsWithOriginal);
-          onProgress(`Fetched issues/PRs for ${singleUsername}`);
+          onProgress(`Fetched ${totalSearchItems} issues/PRs for ${singleUsername}`);
 
            // Fetch all events with pagination
            const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);

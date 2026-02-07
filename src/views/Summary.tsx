@@ -5,6 +5,7 @@ import {
   Heading,
   Checkbox,
   Box,
+  Token,
 } from '@primer/react';
 import {
   ChevronDownIcon,
@@ -317,17 +318,24 @@ const SummaryView = memo(function SummaryView({
           // Grouped view - organize events by individual issues/PRs and by type
           Object.entries(actionGroups).map(([groupName, groupItems]) => {
             if (groupItems.length === 0) return null;
-            // Group items by URL
+            // Group items by URL (for reviews, include user to allow multiple reviewers per PR)
             const urlGroups: { [url: string]: GitHubItem[] } = {};
             groupItems.forEach(item => {
-              let groupingUrl = item.html_url;
+              let groupingKey = item.html_url;
               if (getEventType(item) === 'comment') {
-                groupingUrl = groupingUrl.split('#')[0];
+                groupingKey = groupingKey.split('#')[0];
               }
-              if (!urlGroups[groupingUrl]) {
-                urlGroups[groupingUrl] = [];
+              
+              // For reviews, include user in grouping key to allow multiple reviewers per PR
+              const isReview = (item.title && item.title.startsWith('Review on:')) || item.originalEventType === 'PullRequestReviewEvent';
+              if (isReview) {
+                groupingKey = `${item.user.login}:${groupingKey}`;
               }
-              urlGroups[groupingUrl].push(item);
+              
+              if (!urlGroups[groupingKey]) {
+                urlGroups[groupingKey] = [];
+              }
+              urlGroups[groupingKey].push(item);
             });
             // Render one ItemRow per group, showing groupCount
             return (
@@ -360,6 +368,29 @@ const SummaryView = memo(function SummaryView({
                       <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
                         {groupName}
                       </Heading>
+                      {(() => {
+                        // Calculate total count (number of URL groups = number of displayed items)
+                        const totalCount = Object.keys(urlGroups).length;
+                        
+                        // Calculate selected count
+                        const sectionItemIds = Object.values(urlGroups).map(items => {
+                          const mostRecent = items.reduce((latest, current) =>
+                            new Date(current.updated_at) > new Date(latest.updated_at)
+                              ? current
+                              : latest
+                          );
+                          return mostRecent.event_id || mostRecent.id;
+                        });
+                        const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
+                        
+                        return (
+                          <Token
+                            text={selectedCount > 0 ? `${selectedCount} / ${totalCount}` : `${totalCount}`}
+                            size="small"
+                            sx={{ ml: 2, flexShrink: 0 }}
+                          />
+                        );
+                      })()}
                     </Box>
                     <Button
                       variant="invisible"
