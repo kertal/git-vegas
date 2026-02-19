@@ -20,12 +20,13 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
   variant = 'default',
   className,
 }) => {
-  const formSettings = useFormStore(useShallow((s) => ({
+  const { searchText, ...formSettings } = useFormStore(useShallow((s) => ({
     username: s.username,
     startDate: s.startDate,
     endDate: s.endDate,
     githubToken: s.githubToken,
     apiMode: s.apiMode,
+    searchText: s.searchText,
   })));
 
   const [copied, setCopied] = useState(false);
@@ -38,7 +39,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       // Extract current app state
       const shareableState = extractShareableState(
         formSettings,
-        ''
+        searchText,
       );
 
       // Generate shareable URL

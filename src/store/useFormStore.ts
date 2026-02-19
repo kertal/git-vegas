@@ -165,7 +165,7 @@ const useFormStore = create<FormStore>()(
         if (urlUsername !== null) {
           const v = validateUsernameList(urlUsername);
           if (v.errors.length === 0 && v.usernames.length > 0) {
-            updates.username = v.usernames[0];
+            updates.username = v.usernames.join(',');
           }
         }
         if (urlStartDate !== null && isValidDateString(urlStartDate)) {
