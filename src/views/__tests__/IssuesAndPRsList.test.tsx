@@ -45,7 +45,7 @@ const generateItems = (count: number, isPR: boolean, startId = 1): GitHubItem[] 
 const renderComponent = (results: GitHubItem[]) =>
   render(
     <ThemeProvider>
-      <IssuesAndPRsList results={results}  />
+      <IssuesAndPRsList results={results} />
     </ThemeProvider>
   );
 

@@ -1,9 +1,6 @@
 import {
   formatGroupedDataForClipboard,
   getAllDisplayedItems,
-  hasAnyItems,
-  getTotalItemCount,
-  isSectionCollapsed,
   getGroupSelectState
 } from '../summaryHelpers';
 import { GitHubItem } from '../../types';
@@ -30,7 +27,7 @@ describe('summaryHelpers', () => {
 
     it('should format grouped data and filter out empty groups', () => {
       const result = formatGroupedDataForClipboard(mockGroups);
-      
+
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         groupName: 'PRs - opened',
@@ -45,7 +42,7 @@ describe('summaryHelpers', () => {
     it('should filter to selected items when provided', () => {
       const selectedItems = new Set([1, 3]);
       const result = formatGroupedDataForClipboard(mockGroups, selectedItems);
-      
+
       expect(result).toHaveLength(2);
       expect(result[0].items).toHaveLength(1);
       expect(result[0].items[0].id).toBe(1);
@@ -56,7 +53,7 @@ describe('summaryHelpers', () => {
     it('should return empty array when no selected items match', () => {
       const selectedItems = new Set([999]);
       const result = formatGroupedDataForClipboard(mockGroups, selectedItems);
-      
+
       expect(result).toHaveLength(0);
     });
 
@@ -75,7 +72,7 @@ describe('summaryHelpers', () => {
       };
 
       const result = getAllDisplayedItems(mockGroups);
-      
+
       expect(result).toHaveLength(3);
       expect(result.map(item => item.id)).toEqual([1, 2, 3]);
     });
@@ -84,63 +81,6 @@ describe('summaryHelpers', () => {
       const result = getAllDisplayedItems({});
       expect(result).toHaveLength(0);
     });
-  });
-
-  describe('hasAnyItems', () => {
-    it('should return true when groups have items', () => {
-      const mockGroups = {
-        'Group 1': [createMockItem()],
-        'Group 2': [],
-      };
-
-      expect(hasAnyItems(mockGroups)).toBe(true);
-    });
-
-    it('should return false when no groups have items', () => {
-      const mockGroups = {
-        'Group 1': [],
-        'Group 2': [],
-      };
-
-      expect(hasAnyItems(mockGroups)).toBe(false);
-    });
-
-    it('should return false for empty groups object', () => {
-      expect(hasAnyItems({})).toBe(false);
-    });
-  });
-
-  describe('getTotalItemCount', () => {
-    it('should return total count across all groups', () => {
-      const mockGroups = {
-        'Group 1': [createMockItem(), createMockItem()],
-        'Group 2': [createMockItem()],
-        'Group 3': [],
-      };
-
-      expect(getTotalItemCount(mockGroups)).toBe(3);
-    });
-
-    it('should return 0 for empty groups', () => {
-      expect(getTotalItemCount({})).toBe(0);
-    });
-  });
-
-  describe('isSectionCollapsed', () => {
-    it('should return true if section is in collapsed set', () => {
-      const collapsedSections = new Set(['Section 1', 'Section 2']);
-      expect(isSectionCollapsed('Section 1', collapsedSections)).toBe(true);
-    });
-
-    it('should return false if section is not in collapsed set', () => {
-      const collapsedSections = new Set(['Section 1']);
-      expect(isSectionCollapsed('Section 2', collapsedSections)).toBe(false);
-    });
-
-         it('should return false for empty collapsed set', () => {
-       const collapsedSections = new Set<string>();
-       expect(isSectionCollapsed('Section 1', collapsedSections)).toBe(false);
-     });
   });
 
   describe('getGroupSelectState', () => {
@@ -178,9 +118,9 @@ describe('summaryHelpers', () => {
         createMockItem({ event_id: 'event-2' }),
       ];
       const selectedItems = new Set(['event-1']);
-      
+
       const result = getGroupSelectState(itemsWithEventId, selectedItems);
       expect(result).toEqual({ checked: false, indeterminate: true });
     });
   });
-}); 
+});

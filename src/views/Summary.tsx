@@ -11,7 +11,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@primer/octicons-react';
-import { GitHubItem, GitHubEvent } from '../types';
+import { GitHubItem, GitHubEvent, getItemId } from '../types';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
@@ -40,6 +40,32 @@ interface SummaryProps {
   rawEvents?: GitHubEvent[];
   indexedDBSearchItems?: GitHubItem[];
 }
+
+/** Returns the most recently updated item from a group. */
+const getMostRecent = (items: GitHubItem[]): GitHubItem =>
+  items.reduce((latest, current) =>
+    new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
+  );
+
+/** Groups items by URL, deduplicating comments and separating reviewers. */
+const groupItemsByUrl = (groupItems: GitHubItem[]): Record<string, GitHubItem[]> => {
+  const urlGroups: Record<string, GitHubItem[]> = {};
+  groupItems.forEach(item => {
+    let groupingKey = item.html_url;
+    if (getEventType(item) === 'comment') {
+      groupingKey = groupingKey.split('#')[0];
+    }
+    const isReview = (item.title && item.title.startsWith('Review on:')) || item.originalEventType === 'PullRequestReviewEvent';
+    if (isReview) {
+      groupingKey = `${item.user.login}:${groupingKey}`;
+    }
+    if (!urlGroups[groupingKey]) {
+      urlGroups[groupingKey] = [];
+    }
+    urlGroups[groupingKey].push(item);
+  });
+  return urlGroups;
+};
 
 const SummaryView = memo(function SummaryView({
   items,
@@ -94,7 +120,7 @@ const SummaryView = memo(function SummaryView({
         newSet.add(sectionName);
         const sectionItems = actionGroups[sectionName as keyof typeof actionGroups] || [];
         if (sectionItems.length > 0) {
-          const idsToRemove = sectionItems.map(item => item.event_id || item.id);
+          const idsToRemove = sectionItems.map(item => getItemId(item));
           bulkSelectItems(idsToRemove, false);
         }
       }
@@ -108,7 +134,7 @@ const SummaryView = memo(function SummaryView({
     const allItems = getAllDisplayedItems(actionGroups);
     const selectedItemsArray =
       selectedItems.size > 0
-        ? allItems.filter(item => selectedItems.has(item.event_id || item.id))
+        ? allItems.filter(item => selectedItems.has(getItemId(item)))
         : allItems;
 
     await copyToClipboard(selectedItemsArray, {
@@ -158,7 +184,6 @@ const SummaryView = memo(function SummaryView({
           />
         </>
       }
-      headerRight={null}
       className="timeline-view"
     >
       <DismissibleBanner bannerId="summary-api-limitation">
@@ -177,22 +202,10 @@ const SummaryView = memo(function SummaryView({
         ) : (
           Object.entries(actionGroups).map(([groupName, groupItems]) => {
             if (groupItems.length === 0) return null;
-            // Group items by URL (for reviews, include user to allow multiple reviewers per PR)
-            const urlGroups: { [url: string]: GitHubItem[] } = {};
-            groupItems.forEach(item => {
-              let groupingKey = item.html_url;
-              if (getEventType(item) === 'comment') {
-                groupingKey = groupingKey.split('#')[0];
-              }
-              const isReview = (item.title && item.title.startsWith('Review on:')) || item.originalEventType === 'PullRequestReviewEvent';
-              if (isReview) {
-                groupingKey = `${item.user.login}:${groupingKey}`;
-              }
-              if (!urlGroups[groupingKey]) {
-                urlGroups[groupingKey] = [];
-              }
-              urlGroups[groupingKey].push(item);
-            });
+            const urlGroups = groupItemsByUrl(groupItems);
+            const mostRecentIds = Object.values(urlGroups).map(items => getItemId(getMostRecent(items)));
+            const selectedCount = mostRecentIds.filter(id => selectedItems.has(id)).length;
+            const isCollapsed = collapsedSections.has(groupName);
 
             return (
               <div key={groupName} className="timeline-section">
@@ -202,40 +215,21 @@ const SummaryView = memo(function SummaryView({
                       <Checkbox
                         {...getGroupSelectState(groupItems, selectedItems)}
                         onChange={() => {
-                          if (collapsedSections.has(groupName)) return;
-                          const sectionItemIds = Object.values(urlGroups).map(items => {
-                            const mostRecent = items.reduce((latest, current) =>
-                              new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-                            );
-                            return mostRecent.event_id || mostRecent.id;
-                          });
-                          const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
-                          bulkSelectItems(sectionItemIds, selectedCount !== sectionItemIds.length);
+                          if (isCollapsed) return;
+                          bulkSelectItems(mostRecentIds, selectedCount !== mostRecentIds.length);
                         }}
                         sx={{ flexShrink: 0 }}
                         aria-label={`Select all events in ${groupName} section`}
-                        disabled={collapsedSections.has(groupName)}
+                        disabled={isCollapsed}
                       />
                       <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
                         {groupName}
                       </Heading>
-                      {(() => {
-                        const totalCount = Object.keys(urlGroups).length;
-                        const sectionItemIds = Object.values(urlGroups).map(items => {
-                          const mostRecent = items.reduce((latest, current) =>
-                            new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-                          );
-                          return mostRecent.event_id || mostRecent.id;
-                        });
-                        const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
-                        return (
-                          <Token
-                            text={selectedCount > 0 ? `${selectedCount} / ${totalCount}` : `${totalCount}`}
-                            size="small"
-                            sx={{ ml: 2, flexShrink: 0 }}
-                          />
-                        );
-                      })()}
+                      <Token
+                        text={selectedCount > 0 ? `${selectedCount} / ${mostRecentIds.length}` : `${mostRecentIds.length}`}
+                        size="small"
+                        sx={{ ml: 2, flexShrink: 0 }}
+                      />
                     </Box>
                     <Button
                       variant="invisible"
@@ -248,24 +242,22 @@ const SummaryView = memo(function SummaryView({
                         flexShrink: 0,
                         '&:hover': { color: 'fg.default' },
                       }}
-                      aria-label={`${collapsedSections.has(groupName) ? 'Show' : 'Hide'} ${groupName} section`}
+                      aria-label={`${isCollapsed ? 'Show' : 'Hide'} ${groupName} section`}
                     >
-                      {collapsedSections.has(groupName) ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+                      {isCollapsed ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
                     </Button>
                   </Box>
                 </div>
-                {!collapsedSections.has(groupName) && (
+                {!isCollapsed && (
                   <div className="timeline-section-content">
                     {Object.entries(urlGroups).map(([url, items]) => {
-                      const mostRecent = items.reduce((latest, current) =>
-                        new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-                      );
+                      const mostRecent = getMostRecent(items);
                       return (
                         <div key={url} className="timeline-group">
                           <ItemRow
                             item={mostRecent}
                             onShowDescription={setSelectedItemForDialog}
-                            selected={selectedItems.has(mostRecent.event_id || mostRecent.id)}
+                            selected={selectedItems.has(getItemId(mostRecent))}
                             onSelect={toggleItemSelection}
                             showCheckbox={true}
                             groupCount={items.length > 1 ? items.length : undefined}

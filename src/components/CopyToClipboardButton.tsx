@@ -5,7 +5,7 @@ import {
   CheckIcon,
 } from '@primer/octicons-react';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
-import { GitHubItem } from '../types';
+import { GitHubItem, getItemId } from '../types';
 
 interface CopyToClipboardButtonProps {
   item: GitHubItem;
@@ -27,7 +27,7 @@ const CopyToClipboardButton = memo(function CopyToClipboardButton({
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(item.html_url);
-      triggerCopy(item.event_id || item.id);
+      triggerCopy(getItemId(item));
       onSuccess?.();
     } catch (error) {
       console.error('Failed to copy link:', error);
@@ -35,7 +35,7 @@ const CopyToClipboardButton = memo(function CopyToClipboardButton({
     }
   }, [item, triggerCopy, onSuccess, onError]);
 
-  const isItemCopied = isCopied(item.event_id || item.id);
+  const isItemCopied = isCopied(getItemId(item));
 
   return (
     <IconButton

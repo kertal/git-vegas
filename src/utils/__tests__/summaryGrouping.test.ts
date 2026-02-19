@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   categorizeItem,
-  categorizeItemWithoutDateFiltering,
   groupSummaryData,
   isDateInRange,
 } from '../summaryGrouping';
@@ -138,7 +137,7 @@ describe('categorizeItem - PRs Updated', () => {
   });
 });
 
-describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results', () => {
+describe('categorizeItem with applyDateFiltering=false - For Already Date-Filtered Results', () => {
   const addedReviewPRs = new Set<string>();
   const startDate = '2024-01-10';
   const endDate = '2024-01-20';
@@ -159,7 +158,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_UPDATED);
   });
 
@@ -174,7 +173,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -190,7 +189,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
   });
 
@@ -206,7 +205,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
   });
 
@@ -222,7 +221,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -237,7 +236,7 @@ describe('categorizeItemWithoutDateFiltering - For Already Date-Filtered Results
       user: { login: 'otheruser', avatar_url: '', html_url: '' }, // Different user
     };
 
-    const result = categorizeItemWithoutDateFiltering(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 });

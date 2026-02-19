@@ -1,11 +1,11 @@
-import { memo, useEffect } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 import {
   Text,
   Checkbox,
   Box,
   Pagination,
 } from '@primer/react';
-import { GitHubItem, GitHubEvent } from '../types';
+import { GitHubItem, GitHubEvent, getItemId } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
 
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
@@ -59,7 +59,7 @@ const EventView = memo(function EventView({
   // Reset to first page when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchText]);
+  }, [searchText, setCurrentPage]);
 
   // Pagination
   const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
@@ -67,11 +67,11 @@ const EventView = memo(function EventView({
   const paginatedItems = sortedItems.slice(startIndex, startIndex + itemsPerPage);
 
   // Copy handler
-  const copyResultsToClipboard = async (format: 'detailed' | 'compact') => {
+  const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
     const selectedItemsArray =
       selectedItems.size > 0
         ? sortedItems.filter((item: GitHubItem) =>
-            selectedItems.has(item.event_id || item.id)
+            selectedItems.has(getItemId(item))
           )
         : sortedItems;
 
@@ -80,7 +80,7 @@ const EventView = memo(function EventView({
       onSuccess: () => triggerCopy(format),
       onError: (error: Error) => console.error('Failed to copy results:', error),
     });
-  };
+  }, [selectedItems, sortedItems, triggerCopy]);
 
   // Select all toggle
   const handleSelectAllChange = () => {
@@ -124,7 +124,6 @@ const EventView = memo(function EventView({
           />
         </>
       }
-      headerRight={null}
       className="timeline-view"
     >
       <DismissibleBanner bannerId="events-api-limitation">
@@ -146,7 +145,7 @@ const EventView = memo(function EventView({
                 key={`${item.id}-${index}`}
                 item={item}
                 onShowDescription={setSelectedItemForDialog}
-                selected={selectedItems.has(item.event_id || item.id)}
+                selected={selectedItems.has(getItemId(item))}
                 onSelect={toggleItemSelection}
                 showCheckbox={true}
                 showRepo={true}

@@ -138,14 +138,6 @@ export const categorizeItem = (
   return null;
 };
 
-// Keep the old name as a re-export for backward compatibility with tests
-export const categorizeItemWithoutDateFiltering = (
-  item: GitHubItem,
-  addedReviewPRs: Set<string>,
-  startDate: string,
-  endDate: string,
-): SummaryGroupName | null => categorizeItem(item, addedReviewPRs, startDate, endDate, false);
-
 /**
  * Groups GitHub items into summary categories
  */

@@ -6,7 +6,7 @@ import {
   IssueOpenedIcon,
   RepoIcon,
 } from '@primer/octicons-react';
-import { GitHubItem } from '../types';
+import { GitHubItem, getItemId } from '../types';
 import ActionButtonsRow from './ActionButtonsRow';
 import { getActionVariant } from '../utils/actionUtils';
 
@@ -77,7 +77,7 @@ const ItemRow = ({
           {showCheckbox && onSelect && (
             <Checkbox
               checked={selected}
-              onChange={() => onSelect(item.event_id || item.id)}
+              onChange={() => onSelect(getItemId(item))}
               sx={{ flexShrink: 0 }}
             />
           )}
@@ -274,7 +274,7 @@ const ItemRow = ({
             {showCheckbox && onSelect && (
               <Checkbox
                 checked={selected}
-                onChange={() => onSelect(item.event_id || item.id)}
+                onChange={() => onSelect(getItemId(item))}
                 sx={{ flexShrink: 0 }}
               />
             )}

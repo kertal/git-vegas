@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { GitHubItem } from '../types';
 
 interface UseDialogNavigationReturn {
@@ -19,9 +19,12 @@ export function useDialogNavigation(
   const [selectedItemForDialog, setSelectedItemForDialog] =
     useState<GitHubItem | null>(null);
 
-  const currentIndex = selectedItemForDialog
-    ? items.findIndex(item => item.id === selectedItemForDialog.id)
-    : -1;
+  const currentIndex = useMemo(
+    () => selectedItemForDialog
+      ? items.findIndex(item => item.id === selectedItemForDialog.id)
+      : -1,
+    [selectedItemForDialog, items],
+  );
 
   const handlePreviousItem = useCallback(() => {
     if (currentIndex > 0) {

@@ -16,7 +16,7 @@ import {
   ChevronUpIcon,
 } from '@primer/octicons-react';
 
-import { GitHubItem } from '../types';
+import { GitHubItem, getItemId } from '../types';
 
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useListSelection } from '../hooks/useListSelection';
@@ -25,6 +25,7 @@ import { useFormContext } from '../App';
 
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { sortItemsByUpdatedDate, filterItemsByAdvancedSearch } from '../utils/viewFiltering';
+import { getGroupSelectState } from '../utils/summaryHelpers';
 
 import { ResultsContainer } from '../components/ResultsContainer';
 import DescriptionDialog from '../components/DescriptionDialog';
@@ -56,6 +57,56 @@ const DialogTitle = ({ item }: { item: GitHubItem }) => (
   </Box>
 );
 
+const SectionContent = ({
+  groupName, groupItems, itemsPerPage, getSectionPage, setSectionPage,
+  selectedItems, toggleItemSelection, setSelectedItemForDialog,
+}: {
+  groupName: string;
+  groupItems: GitHubItem[];
+  itemsPerPage: number;
+  getSectionPage: (name: string) => number;
+  setSectionPage: (name: string, page: number) => void;
+  selectedItems: Set<string | number>;
+  toggleItemSelection: (id: string | number) => void;
+  setSelectedItemForDialog: (item: GitHubItem | null) => void;
+}) => {
+  const sectionPage = getSectionPage(groupName);
+  const sectionTotalPages = Math.ceil(groupItems.length / itemsPerPage);
+  const startIndex = (sectionPage - 1) * itemsPerPage;
+  const paginatedGroupItems = groupItems.slice(startIndex, startIndex + itemsPerPage);
+
+  return (
+    <div className="timeline-section-content">
+      {paginatedGroupItems.map((item: GitHubItem) => (
+        <div key={item.id} className="timeline-group">
+          <ItemRow
+            item={item}
+            onShowDescription={setSelectedItemForDialog}
+            selected={selectedItems.has(getItemId(item))}
+            onSelect={toggleItemSelection}
+            showCheckbox={true}
+            showRepo={true}
+            showTime={true}
+            size="small"
+          />
+        </div>
+      ))}
+      {sectionTotalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, pb: 2 }}>
+          <Pagination
+            pageCount={sectionTotalPages}
+            currentPage={sectionPage}
+            onPageChange={(_e: React.MouseEvent, page: number) => setSectionPage(groupName, page)}
+            showPages={{ narrow: false }}
+            marginPageCount={2}
+            surroundingPageCount={2}
+          />
+        </Box>
+      )}
+    </div>
+  );
+};
+
 const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
 }: {
@@ -75,12 +126,12 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 
   const setSectionPage = useCallback((sectionName: string, page: number) => {
     setSectionPages(prev => ({ ...prev, [sectionName]: page }));
-  }, []);
+  }, [setSectionPages]);
 
   // Reset pagination when search changes
   useEffect(() => {
     setSectionPages({});
-  }, [searchText]);
+  }, [searchText, setSectionPages]);
 
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
@@ -135,7 +186,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         newSet.add(sectionName);
         const sectionItems = groupedItems[sectionName as keyof typeof groupedItems] || [];
         if (sectionItems.length > 0) {
-          const idsToRemove = sectionItems.map(item => item.event_id || item.id);
+          const idsToRemove = sectionItems.map(item => getItemId(item));
           bulkSelectItems(idsToRemove, false);
         }
       }
@@ -154,7 +205,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       finalGroupedData = groupedData
         .map(group => ({
           ...group,
-          items: group.items.filter(item => selectedItems.has(item.event_id || item.id)),
+          items: group.items.filter(item => selectedItems.has(getItemId(item))),
         }))
         .filter(group => group.items.length > 0);
     }
@@ -162,7 +213,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     const allItems = Object.values(groupedItems).flat();
     const selectedItemsArray =
       selectedItems.size > 0
-        ? allItems.filter(item => selectedItems.has(item.event_id || item.id))
+        ? allItems.filter(item => selectedItems.has(getItemId(item)))
         : allItems;
 
     await copyToClipboard(selectedItemsArray, {
@@ -209,7 +260,6 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
             />
           </>
         }
-        headerRight={null}
       >
         <div className="timeline-container">
           {allDisplayedItems.length === 0 ? (
@@ -229,20 +279,12 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                       <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
                           <Checkbox
-                            checked={(() => {
-                              const sectionItemIds = groupItems.map(item => item.event_id || item.id);
-                              return sectionItemIds.length > 0 && sectionItemIds.every(id => selectedItems.has(id));
-                            })()}
-                            indeterminate={(() => {
-                              const sectionItemIds = groupItems.map(item => item.event_id || item.id);
-                              const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
-                              return selectedCount > 0 && selectedCount < sectionItemIds.length;
-                            })()}
+                            {...getGroupSelectState(groupItems, selectedItems)}
                             onChange={() => {
                               if (collapsedSections.has(groupName)) return;
-                              const sectionItemIds = groupItems.map(item => item.event_id || item.id);
-                              const selectedCount = sectionItemIds.filter(id => selectedItems.has(id)).length;
-                              bulkSelectItems(sectionItemIds, selectedCount !== sectionItemIds.length);
+                              const sectionItemIds = groupItems.map(getItemId);
+                              const allSelected = sectionItemIds.every(id => selectedItems.has(id));
+                              bulkSelectItems(sectionItemIds, !allSelected);
                             }}
                             sx={{ flexShrink: 0 }}
                             aria-label={`Select all items in ${groupName} section`}
@@ -269,42 +311,18 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                         </Button>
                       </Box>
                     </div>
-                    {!collapsedSections.has(groupName) && (() => {
-                      const sectionPage = getSectionPage(groupName);
-                      const sectionTotalPages = Math.ceil(groupItems.length / itemsPerPage);
-                      const startIndex = (sectionPage - 1) * itemsPerPage;
-                      const paginatedGroupItems = groupItems.slice(startIndex, startIndex + itemsPerPage);
-                      return (
-                        <div className="timeline-section-content">
-                          {paginatedGroupItems.map((item: GitHubItem) => (
-                            <div key={item.id} className="timeline-group">
-                              <ItemRow
-                                item={item}
-                                onShowDescription={setSelectedItemForDialog}
-                                selected={selectedItems.has(item.event_id || item.id)}
-                                onSelect={toggleItemSelection}
-                                showCheckbox={true}
-                                showRepo={true}
-                                showTime={true}
-                                size="small"
-                              />
-                            </div>
-                          ))}
-                          {sectionTotalPages > 1 && (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, pb: 2 }}>
-                              <Pagination
-                                pageCount={sectionTotalPages}
-                                currentPage={sectionPage}
-                                onPageChange={(_e: React.MouseEvent, page: number) => setSectionPage(groupName, page)}
-                                showPages={{ narrow: false }}
-                                marginPageCount={2}
-                                surroundingPageCount={2}
-                              />
-                            </Box>
-                          )}
-                        </div>
-                      );
-                    })()}
+                    {!collapsedSections.has(groupName) && (
+                      <SectionContent
+                        groupName={groupName}
+                        groupItems={groupItems}
+                        itemsPerPage={itemsPerPage}
+                        getSectionPage={getSectionPage}
+                        setSectionPage={setSectionPage}
+                        selectedItems={selectedItems}
+                        toggleItemSelection={toggleItemSelection}
+                        setSelectedItemForDialog={setSelectedItemForDialog}
+                      />
+                    )}
                   </div>
                 );
               })}

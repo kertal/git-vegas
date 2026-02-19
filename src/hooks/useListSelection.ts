@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { GitHubItem } from '../types';
+import { GitHubItem, getItemId } from '../types';
 import { useLocalStorage } from './useLocalStorage';
 
 interface UseListSelectionReturn {
@@ -10,8 +10,6 @@ interface UseListSelectionReturn {
   bulkSelectItems: (itemIds: (string | number)[], shouldSelect: boolean) => void;
   selectAllState: { checked: boolean; indeterminate: boolean };
 }
-
-const getItemId = (item: GitHubItem): string | number => item.event_id || item.id;
 
 /**
  * Shared hook for item selection logic used across all view components.
@@ -33,15 +31,15 @@ export function useListSelection(
       }
       return newSet;
     });
-  }, []);
+  }, [setSelectedItems]);
 
   const selectAllItems = useCallback(() => {
     setSelectedItems(new Set(allSelectableItems.map(getItemId)));
-  }, [allSelectableItems]);
+  }, [allSelectableItems, setSelectedItems]);
 
   const clearSelection = useCallback(() => {
     setSelectedItems(new Set());
-  }, []);
+  }, [setSelectedItems]);
 
   const bulkSelectItems = useCallback((itemIds: (string | number)[], shouldSelect: boolean) => {
     setSelectedItems(prev => {
@@ -53,7 +51,15 @@ export function useListSelection(
       }
       return newSet;
     });
-  }, []);
+  }, [setSelectedItems]);
+
+  // Prune selected items that no longer exist in the selectable list
+  const validSelectedItems = useMemo(() => {
+    if (selectedItems.size === 0) return selectedItems;
+    const validIds = new Set(allSelectableItems.map(getItemId));
+    const pruned = new Set([...selectedItems].filter(id => validIds.has(id)));
+    return pruned.size === selectedItems.size ? selectedItems : pruned;
+  }, [allSelectableItems, selectedItems]);
 
   const selectAllState = useMemo(() => {
     if (allSelectableItems.length === 0) {
@@ -61,7 +67,7 @@ export function useListSelection(
     }
 
     const selectedCount = allSelectableItems.filter(item =>
-      selectedItems.has(getItemId(item))
+      validSelectedItems.has(getItemId(item))
     ).length;
 
     if (selectedCount === 0) {
@@ -71,10 +77,10 @@ export function useListSelection(
     } else {
       return { checked: false, indeterminate: true };
     }
-  }, [allSelectableItems, selectedItems]);
+  }, [allSelectableItems, validSelectedItems]);
 
   return {
-    selectedItems,
+    selectedItems: validSelectedItems,
     toggleItemSelection,
     selectAllItems,
     clearSelection,
