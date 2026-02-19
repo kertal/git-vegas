@@ -22,7 +22,7 @@ import './EventView.css';
 
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DismissibleBanner } from '../components/DismissibleBanner';
-import { useFormContext } from '../App';
+import { useFormStore } from '../store/useFormStore';
 
 interface EventViewProps {
   items: GitHubItem[];
@@ -33,7 +33,7 @@ const EventView = memo(function EventView({
   items,
   rawEvents = [],
 }: EventViewProps) {
-  const { searchText, setSearchText } = useFormContext();
+  const { searchText, setSearchText } = useFormStore();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useLocalStorage<number>('eventView-currentPage', 1);

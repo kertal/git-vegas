@@ -7,7 +7,7 @@ import {
   Flash,
   UnderlineNav,
 } from '@primer/react';
-import { useFormContext } from '../App';
+import { useFormStore } from '../store/useFormStore';
 import { validateUsernameList, validateGitHubUsernames } from '../utils';
 
 const SearchForm = memo(function SearchForm() {
@@ -29,7 +29,7 @@ const SearchForm = memo(function SearchForm() {
     eventsCount,
     // rawEventsCount removed as it's not used
     githubToken,
-  } = useFormContext();
+  } = useFormStore();
 
   // Track if validation is in progress
   const [isValidating, setIsValidating] = useState(false);

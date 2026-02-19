@@ -1,20 +1,23 @@
 import { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { vi } from 'vitest';
-import { FormContextType, ResultsContextType } from '../types';
+import { useFormStore } from '../store/useFormStore';
+import type { FormStore } from '../store/useFormStore';
 
-// Mock FormContext
-const mockFormContext: FormContextType = {
+// Default mock values for the form store (used by tests that need a populated store)
+const mockFormStoreValues: FormStore = {
   username: 'testuser',
   startDate: '2023-01-01',
   endDate: '2023-12-31',
   githubToken: 'test-token',
   apiMode: 'search',
+  searchText: '',
   setUsername: vi.fn(),
   setStartDate: vi.fn(),
   setEndDate: vi.fn(),
   setGithubToken: vi.fn(),
   setApiMode: vi.fn(),
+  setSearchText: vi.fn(),
   handleSearch: vi.fn(),
   validateUsernameFormat: vi.fn(),
   addAvatarsToCache: vi.fn(),
@@ -26,57 +29,17 @@ const mockFormContext: FormContextType = {
   rawEventsCount: 0,
 };
 
-// Mock ResultsContext
-const mockResultsContext: ResultsContextType = {
-  results: [],
-  filteredResults: [],
-  filter: 'all',
-  statusFilter: 'all',
-  includedLabels: [],
-  excludedLabels: [],
-  searchText: '',
-  repoFilters: [],
-  userFilter: '',
-  availableLabels: [],
-  setFilter: vi.fn(),
-  setStatusFilter: vi.fn(),
-  setIncludedLabels: vi.fn(),
-  setExcludedLabels: vi.fn(),
-  setSearchText: vi.fn(),
-  toggleDescriptionVisibility: vi.fn(),
-  toggleExpand: vi.fn(),
-  copyResultsToClipboard: vi.fn(),
-  descriptionVisible: {},
-  expanded: {},
-  clipboardMessage: null,
-  isCompactView: true,
-  setIsCompactView: vi.fn(),
-  selectedItems: new Set(),
-  toggleItemSelection: vi.fn(),
-  selectAllItems: vi.fn(),
-  clearSelection: vi.fn(),
-  setRepoFilters: vi.fn(),
-  setUserFilter: vi.fn(),
-  isClipboardCopied: vi.fn(() => false),
-};
+/**
+ * Populate the zustand store with mock values for testing.
+ * Call this in beforeEach() to reset the store between tests.
+ */
+export function seedFormStore(overrides: Partial<FormStore> = {}) {
+  useFormStore.setState({ ...mockFormStoreValues, ...overrides });
+}
 
-// Create mock contexts - we need to import the actual contexts from App.tsx
-// For now, we'll create React contexts here to avoid circular imports
-import { createContext } from 'react';
-
-const MockFormContext = createContext<FormContextType | null>(mockFormContext);
-const MockResultsContext = createContext<ResultsContextType | null>(mockResultsContext);
-
-// Add any providers that your app needs here
-// eslint-disable-next-line react-refresh/only-export-components
+// Simple wrapper – no Providers needed since zustand is provider-free
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <MockFormContext.Provider value={mockFormContext}>
-      <MockResultsContext.Provider value={mockResultsContext}>
-        {children}
-      </MockResultsContext.Provider>
-    </MockFormContext.Provider>
-  );
+  return <>{children}</>;
 };
 
 const customRender = (
@@ -91,5 +54,5 @@ export * from '@testing-library/react';
 // Override render method
 export { customRender as render };
 
-// Export mock contexts for individual test customization
-export { mockFormContext, mockResultsContext };
+// Export mock store values for individual test customization
+export { mockFormStoreValues };

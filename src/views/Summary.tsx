@@ -25,7 +25,7 @@ import BulkCopyButtons from '../components/BulkCopyButtons';
 import ItemRow from '../components/ItemRow';
 import EmptyState from '../components/EmptyState';
 import './Summary.css';
-import { useFormContext } from '../App';
+import { useFormStore } from '../store/useFormStore';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { groupSummaryData, getEventType } from '../utils/summaryGrouping';
 import {
@@ -72,7 +72,7 @@ const SummaryView = memo(function SummaryView({
   rawEvents = [],
   indexedDBSearchItems = [],
 }: SummaryProps) {
-  const { startDate, endDate, searchText, setSearchText } = useFormContext();
+  const { startDate, endDate, searchText, setSearchText } = useFormStore();
 
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('summary-collapsedSections', new Set());
 

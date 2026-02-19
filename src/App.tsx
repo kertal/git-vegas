@@ -3,8 +3,6 @@ import {
   useEffect,
   useCallback,
   useMemo,
-  createContext,
-  useContext,
 } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { PageLayout, PageHeader, Box, IconButton, Button } from '@primer/react';
@@ -16,6 +14,7 @@ import { useGitHubDataProcessing } from './hooks/useGitHubDataProcessing';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
 import { GitHubItem } from './types';
 import { isTestEnvironment } from './utils/environment';
+import { useFormStore } from './store/useFormStore';
 
 import SearchForm from './components/SearchForm';
 import IssuesAndPRsList from './views/IssuesAndPRsList';
@@ -30,42 +29,6 @@ import { SlotMachineLoader } from './components/SlotMachineLoader';
 import { OfflineBanner } from './components/OfflineBanner';
 import { PWAUpdateNotification } from './components/PWAUpdateNotification';
 import GitVegasLogo from './assets/GitVegas.svg?react';
-
-// Form context for sharing form state across components
-interface FormContextType {
-  username: string;
-  startDate: string;
-  endDate: string;
-  githubToken: string;
-  apiMode: 'search' | 'events' | 'summary';
-  searchText: string;
-  setUsername: (username: string) => void;
-  setStartDate: (date: string) => void;
-  setEndDate: (date: string) => void;
-  setGithubToken: (token: string) => void;
-  setApiMode: (mode: 'search' | 'events' | 'summary') => void;
-  setSearchText: (searchText: string) => void;
-  handleSearch: () => void;
-  validateUsernameFormat: (username: string) => void;
-  addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
-  loading: boolean;
-  loadingProgress: string;
-  error: string | null;
-  searchItemsCount: number;
-  eventsCount: number;
-  rawEventsCount: number;
-}
-
-const FormContext = createContext<FormContextType | null>(null);
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useFormContext() {
-  const context = useContext(FormContext);
-  if (!context) {
-    throw new Error('useFormContext must be used within a FormContextProvider');
-  }
-  return context;
-}
 
 // Pure comparator for case-insensitive string sorting (outside component to avoid re-creation)
 const caseInsensitiveCompare = (a: string, b: string): number =>
@@ -144,6 +107,24 @@ function App() {
     storeSearchItems,
     clearSearchItems,
   });
+
+  // Sync state and actions from hooks into the zustand store so that
+  // child components can subscribe to individual slices without a Provider.
+  useEffect(() => {
+    useFormStore.setState({
+      username, startDate, endDate, githubToken, apiMode, searchText,
+      loading, loadingProgress, error,
+      searchItemsCount, eventsCount, rawEventsCount,
+      setUsername, setStartDate, setEndDate, setGithubToken, setApiMode, setSearchText,
+      handleSearch, validateUsernameFormat, addAvatarsToCache,
+    });
+  }, [
+    username, startDate, endDate, githubToken, apiMode, searchText,
+    loading, loadingProgress, error,
+    searchItemsCount, eventsCount, rawEventsCount,
+    setUsername, setStartDate, setEndDate, setGithubToken, setApiMode, setSearchText,
+    handleSearch, validateUsernameFormat, addAvatarsToCache,
+  ]);
 
   // Extract unique users from results for search suggestions (with avatars)
   const availableUsers = useMemo(() => {
@@ -420,51 +401,25 @@ function App() {
           '@media (max-width: 767px)': { px: 2 },
         }}
       >
-        <FormContext.Provider
-          value={{
-            username,
-            startDate,
-            endDate,
-            githubToken,
-            apiMode,
-            searchText,
-            setUsername,
-            setStartDate,
-            setEndDate,
-            setGithubToken,
-            setApiMode,
-            setSearchText,
-            handleSearch,
-            validateUsernameFormat,
-            addAvatarsToCache,
-            loading,
-            loadingProgress,
-            error,
-            searchItemsCount,
-            eventsCount,
-            rawEventsCount,
-          }}
-        >
-          <SearchForm />
-          {apiMode === 'events' ? (
-            <EventView items={results} rawEvents={indexedDBEvents} />
-          ) : apiMode === 'summary' ? (
-            <SummaryView
-              items={results}
-              rawEvents={indexedDBEvents}
-              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
-            />
-          ) : (
-            <IssuesAndPRsList results={results} />
-          )}
-
-          <SettingsDialog
-            isOpen={isSettingsOpen}
-            onDismiss={() => setIsSettingsOpen(false)}
-            onClearEvents={clearEvents}
-            onClearSearchItems={clearSearchItems}
+        <SearchForm />
+        {apiMode === 'events' ? (
+          <EventView items={results} rawEvents={indexedDBEvents} />
+        ) : apiMode === 'summary' ? (
+          <SummaryView
+            items={results}
+            rawEvents={indexedDBEvents}
+            indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
           />
-        </FormContext.Provider>
+        ) : (
+          <IssuesAndPRsList results={results} />
+        )}
+
+        <SettingsDialog
+          isOpen={isSettingsOpen}
+          onDismiss={() => setIsSettingsOpen(false)}
+          onClearEvents={clearEvents}
+          onClearSearchItems={clearSearchItems}
+        />
       </PageLayout.Content>
 
       <PageLayout.Footer padding="condensed">
