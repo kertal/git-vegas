@@ -139,6 +139,11 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
     const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
 
+    // For review events, the actor is the reviewer. Try to get the PR author from the payload.
+    const prAuthor = pr.user;
+    // If PR author differs from reviewer, swap: set user to PR author, reviewedBy to reviewer
+    const itemUser = (prAuthor && prAuthor.login !== actorUser.login) ? prAuthor : actorUser;
+
     return {
       id: pr.id || parseInt(event.id),
       event_id: event.id,
@@ -159,13 +164,14 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of PR user
+      user: itemUser, // PR author if available, otherwise reviewer
       pull_request: {
         merged_at: pr.merged_at,
         url: htmlUrl,
       },
       original: payload,
       originalEventType: type,
+      reviewedBy: actorUser, // The event actor is the reviewer
     };
   } else if (type === 'IssueCommentEvent' && payload.comment && payload.issue) {
     const comment = payload.comment;

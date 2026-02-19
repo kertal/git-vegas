@@ -46,6 +46,11 @@ export interface GitHubItem {
   draft?: boolean;
   original?: GitHubEvent['payload'] | Record<string, unknown>; // Original payload from GitHub API
   originalEventType?: string; // Original GitHub event type (e.g., 'PullRequestReviewEvent')
+  reviewedBy?: {
+    login: string;
+    avatar_url: string;
+    html_url: string;
+  };
 }
 
 /** Returns the unique identifier for a GitHubItem (event_id if present, otherwise id). */

@@ -283,6 +283,12 @@ export const useGitHubDataFetching = ({
               assignee: item.assignee || null,
               assignees: item.assignees || [],
               original: item,
+              // Tag with reviewer info: item.user is the PR author, reviewer is the searched username
+              reviewedBy: {
+                login: singleUsername,
+                avatar_url: `https://github.com/${singleUsername}.png`,
+                html_url: `https://github.com/${singleUsername}`,
+              },
             }));
             allReviewItems.push(...reviewItemsWithOriginal);
             totalReviewItems += reviewData.items.length;
