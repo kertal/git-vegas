@@ -209,48 +209,48 @@ export const useGitHubDataFetching = ({
 
         try {
 
-          // Fetch issues and PRs with date range filtering
+          // Fetch issues and PRs with date range filtering (with pagination)
           const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
-          const searchResponse = await fetch(
-            `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&advanced_search=true`,
-            {
-              headers: {
-                ...(githubToken && { Authorization: `token ${githubToken}` }),
-                Accept: 'application/vnd.github.v3+json',
-              },
+          const searchHeaders = {
+            ...(githubToken && { Authorization: `token ${githubToken}` }),
+            Accept: 'application/vnd.github.v3+json',
+          };
+          let searchPage = 1;
+          let totalSearchItems = 0;
+
+          while (true) {
+            const searchResponse = await fetch(
+              `https://api.github.com/search/issues?q=${encodeURIComponent(searchQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&advanced_search=true&page=${searchPage}`,
+              { headers: searchHeaders }
+            );
+
+            if (!searchResponse.ok) {
+              const responseJSON = await searchResponse.json();
+              throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
             }
-          );
 
-          if (!searchResponse.ok) {
-            const responseJSON = await searchResponse.json();
-            throw new Error(`Failed to fetch issues/PRs: ${responseJSON.message}`);
+            const searchData = await searchResponse.json();
+            const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
+              ...item,
+              assignee: item.assignee || null,
+              assignees: item.assignees || [],
+              original: item,
+            }));
+            allSearchItems.push(...searchItemsWithOriginal);
+            totalSearchItems += searchData.items.length;
+
+            if (totalSearchItems >= searchData.total_count || searchData.items.length < GITHUB_API_PER_PAGE) {
+              break;
+            }
+
+            searchPage++;
+            // GitHub Search API has a max of 1000 results
+            if (totalSearchItems >= 1000) {
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
           }
-
-          const searchData = await searchResponse.json();
-          // Add original property to search items and ensure assignee data is preserved
-          const searchItemsWithOriginal = searchData.items.map((item: Record<string, unknown>) => ({
-            ...item,
-            // Ensure assignee information is preserved from the API response
-            assignee: item.assignee || null,
-            assignees: item.assignees || [],
-            original: item, // Store the original item as the original payload
-          }));
-
-          // Filter to only include items where user is author or assignee
-          const filteredSearchItems = searchItemsWithOriginal.filter((item: Record<string, unknown>) => {
-            const user = item.user as { login: string } | null;
-            const assignee = item.assignee as { login: string } | null;
-            const assignees = item.assignees as Array<{ login: string }> | null;
-
-            const isAuthor = user?.login?.toLowerCase() === singleUsername.toLowerCase();
-            const isAssignee = assignee?.login?.toLowerCase() === singleUsername.toLowerCase();
-            const isInAssignees = assignees?.some(a => a.login?.toLowerCase() === singleUsername.toLowerCase()) ?? false;
-
-            return isAuthor || isAssignee || isInAssignees;
-          });
-
-          allSearchItems.push(...filteredSearchItems);
-          onProgress(`Fetched issues/PRs for ${singleUsername}`);
+          onProgress(`Fetched ${totalSearchItems} issues/PRs for ${singleUsername}`);
 
            // Fetch all events with pagination
            const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);

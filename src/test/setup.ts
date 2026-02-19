@@ -29,7 +29,6 @@ vi.mock('../App', async () => {
       setGithubToken: vi.fn(),
       setApiMode: vi.fn(),
       handleSearch: vi.fn(),
-      handleUsernameBlur: vi.fn(),
       validateUsernameFormat: vi.fn(),
       loading: false,
       loadingProgress: '',

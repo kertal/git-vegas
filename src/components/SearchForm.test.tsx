@@ -24,7 +24,6 @@ const mockSetStartDate = vi.fn();
 const mockSetEndDate = vi.fn();
 const mockSetApiMode = vi.fn();
 const mockHandleSearch = vi.fn();
-const mockHandleUsernameBlur = vi.fn();
 const mockValidateUsernameFormat = vi.fn();
 const mockAddAvatarsToCache = vi.fn();
 
@@ -39,7 +38,6 @@ vi.mock('../App', () => ({
     apiMode: 'events' as const,
     setApiMode: mockSetApiMode,
     handleSearch: mockHandleSearch,
-    handleUsernameBlur: mockHandleUsernameBlur,
     validateUsernameFormat: mockValidateUsernameFormat,
     addAvatarsToCache: mockAddAvatarsToCache,
     loading: false,
@@ -123,15 +121,6 @@ describe('SearchForm', () => {
     await waitFor(() => {
       expect(localStorageMock.setItem).toHaveBeenCalledWith('github-username', 'testuser');
     });
-  });
-
-  it('calls handleUsernameBlur on blur event', () => {
-    render(<SearchForm />);
-    const usernameInput = screen.getByPlaceholderText(/Enter usernames/);
-    
-    fireEvent.blur(usernameInput);
-    
-    expect(mockHandleUsernameBlur).toHaveBeenCalledTimes(1);
   });
 
   it('calls handleSearch on form submit', () => {

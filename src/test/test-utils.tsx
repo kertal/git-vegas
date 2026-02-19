@@ -16,7 +16,6 @@ const mockFormContext: FormContextType = {
   setGithubToken: vi.fn(),
   setApiMode: vi.fn(),
   handleSearch: vi.fn(),
-  handleUsernameBlur: vi.fn(),
   validateUsernameFormat: vi.fn(),
   addAvatarsToCache: vi.fn(),
   loading: false,

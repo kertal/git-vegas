@@ -114,7 +114,6 @@ describe('useGitHubFormState - URL Parameter Processing', () => {
     expect(result.current).toHaveProperty('setEndDate');
     expect(result.current).toHaveProperty('setGithubToken');
     expect(result.current).toHaveProperty('setApiMode');
-    expect(result.current).toHaveProperty('handleUsernameBlur');
     expect(result.current).toHaveProperty('validateUsernameFormat');
     expect(result.current).toHaveProperty('error');
     expect(result.current).toHaveProperty('setError');

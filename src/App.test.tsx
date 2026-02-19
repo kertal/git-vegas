@@ -47,7 +47,6 @@ vi.mock('./hooks/useGitHubFormState', () => ({
     setEndDate: vi.fn(),
     setGithubToken: vi.fn(),
     setApiMode: vi.fn(),
-    handleUsernameBlur: vi.fn(),
     validateUsernameFormat: vi.fn(),
     error: null,
     setError: vi.fn(),

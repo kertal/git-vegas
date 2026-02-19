@@ -83,13 +83,6 @@ export const validateGitHubUsernameFormat = (
     return { isValid: false, error: 'Username cannot be empty' };
   }
 
-  if (trimmed.length < 1) {
-    return {
-      isValid: false,
-      error: 'Username must be at least 1 character long',
-    };
-  }
-
   if (trimmed.length > 39) {
     return {
       isValid: false,
