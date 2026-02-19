@@ -5,9 +5,9 @@ import { ThemeProvider } from '@primer/react';
 import IssuesAndPRsList from '../IssuesAndPRsList';
 import { GitHubItem } from '../../types';
 
-// Mock useFormContext
-vi.mock('../../App', () => ({
-  useFormContext: () => ({
+// Mock zustand form store
+vi.mock('../../store/useFormStore', () => ({
+  useFormStore: () => ({
     searchText: '',
     setSearchText: vi.fn(),
   }),

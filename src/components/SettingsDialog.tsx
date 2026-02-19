@@ -11,7 +11,7 @@ import {
   Link,
 } from '@primer/react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { useFormContext } from '../App';
+import { useFormStore } from '../store/useFormStore';
 import { SettingsDialogProps } from '../types';
 import { clearAllGitHubData } from '../utils/storageUtils';
 import { eventsStorage } from '../utils/indexedDB';
@@ -22,7 +22,7 @@ const SettingsDialog = memo(function SettingsDialog({
   onClearEvents,
   onClearSearchItems,
 }: SettingsDialogProps) {
-  const { githubToken, setGithubToken } = useFormContext();
+  const { githubToken, setGithubToken } = useFormStore();
   const [tokenStorage, setTokenStorage] = useLocalStorage(
     'github-token-storage',
     'session'

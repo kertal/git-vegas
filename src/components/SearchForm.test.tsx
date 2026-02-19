@@ -18,7 +18,7 @@ vi.mock('../utils', () => ({
   },
 }));
 
-// Mock the useFormContext hook
+// Mock the zustand form store
 const mockSetUsername = vi.fn();
 const mockSetStartDate = vi.fn();
 const mockSetEndDate = vi.fn();
@@ -27,8 +27,8 @@ const mockHandleSearch = vi.fn();
 const mockValidateUsernameFormat = vi.fn();
 const mockAddAvatarsToCache = vi.fn();
 
-vi.mock('../App', () => ({
-  useFormContext: () => ({
+vi.mock('../store/useFormStore', () => ({
+  useFormStore: () => ({
     username: '',
     setUsername: mockSetUsername,
     startDate: '2024-01-01',

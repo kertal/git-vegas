@@ -183,63 +183,6 @@ export interface GollumEventPayload {
   }>;
 }
 
-// Context Types
-export interface FormContextType {
-  username: string;
-  startDate: string;
-  endDate: string;
-  githubToken: string;
-  apiMode: 'search' | 'events' | 'summary';
-  setUsername: (value: string) => void;
-  setStartDate: (value: string) => void;
-  setEndDate: (value: string) => void;
-  setGithubToken: (value: string) => void;
-  setApiMode: (value: 'search' | 'events' | 'summary') => void;
-  handleSearch: (forceRefresh?: boolean) => void;
-  validateUsernameFormat: (username: string) => void;
-  addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
-  loading: boolean;
-  loadingProgress: string;
-  error: string | null;
-  // Counts for navigation tabs
-  searchItemsCount: number;
-  eventsCount: number;
-  rawEventsCount?: number;
-}
-
-export interface ResultsContextType {
-  results: GitHubItem[];
-  filteredResults: GitHubItem[];
-  filter: 'all' | 'issue' | 'pr' | 'comment';
-  statusFilter: 'all' | 'open' | 'closed' | 'merged';
-  includedLabels: string[];
-  excludedLabels: string[];
-  searchText: string;
-  repoFilters: string[];
-  userFilter: string;
-  availableLabels: string[];
-  setFilter: (filter: 'all' | 'issue' | 'pr' | 'comment') => void;
-  setStatusFilter: (status: 'all' | 'open' | 'closed' | 'merged') => void;
-  setIncludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
-  setExcludedLabels: React.Dispatch<React.SetStateAction<string[]>>;
-  setSearchText: (searchText: string) => void;
-  toggleDescriptionVisibility: (id: number) => void;
-  toggleExpand: (id: number) => void;
-  copyResultsToClipboard: (format: 'detailed' | 'compact') => void;
-  descriptionVisible: { [id: number]: boolean };
-  expanded: { [id: number]: boolean };
-  clipboardMessage: string | null;
-  isCompactView: boolean;
-  setIsCompactView: (value: boolean) => void;
-  selectedItems: Set<string | number>;
-  toggleItemSelection: (id: string | number) => void;
-  selectAllItems: () => void;
-  clearSelection: () => void;
-  setRepoFilters: React.Dispatch<React.SetStateAction<string[]>>;
-  setUserFilter: React.Dispatch<React.SetStateAction<string>>;
-  isClipboardCopied: (itemId: string | number) => boolean;
-}
-
 // Component Props Types
 export interface SlotMachineLoaderProps {
   avatarUrls: string[];

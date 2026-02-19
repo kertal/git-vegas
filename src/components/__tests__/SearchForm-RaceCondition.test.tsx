@@ -25,9 +25,9 @@ vi.mock('../../utils', () => ({
   ),
 }));
 
-// Mock the form context
-vi.mock('../../App', () => ({
-  useFormContext: () => ({
+// Mock the zustand form store
+vi.mock('../../store/useFormStore', () => ({
+  useFormStore: () => ({
     username: 'testuser',
     setUsername: mockSetUsername,
     startDate: '2024-01-01',

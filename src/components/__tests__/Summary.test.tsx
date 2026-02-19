@@ -4,13 +4,13 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import SummaryView from '../../views/Summary';
 import { GitHubItem, GitHubEvent } from '../../types';
 
-// Mock the form context
-const mockFormContext = {
+// Mock the zustand form store
+const mockFormStore = {
   githubToken: 'test-token',
   startDate: '2024-01-01',
   endDate: '2024-01-31',
   username: 'testuser',
-      apiMode: 'summary' as const,
+  apiMode: 'summary' as const,
   setUsername: vi.fn(),
   setStartDate: vi.fn(),
   setEndDate: vi.fn(),
@@ -26,9 +26,8 @@ const mockFormContext = {
   rawEventsCount: 0,
 };
 
-// Mock the useFormContext hook
-vi.mock('../../App', () => ({
-  useFormContext: () => mockFormContext,
+vi.mock('../../store/useFormStore', () => ({
+  useFormStore: () => mockFormStore,
 }));
 
 // Mock the useDebouncedSearch hook

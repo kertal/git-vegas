@@ -21,7 +21,7 @@ import { GitHubItem, getItemId } from '../types';
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
 import { useListSelection } from '../hooks/useListSelection';
 import { useDialogNavigation } from '../hooks/useDialogNavigation';
-import { useFormContext } from '../App';
+import { useFormStore } from '../store/useFormStore';
 
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 import { sortItemsByUpdatedDate, filterItemsByAdvancedSearch } from '../utils/viewFiltering';
@@ -112,7 +112,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 }: {
   results: GitHubItem[];
 }) {
-  const { searchText, setSearchText } = useFormContext();
+  const { searchText, setSearchText } = useFormStore();
 
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('issuesAndPRs-collapsedSections', new Set());
 
