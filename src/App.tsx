@@ -1,6 +1,6 @@
 import {
   useState,
-  useEffect,  
+  useEffect,
   useCallback,
   useMemo,
   createContext,
@@ -15,6 +15,7 @@ import { useGitHubDataFetching } from './hooks/useGitHubDataFetching';
 import { useGitHubDataProcessing } from './hooks/useGitHubDataProcessing';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
 import { GitHubItem } from './types';
+import { isTestEnvironment } from './utils/environment';
 
 import SearchForm from './components/SearchForm';
 import IssuesAndPRsList from './views/IssuesAndPRsList';
@@ -42,12 +43,9 @@ interface FormContextType {
   setStartDate: (date: string) => void;
   setEndDate: (date: string) => void;
   setGithubToken: (token: string) => void;
-  setApiMode: (
-    mode: 'search' | 'events' | 'summary'
-  ) => void;
+  setApiMode: (mode: 'search' | 'events' | 'summary') => void;
   setSearchText: (searchText: string) => void;
   handleSearch: () => void;
-  handleUsernameBlur: () => void;
   validateUsernameFormat: (username: string) => void;
   addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   loading: boolean;
@@ -69,15 +67,9 @@ export function useFormContext() {
   return context;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const buttonStyles = {
-  height: 28,
-  minWidth: 0,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 2,
-};
+// Pure comparator for case-insensitive string sorting (outside component to avoid re-creation)
+const caseInsensitiveCompare = (a: string, b: string): number =>
+  a.toLowerCase().localeCompare(b.toLowerCase());
 
 function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -97,7 +89,6 @@ function App() {
     setEndDate,
     setGithubToken,
     setApiMode,
-    handleUsernameBlur,
     validateUsernameFormat,
     addAvatarsToCache,
     error,
@@ -154,19 +145,6 @@ function App() {
     clearSearchItems,
   });
 
-  const avatarUrls = useMemo(() => {
-    // Prioritize cached avatar URLs if they exist, otherwise return empty array
-    // Only return non-empty arrays to prevent unnecessary re-renders
-    if (cachedAvatarUrls && cachedAvatarUrls.length > 0) {
-      return cachedAvatarUrls;
-    }
-    return [];
-  }, [cachedAvatarUrls]);
-
-  // Pure comparator for case-insensitive string sorting
-  const caseInsensitiveCompare = (a: string, b: string): number =>
-    a.toLowerCase().localeCompare(b.toLowerCase());
-
   // Extract unique users from results for search suggestions (with avatars)
   const availableUsers = useMemo(() => {
     const seen = new Set<string>();
@@ -185,7 +163,6 @@ function App() {
 
   // Extract labels from results sorted by frequency (most used first)
   const availableLabels = useMemo(() => {
-    // Build frequency map using reduce (functional approach)
     const labelCounts = results
       .flatMap(item => item.labels?.map(label => label.name) ?? [])
       .reduce((acc, label) => {
@@ -193,7 +170,6 @@ function App() {
         return acc;
       }, new Map<string, number>());
 
-    // Sort by frequency (descending), then alphabetically for ties
     return Array.from(labelCounts.entries())
       .sort((a, b) => b[1] - a[1] || caseInsensitiveCompare(a[0], b[0]))
       .map(([label]) => label);
@@ -216,27 +192,18 @@ function App() {
 
   useEffect(() => {
     if (initialLoadingCount === 1) {
-      // Skip initial loading in test environment
-      const isTestEnvironment = typeof window !== 'undefined' && 
-        (window.navigator?.userAgent?.includes('jsdom') || 
-         process.env.NODE_ENV === 'test' ||
-         import.meta.env?.MODE === 'test');
-      
-      if (isTestEnvironment) {
-        // In tests, immediately exit loading mode
+      if (isTestEnvironment()) {
         setInitialLoadingCount(0);
         setIsDataLoadingComplete(false);
         return;
       }
-      
+
       const startTime = Date.now();
-      const minLoadingTime = 3000; // 3 seconds minimum for better UX
-      
+      const minLoadingTime = 3000;
+
       handleSearch().then(() => {
         const elapsedTime = Date.now() - startTime;
         const remainingTime = Math.max(0, minLoadingTime - elapsedTime);
-        
-        // Instead of automatically switching, mark data loading as complete
         setTimeout(() => {
           setIsDataLoadingComplete(true);
         }, remainingTime);
@@ -266,7 +233,6 @@ function App() {
           },
         }}
       >
-        {/* GitVegas Branding - Vertical Layout */}
         <Box
           sx={{
             display: 'flex',
@@ -276,29 +242,19 @@ function App() {
             mb: 4,
           }}
         >
-          {/* GitVegas Title */}
           <Box sx={{ fontSize: [30, 100], fontWeight: 'bold', color: 'fg.default', mb: 4 }}>
             GitVegas
           </Box>
-          
-          {/* Slot Machine */}
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mb: 4,
-            }}
-          >
+
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 4 }}>
             <SlotMachineLoader
-              avatarUrls={avatarUrls}
+              avatarUrls={cachedAvatarUrls}
               isLoading={loading}
               isManuallySpinning={isManuallySpinning}
               size="huge"
             />
           </Box>
-          
-          {/* Start Button */}
+
           <Box
             sx={{
               display: 'flex',
@@ -352,14 +308,13 @@ function App() {
               🕹️ {isDataLoadingComplete && !loading ? 'Start' : 'Loading...'}
             </Button>
           </Box>
-          
-          {/* Messages - Fixed height to prevent layout jumping */}
-          <Box sx={{ 
-            minHeight: '120px', // Fixed height to prevent jumping
+
+          <Box sx={{
+            minHeight: '120px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
           }}>
             <LoadingIndicator
               loadingProgress={loadingProgress}
@@ -408,14 +363,12 @@ function App() {
             <PageHeader.Title>GitVegas</PageHeader.Title>
           </PageHeader.TitleArea>
           <PageHeader.Actions>
-            {/* Loading indicator - always visible */}
             <LoadingIndicator
               loadingProgress={isEnriching ? 'Enriching PR details...' : loadingProgress}
               isLoading={loading || isEnriching}
               currentUsername={currentUsername}
             />
-            
-            {/* Header search */}
+
             <HeaderSearch
               searchText={searchText}
               onSearchChange={setSearchText}
@@ -423,42 +376,34 @@ function App() {
               availableLabels={availableLabels}
               availableRepos={availableRepos}
             />
-            
-            {/* Mobile-optimized actions */}
+
             <Box
               sx={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 2,
-                // Hide share button on mobile to save space
                 '@media (max-width: 767px)': {
                   '& > :first-child': { display: 'none' },
                 },
               }}
             >
-              <ShareButton
-                formSettings={formSettings}
-                size="medium"
-              />
+              <ShareButton formSettings={formSettings} size="medium" />
               <IconButton
                 icon={GearIcon}
                 aria-label="Settings"
                 onClick={() => setIsSettingsOpen(true)}
               />
             </Box>
-            
-            {/* Slot machine - smaller on mobile */}
+
             <Box
               sx={{
                 '@media (max-width: 767px)': {
-                  '& .slot-machine': {
-                    transform: 'scale(0.8)',
-                  },
+                  '& .slot-machine': { transform: 'scale(0.8)' },
                 },
               }}
             >
               <SlotMachineLoader
-                avatarUrls={avatarUrls}
+                avatarUrls={cachedAvatarUrls}
                 isLoading={loading}
                 isManuallySpinning={isManuallySpinning}
                 size="small"
@@ -468,13 +413,11 @@ function App() {
         </PageHeader>
       </PageLayout.Header>
 
-      <PageLayout.Content 
-        sx={{ 
+      <PageLayout.Content
+        sx={{
           px: 3,
           py: 1,
-          '@media (max-width: 767px)': {
-            px: 2,
-          },
+          '@media (max-width: 767px)': { px: 2 },
         }}
       >
         <FormContext.Provider
@@ -492,7 +435,6 @@ function App() {
             setApiMode,
             setSearchText,
             handleSearch,
-            handleUsernameBlur,
             validateUsernameFormat,
             addAvatarsToCache,
             loading,
@@ -510,12 +452,10 @@ function App() {
             <SummaryView
               items={results}
               rawEvents={indexedDBEvents}
-              indexedDBSearchItems={
-                indexedDBSearchItems as unknown as GitHubItem[]
-              }
+              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
             />
           ) : (
-            <IssuesAndPRsList results={results} buttonStyles={buttonStyles} />
+            <IssuesAndPRsList results={results} />
           )}
 
           <SettingsDialog
@@ -547,7 +487,6 @@ function App() {
         </Box>
       </PageLayout.Footer>
 
-      {/* PWA Update Notification */}
       <PWAUpdateNotification />
     </PageLayout>
   );

@@ -20,7 +20,6 @@ interface UseGitHubFormStateReturn {
   setEndDate: (endDate: string) => void;
   setGithubToken: (githubToken: string) => void;
   setApiMode: (apiMode: 'search' | 'events' | 'summary') => void;
-  handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
   addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   error: string | null;
@@ -226,12 +225,6 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
     []
   );
 
-  // Handle username blur event
-  const handleUsernameBlur = useCallback(async () => {
-    // This can be used for additional validation if needed
-    // Currently, immediate validation is handled in the useEffect above
-  }, []);
-
   return {
     formSettings,
     setFormSettings,
@@ -240,7 +233,6 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
     setEndDate,
     setGithubToken,
     setApiMode,
-    handleUsernameBlur,
     validateUsernameFormat,
     addAvatarsToCache,
     error,

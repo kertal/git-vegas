@@ -1,4 +1,4 @@
-import { GitHubItem } from '../types';
+import { GitHubItem, getItemId } from '../types';
 
 /**
  * Creates a formatted group data structure for clipboard operations
@@ -14,12 +14,11 @@ export const formatGroupedDataForClipboard = (
       items,
     }));
 
-  // Filter to only selected items if any are selected
   if (selectedItems && selectedItems.size > 0) {
     groupedData = groupedData
       .map(({ groupName, items }) => ({
         groupName,
-        items: items.filter(item => selectedItems.has(item.event_id || item.id)),
+        items: items.filter(item => selectedItems.has(getItemId(item))),
       }))
       .filter(({ items }) => items.length > 0);
   }
@@ -35,30 +34,6 @@ export const getAllDisplayedItems = (actionGroups: Record<string, GitHubItem[]>)
 };
 
 /**
- * Checks if any groups have items
- */
-export const hasAnyItems = (actionGroups: Record<string, GitHubItem[]>): boolean => {
-  return Object.values(actionGroups).some(items => items.length > 0);
-};
-
-/**
- * Gets total count of all items across groups
- */
-export const getTotalItemCount = (actionGroups: Record<string, GitHubItem[]>): number => {
-  return Object.values(actionGroups).reduce((total, items) => total + items.length, 0);
-};
-
-/**
- * Checks if a section should be collapsed based on stored preferences
- */
-export const isSectionCollapsed = (
-  sectionName: string, 
-  collapsedSections: Set<string>
-): boolean => {
-  return collapsedSections.has(sectionName);
-};
-
-/**
  * Gets the select all state for a specific group
  */
 export const getGroupSelectState = (
@@ -69,8 +44,8 @@ export const getGroupSelectState = (
     return { checked: false, indeterminate: false };
   }
 
-  const selectedCount = groupItems.filter(item => 
-    selectedItems.has(item.event_id || item.id)
+  const selectedCount = groupItems.filter(item =>
+    selectedItems.has(getItemId(item))
   ).length;
 
   if (selectedCount === 0) {
@@ -80,4 +55,4 @@ export const getGroupSelectState = (
   } else {
     return { checked: false, indeterminate: true };
   }
-}; 
+};

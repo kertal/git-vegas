@@ -48,6 +48,9 @@ export interface GitHubItem {
   originalEventType?: string; // Original GitHub event type (e.g., 'PullRequestReviewEvent')
 }
 
+/** Returns the unique identifier for a GitHubItem (event_id if present, otherwise id). */
+export const getItemId = (item: GitHubItem): string | number => item.event_id || item.id;
+
 // Raw data storage types
 export interface RawDataStorage {
   // Raw events from GitHub Events API (legacy - now stored in IndexedDB)
@@ -193,7 +196,6 @@ export interface FormContextType {
   setGithubToken: (value: string) => void;
   setApiMode: (value: 'search' | 'events' | 'summary') => void;
   handleSearch: (forceRefresh?: boolean) => void;
-  handleUsernameBlur: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
   addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   loading: boolean;

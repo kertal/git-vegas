@@ -1,14 +1,16 @@
-import { memo, useMemo, useState, useCallback, useEffect } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 import {
   Text,
   Checkbox,
   Box,
   Pagination,
 } from '@primer/react';
-import { GitHubItem, GitHubEvent } from '../types';
+import { GitHubItem, GitHubEvent, getItemId } from '../types';
 import { ResultsContainer } from '../components/ResultsContainer';
 
 import { useCopyFeedback } from '../hooks/useCopyFeedback';
+import { useListSelection } from '../hooks/useListSelection';
+import { useDialogNavigation } from '../hooks/useDialogNavigation';
 import { filterItemsByAdvancedSearch, sortItemsByUpdatedDate } from '../utils/viewFiltering';
 import { copyResultsToClipboard as copyToClipboard } from '../utils/clipboard';
 
@@ -22,8 +24,6 @@ import { useLocalStorage } from '../hooks/useLocalStorage';
 import { DismissibleBanner } from '../components/DismissibleBanner';
 import { useFormContext } from '../App';
 
-
-
 interface EventViewProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
@@ -33,212 +33,103 @@ const EventView = memo(function EventView({
   items,
   rawEvents = [],
 }: EventViewProps) {
-  // Get shared search text from form context
   const { searchText, setSearchText } = useFormContext();
 
-  
-  // Internal state for selection
-  const [selectedItems, setSelectedItems] = useLocalStorage<Set<string | number>>('eventView-selectedItems', new Set());
-  
   // Pagination state
   const [currentPage, setCurrentPage] = useLocalStorage<number>('eventView-currentPage', 1);
   const itemsPerPage = 100;
 
-  // Filter and sort items using utility functions
+  // Filter and sort items
   const filteredItems = filterItemsByAdvancedSearch(items, searchText);
   const sortedItems = sortItemsByUpdatedDate(filteredItems);
-  
-  // Internal selection handlers
-  const toggleItemSelection = useCallback((id: string | number) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  }, []);
 
-  const clearSelection = useCallback(() => {
-    setSelectedItems(new Set());
-  }, []);
+  // Shared hooks
+  const {
+    selectedItems, toggleItemSelection, selectAllItems, clearSelection,
+    selectAllState,
+  } = useListSelection('eventView-selectedItems', sortedItems);
 
-  // Use copy feedback hook
+  const {
+    selectedItemForDialog, setSelectedItemForDialog,
+    handlePreviousItem, handleNextItem, hasPrevious, hasNext,
+  } = useDialogNavigation(sortedItems);
+
   const { isCopied, triggerCopy } = useCopyFeedback(2000);
 
   // Reset to first page when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchText]);
+  }, [searchText, setCurrentPage]);
 
-  // Calculate pagination
+  // Pagination
   const totalPages = Math.ceil(sortedItems.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedItems = sortedItems.slice(startIndex, endIndex);
+  const paginatedItems = sortedItems.slice(startIndex, startIndex + itemsPerPage);
 
-  // Handle page change
-  const handlePageChange = useCallback((_event: React.MouseEvent, page: number) => {
-    setCurrentPage(page);
-  }, []);
-
-  // Select all items across all pages
-  const selectAllItems = useCallback(() => {
-    setSelectedItems(new Set(sortedItems.map((item: GitHubItem) => item.event_id || item.id)));
-  }, [sortedItems]);
-
-  // Internal copy handler for content
+  // Copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
     const selectedItemsArray =
       selectedItems.size > 0
         ? sortedItems.filter((item: GitHubItem) =>
-            selectedItems.has(item.event_id || item.id)
+            selectedItems.has(getItemId(item))
           )
         : sortedItems;
 
     await copyToClipboard(selectedItemsArray, {
       isCompactView: format === 'compact',
-      onSuccess: () => {
-        // Trigger visual feedback via copy feedback system
-        triggerCopy(format);
-      },
-      onError: (error: Error) => {
-        console.error('Failed to copy results:', error);
-      },
+      onSuccess: () => triggerCopy(format),
+      onError: (error: Error) => console.error('Failed to copy results:', error),
     });
-  }, [sortedItems, selectedItems, triggerCopy]);
+  }, [selectedItems, sortedItems, triggerCopy]);
 
-
-
-  // Clipboard feedback helper
-  const isClipboardCopied = useCallback((itemId: string | number) => {
-    return isCopied(itemId);
-  }, [isCopied]);
-
-  // Calculate select all checkbox state
-  const selectAllState = useMemo(() => {
-    if (sortedItems.length === 0) {
-      return { checked: false, indeterminate: false };
-    }
-
-    const selectedCount = sortedItems.filter(item =>
-      selectedItems.has(item.event_id || item.id)
-    ).length;
-
-    if (selectedCount === 0) {
-      return { checked: false, indeterminate: false };
-    } else if (selectedCount === sortedItems.length) {
-      return { checked: true, indeterminate: false };
-    } else {
-      return { checked: false, indeterminate: true };
-    }
-  }, [sortedItems, selectedItems]);
-
-  // Handle select all checkbox click
+  // Select all toggle
   const handleSelectAllChange = () => {
-    const selectedCount = sortedItems.filter((item: GitHubItem) =>
-      selectedItems.has(item.event_id || item.id)
-    ).length;
-
-    if (selectedCount === sortedItems.length) {
-      // All are selected, clear selection
+    if (selectAllState.checked) {
       clearSelection();
     } else {
-      // Some or none are selected, select all
       selectAllItems();
     }
   };
 
-  // Description dialog state and handlers
-  const [selectedItemForDialog, setSelectedItemForDialog] =
-    useState<GitHubItem | null>(null);
-
-
-
-  // Check if we have no results but should show different messages
   const hasRawEvents = rawEvents && rawEvents.length > 0;
   const hasSearchText = searchText && searchText.trim().length > 0;
 
-  // Dialog navigation handlers
-  const handlePreviousItem = () => {
-    if (!selectedItemForDialog) return;
-    const currentIndex = sortedItems.findIndex(
-      item => item.id === selectedItemForDialog.id
-    );
-    if (currentIndex > 0) {
-      setSelectedItemForDialog(sortedItems[currentIndex - 1]);
-    }
-  };
-
-  const handleNextItem = () => {
-    if (!selectedItemForDialog) return;
-    const currentIndex = sortedItems.findIndex(
-      (item: GitHubItem) => item.id === selectedItemForDialog.id
-    );
-    if (currentIndex < sortedItems.length - 1) {
-      setSelectedItemForDialog(sortedItems[currentIndex + 1]);
-    }
-  };
-
-  const getCurrentItemIndex = () => {
-    if (!selectedItemForDialog) return -1;
-    return sortedItems.findIndex((item: GitHubItem) => item.id === selectedItemForDialog.id);
-  };
-
-  // Header left content
-  const headerLeft = (
-    <>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Checkbox
-          checked={selectAllState.checked}
-          indeterminate={selectAllState.indeterminate}
-          onChange={handleSelectAllChange}
-          aria-label="Select all events"
-          disabled={sortedItems.length === 0}
-        />
-        <Text
-          sx={{
-            fontSize: 1,
-            color: 'fg.default',
-            m: 0,
-          }}
-        >
-          Select All
-          {totalPages > 1 && (
-            <Text as="span" sx={{ fontSize: 1, color: 'fg.muted', ml: 2 }}>
-              (Page {currentPage} of {totalPages})
-            </Text>
-          )}
-        </Text>
-      </Box>
-      <BulkCopyButtons
-        selectedItems={selectedItems}
-        totalItems={sortedItems.length}
-        isCopied={isClipboardCopied}
-        onCopy={copyResultsToClipboard}
-        showOnlyWhenSelected={true}
-      />
-
-    </>
-  );
-
-  // Header right content
-  const headerRight = null;
-
   return (
     <ResultsContainer
-      headerLeft={headerLeft}
-      headerRight={headerRight}
+      headerLeft={
+        <>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Checkbox
+              checked={selectAllState.checked}
+              indeterminate={selectAllState.indeterminate}
+              onChange={handleSelectAllChange}
+              aria-label="Select all events"
+              disabled={sortedItems.length === 0}
+            />
+            <Text sx={{ fontSize: 1, color: 'fg.default', m: 0 }}>
+              Select All
+              {totalPages > 1 && (
+                <Text as="span" sx={{ fontSize: 1, color: 'fg.muted', ml: 2 }}>
+                  (Page {currentPage} of {totalPages})
+                </Text>
+              )}
+            </Text>
+          </Box>
+          <BulkCopyButtons
+            selectedItems={selectedItems}
+            totalItems={sortedItems.length}
+            isCopied={isCopied}
+            onCopy={copyResultsToClipboard}
+            showOnlyWhenSelected={true}
+          />
+        </>
+      }
       className="timeline-view"
     >
-      {/* API Limitation Note */}
       <DismissibleBanner bannerId="events-api-limitation">
         <strong>Note:</strong> Events includes up to 300 events from the past 30 days. Event latency can be 30s to 6h depending on time of day.
       </DismissibleBanner>
 
-      {/* Timeline content */}
       <div className="timeline-content">
         {sortedItems.length === 0 ? (
           <EmptyState
@@ -248,35 +139,26 @@ const EventView = memo(function EventView({
             onClearSearch={() => setSearchText('')}
           />
         ) : (
-          // Standard timeline view
           <>
             {paginatedItems.map((item: GitHubItem, index: number) => (
               <ItemRow
                 key={`${item.id}-${index}`}
                 item={item}
                 onShowDescription={setSelectedItemForDialog}
-                selected={selectedItems.has(item.event_id || item.id)}
+                selected={selectedItems.has(getItemId(item))}
                 onSelect={toggleItemSelection}
-                showCheckbox={!!toggleItemSelection}
+                showCheckbox={true}
                 showRepo={true}
-                showUser={true}
                 showTime={true}
                 size="small"
               />
             ))}
-            
-            {/* Pagination */}
             {totalPages > 1 && (
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                mt: 4, 
-                pb: 3 
-              }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, pb: 3 }}>
                 <Pagination
                   pageCount={totalPages}
                   currentPage={currentPage}
-                  onPageChange={handlePageChange}
+                  onPageChange={(_event: React.MouseEvent, page: number) => setCurrentPage(page)}
                   showPages={{ narrow: false }}
                   marginPageCount={2}
                   surroundingPageCount={2}
@@ -287,19 +169,16 @@ const EventView = memo(function EventView({
         )}
       </div>
 
-      {/* Description Dialog */}
       <DescriptionDialog
         item={selectedItemForDialog}
         onClose={() => setSelectedItemForDialog(null)}
         onPrevious={handlePreviousItem}
         onNext={handleNextItem}
-        hasPrevious={getCurrentItemIndex() > 0}
-        hasNext={getCurrentItemIndex() < sortedItems.length - 1}
+        hasPrevious={hasPrevious}
+        hasNext={hasNext}
       />
-
-
     </ResultsContainer>
   );
 });
 
-export default EventView; 
+export default EventView;

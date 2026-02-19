@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getParamFromUrl, isValidDateString, validateUsernameList } from '../utils';
 import { FormSettings } from '../types';
+import { isTestEnvironment } from '../utils/environment';
 
 // Enhanced serialization that handles Set and Map objects
 function serializeValue<T>(value: T): string {
@@ -128,13 +129,7 @@ export function useFormSettings(key: string, initialValue: FormSettings, onUrlPa
       
       // Clear caches and data in background when loading with URL parameters (shared links)
       // This ensures fresh data for subsequent usage
-      // Only do this in production environment, not in tests
-      const isTestEnvironment = typeof window !== 'undefined' && 
-        (window.navigator?.userAgent?.includes('jsdom') || 
-         process.env.NODE_ENV === 'test' ||
-         import.meta.env?.MODE === 'test');
-         
-      if (!isTestEnvironment) {
+      if (!isTestEnvironment()) {
         // Run cache cleanup in background (don't await to avoid blocking the URL processing)
         (async () => {
           try {

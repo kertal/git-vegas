@@ -1,8 +1,6 @@
 import {
   filterItemsByAdvancedSearch,
   sortItemsByUpdatedDate,
-  parseCommaSeparatedUsernames,
-  isItemAuthoredBySearchedUsers
 } from '../viewFiltering';
 import { GitHubItem } from '../../types';
 
@@ -109,47 +107,4 @@ describe('viewFiltering utilities', () => {
     });
   });
 
-  describe('parseCommaSeparatedUsernames', () => {
-    it('should parse single username', () => {
-      const result = parseCommaSeparatedUsernames('alice');
-      expect(result).toEqual(['alice']);
-    });
-
-    it('should parse multiple usernames', () => {
-      const result = parseCommaSeparatedUsernames('alice,bob,charlie');
-      expect(result).toEqual(['alice', 'bob', 'charlie']);
-    });
-
-    it('should trim whitespace and convert to lowercase', () => {
-      const result = parseCommaSeparatedUsernames(' Alice , Bob , Charlie ');
-      expect(result).toEqual(['alice', 'bob', 'charlie']);
-    });
-
-    it('should handle empty strings', () => {
-      const result = parseCommaSeparatedUsernames('');
-      expect(result).toEqual(['']);
-    });
-  });
-
-  describe('isItemAuthoredBySearchedUsers', () => {
-    const item = createMockItem({ user: { login: 'Alice', avatar_url: '', html_url: '' } });
-
-    it('should return true when user is in searched usernames', () => {
-      const searchedUsers = ['alice', 'bob'];
-      const result = isItemAuthoredBySearchedUsers(item, searchedUsers);
-      expect(result).toBe(true);
-    });
-
-    it('should return false when user is not in searched usernames', () => {
-      const searchedUsers = ['bob', 'charlie'];
-      const result = isItemAuthoredBySearchedUsers(item, searchedUsers);
-      expect(result).toBe(false);
-    });
-
-    it('should be case insensitive', () => {
-      const searchedUsers = ['ALICE'];
-      const result = isItemAuthoredBySearchedUsers(item, searchedUsers);
-      expect(result).toBe(true);
-    });
-  });
 }); 
