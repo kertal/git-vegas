@@ -1,4 +1,4 @@
-import { memo, useMemo, useCallback } from 'react';
+import React, { memo, useMemo, useCallback, useEffect } from 'react';
 import {
   Text,
   Button,
@@ -6,6 +6,7 @@ import {
   Checkbox,
   Box,
   Token,
+  Pagination,
 } from '@primer/react';
 import {
   ChevronDownIcon,
@@ -75,6 +76,23 @@ const SummaryView = memo(function SummaryView({
   const { startDate, endDate, searchText, setSearchText } = useFormContext();
 
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('summary-collapsedSections', new Set());
+
+  // Per-section pagination state
+  const [sectionPages, setSectionPages] = useLocalStorage<Record<string, number>>('summary-sectionPages', {});
+  const itemsPerPage = 100;
+
+  const getSectionPage = useCallback((sectionName: string) => {
+    return sectionPages[sectionName] || 1;
+  }, [sectionPages]);
+
+  const setSectionPage = useCallback((sectionName: string, page: number) => {
+    setSectionPages(prev => ({ ...prev, [sectionName]: page }));
+  }, [setSectionPages]);
+
+  // Reset pagination when search changes
+  useEffect(() => {
+    setSectionPages({});
+  }, [searchText, setSectionPages]);
 
   // Filter and sort items
   const filteredItems = filterItemsByAdvancedSearch(items, searchText);
@@ -248,25 +266,45 @@ const SummaryView = memo(function SummaryView({
                     </Button>
                   </Box>
                 </div>
-                {!isCollapsed && (
-                  <div className="timeline-section-content">
-                    {Object.entries(urlGroups).map(([url, items]) => {
-                      const mostRecent = getMostRecent(items);
-                      return (
-                        <div key={url} className="timeline-group">
-                          <ItemRow
-                            item={mostRecent}
-                            onShowDescription={setSelectedItemForDialog}
-                            selected={selectedItems.has(getItemId(mostRecent))}
-                            onSelect={toggleItemSelection}
-                            showCheckbox={true}
-                            groupCount={items.length > 1 ? items.length : undefined}
+                {!isCollapsed && (() => {
+                  const urlGroupEntries = Object.entries(urlGroups);
+                  const sectionPage = getSectionPage(groupName);
+                  const sectionTotalPages = Math.ceil(urlGroupEntries.length / itemsPerPage);
+                  const startIndex = (sectionPage - 1) * itemsPerPage;
+                  const paginatedUrlGroups = urlGroupEntries.slice(startIndex, startIndex + itemsPerPage);
+
+                  return (
+                    <div className="timeline-section-content">
+                      {paginatedUrlGroups.map(([url, items]) => {
+                        const mostRecent = getMostRecent(items);
+                        return (
+                          <div key={url} className="timeline-group">
+                            <ItemRow
+                              item={mostRecent}
+                              onShowDescription={setSelectedItemForDialog}
+                              selected={selectedItems.has(getItemId(mostRecent))}
+                              onSelect={toggleItemSelection}
+                              showCheckbox={true}
+                              groupCount={items.length > 1 ? items.length : undefined}
+                            />
+                          </div>
+                        );
+                      })}
+                      {sectionTotalPages > 1 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, pb: 2 }}>
+                          <Pagination
+                            pageCount={sectionTotalPages}
+                            currentPage={sectionPage}
+                            onPageChange={(_e: React.MouseEvent, page: number) => setSectionPage(groupName, page)}
+                            showPages={{ narrow: false }}
+                            marginPageCount={2}
+                            surroundingPageCount={2}
                           />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        </Box>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })
