@@ -6,23 +6,28 @@ import {
   generateShareableUrl,
   copyToClipboard as copyTextToClipboard,
 } from '../utils/urlState';
-import { FormSettings } from '../types';
+import { useFormStore } from '../store/useFormStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface ShareButtonProps {
-  formSettings: FormSettings;
-  searchText?: string;
   size?: 'small' | 'medium' | 'large';
   variant?: 'default' | 'invisible';
   className?: string;
 }
 
 export const ShareButton: React.FC<ShareButtonProps> = ({
-  formSettings,
-  searchText = '',
   size = 'medium',
   variant = 'default',
   className,
 }) => {
+  const formSettings = useFormStore(useShallow((s) => ({
+    username: s.username,
+    startDate: s.startDate,
+    endDate: s.endDate,
+    githubToken: s.githubToken,
+    apiMode: s.apiMode,
+  })));
+
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +38,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       // Extract current app state
       const shareableState = extractShareableState(
         formSettings,
-        searchText
+        ''
       );
 
       // Generate shareable URL
@@ -55,7 +60,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       setError('Failed to generate share link');
       setTimeout(() => setError(null), 3000);
     }
-  }, [formSettings, searchText]);
+  }, [formSettings]);
 
   const tooltipText = error
     ? error

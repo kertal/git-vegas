@@ -4,7 +4,6 @@ import {
   useCallback,
   useMemo,
 } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { PageLayout, PageHeader, Box, IconButton, Button } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 
@@ -39,19 +38,21 @@ function App() {
   const [initialLoadingCount, setInitialLoadingCount] = useState(0);
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [isDataLoadingComplete, setIsDataLoadingComplete] = useState(false);
-  const [searchText, setSearchText] = useLocalStorage('header-search-text', '');
+
+  // Read form state from the zustand store (persisted via middleware)
+  const username = useFormStore((s) => s.username);
+  const startDate = useFormStore((s) => s.startDate);
+  const endDate = useFormStore((s) => s.endDate);
+  const githubToken = useFormStore((s) => s.githubToken);
+  const apiMode = useFormStore((s) => s.apiMode);
+  const searchText = useFormStore((s) => s.searchText);
+  const setSearchText = useFormStore((s) => s.setSearchText);
 
   const handleUrlParamsProcessed = useCallback(() => {
     setInitialLoadingCount(1);
   }, []);
 
   const {
-    formSettings,
-    setUsername,
-    setStartDate,
-    setEndDate,
-    setGithubToken,
-    setApiMode,
     validateUsernameFormat,
     addAvatarsToCache,
     error,
@@ -70,8 +71,6 @@ function App() {
     storeEvents: storeSearchItems,
     clearEvents: clearSearchItems,
   } = useIndexedDBStorage('github-search-items-indexeddb');
-
-  const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
   const {
     results,
@@ -108,21 +107,17 @@ function App() {
     clearSearchItems,
   });
 
-  // Sync state and actions from hooks into the zustand store so that
-  // child components can subscribe to individual slices without a Provider.
+  // Sync derived/async values and callbacks into the store so child
+  // components can subscribe to them (form settings are already in the store).
   useEffect(() => {
     useFormStore.setState({
-      username, startDate, endDate, githubToken, apiMode, searchText,
       loading, loadingProgress, error,
       searchItemsCount, eventsCount, rawEventsCount,
-      setUsername, setStartDate, setEndDate, setGithubToken, setApiMode, setSearchText,
       handleSearch, validateUsernameFormat, addAvatarsToCache,
     });
   }, [
-    username, startDate, endDate, githubToken, apiMode, searchText,
     loading, loadingProgress, error,
     searchItemsCount, eventsCount, rawEventsCount,
-    setUsername, setStartDate, setEndDate, setGithubToken, setApiMode, setSearchText,
     handleSearch, validateUsernameFormat, addAvatarsToCache,
   ]);
 
@@ -368,7 +363,7 @@ function App() {
                 },
               }}
             >
-              <ShareButton formSettings={formSettings} size="medium" />
+              <ShareButton size="medium" />
               <IconButton
                 icon={GearIcon}
                 aria-label="Settings"

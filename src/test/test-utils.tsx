@@ -21,12 +21,14 @@ const mockFormStoreValues: FormStore = {
   handleSearch: vi.fn(),
   validateUsernameFormat: vi.fn(),
   addAvatarsToCache: vi.fn(),
+  _initOnMount: vi.fn(),
   loading: false,
   loadingProgress: '',
   error: null,
   searchItemsCount: 0,
   eventsCount: 0,
   rawEventsCount: 0,
+  _hadUrlParams: false,
 };
 
 /**

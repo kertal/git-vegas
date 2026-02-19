@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import { ThemeProvider } from '@primer/react';
 import ShareButton from './ShareButton';
-import { FormSettings } from '../types';
+import { useFormStore } from '../store/useFormStore';
 
 import * as urlState from '../utils/urlState';
 
@@ -20,29 +20,29 @@ const mockExtractShareableState = urlState.extractShareableState as any;
 const mockGenerateShareableUrl = urlState.generateShareableUrl as any;
 const mockCopyToClipboard = urlState.copyToClipboard as any;
 
-describe('ShareButton', () => {
-  const defaultFormSettings: FormSettings = {
-    username: 'testuser',
-    startDate: '2024-01-01',
-    endDate: '2024-01-31',
-    githubToken: 'token',
-    apiMode: 'search',
-  };
+const defaultFormSettings = {
+  username: 'testuser',
+  startDate: '2024-01-01',
+  endDate: '2024-01-31',
+  githubToken: 'token',
+  apiMode: 'search' as const,
+};
 
+describe('ShareButton', () => {
   const renderShareButton = (props = {}) => {
     return render(
       <ThemeProvider>
-        <ShareButton
-          formSettings={defaultFormSettings}
-          searchText=""
-          {...props}
-        />
+        <ShareButton {...props} />
       </ThemeProvider>
     );
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Seed store with default form settings
+    useFormStore.setState(defaultFormSettings);
+
     mockExtractShareableState.mockReturnValue({
       username: 'testuser',
       startDate: '2024-01-01',
@@ -184,20 +184,6 @@ describe('ShareButton', () => {
     expect(mockGenerateShareableUrl).toHaveBeenCalled();
   });
 
-  it('should pass custom searchText prop', async () => {
-    renderShareButton({ searchText: 'custom search' });
-
-    const button = screen.getByRole('button', { name: /share current state/i });
-    fireEvent.click(button);
-
-    await waitFor(() => {
-      expect(mockExtractShareableState).toHaveBeenCalledWith(
-        defaultFormSettings,
-        'custom search'
-      );
-    });
-  });
-
   it('should apply custom size and variant props', () => {
     renderShareButton({ size: 'small', variant: 'default' });
 
@@ -205,7 +191,6 @@ describe('ShareButton', () => {
     expect(button).toBeInTheDocument();
 
     // Check that the button has the expected attributes
-    // Note: Exact class checking depends on Primer React implementation
     expect(button).toHaveAttribute('data-size', 'small');
   });
 
@@ -216,27 +201,30 @@ describe('ShareButton', () => {
     expect(button).toHaveClass('custom-class');
   });
 
-  it('should handle complex state with filters and settings', async () => {
-    const complexFormSettings: FormSettings = {
+  it('should handle complex state with different store values', async () => {
+    useFormStore.setState({
       username: 'complex-user',
       startDate: '2024-02-01',
       endDate: '2024-02-28',
       githubToken: 'token',
       apiMode: 'events',
-    };
-
-    renderShareButton({
-      formSettings: complexFormSettings,
-      searchText: 'override search',
     });
+
+    renderShareButton();
 
     const button = screen.getByRole('button', { name: /share current state/i });
     fireEvent.click(button);
 
     await waitFor(() => {
       expect(mockExtractShareableState).toHaveBeenCalledWith(
-        complexFormSettings,
-        'override search'
+        {
+          username: 'complex-user',
+          startDate: '2024-02-01',
+          endDate: '2024-02-28',
+          githubToken: 'token',
+          apiMode: 'events',
+        },
+        ''
       );
     });
   });

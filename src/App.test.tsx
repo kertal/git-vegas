@@ -2,24 +2,40 @@ import { render, screen } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import App from './App';
 
-// Mock the hooks and components
-vi.mock('./hooks/useLocalStorage', () => ({
-  useFormSettings: vi.fn(() => [
-    {
-      username: 'testuser',
-      startDate: '2024-01-01',
-      endDate: '2024-01-31',
-      githubToken: 'test-token',
-      apiMode: 'events',
-    },
-    vi.fn(),
-  ]),
-  useLocalStorage: vi.fn(() => [
-    {
-      isCompactView: true,
-    },
-  ]),
-}));
+// Mock the zustand store
+vi.mock('./store/useFormStore', () => {
+  const state = {
+    username: '',
+    startDate: '2024-01-01',
+    endDate: '2024-01-31',
+    githubToken: '',
+    apiMode: 'summary',
+    searchText: '',
+    loading: false,
+    loadingProgress: '',
+    error: null,
+    searchItemsCount: 0,
+    eventsCount: 0,
+    rawEventsCount: 0,
+    _hadUrlParams: false,
+    setUsername: vi.fn(),
+    setStartDate: vi.fn(),
+    setEndDate: vi.fn(),
+    setGithubToken: vi.fn(),
+    setApiMode: vi.fn(),
+    setSearchText: vi.fn(),
+    handleSearch: vi.fn(),
+    validateUsernameFormat: vi.fn(),
+    addAvatarsToCache: vi.fn(),
+    _initOnMount: vi.fn(),
+  };
+  const store = (selector?: (s: typeof state) => unknown) =>
+    selector ? selector(state) : state;
+  store.setState = vi.fn();
+  store.getState = () => state;
+  store.subscribe = vi.fn();
+  return { useFormStore: store };
+});
 
 vi.mock('./hooks/useIndexedDBStorage', () => ({
   useIndexedDBStorage: vi.fn(() => ({
@@ -34,22 +50,11 @@ vi.mock('./hooks/useIndexedDBStorage', () => ({
 
 vi.mock('./hooks/useGitHubFormState', () => ({
   useGitHubFormState: vi.fn(() => ({
-    formSettings: {
-      username: '',
-      startDate: '2024-01-01',
-      endDate: '2024-01-31',
-      githubToken: '',
-      apiMode: 'summary',
-    },
-    uiSettings: { isCompactView: true },
-    setUsername: vi.fn(),
-    setStartDate: vi.fn(),
-    setEndDate: vi.fn(),
-    setGithubToken: vi.fn(),
-    setApiMode: vi.fn(),
     validateUsernameFormat: vi.fn(),
+    addAvatarsToCache: vi.fn(),
     error: null,
     setError: vi.fn(),
+    cachedAvatarUrls: [],
   })),
 }));
 
@@ -156,9 +161,4 @@ describe('App', () => {
     // This is an integration test to verify the pagination logic
     expect(mockFetch).not.toHaveBeenCalled();
   });
-
-  // Note: Auto-fetch functionality is implemented in the App component
-  // It triggers when there's no data available and a username is provided
-  // The complex mocking setup required for testing this would make the test brittle
-  // The functionality is verified through manual testing and the core logic is sound
 });

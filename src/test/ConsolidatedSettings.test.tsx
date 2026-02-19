@@ -33,11 +33,13 @@ describe('Consolidated Settings', () => {
       
       if (formSettings) {
         const parsed = JSON.parse(formSettings);
-        expect(parsed).toHaveProperty('username');
-        expect(parsed).toHaveProperty('startDate');
-        expect(parsed).toHaveProperty('endDate');
-        expect(parsed).toHaveProperty('githubToken');
-        expect(parsed).toHaveProperty('apiMode');
+        // zustand persist wraps data in { state: {...}, version: N }
+        const data = parsed?.state ?? parsed;
+        expect(data).toHaveProperty('username');
+        expect(data).toHaveProperty('startDate');
+        expect(data).toHaveProperty('endDate');
+        expect(data).toHaveProperty('githubToken');
+        expect(data).toHaveProperty('apiMode');
       }
     });
 

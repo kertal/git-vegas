@@ -15,22 +15,15 @@ vi.mock('*.svg', () => ({
 // Seed the zustand form store with default test values
 import { useFormStore } from '../store/useFormStore';
 
+// Seed the store with default test values (state only – preserve real actions)
 useFormStore.setState({
-  username: 'testuser',
+  username: '',
   startDate: '2023-01-01',
   endDate: '2023-12-31',
-  githubToken: 'test-token',
-  apiMode: 'search',
+  githubToken: '',
+  apiMode: 'summary',
   searchText: '',
-  setUsername: vi.fn(),
-  setStartDate: vi.fn(),
-  setEndDate: vi.fn(),
-  setGithubToken: vi.fn(),
-  setApiMode: vi.fn(),
-  setSearchText: vi.fn(),
-  handleSearch: vi.fn(),
-  validateUsernameFormat: vi.fn(),
-  addAvatarsToCache: vi.fn(),
+  _hadUrlParams: false,
   loading: false,
   loadingProgress: '',
   error: null,
@@ -414,11 +407,31 @@ afterEach(() => {
   vi.clearAllMocks();
   // Cleanup React Testing Library
   cleanup();
+  // Restore localStorage/sessionStorage to test-global mocks (tests may override them)
+  Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
+  Object.defineProperty(window, 'sessionStorage', { value: sessionStorageMock, writable: true });
   // Clear storages
   localStorageMock.clear();
   sessionStorageMock.clear();
   // Reset location
   locationMock.href = BASE_URL;
+  // Reset zustand store to clean defaults (state only – preserve real actions).
+  // Must run after localStorage is restored since persist middleware writes on setState.
+  useFormStore.setState({
+    username: '',
+    startDate: '2023-01-01',
+    endDate: '2023-12-31',
+    githubToken: '',
+    apiMode: 'summary',
+    searchText: '',
+    _hadUrlParams: false,
+    loading: false,
+    loadingProgress: '',
+    error: null,
+    searchItemsCount: 0,
+    eventsCount: 0,
+    rawEventsCount: 0,
+  });
 });
 
 afterAll(() => {
