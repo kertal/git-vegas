@@ -11,11 +11,14 @@ interface UseGitHubDataFetchingProps {
   endDate: string;
   indexedDBEvents: GitHubEvent[];
   indexedDBSearchItems: GitHubEvent[];
+  indexedDBReviewItems: GitHubEvent[];
   onError: (error: string) => void;
   storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
   clearEvents: () => Promise<void>;
   storeSearchItems: (key: string, items: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
   clearSearchItems: () => Promise<void>;
+  storeReviewItems: (key: string, items: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  clearReviewItems: () => Promise<void>;
 }
 
 interface UseGitHubDataFetchingReturn {
@@ -32,11 +35,14 @@ export const useGitHubDataFetching = ({
   endDate,
   indexedDBEvents,
   indexedDBSearchItems,
+  indexedDBReviewItems,
   onError,
   storeEvents,
   clearEvents,
   storeSearchItems,
   clearSearchItems,
+  storeReviewItems,
+  clearReviewItems,
 }: UseGitHubDataFetchingProps): UseGitHubDataFetchingReturn => {
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState('');
@@ -172,7 +178,7 @@ export const useGitHubDataFetching = ({
     setLoading(false);
 
     // Check if there's existing data using actual arrays
-    const hasExistingData = indexedDBEvents.length > 0 || indexedDBSearchItems.length > 0;
+    const hasExistingData = indexedDBEvents.length > 0 || indexedDBSearchItems.length > 0 || indexedDBReviewItems.length > 0;
     
     setLoading(true);
     onError(''); // Clear any previous errors
@@ -197,11 +203,13 @@ export const useGitHubDataFetching = ({
       if (!hasExistingData) {
         await clearEvents();
         await clearSearchItems();
+        await clearReviewItems();
       }
 
       // Accumulate all data from all users
       const allEvents: GitHubEvent[] = [];
       const allSearchItems: GitHubItem[] = [];
+      const allReviewItems: GitHubItem[] = [];
 
       // Fetch events for each username with pagination
       for (const singleUsername of usernames) {
@@ -252,6 +260,45 @@ export const useGitHubDataFetching = ({
           }
           onProgress(`Fetched ${totalSearchItems} issues/PRs for ${singleUsername}`);
 
+          // Fetch PRs reviewed by this user using the Search API (more accurate than Events API)
+          const reviewQuery = `reviewed-by:${singleUsername} is:pr updated:${startDate}..${endDate}`;
+          let reviewSearchPage = 1;
+          let totalReviewItems = 0;
+
+          while (true) {
+            const reviewResponse = await fetch(
+              `https://api.github.com/search/issues?q=${encodeURIComponent(reviewQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&page=${reviewSearchPage}`,
+              { headers: searchHeaders }
+            );
+
+            if (!reviewResponse.ok) {
+              const responseJSON = await reviewResponse.json();
+              console.warn(`Failed to fetch reviewed PRs for ${singleUsername}: ${responseJSON.message}`);
+              break; // Don't fail the whole search, just skip review data
+            }
+
+            const reviewData = await reviewResponse.json();
+            const reviewItemsWithOriginal = reviewData.items.map((item: Record<string, unknown>) => ({
+              ...item,
+              assignee: item.assignee || null,
+              assignees: item.assignees || [],
+              original: item,
+            }));
+            allReviewItems.push(...reviewItemsWithOriginal);
+            totalReviewItems += reviewData.items.length;
+
+            if (totalReviewItems >= reviewData.total_count || reviewData.items.length < GITHUB_API_PER_PAGE) {
+              break;
+            }
+
+            reviewSearchPage++;
+            if (totalReviewItems >= 1000) {
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
+          }
+          onProgress(`Fetched ${totalReviewItems} reviewed PRs for ${singleUsername}`);
+
            // Fetch all events with pagination
            const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
            allEvents.push(...userEvents);
@@ -273,7 +320,11 @@ export const useGitHubDataFetching = ({
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
-      const sortedSearchItems = allSearchItems.sort((a, b) => 
+      const sortedSearchItems = allSearchItems.sort((a, b) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+
+      const sortedReviewItems = allReviewItems.sort((a, b) =>
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
 
@@ -290,6 +341,16 @@ export const useGitHubDataFetching = ({
 
       if (sortedSearchItems.length > 0) {
         await storeSearchItems('github-search-items-indexeddb', sortedSearchItems as unknown as GitHubEvent[], {
+          lastFetch: Date.now(),
+          usernames: usernames,
+          apiMode: 'search',
+          startDate,
+          endDate,
+        });
+      }
+
+      if (sortedReviewItems.length > 0) {
+        await storeReviewItems('github-review-items-indexeddb', sortedReviewItems as unknown as GitHubEvent[], {
           lastFetch: Date.now(),
           usernames: usernames,
           apiMode: 'search',
@@ -323,11 +384,14 @@ export const useGitHubDataFetching = ({
     endDate,
     indexedDBEvents.length,
     indexedDBSearchItems.length,
+    indexedDBReviewItems.length,
     onError,
     storeEvents,
     clearEvents,
     storeSearchItems,
     clearSearchItems,
+    storeReviewItems,
+    clearReviewItems,
   ]);
 
   return {

@@ -39,6 +39,7 @@ interface SummaryProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
   indexedDBSearchItems?: GitHubItem[];
+  indexedDBReviewItems?: GitHubItem[];
 }
 
 /** Returns the most recently updated item from a group. */
@@ -71,6 +72,7 @@ const SummaryView = memo(function SummaryView({
   items,
   rawEvents = [],
   indexedDBSearchItems = [],
+  indexedDBReviewItems = [],
 }: SummaryProps) {
   const { startDate, endDate, searchText, setSearchText } = useFormContext();
 
@@ -85,10 +87,15 @@ const SummaryView = memo(function SummaryView({
     return filterItemsByAdvancedSearch(indexedDBSearchItems, searchText);
   }, [indexedDBSearchItems, searchText]);
 
+  // Filtered review items for summary grouping
+  const filteredIndexedDBReviewItems = useMemo(() => {
+    return filterItemsByAdvancedSearch(indexedDBReviewItems, searchText);
+  }, [indexedDBReviewItems, searchText]);
+
   // Group items for summary view
   const actionGroups = useMemo(() => {
-    return groupSummaryData(sortedItems, filteredIndexedDBSearchItems, startDate, endDate);
-  }, [sortedItems, filteredIndexedDBSearchItems, startDate, endDate]);
+    return groupSummaryData(sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredIndexedDBReviewItems);
+  }, [sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredIndexedDBReviewItems]);
 
   // Build flat list of items from expanded sections for selection
   const allDisplayedItems = useMemo(() => {

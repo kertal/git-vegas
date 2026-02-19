@@ -15,6 +15,8 @@ describe('useGitHubDataFetching', () => {
   const mockClearEvents = vi.fn();
   const mockStoreSearchItems = vi.fn();
   const mockClearSearchItems = vi.fn();
+  const mockStoreReviewItems = vi.fn();
+  const mockClearReviewItems = vi.fn();
   const mockOnError = vi.fn();
 
   const defaultProps = {
@@ -24,11 +26,14 @@ describe('useGitHubDataFetching', () => {
     endDate: '2024-01-31',
     indexedDBEvents: [],
     indexedDBSearchItems: [],
+    indexedDBReviewItems: [],
     onError: mockOnError,
     storeEvents: mockStoreEvents,
     clearEvents: mockClearEvents,
     storeSearchItems: mockStoreSearchItems,
     clearSearchItems: mockClearSearchItems,
+    storeReviewItems: mockStoreReviewItems,
+    clearReviewItems: mockClearReviewItems,
   };
 
   beforeEach(() => {

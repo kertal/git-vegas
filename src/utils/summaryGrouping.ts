@@ -215,6 +215,28 @@ export const addIssuesFromSearchItems = (
 };
 
 /**
+ * Adds reviewed PRs from the Search API `reviewed-by:` query results.
+ * These are more accurate and comprehensive than the Events API review data,
+ * which is limited to ~300 events and 30 days.
+ */
+export const addReviewedPRsFromSearchItems = (
+  groups: Record<SummaryGroupName, GitHubItem[]>,
+  reviewItems: GitHubItem[],
+): void => {
+  const existingReviewUrls = new Set(
+    groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].map(item => getBasePRUrl(item.html_url))
+  );
+
+  reviewItems.forEach(reviewItem => {
+    const baseUrl = getBasePRUrl(reviewItem.html_url);
+    if (!existingReviewUrls.has(baseUrl)) {
+      existingReviewUrls.add(baseUrl);
+      groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].push(reviewItem);
+    }
+  });
+};
+
+/**
  * Main function to group all GitHub data for the Summary view
  */
 export const groupSummaryData = (
@@ -222,9 +244,11 @@ export const groupSummaryData = (
   searchItems: GitHubItem[],
   startDate: string,
   endDate: string,
+  reviewItems: GitHubItem[] = [],
 ): Record<SummaryGroupName, GitHubItem[]> => {
   const groups = groupItems(items, startDate, endDate, true);
   addMergedPRsFromSearchItems(groups, searchItems, startDate, endDate);
   addIssuesFromSearchItems(groups, searchItems, startDate, endDate);
+  addReviewedPRsFromSearchItems(groups, reviewItems);
   return groups;
 };
