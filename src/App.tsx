@@ -111,13 +111,24 @@ function App() {
   // Sync state and actions from hooks into the zustand store so that
   // child components can subscribe to individual slices without a Provider.
   useEffect(() => {
-    useFormStore.setState({
+    const nextState = {
       username, startDate, endDate, githubToken, apiMode, searchText,
       loading, loadingProgress, error,
       searchItemsCount, eventsCount, rawEventsCount,
       setUsername, setStartDate, setEndDate, setGithubToken, setApiMode, setSearchText,
       handleSearch, validateUsernameFormat, addAvatarsToCache,
-    });
+    };
+    const currentState = useFormStore.getState() as typeof nextState;
+    const changedState = (Object.keys(nextState) as (keyof typeof nextState)[]).reduce(
+      (acc, key) => {
+        if (currentState[key] !== nextState[key]) acc[key] = nextState[key] as never;
+        return acc;
+      },
+      {} as Partial<typeof nextState>
+    );
+    if (Object.keys(changedState).length > 0) {
+      useFormStore.setState(changedState);
+    }
   }, [
     username, startDate, endDate, githubToken, apiMode, searchText,
     loading, loadingProgress, error,

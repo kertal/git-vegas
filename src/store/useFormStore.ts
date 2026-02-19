@@ -29,7 +29,7 @@ interface FormStoreActions {
   setGithubToken: (token: string) => void;
   setApiMode: (mode: ApiMode) => void;
   setSearchText: (text: string) => void;
-  handleSearch: () => void;
+  handleSearch: () => Promise<void>;
   validateUsernameFormat: (username: string) => void;
   addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
 }
@@ -39,9 +39,9 @@ type FormStore = FormStoreState & FormStoreActions;
 /**
  * Zustand store replacing the former React Context (FormContext).
  *
- * State values and action callbacks are synced from App.tsx via
- * `useFormStoreSync` so that the existing hooks remain the source of truth
- * while consumers get fine-grained subscriptions without a Provider.
+ * State values and action callbacks are synced from App.tsx via a `useEffect`
+ * hook so that the existing hooks remain the source of truth while consumers
+ * get fine-grained subscriptions without a Provider.
  */
 const useFormStore = create<FormStore>()(() => ({
   // State defaults
@@ -65,7 +65,7 @@ const useFormStore = create<FormStore>()(() => ({
   setGithubToken: () => {},
   setApiMode: () => {},
   setSearchText: () => {},
-  handleSearch: () => {},
+  handleSearch: () => Promise.resolve(),
   validateUsernameFormat: () => {},
   addAvatarsToCache: () => {},
 }));
