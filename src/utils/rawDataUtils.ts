@@ -615,13 +615,17 @@ export const categorizeRawSearchItems = (
     return true;
   });
 
-  // Then remove duplicates based on html_url (unique identifier for issues/PRs)
-  const urlSet = new Set<string>();
+  // Remove duplicates: use reviewer+url for review items (to preserve multiple reviewers),
+  // plain html_url for everything else
+  const dedupKeys = new Set<string>();
   const deduplicatedItems: GitHubItem[] = [];
-  
+
   dateFilteredItems.forEach(item => {
-    if (!urlSet.has(item.html_url)) {
-      urlSet.add(item.html_url);
+    const key = item.reviewedBy
+      ? `${item.reviewedBy.login}:${item.html_url}`
+      : item.html_url;
+    if (!dedupKeys.has(key)) {
+      dedupKeys.add(key);
       deduplicatedItems.push(item);
     }
   });

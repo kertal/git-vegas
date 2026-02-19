@@ -39,7 +39,8 @@ interface SummaryProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
   indexedDBSearchItems?: GitHubItem[];
-  indexedDBReviewItems?: GitHubItem[];
+  /** Processed review items from the reviewed-by Search API query */
+  reviewedPRs?: GitHubItem[];
 }
 
 /** Returns the most recently updated item from a group. */
@@ -56,9 +57,12 @@ const groupItemsByUrl = (groupItems: GitHubItem[]): Record<string, GitHubItem[]>
     if (getEventType(item) === 'comment') {
       groupingKey = groupingKey.split('#')[0];
     }
-    const isReview = (item.title && item.title.startsWith('Review on:')) || item.originalEventType === 'PullRequestReviewEvent';
+    const isReview = !!item.reviewedBy
+      || (item.title && item.title.startsWith('Review on:'))
+      || item.originalEventType === 'PullRequestReviewEvent';
     if (isReview) {
-      groupingKey = `${item.user.login}:${groupingKey}`;
+      const reviewer = item.reviewedBy?.login ?? item.user.login;
+      groupingKey = `${reviewer}:${groupingKey}`;
     }
     if (!urlGroups[groupingKey]) {
       urlGroups[groupingKey] = [];
@@ -72,7 +76,7 @@ const SummaryView = memo(function SummaryView({
   items,
   rawEvents = [],
   indexedDBSearchItems = [],
-  indexedDBReviewItems = [],
+  reviewedPRs = [],
 }: SummaryProps) {
   const { startDate, endDate, searchText, setSearchText } = useFormContext();
 
@@ -88,14 +92,14 @@ const SummaryView = memo(function SummaryView({
   }, [indexedDBSearchItems, searchText]);
 
   // Filtered review items for summary grouping
-  const filteredIndexedDBReviewItems = useMemo(() => {
-    return filterItemsByAdvancedSearch(indexedDBReviewItems, searchText);
-  }, [indexedDBReviewItems, searchText]);
+  const filteredReviewedPRs = useMemo(() => {
+    return filterItemsByAdvancedSearch(reviewedPRs, searchText);
+  }, [reviewedPRs, searchText]);
 
   // Group items for summary view
   const actionGroups = useMemo(() => {
-    return groupSummaryData(sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredIndexedDBReviewItems);
-  }, [sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredIndexedDBReviewItems]);
+    return groupSummaryData(sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredReviewedPRs);
+  }, [sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredReviewedPRs]);
 
   // Build flat list of items from expanded sections for selection
   const allDisplayedItems = useMemo(() => {

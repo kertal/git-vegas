@@ -218,19 +218,25 @@ export const addIssuesFromSearchItems = (
  * Adds reviewed PRs from the Search API `reviewed-by:` query results.
  * These are more accurate and comprehensive than the Events API review data,
  * which is limited to ~300 events and 30 days.
+ * Deduplicates by reviewer+PR key to preserve multiple reviewers on the same PR.
  */
 export const addReviewedPRsFromSearchItems = (
   groups: Record<SummaryGroupName, GitHubItem[]>,
   reviewItems: GitHubItem[],
 ): void => {
-  const existingReviewUrls = new Set(
-    groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].map(item => getBasePRUrl(item.html_url))
+  // Build dedup keys from existing items: use reviewedBy if available, fall back to user
+  const existingReviewKeys = new Set(
+    groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].map(item => {
+      const reviewer = item.reviewedBy?.login ?? item.user.login;
+      return `${reviewer}:${getBasePRUrl(item.html_url)}`;
+    })
   );
 
   reviewItems.forEach(reviewItem => {
-    const baseUrl = getBasePRUrl(reviewItem.html_url);
-    if (!existingReviewUrls.has(baseUrl)) {
-      existingReviewUrls.add(baseUrl);
+    const reviewer = reviewItem.reviewedBy?.login ?? reviewItem.user.login;
+    const key = `${reviewer}:${getBasePRUrl(reviewItem.html_url)}`;
+    if (!existingReviewKeys.has(key)) {
+      existingReviewKeys.add(key);
       groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].push(reviewItem);
     }
   });

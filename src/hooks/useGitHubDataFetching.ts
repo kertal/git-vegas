@@ -117,8 +117,6 @@ export const useGitHubDataFetching = ({
       } catch (error) {
         console.error(`Error fetching events page ${page} for ${username}:`, error);
         throw error;
-        // Continue with what we have so far
-        hasMorePages = false;
       }
     }
 
@@ -218,7 +216,7 @@ export const useGitHubDataFetching = ({
         try {
 
           // Fetch issues and PRs with date range filtering (with pagination)
-          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
+          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND (is:issue OR is:pr)`;
           const searchHeaders = {
             ...(githubToken && { Authorization: `token ${githubToken}` }),
             Accept: 'application/vnd.github.v3+json',
@@ -355,15 +353,14 @@ export const useGitHubDataFetching = ({
         });
       }
 
-      if (sortedReviewItems.length > 0) {
-        await storeReviewItems('github-review-items-indexeddb', sortedReviewItems as unknown as GitHubEvent[], {
-          lastFetch: Date.now(),
-          usernames: usernames,
-          apiMode: 'search',
-          startDate,
-          endDate,
-        });
-      }
+      // Always store review items (even empty) to clear stale data from previous runs
+      await storeReviewItems('github-review-items-indexeddb', sortedReviewItems as unknown as GitHubEvent[], {
+        lastFetch: Date.now(),
+        usernames: usernames,
+        apiMode: 'search',
+        startDate,
+        endDate,
+      });
 
       setLoadingProgress('Data fetch completed successfully!');
       setCurrentUsername('');

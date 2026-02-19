@@ -464,7 +464,7 @@ function App() {
               items={results}
               rawEvents={indexedDBEvents}
               indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
-              indexedDBReviewItems={reviewItems}
+              reviewedPRs={reviewItems}
             />
           ) : (
             <IssuesAndPRsList results={results} />
