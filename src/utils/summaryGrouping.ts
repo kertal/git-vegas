@@ -79,21 +79,15 @@ export const isDateInRange = (dateStr: string, startDate: string, endDate: strin
  */
 export const categorizeItem = (
   item: GitHubItem,
-  addedReviewPRs: Set<string>,
   startDate: string,
   endDate: string,
   applyDateFiltering = true,
 ): SummaryGroupName | null => {
   const type = getEventType(item);
 
-  // Review deduplication
+  // Skip Events API review items — "PRs - reviewed" is populated solely
+  // from the Search API reviewed-by query which is more accurate and complete.
   if (type === 'pull_request' && item.title?.startsWith('Review on:')) {
-    const basePRUrl = getBasePRUrl(item.html_url);
-    const reviewKey = `${item.user.login}:${basePRUrl}`;
-    if (!addedReviewPRs.has(reviewKey)) {
-      addedReviewPRs.add(reviewKey);
-      return SUMMARY_GROUP_NAMES.PRS_REVIEWED;
-    }
     return null;
   }
 
@@ -148,10 +142,9 @@ export const groupItems = (
   applyDateFiltering = true,
 ): Record<SummaryGroupName, GitHubItem[]> => {
   const groups = createEmptyGroups<GitHubItem>();
-  const addedReviewKeys = new Set<string>();
 
   items.forEach(item => {
-    const groupName = categorizeItem(item, addedReviewKeys, startDate, endDate, applyDateFiltering);
+    const groupName = categorizeItem(item, startDate, endDate, applyDateFiltering);
     if (groupName) {
       groups[groupName].push(item);
     }
@@ -202,14 +195,35 @@ export const addIssuesFromSearchItems = (
 
   searchItems.forEach(searchItem => {
     if (!searchItem.pull_request && !existingIssueUrls.has(searchItem.html_url)) {
-      const addedReviewPRs = new Set<string>();
-      const groupName = categorizeItem(searchItem, addedReviewPRs, startDate, endDate);
+      const groupName = categorizeItem(searchItem, startDate, endDate);
 
       if (groupName && (groupName === SUMMARY_GROUP_NAMES.ISSUES_OPENED ||
                         groupName === SUMMARY_GROUP_NAMES.ISSUES_CLOSED ||
                         groupName === SUMMARY_GROUP_NAMES.ISSUES_UPDATED)) {
         groups[groupName].push(searchItem);
       }
+    }
+  });
+};
+
+/**
+ * Populates the "PRs - reviewed" group from the Search API `reviewed-by:` query.
+ * This is the sole source for reviewed PRs — more accurate and complete than
+ * the Events API which is limited to ~300 events and 30 days.
+ * Deduplicates by reviewer+PR URL to preserve multiple reviewers on the same PR.
+ */
+export const addReviewedPRsFromSearchItems = (
+  groups: Record<SummaryGroupName, GitHubItem[]>,
+  reviewItems: GitHubItem[],
+): void => {
+  const seen = new Set<string>();
+
+  reviewItems.forEach(item => {
+    const reviewer = item.reviewedBy?.login ?? item.user.login;
+    const key = `${reviewer}:${getBasePRUrl(item.html_url)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].push(item);
     }
   });
 };
@@ -222,9 +236,11 @@ export const groupSummaryData = (
   searchItems: GitHubItem[],
   startDate: string,
   endDate: string,
+  reviewItems: GitHubItem[] = [],
 ): Record<SummaryGroupName, GitHubItem[]> => {
   const groups = groupItems(items, startDate, endDate, true);
   addMergedPRsFromSearchItems(groups, searchItems, startDate, endDate);
   addIssuesFromSearchItems(groups, searchItems, startDate, endDate);
+  addReviewedPRsFromSearchItems(groups, reviewItems);
   return groups;
 };

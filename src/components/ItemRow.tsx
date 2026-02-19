@@ -18,6 +18,11 @@ const hasDistinctAssignee = (item: GitHubItem): boolean => {
   return isIssue(item) && !!item.assignee && item.assignee.login !== item.user.login;
 };
 
+// Helper to check if item has a distinct reviewer (reviewer !== PR author)
+const hasDistinctReviewer = (item: GitHubItem): boolean => {
+  return !!item.reviewedBy && item.reviewedBy.login !== item.user.login;
+};
+
 interface ItemRowProps {
   item: GitHubItem;
   onShowDescription: (item: GitHubItem) => void;
@@ -146,8 +151,21 @@ const ItemRow = ({
             </Box>
           )}
 
-          {/* Avatar(s) - show actor first, then assignee if different for issues */}
-          {hasDistinctAssignee(item) ? (
+          {/* Avatar(s) - show reviewer+author for reviews, actor+assignee for issues, or single avatar */}
+          {hasDistinctReviewer(item) ? (
+            <AvatarStack disableExpand>
+              <Avatar
+                src={item.reviewedBy!.avatar_url}
+                alt={`${item.reviewedBy!.login}'s avatar (reviewer)`}
+                size={size === 'small' ? 24 : 32}
+              />
+              <Avatar
+                src={item.user.avatar_url}
+                alt={`${item.user.login}'s avatar (PR author)`}
+                size={size === 'small' ? 24 : 32}
+              />
+            </AvatarStack>
+          ) : hasDistinctAssignee(item) ? (
             <AvatarStack disableExpand>
               <Avatar
                 src={item.user.avatar_url}
@@ -339,8 +357,21 @@ const ItemRow = ({
               </Box>
             )}
 
-            {/* Avatar(s) - show actor first, then assignee if different for issues */}
-            {hasDistinctAssignee(item) ? (
+            {/* Avatar(s) - show reviewer+author for reviews, actor+assignee for issues, or single avatar */}
+            {hasDistinctReviewer(item) ? (
+              <AvatarStack disableExpand>
+                <Avatar
+                  src={item.reviewedBy!.avatar_url}
+                  alt={`${item.reviewedBy!.login}'s avatar (reviewer)`}
+                  size={size === 'small' ? 24 : 32}
+                />
+                <Avatar
+                  src={item.user.avatar_url}
+                  alt={`${item.user.login}'s avatar (PR author)`}
+                  size={size === 'small' ? 24 : 32}
+                />
+              </AvatarStack>
+            ) : hasDistinctAssignee(item) ? (
               <AvatarStack disableExpand>
                 <Avatar
                   src={item.user.avatar_url}

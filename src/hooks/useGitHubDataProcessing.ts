@@ -7,6 +7,7 @@ import { enrichItemsWithPRDetails } from '../utils/prEnrichment';
 interface UseGitHubDataProcessingProps {
   indexedDBEvents: GitHubEvent[];
   indexedDBSearchItems: GitHubEvent[];
+  indexedDBReviewItems: GitHubEvent[];
   startDate: string;
   endDate: string;
   apiMode: 'search' | 'events' | 'summary';
@@ -20,11 +21,13 @@ interface UseGitHubDataProcessingReturn {
   eventsCount: number;
   rawEventsCount: number;
   isEnriching: boolean;
+  reviewItems: GitHubItem[];
 }
 
 export const useGitHubDataProcessing = ({
   indexedDBEvents,
   indexedDBSearchItems,
+  indexedDBReviewItems,
   startDate,
   endDate,
   apiMode,
@@ -160,11 +163,21 @@ export const useGitHubDataProcessing = ({
 
   const rawEventsCount = indexedDBEvents.length;
 
+  // Process review items from the reviewed-by search query
+  const reviewItems = useMemo(() => {
+    return categorizeRawSearchItems(
+      indexedDBReviewItems as unknown as GitHubItem[],
+      startDate,
+      endDate
+    );
+  }, [indexedDBReviewItems, startDate, endDate]);
+
   return {
     results,
     searchItemsCount,
     eventsCount,
     rawEventsCount,
     isEnriching,
+    reviewItems,
   };
 }; 
