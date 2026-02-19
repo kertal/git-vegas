@@ -9,13 +9,8 @@ import { SUMMARY_GROUP_NAMES, createEmptyGroups } from '../summaryConstants';
 import { GitHubItem } from '../../types';
 
 describe('categorizeItem - PRs Updated', () => {
-  const addedReviewPRs = new Set<string>();
   const startDate = '2024-01-10';
   const endDate = '2024-01-20';
-
-  beforeEach(() => {
-    addedReviewPRs.clear();
-  });
 
   it('should categorize PR created before timeframe but updated within as PRS_UPDATED', () => {
     const item: GitHubItem = {
@@ -29,7 +24,7 @@ describe('categorizeItem - PRs Updated', () => {
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_UPDATED);
   });
 
@@ -45,7 +40,7 @@ describe('categorizeItem - PRs Updated', () => {
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_OPENED);
   });
 
@@ -62,7 +57,7 @@ describe('categorizeItem - PRs Updated', () => {
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_MERGED);
   });
 
@@ -79,7 +74,7 @@ describe('categorizeItem - PRs Updated', () => {
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_CLOSED);
   });
 
@@ -95,7 +90,7 @@ describe('categorizeItem - PRs Updated', () => {
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBeNull();
   });
 
@@ -113,7 +108,7 @@ describe('categorizeItem - PRs Updated', () => {
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_MERGED); // Should be merged, not closed
   });
 
@@ -133,19 +128,14 @@ describe('categorizeItem - PRs Updated', () => {
       },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_MERGED); // Should be merged, not closed
   });
 });
 
 describe('categorizeItem with applyDateFiltering=false - For Already Date-Filtered Results', () => {
-  const addedReviewPRs = new Set<string>();
   const startDate = '2024-01-10';
   const endDate = '2024-01-20';
-
-  beforeEach(() => {
-    addedReviewPRs.clear();
-  });
 
   it('should categorize PR created before timeframe as PRS_UPDATED (since it was found by API)', () => {
     const item: GitHubItem = {
@@ -159,7 +149,7 @@ describe('categorizeItem with applyDateFiltering=false - For Already Date-Filter
       pull_request: { url: 'https://github.com/test/repo/pull/1' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
+    const result = categorizeItem(item, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.PRS_UPDATED);
   });
 
@@ -174,7 +164,7 @@ describe('categorizeItem with applyDateFiltering=false - For Already Date-Filter
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
+    const result = categorizeItem(item, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -190,7 +180,7 @@ describe('categorizeItem with applyDateFiltering=false - For Already Date-Filter
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
+    const result = categorizeItem(item, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
   });
 
@@ -206,7 +196,7 @@ describe('categorizeItem with applyDateFiltering=false - For Already Date-Filter
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
+    const result = categorizeItem(item, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
   });
 
@@ -222,7 +212,7 @@ describe('categorizeItem with applyDateFiltering=false - For Already Date-Filter
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
+    const result = categorizeItem(item, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -237,19 +227,14 @@ describe('categorizeItem with applyDateFiltering=false - For Already Date-Filter
       user: { login: 'otheruser', avatar_url: '', html_url: '' }, // Different user
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate, false);
+    const result = categorizeItem(item, startDate, endDate, false);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 });
 
 describe('categorizeItem - Issues with Date Filtering', () => {
-  const addedReviewPRs = new Set<string>();
   const startDate = '2024-01-10';
   const endDate = '2024-01-20';
-
-  beforeEach(() => {
-    addedReviewPRs.clear();
-  });
 
   it('should categorize issue created within timeframe as ISSUES_OPENED when action is opened', () => {
     const item: GitHubItem = {
@@ -263,7 +248,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
   });
 
@@ -279,7 +264,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_OPENED);
   });
 
@@ -295,7 +280,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -311,7 +296,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_CLOSED);
   });
 
@@ -326,7 +311,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -341,7 +326,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'otheruser', avatar_url: '', html_url: '' }, // Different user
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -356,7 +341,7 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBeNull();
   });
 
@@ -371,19 +356,14 @@ describe('categorizeItem - Issues with Date Filtering', () => {
       user: { login: 'otheruser', avatar_url: '', html_url: '' }, // Different user
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBeNull();
   });
 });
 
 describe('categorizeItem - Issue Action Handling', () => {
-  const addedReviewPRs = new Set<string>();
   const startDate = '2024-01-10';
   const endDate = '2024-01-20';
-
-  beforeEach(() => {
-    addedReviewPRs.clear();
-  });
 
   it('should categorize issue with action=assigned as ISSUES_UPDATED even if created in range', () => {
     const item: GitHubItem = {
@@ -397,7 +377,7 @@ describe('categorizeItem - Issue Action Handling', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -413,7 +393,7 @@ describe('categorizeItem - Issue Action Handling', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -429,7 +409,7 @@ describe('categorizeItem - Issue Action Handling', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -445,7 +425,7 @@ describe('categorizeItem - Issue Action Handling', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_UPDATED);
   });
 
@@ -462,7 +442,7 @@ describe('categorizeItem - Issue Action Handling', () => {
       user: { login: 'testuser', avatar_url: '', html_url: '' },
     };
 
-    const result = categorizeItem(item, addedReviewPRs, startDate, endDate);
+    const result = categorizeItem(item, startDate, endDate);
     expect(result).toBe(SUMMARY_GROUP_NAMES.ISSUES_CLOSED);
   });
 });
@@ -658,31 +638,11 @@ describe('addReviewedPRsFromSearchItems', () => {
     expect(groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED]).toHaveLength(2);
   });
 
-  it('should not duplicate items already present from Events API', () => {
+  it('should deduplicate items with same reviewer and URL fragment variants', () => {
     const groups = createEmptyGroups<GitHubItem>();
-    // Pre-populate with an Events API review item
-    groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].push(
-      makeReviewItem(99, 'https://github.com/test/repo/pull/1', 'reviewer1', 'author1')
-    );
-
     const reviewItems = [
-      makeReviewItem(1, 'https://github.com/test/repo/pull/1', 'reviewer1', 'author1'), // same reviewer + same PR
-    ];
-
-    addReviewedPRsFromSearchItems(groups, reviewItems);
-
-    expect(groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED]).toHaveLength(1); // should not add duplicate
-  });
-
-  it('should handle URL fragments via getBasePRUrl', () => {
-    const groups = createEmptyGroups<GitHubItem>();
-    // Pre-populate with an Events API review item that has a fragment
-    groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].push(
-      makeReviewItem(99, 'https://github.com/test/repo/pull/1#pullrequestreview-123', 'reviewer1', 'author1')
-    );
-
-    const reviewItems = [
-      makeReviewItem(1, 'https://github.com/test/repo/pull/1', 'reviewer1', 'author1'), // same PR, no fragment
+      makeReviewItem(1, 'https://github.com/test/repo/pull/1#pullrequestreview-123', 'reviewer1', 'author1'),
+      makeReviewItem(2, 'https://github.com/test/repo/pull/1', 'reviewer1', 'author1'), // same PR, no fragment
     ];
 
     addReviewedPRsFromSearchItems(groups, reviewItems);
@@ -690,14 +650,11 @@ describe('addReviewedPRsFromSearchItems', () => {
     expect(groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED]).toHaveLength(1); // fragment stripped, should match
   });
 
-  it('should add new reviewer for same PR even when existing Events API item has fragment', () => {
+  it('should allow different reviewers on the same PR with URL fragments', () => {
     const groups = createEmptyGroups<GitHubItem>();
-    groups[SUMMARY_GROUP_NAMES.PRS_REVIEWED].push(
-      makeReviewItem(99, 'https://github.com/test/repo/pull/1#pullrequestreview-123', 'reviewer1', 'author1')
-    );
-
     const reviewItems = [
-      makeReviewItem(1, 'https://github.com/test/repo/pull/1', 'reviewer2', 'author1'), // different reviewer
+      makeReviewItem(1, 'https://github.com/test/repo/pull/1#pullrequestreview-123', 'reviewer1', 'author1'),
+      makeReviewItem(2, 'https://github.com/test/repo/pull/1', 'reviewer2', 'author1'), // different reviewer
     ];
 
     addReviewedPRsFromSearchItems(groups, reviewItems);
