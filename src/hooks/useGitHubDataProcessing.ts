@@ -12,6 +12,7 @@ interface UseGitHubDataProcessingProps {
   apiMode: 'search' | 'events' | 'summary';
   searchText: string;
   githubToken?: string;
+  isMultiUser?: boolean;
 }
 
 interface UseGitHubDataProcessingReturn {
@@ -30,6 +31,7 @@ export const useGitHubDataProcessing = ({
   apiMode,
   searchText,
   githubToken,
+  isMultiUser = false,
 }: UseGitHubDataProcessingProps): UseGitHubDataProcessingReturn => {
   const [enrichedResults, setEnrichedResults] = useState<GitHubItem[]>([]);
   const [isEnriching, setIsEnriching] = useState(false);
@@ -44,7 +46,8 @@ export const useGitHubDataProcessing = ({
       return categorizeRawSearchItems(
         indexedDBSearchItems as unknown as GitHubItem[],
         startDate,
-        endDate
+        endDate,
+        isMultiUser
       );
     } else if (apiMode === 'summary') {
       // Summary view: merge both events AND search items for complete picture
@@ -52,13 +55,22 @@ export const useGitHubDataProcessing = ({
       const processedSearchItems = categorizeRawSearchItems(
         indexedDBSearchItems as unknown as GitHubItem[],
         startDate,
-        endDate
+        endDate,
+        isMultiUser
       );
-      
+
+      if (isMultiUser) {
+        // Multi-user: skip deduplication, keep all items from both sources
+        const combinedResults = [...processedSearchItems, ...processedEvents];
+        return combinedResults.sort((a, b) =>
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+      }
+
       // Combine both datasets, removing duplicates based on html_url
       const urlSet = new Set<string>();
       const combinedResults: GitHubItem[] = [];
-      
+
       // Add search items first (they are more complete/accurate)
       processedSearchItems.forEach(item => {
         if (!urlSet.has(item.html_url)) {
@@ -66,7 +78,7 @@ export const useGitHubDataProcessing = ({
           combinedResults.push(item);
         }
       });
-      
+
       // Add events that aren't already covered by search items
       processedEvents.forEach(item => {
         if (!urlSet.has(item.html_url)) {
@@ -74,15 +86,15 @@ export const useGitHubDataProcessing = ({
           combinedResults.push(item);
         }
       });
-      
+
       // Sort by updated_at (newest first)
-      return combinedResults.sort((a, b) => 
+      return combinedResults.sort((a, b) =>
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
     } else {
       return [];
     }
-  }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate]);
+  }, [apiMode, indexedDBEvents, indexedDBSearchItems, startDate, endDate, isMultiUser]);
 
   // Enrich items with PR details when a token is available
   // Uses SWR pattern: show cached data immediately, then fetch fresh data in background
@@ -148,10 +160,11 @@ export const useGitHubDataProcessing = ({
     const rawSearchItems = categorizeRawSearchItems(
       indexedDBSearchItems as unknown as GitHubItem[],
       startDate,
-      endDate
+      endDate,
+      isMultiUser
     );
     return filterItemsByAdvancedSearch(rawSearchItems, searchText).length;
-  }, [indexedDBSearchItems, startDate, endDate, searchText]);
+  }, [indexedDBSearchItems, startDate, endDate, searchText, isMultiUser]);
 
   const eventsCount = useMemo(() => {
     const rawEvents = processRawEvents(indexedDBEvents, startDate, endDate);

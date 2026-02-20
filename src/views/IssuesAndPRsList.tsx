@@ -6,6 +6,8 @@ import {
   Button,
   Heading,
   Pagination,
+  Avatar,
+  Token,
 } from '@primer/react';
 import {
   GitPullRequestIcon,
@@ -14,6 +16,7 @@ import {
   GitPullRequestDraftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  PeopleIcon,
 } from '@primer/octicons-react';
 
 import { GitHubItem, getItemId } from '../types';
@@ -107,12 +110,50 @@ const SectionContent = ({
   );
 };
 
+/** Groups items by user login, preserving configured user order. */
+const groupItemsByUser = (
+  items: GitHubItem[],
+  configuredUsernames: string[]
+): Record<string, GitHubItem[]> => {
+  const userGroups: Record<string, GitHubItem[]> = {};
+  const configuredLower = configuredUsernames.map(u => u.toLowerCase());
+
+  items.forEach(item => {
+    const login = item.user.login;
+    if (!userGroups[login]) {
+      userGroups[login] = [];
+    }
+    userGroups[login].push(item);
+  });
+
+  const ordered: Record<string, GitHubItem[]> = {};
+  for (const configUser of configuredUsernames) {
+    const matchKey = Object.keys(userGroups).find(
+      k => k.toLowerCase() === configUser.toLowerCase()
+    );
+    if (matchKey && userGroups[matchKey].length > 0) {
+      ordered[matchKey] = userGroups[matchKey];
+    }
+  }
+  Object.keys(userGroups)
+    .filter(k => !configuredLower.includes(k.toLowerCase()))
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+    .forEach(k => {
+      if (userGroups[k].length > 0) {
+        ordered[k] = userGroups[k];
+      }
+    });
+
+  return ordered;
+};
+
 const IssuesAndPRsList = memo(function IssuesAndPRsList({
   results,
 }: {
   results: GitHubItem[];
 }) {
-  const { searchText, setSearchText } = useFormContext();
+  const { searchText, setSearchText, isMultiUser, groupByUsers, usernames } = useFormContext();
+  const showUserGroups = isMultiUser && groupByUsers;
 
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('issuesAndPRs-collapsedSections', new Set());
 
@@ -143,7 +184,32 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
   const hasRawData = results && results.length > 0;
   const hasSearchText = searchText && searchText.trim().length > 0;
 
+  // --- Multi-user grouping ---
+  const perUserGroupedItems = useMemo(() => {
+    if (!showUserGroups) return null;
+    const userItems = groupItemsByUser(filteredResults, usernames);
+    const result: Record<string, { 'PRs': GitHubItem[]; 'Issues': GitHubItem[] }> = {};
+
+    for (const [login, items] of Object.entries(userItems)) {
+      const groups: { 'PRs': GitHubItem[]; 'Issues': GitHubItem[] } = { 'PRs': [], 'Issues': [] };
+      items.forEach(item => {
+        if (item.pull_request) {
+          groups['PRs'].push(item);
+        } else {
+          groups['Issues'].push(item);
+        }
+      });
+      Object.keys(groups).forEach(key => {
+        groups[key as keyof typeof groups] = sortItemsByUpdatedDate(groups[key as keyof typeof groups]);
+      });
+      result[login] = groups;
+    }
+    return result;
+  }, [showUserGroups, filteredResults, usernames]);
+
+  // --- Single-user grouping (existing logic) ---
   const groupedItems = useMemo(() => {
+    if (showUserGroups) return { 'PRs': [] as GitHubItem[], 'Issues': [] as GitHubItem[] };
     const groups: { 'PRs': GitHubItem[]; 'Issues': GitHubItem[] } = { 'PRs': [], 'Issues': [] };
     filteredResults.forEach(item => {
       if (item.pull_request) {
@@ -156,14 +222,23 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       groups[key as keyof typeof groups] = sortItemsByUpdatedDate(groups[key as keyof typeof groups]);
     });
     return groups;
-  }, [filteredResults]);
+  }, [showUserGroups, filteredResults]);
 
   // Build flat list of items from expanded sections for selection
   const allDisplayedItems = useMemo(() => {
+    if (showUserGroups && perUserGroupedItems) {
+      return Object.entries(perUserGroupedItems)
+        .filter(([login]) => !collapsedSections.has(`@user:${login}`))
+        .flatMap(([login, groups]) =>
+          Object.entries(groups)
+            .filter(([groupName]) => !collapsedSections.has(`@user:${login}/${groupName}`))
+            .flatMap(([, items]) => items)
+        );
+    }
     return Object.entries(groupedItems)
       .filter(([groupName]) => !collapsedSections.has(groupName))
       .flatMap(([, items]) => items);
-  }, [groupedItems, collapsedSections]);
+  }, [showUserGroups, perUserGroupedItems, groupedItems, collapsedSections]);
 
   // Shared hooks
   const {
@@ -184,25 +259,50 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         newSet.delete(sectionName);
       } else {
         newSet.add(sectionName);
-        const sectionItems = groupedItems[sectionName as keyof typeof groupedItems] || [];
-        if (sectionItems.length > 0) {
-          const idsToRemove = sectionItems.map(item => getItemId(item));
-          bulkSelectItems(idsToRemove, false);
+        if (showUserGroups && perUserGroupedItems) {
+          if (sectionName.startsWith('@user:') && !sectionName.includes('/')) {
+            const login = sectionName.replace('@user:', '');
+            const userGroups = perUserGroupedItems[login];
+            if (userGroups) {
+              const idsToRemove = Object.values(userGroups).flat().map(item => getItemId(item));
+              bulkSelectItems(idsToRemove, false);
+            }
+          } else if (sectionName.includes('/')) {
+            const [userPart, groupName] = sectionName.split('/');
+            const login = userPart.replace('@user:', '');
+            const userGroups = perUserGroupedItems[login];
+            if (userGroups && userGroups[groupName as keyof typeof userGroups]) {
+              const idsToRemove = userGroups[groupName as keyof typeof userGroups].map(item => getItemId(item));
+              bulkSelectItems(idsToRemove, false);
+            }
+          }
+        } else {
+          const sectionItems = groupedItems[sectionName as keyof typeof groupedItems] || [];
+          if (sectionItems.length > 0) {
+            const idsToRemove = sectionItems.map(item => getItemId(item));
+            bulkSelectItems(idsToRemove, false);
+          }
         }
       }
       return newSet;
     });
-  }, [groupedItems, bulkSelectItems]);
+  }, [showUserGroups, perUserGroupedItems, groupedItems, bulkSelectItems]);
 
   // Copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    const groupedData = Object.entries(groupedItems)
-      .filter(([, items]) => items.length > 0)
-      .map(([groupName, items]) => ({ groupName, items }));
+    const allGroups = showUserGroups && perUserGroupedItems
+      ? Object.entries(perUserGroupedItems).flatMap(([login, groups]) =>
+          Object.entries(groups)
+            .filter(([, items]) => items.length > 0)
+            .map(([groupName, items]) => ({ groupName: `${login} - ${groupName}`, items }))
+        )
+      : Object.entries(groupedItems)
+          .filter(([, items]) => items.length > 0)
+          .map(([groupName, items]) => ({ groupName, items }));
 
-    let finalGroupedData = groupedData;
+    let finalGroupedData = allGroups;
     if (selectedItems.size > 0) {
-      finalGroupedData = groupedData
+      finalGroupedData = allGroups
         .map(group => ({
           ...group,
           items: group.items.filter(item => selectedItems.has(getItemId(item))),
@@ -210,7 +310,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         .filter(group => group.items.length > 0);
     }
 
-    const allItems = Object.values(groupedItems).flat();
+    const allItems = allGroups.flatMap(g => g.items);
     const selectedItemsArray =
       selectedItems.size > 0
         ? allItems.filter(item => selectedItems.has(getItemId(item)))
@@ -223,7 +323,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       onSuccess: () => triggerCopy(format),
       onError: (error: Error) => console.error('Failed to copy grouped results:', error),
     });
-  }, [groupedItems, selectedItems, triggerCopy]);
+  }, [showUserGroups, perUserGroupedItems, groupedItems, selectedItems, triggerCopy]);
 
   // Select all toggle
   const handleSelectAllChange = () => {
@@ -232,6 +332,69 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     } else {
       selectAllItems();
     }
+  };
+
+  /** Renders a PRs/Issues group section. */
+  const renderGroupSection = (
+    groupName: string,
+    groupItems: GitHubItem[],
+    collapseKey: string,
+  ) => {
+    if (groupItems.length === 0) return null;
+    const isCollapsed = collapsedSections.has(collapseKey);
+
+    return (
+      <div key={collapseKey} className="timeline-section">
+        <div className="timeline-section-header">
+          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+              <Checkbox
+                {...getGroupSelectState(groupItems, selectedItems)}
+                onChange={() => {
+                  if (isCollapsed) return;
+                  const sectionItemIds = groupItems.map(getItemId);
+                  const allSelected = sectionItemIds.every(id => selectedItems.has(id));
+                  bulkSelectItems(sectionItemIds, !allSelected);
+                }}
+                sx={{ flexShrink: 0 }}
+                aria-label={`Select all items in ${groupName} section`}
+                disabled={isCollapsed}
+              />
+              <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
+                {groupName} ({groupItems.length})
+              </Heading>
+            </Box>
+            <Button
+              variant="invisible"
+              size="small"
+              onClick={() => toggleSectionCollapse(collapseKey)}
+              className="timeline-section-collapse-button"
+              sx={{
+                fontSize: '0.75rem',
+                color: 'fg.muted',
+                flexShrink: 0,
+                '&:hover': { color: 'fg.default' },
+              }}
+              aria-label={`${isCollapsed ? 'Show' : 'Hide'} ${groupName} section`}
+            >
+              {isCollapsed ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+            </Button>
+          </Box>
+        </div>
+        {!isCollapsed && (
+          <SectionContent
+            groupName={collapseKey}
+            groupItems={groupItems}
+            itemsPerPage={itemsPerPage}
+            getSectionPage={getSectionPage}
+            setSectionPage={setSectionPage}
+            selectedItems={selectedItems}
+            toggleItemSelection={toggleItemSelection}
+            setSelectedItemForDialog={setSelectedItemForDialog}
+          />
+        )}
+      </div>
+    );
   };
 
   return (
@@ -269,35 +432,40 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
               showClearSearch={!!searchText}
               onClearSearch={() => setSearchText('')}
             />
-          ) : (
+          ) : showUserGroups && perUserGroupedItems ? (
+            // Multi-user: group by user, then by PRs/Issues
             <div className="timeline-content">
-              {Object.entries(groupedItems).map(([groupName, groupItems]) => {
-                if (groupItems.length === 0) return null;
+              {Object.entries(perUserGroupedItems).map(([login, groups]) => {
+                const userItemCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);
+                if (userItemCount === 0) return null;
+                const userCollapseKey = `@user:${login}`;
+                const isUserCollapsed = collapsedSections.has(userCollapseKey);
+                const firstItem = Object.values(groups).flat()[0];
+                const avatarUrl = firstItem?.user?.avatar_url;
+
                 return (
-                  <div key={groupName} className="timeline-section">
+                  <div key={login} className="timeline-section" style={{ marginBottom: '1rem' }}>
                     <div className="timeline-section-header">
                       <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-                          <Checkbox
-                            {...getGroupSelectState(groupItems, selectedItems)}
-                            onChange={() => {
-                              if (collapsedSections.has(groupName)) return;
-                              const sectionItemIds = groupItems.map(getItemId);
-                              const allSelected = sectionItemIds.every(id => selectedItems.has(id));
-                              bulkSelectItems(sectionItemIds, !allSelected);
-                            }}
-                            sx={{ flexShrink: 0 }}
-                            aria-label={`Select all items in ${groupName} section`}
-                            disabled={collapsedSections.has(groupName)}
-                          />
-                          <Heading as="h3" sx={{ fontSize: 1, fontWeight: 'bold', m: 0 }}>
-                            {groupName} ({groupItems.length})
+                          {avatarUrl ? (
+                            <Avatar src={avatarUrl} size={20} alt={login} />
+                          ) : (
+                            <PeopleIcon size={16} />
+                          )}
+                          <Heading as="h2" sx={{ fontSize: 2, fontWeight: 'bold', m: 0 }}>
+                            {login}
                           </Heading>
+                          <Token
+                            text={`${userItemCount}`}
+                            size="small"
+                            sx={{ ml: 2, flexShrink: 0 }}
+                          />
                         </Box>
                         <Button
                           variant="invisible"
                           size="small"
-                          onClick={() => toggleSectionCollapse(groupName)}
+                          onClick={() => toggleSectionCollapse(userCollapseKey)}
                           className="timeline-section-collapse-button"
                           sx={{
                             fontSize: '0.75rem',
@@ -305,27 +473,29 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
                             flexShrink: 0,
                             '&:hover': { color: 'fg.default' },
                           }}
-                          aria-label={`${collapsedSections.has(groupName) ? 'Show' : 'Hide'} ${groupName} section`}
+                          aria-label={`${isUserCollapsed ? 'Show' : 'Hide'} ${login} section`}
                         >
-                          {collapsedSections.has(groupName) ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
+                          {isUserCollapsed ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
                         </Button>
                       </Box>
                     </div>
-                    {!collapsedSections.has(groupName) && (
-                      <SectionContent
-                        groupName={groupName}
-                        groupItems={groupItems}
-                        itemsPerPage={itemsPerPage}
-                        getSectionPage={getSectionPage}
-                        setSectionPage={setSectionPage}
-                        selectedItems={selectedItems}
-                        toggleItemSelection={toggleItemSelection}
-                        setSelectedItemForDialog={setSelectedItemForDialog}
-                      />
+                    {!isUserCollapsed && (
+                      <Box sx={{ pl: 3 }}>
+                        {Object.entries(groups).map(([groupName, groupItems]) =>
+                          renderGroupSection(groupName, groupItems, `@user:${login}/${groupName}`)
+                        )}
+                      </Box>
                     )}
                   </div>
                 );
               })}
+            </div>
+          ) : (
+            // Single-user: existing behavior
+            <div className="timeline-content">
+              {Object.entries(groupedItems).map(([groupName, groupItems]) =>
+                renderGroupSection(groupName, groupItems, groupName)
+              )}
             </div>
           )}
         </div>

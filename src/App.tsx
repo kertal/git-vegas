@@ -34,6 +34,10 @@ import GitVegasLogo from './assets/GitVegas.svg?react';
 // Form context for sharing form state across components
 interface FormContextType {
   username: string;
+  usernames: string[];
+  isMultiUser: boolean;
+  groupByUsers: boolean;
+  setGroupByUsers: (value: boolean) => void;
   startDate: string;
   endDate: string;
   githubToken: string;
@@ -77,6 +81,7 @@ function App() {
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [isDataLoadingComplete, setIsDataLoadingComplete] = useState(false);
   const [searchText, setSearchText] = useLocalStorage('header-search-text', '');
+  const [groupByUsers, setGroupByUsers] = useLocalStorage<boolean>('group-by-users', false);
 
   const handleUrlParamsProcessed = useCallback(() => {
     setInitialLoadingCount(1);
@@ -110,6 +115,12 @@ function App() {
 
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
+  // Parse usernames for multi-user detection
+  const usernames = useMemo(() => {
+    return username ? username.split(',').map(u => u.trim()).filter(Boolean) : [];
+  }, [username]);
+  const isMultiUser = usernames.length > 1;
+
   const {
     results,
     searchItemsCount,
@@ -124,6 +135,7 @@ function App() {
     apiMode,
     searchText,
     githubToken,
+    isMultiUser: isMultiUser && groupByUsers,
   });
 
   const {
@@ -423,6 +435,10 @@ function App() {
         <FormContext.Provider
           value={{
             username,
+            usernames,
+            isMultiUser,
+            groupByUsers,
+            setGroupByUsers,
             startDate,
             endDate,
             githubToken,
