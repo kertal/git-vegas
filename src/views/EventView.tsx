@@ -79,7 +79,8 @@ const EventView = memo(function EventView({
   items,
   rawEvents = [],
 }: EventViewProps) {
-  const { searchText, setSearchText, isMultiUser, usernames } = useFormContext();
+  const { searchText, setSearchText, isMultiUser, groupByUsers, usernames } = useFormContext();
+  const showUserGroups = isMultiUser && groupByUsers;
 
   // Pagination state (per-section for multi-user, single for single-user)
   const [currentPage, setCurrentPage] = useLocalStorage<number>('eventView-currentPage', 1);
@@ -101,19 +102,19 @@ const EventView = memo(function EventView({
 
   // --- Multi-user grouping ---
   const perUserItems = useMemo(() => {
-    if (!isMultiUser) return null;
+    if (!showUserGroups) return null;
     return groupItemsByUser(sortedItems, usernames);
-  }, [isMultiUser, sortedItems, usernames]);
+  }, [showUserGroups, sortedItems, usernames]);
 
   // Build flat list of displayed items for selection
   const allDisplayedItems = useMemo(() => {
-    if (isMultiUser && perUserItems) {
+    if (showUserGroups && perUserItems) {
       return Object.entries(perUserItems)
         .filter(([login]) => !collapsedSections.has(`@user:${login}`))
         .flatMap(([, items]) => items);
     }
     return sortedItems;
-  }, [isMultiUser, perUserItems, sortedItems, collapsedSections]);
+  }, [showUserGroups, perUserItems, sortedItems, collapsedSections]);
 
   // Shared hooks
   const {
@@ -147,7 +148,7 @@ const EventView = memo(function EventView({
         newSet.delete(sectionName);
       } else {
         newSet.add(sectionName);
-        if (isMultiUser && perUserItems) {
+        if (showUserGroups && perUserItems) {
           const login = sectionName.replace('@user:', '');
           const userItems = perUserItems[login];
           if (userItems) {
@@ -158,7 +159,7 @@ const EventView = memo(function EventView({
       }
       return newSet;
     });
-  }, [isMultiUser, perUserItems, bulkSelectItems]);
+  }, [showUserGroups, perUserItems, bulkSelectItems]);
 
   // Copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
@@ -202,7 +203,7 @@ const EventView = memo(function EventView({
             />
             <Text sx={{ fontSize: 1, color: 'fg.default', m: 0 }}>
               Select All
-              {!isMultiUser && totalPages > 1 && (
+              {!showUserGroups && totalPages > 1 && (
                 <Text as="span" sx={{ fontSize: 1, color: 'fg.muted', ml: 2 }}>
                   (Page {currentPage} of {totalPages})
                 </Text>
@@ -232,7 +233,7 @@ const EventView = memo(function EventView({
             showClearSearch={!!searchText}
             onClearSearch={() => setSearchText('')}
           />
-        ) : isMultiUser && perUserItems ? (
+        ) : showUserGroups && perUserItems ? (
           // Multi-user: group by user
           Object.entries(perUserItems).map(([login, userItems]) => {
             if (userItems.length === 0) return null;

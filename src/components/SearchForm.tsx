@@ -6,6 +6,8 @@ import {
   TextInput,
   Flash,
   UnderlineNav,
+  ToggleSwitch,
+  Text,
 } from '@primer/react';
 import { useFormContext } from '../App';
 import { validateUsernameList, validateGitHubUsernames } from '../utils';
@@ -29,6 +31,9 @@ const SearchForm = memo(function SearchForm() {
     eventsCount,
     // rawEventsCount removed as it's not used
     githubToken,
+    isMultiUser,
+    groupByUsers,
+    setGroupByUsers,
   } = useFormContext();
 
   // Track if validation is in progress
@@ -194,59 +199,92 @@ const SearchForm = memo(function SearchForm() {
           </FormControl>
         </Box>
         {/* API Mode Switch */}
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 3,
             '@media (max-width: 767px)': {
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              '& nav': {
-                whiteSpace: 'nowrap',
-              },
+              flexDirection: 'column',
+              alignItems: 'stretch',
             },
           }}
         >
-          <UnderlineNav 
-            aria-label="GitHub API Mode"
+          <Box
             sx={{
+              flex: 1,
               '@media (max-width: 767px)': {
-                minWidth: 'fit-content',
+                overflowX: 'auto',
+                overflowY: 'hidden',
+                '& nav': {
+                  whiteSpace: 'nowrap',
+                },
               },
             }}
           >
-            <UnderlineNav.Item
-              href="#"
-              aria-current={apiMode === 'summary' ? 'page' : undefined}
-              onSelect={e => {
-                e.preventDefault();
-                setApiMode('summary');
+            <UnderlineNav
+              aria-label="GitHub API Mode"
+              sx={{
+                '@media (max-width: 767px)': {
+                  minWidth: 'fit-content',
+                },
               }}
             >
-              Summary
-            </UnderlineNav.Item>
-            <UnderlineNav.Item
-              href="#"
-              aria-current={apiMode === 'search' ? 'page' : undefined}
-              counter={searchItemsCount > 0 ? searchItemsCount : undefined}
-              onSelect={e => {
-                e.preventDefault();
-                setApiMode('search');
+              <UnderlineNav.Item
+                href="#"
+                aria-current={apiMode === 'summary' ? 'page' : undefined}
+                onSelect={e => {
+                  e.preventDefault();
+                  setApiMode('summary');
+                }}
+              >
+                Summary
+              </UnderlineNav.Item>
+              <UnderlineNav.Item
+                href="#"
+                aria-current={apiMode === 'search' ? 'page' : undefined}
+                counter={searchItemsCount > 0 ? searchItemsCount : undefined}
+                onSelect={e => {
+                  e.preventDefault();
+                  setApiMode('search');
+                }}
+              >
+                GitHub Issues & PRs
+              </UnderlineNav.Item>
+              <UnderlineNav.Item
+                href="#"
+                aria-current={apiMode === 'events' ? 'page' : undefined}
+                counter={eventsCount > 0 ? eventsCount : undefined}
+                onSelect={e => {
+                  e.preventDefault();
+                  setApiMode('events');
+                }}
+              >
+                GitHub Events
+              </UnderlineNav.Item>
+            </UnderlineNav>
+          </Box>
+          {isMultiUser && (
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                flexShrink: 0,
               }}
             >
-              GitHub Issues & PRs
-            </UnderlineNav.Item>
-            <UnderlineNav.Item
-              href="#"
-              aria-current={apiMode === 'events' ? 'page' : undefined}
-              counter={eventsCount > 0 ? eventsCount : undefined}
-              onSelect={e => {
-                e.preventDefault();
-                setApiMode('events');
-              }}
-            >
-              GitHub Events
-            </UnderlineNav.Item>
-          </UnderlineNav>
+              <Text sx={{ fontSize: 1, color: 'fg.muted', whiteSpace: 'nowrap' }}>
+                Group by users
+              </Text>
+              <ToggleSwitch
+                size="small"
+                checked={groupByUsers}
+                onChange={() => setGroupByUsers(!groupByUsers)}
+                aria-label="Group by users"
+              />
+            </Box>
+          )}
         </Box>
       </Box>
 

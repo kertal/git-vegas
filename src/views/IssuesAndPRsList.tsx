@@ -152,7 +152,8 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 }: {
   results: GitHubItem[];
 }) {
-  const { searchText, setSearchText, isMultiUser, usernames } = useFormContext();
+  const { searchText, setSearchText, isMultiUser, groupByUsers, usernames } = useFormContext();
+  const showUserGroups = isMultiUser && groupByUsers;
 
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('issuesAndPRs-collapsedSections', new Set());
 
@@ -185,7 +186,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
 
   // --- Multi-user grouping ---
   const perUserGroupedItems = useMemo(() => {
-    if (!isMultiUser) return null;
+    if (!showUserGroups) return null;
     const userItems = groupItemsByUser(filteredResults, usernames);
     const result: Record<string, { 'PRs': GitHubItem[]; 'Issues': GitHubItem[] }> = {};
 
@@ -204,11 +205,11 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       result[login] = groups;
     }
     return result;
-  }, [isMultiUser, filteredResults, usernames]);
+  }, [showUserGroups, filteredResults, usernames]);
 
   // --- Single-user grouping (existing logic) ---
   const groupedItems = useMemo(() => {
-    if (isMultiUser) return { 'PRs': [] as GitHubItem[], 'Issues': [] as GitHubItem[] };
+    if (showUserGroups) return { 'PRs': [] as GitHubItem[], 'Issues': [] as GitHubItem[] };
     const groups: { 'PRs': GitHubItem[]; 'Issues': GitHubItem[] } = { 'PRs': [], 'Issues': [] };
     filteredResults.forEach(item => {
       if (item.pull_request) {
@@ -221,11 +222,11 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       groups[key as keyof typeof groups] = sortItemsByUpdatedDate(groups[key as keyof typeof groups]);
     });
     return groups;
-  }, [isMultiUser, filteredResults]);
+  }, [showUserGroups, filteredResults]);
 
   // Build flat list of items from expanded sections for selection
   const allDisplayedItems = useMemo(() => {
-    if (isMultiUser && perUserGroupedItems) {
+    if (showUserGroups && perUserGroupedItems) {
       return Object.entries(perUserGroupedItems)
         .filter(([login]) => !collapsedSections.has(`@user:${login}`))
         .flatMap(([login, groups]) =>
@@ -237,7 +238,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
     return Object.entries(groupedItems)
       .filter(([groupName]) => !collapsedSections.has(groupName))
       .flatMap(([, items]) => items);
-  }, [isMultiUser, perUserGroupedItems, groupedItems, collapsedSections]);
+  }, [showUserGroups, perUserGroupedItems, groupedItems, collapsedSections]);
 
   // Shared hooks
   const {
@@ -258,7 +259,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
         newSet.delete(sectionName);
       } else {
         newSet.add(sectionName);
-        if (isMultiUser && perUserGroupedItems) {
+        if (showUserGroups && perUserGroupedItems) {
           if (sectionName.startsWith('@user:') && !sectionName.includes('/')) {
             const login = sectionName.replace('@user:', '');
             const userGroups = perUserGroupedItems[login];
@@ -285,11 +286,11 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       }
       return newSet;
     });
-  }, [isMultiUser, perUserGroupedItems, groupedItems, bulkSelectItems]);
+  }, [showUserGroups, perUserGroupedItems, groupedItems, bulkSelectItems]);
 
   // Copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
-    const allGroups = isMultiUser && perUserGroupedItems
+    const allGroups = showUserGroups && perUserGroupedItems
       ? Object.entries(perUserGroupedItems).flatMap(([login, groups]) =>
           Object.entries(groups)
             .filter(([, items]) => items.length > 0)
@@ -322,7 +323,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
       onSuccess: () => triggerCopy(format),
       onError: (error: Error) => console.error('Failed to copy grouped results:', error),
     });
-  }, [isMultiUser, perUserGroupedItems, groupedItems, selectedItems, triggerCopy]);
+  }, [showUserGroups, perUserGroupedItems, groupedItems, selectedItems, triggerCopy]);
 
   // Select all toggle
   const handleSelectAllChange = () => {
@@ -431,7 +432,7 @@ const IssuesAndPRsList = memo(function IssuesAndPRsList({
               showClearSearch={!!searchText}
               onClearSearch={() => setSearchText('')}
             />
-          ) : isMultiUser && perUserGroupedItems ? (
+          ) : showUserGroups && perUserGroupedItems ? (
             // Multi-user: group by user, then by PRs/Issues
             <div className="timeline-content">
               {Object.entries(perUserGroupedItems).map(([login, groups]) => {

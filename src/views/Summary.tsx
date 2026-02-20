@@ -114,7 +114,8 @@ const SummaryView = memo(function SummaryView({
   rawEvents = [],
   indexedDBSearchItems = [],
 }: SummaryProps) {
-  const { startDate, endDate, searchText, setSearchText, isMultiUser, usernames } = useFormContext();
+  const { startDate, endDate, searchText, setSearchText, isMultiUser, groupByUsers, usernames } = useFormContext();
+  const showUserGroups = isMultiUser && groupByUsers;
 
   const [collapsedSections, setCollapsedSections] = useLocalStorage<Set<string>>('summary-collapsedSections', new Set());
 
@@ -130,7 +131,7 @@ const SummaryView = memo(function SummaryView({
   // --- Multi-user grouping ---
   type UserActionGroups = Record<string, Record<string, GitHubItem[]>>;
   const perUserActionGroups = useMemo((): UserActionGroups | null => {
-    if (!isMultiUser) return null;
+    if (!showUserGroups) return null;
     const userItems = groupItemsByUser(sortedItems, usernames);
     const userSearchItems = groupItemsByUser(filteredIndexedDBSearchItems, usernames);
 
@@ -165,17 +166,17 @@ const SummaryView = memo(function SummaryView({
       });
 
     return ordered;
-  }, [isMultiUser, sortedItems, filteredIndexedDBSearchItems, usernames, startDate, endDate]);
+  }, [showUserGroups, sortedItems, filteredIndexedDBSearchItems, usernames, startDate, endDate]);
 
   // --- Single-user grouping (existing logic) ---
   const actionGroups = useMemo((): Record<string, GitHubItem[]> => {
-    if (isMultiUser) return {};
+    if (showUserGroups) return {};
     return groupSummaryData(sortedItems, filteredIndexedDBSearchItems, startDate, endDate);
-  }, [isMultiUser, sortedItems, filteredIndexedDBSearchItems, startDate, endDate]);
+  }, [showUserGroups, sortedItems, filteredIndexedDBSearchItems, startDate, endDate]);
 
   // Build flat list of items from expanded sections for selection
   const allDisplayedItems = useMemo((): GitHubItem[] => {
-    if (isMultiUser && perUserActionGroups) {
+    if (showUserGroups && perUserActionGroups) {
       return Object.entries(perUserActionGroups)
         .filter(([login]) => !collapsedSections.has(`@user:${login}`))
         .flatMap(([login, groups]) =>
@@ -187,7 +188,7 @@ const SummaryView = memo(function SummaryView({
     return Object.entries(actionGroups)
       .filter(([groupName]) => !collapsedSections.has(groupName))
       .flatMap(([, items]) => items);
-  }, [isMultiUser, perUserActionGroups, actionGroups, collapsedSections]);
+  }, [showUserGroups, perUserActionGroups, actionGroups, collapsedSections]);
 
   // Shared hooks
   const {
@@ -204,7 +205,7 @@ const SummaryView = memo(function SummaryView({
 
   // Get all action groups flattened (for copy and other operations)
   const allActionGroups = useMemo(() => {
-    if (isMultiUser && perUserActionGroups) {
+    if (showUserGroups && perUserActionGroups) {
       const merged: Record<string, GitHubItem[]> = {};
       Object.entries(perUserActionGroups).forEach(([login, groups]) => {
         Object.entries(groups).forEach(([groupName, items]) => {
@@ -215,7 +216,7 @@ const SummaryView = memo(function SummaryView({
       return merged;
     }
     return actionGroups;
-  }, [isMultiUser, perUserActionGroups, actionGroups]);
+  }, [showUserGroups, perUserActionGroups, actionGroups]);
 
   // Toggle section collapse and clear selections on collapse
   const toggleSectionCollapse = useCallback((sectionName: string) => {
@@ -226,7 +227,7 @@ const SummaryView = memo(function SummaryView({
       } else {
         newSet.add(sectionName);
         // Find items in this section to deselect
-        if (isMultiUser && perUserActionGroups) {
+        if (showUserGroups && perUserActionGroups) {
           // Could be a user section or a group within a user
           if (sectionName.startsWith('@user:') && !sectionName.includes('/')) {
             // User section - deselect all items for this user
@@ -256,7 +257,7 @@ const SummaryView = memo(function SummaryView({
       }
       return newSet;
     });
-  }, [isMultiUser, perUserActionGroups, actionGroups, bulkSelectItems]);
+  }, [showUserGroups, perUserActionGroups, actionGroups, bulkSelectItems]);
 
   // Copy handler
   const copyResultsToClipboard = useCallback(async (format: 'detailed' | 'compact') => {
@@ -287,7 +288,7 @@ const SummaryView = memo(function SummaryView({
 
   const hasRawEvents = rawEvents && rawEvents.length > 0;
   const hasSearchText = searchText && searchText.trim().length > 0;
-  const hasItems = isMultiUser && perUserActionGroups
+  const hasItems = showUserGroups && perUserActionGroups
     ? Object.values(perUserActionGroups).some(groups =>
         Object.values(groups).some(items => items.length > 0)
       )
@@ -409,7 +410,7 @@ const SummaryView = memo(function SummaryView({
             showClearSearch={!!searchText}
             onClearSearch={() => setSearchText('')}
           />
-        ) : isMultiUser && perUserActionGroups ? (
+        ) : showUserGroups && perUserActionGroups ? (
           // Multi-user: group by user, then by action type
           Object.entries(perUserActionGroups).map(([login, groups]) => {
             const userItemCount = Object.values(groups).reduce((sum, items) => sum + items.length, 0);

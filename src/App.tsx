@@ -36,6 +36,8 @@ interface FormContextType {
   username: string;
   usernames: string[];
   isMultiUser: boolean;
+  groupByUsers: boolean;
+  setGroupByUsers: (value: boolean) => void;
   startDate: string;
   endDate: string;
   githubToken: string;
@@ -79,6 +81,7 @@ function App() {
   const [isManuallySpinning, setIsManuallySpinning] = useState(false);
   const [isDataLoadingComplete, setIsDataLoadingComplete] = useState(false);
   const [searchText, setSearchText] = useLocalStorage('header-search-text', '');
+  const [groupByUsers, setGroupByUsers] = useLocalStorage<boolean>('group-by-users', false);
 
   const handleUrlParamsProcessed = useCallback(() => {
     setInitialLoadingCount(1);
@@ -132,7 +135,7 @@ function App() {
     apiMode,
     searchText,
     githubToken,
-    isMultiUser,
+    isMultiUser: isMultiUser && groupByUsers,
   });
 
   const {
@@ -434,6 +437,8 @@ function App() {
             username,
             usernames,
             isMultiUser,
+            groupByUsers,
+            setGroupByUsers,
             startDate,
             endDate,
             githubToken,
