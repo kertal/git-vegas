@@ -41,9 +41,12 @@ vi.mock('../store/useFormStore', () => ({
     validateUsernameFormat: mockValidateUsernameFormat,
     addAvatarsToCache: mockAddAvatarsToCache,
     loading: false,
+    loadingProgress: '',
     error: null,
     searchItemsCount: 0,
+    eventsCount: 0,
     rawEventsCount: 0,
+    githubToken: '',
   }),
 }));
 
