@@ -34,6 +34,8 @@ import GitVegasLogo from './assets/GitVegas.svg?react';
 // Form context for sharing form state across components
 interface FormContextType {
   username: string;
+  usernames: string[];
+  isMultiUser: boolean;
   startDate: string;
   endDate: string;
   githubToken: string;
@@ -110,6 +112,12 @@ function App() {
 
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
+  // Parse usernames for multi-user detection
+  const usernames = useMemo(() => {
+    return username ? username.split(',').map(u => u.trim()).filter(Boolean) : [];
+  }, [username]);
+  const isMultiUser = usernames.length > 1;
+
   const {
     results,
     searchItemsCount,
@@ -124,6 +132,7 @@ function App() {
     apiMode,
     searchText,
     githubToken,
+    isMultiUser,
   });
 
   const {
@@ -423,6 +432,8 @@ function App() {
         <FormContext.Provider
           value={{
             username,
+            usernames,
+            isMultiUser,
             startDate,
             endDate,
             githubToken,

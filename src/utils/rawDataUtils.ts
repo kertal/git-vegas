@@ -582,7 +582,8 @@ export const processRawEvents = (
 export const categorizeRawSearchItems = (
   rawItems: GitHubItem[],
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  skipDedup = false
 ): GitHubItem[] => {
   // Set up date filtering if dates are provided
   const startDateTime = startDate ? new Date(startDate).getTime() : 0;
@@ -595,7 +596,7 @@ export const categorizeRawSearchItems = (
       console.warn('Skipping item with missing title:', item.html_url || item.id);
       return false;
     }
-    
+
     const itemTime = new Date(item.updated_at).getTime();
 
     // Filter by date range if dates are provided
@@ -609,10 +610,15 @@ export const categorizeRawSearchItems = (
     return true;
   });
 
+  // Skip deduplication in multi-user mode to preserve per-user items
+  if (skipDedup) {
+    return dateFilteredItems;
+  }
+
   // Then remove duplicates based on html_url (unique identifier for issues/PRs)
   const urlSet = new Set<string>();
   const deduplicatedItems: GitHubItem[] = [];
-  
+
   dateFilteredItems.forEach(item => {
     if (!urlSet.has(item.html_url)) {
       urlSet.add(item.html_url);
