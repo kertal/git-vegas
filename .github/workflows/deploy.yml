@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: pages-${{ github.event_name }}-${{ github.event.number || github.sha }}
+  group: pages-${{ github.event.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
