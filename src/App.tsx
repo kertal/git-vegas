@@ -106,13 +106,13 @@ function App() {
     events: indexedDBSearchItems,
     storeEvents: storeSearchItems,
     clearEvents: clearSearchItems,
-  } = useIndexedDBStorage('github-search-items-indexeddb');
+  } = useIndexedDBStorage<GitHubItem>('github-search-items-indexeddb');
 
   const {
     events: indexedDBReviewItems,
     storeEvents: storeReviewItems,
     clearEvents: clearReviewItems,
-  } = useIndexedDBStorage('github-review-items-indexeddb');
+  } = useIndexedDBStorage<GitHubItem>('github-review-items-indexeddb');
 
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
@@ -463,7 +463,7 @@ function App() {
             <SummaryView
               items={results}
               rawEvents={indexedDBEvents}
-              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+              indexedDBSearchItems={indexedDBSearchItems}
               reviewedPRs={reviewItems}
             />
           ) : (

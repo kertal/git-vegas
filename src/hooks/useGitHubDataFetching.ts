@@ -10,14 +10,14 @@ interface UseGitHubDataFetchingProps {
   startDate: string;
   endDate: string;
   indexedDBEvents: GitHubEvent[];
-  indexedDBSearchItems: GitHubEvent[];
-  indexedDBReviewItems: GitHubEvent[];
+  indexedDBSearchItems: GitHubItem[];
+  indexedDBReviewItems: GitHubItem[];
   onError: (error: string) => void;
   storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
   clearEvents: () => Promise<void>;
-  storeSearchItems: (key: string, items: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  storeSearchItems: (key: string, items: GitHubItem[], metadata: EventsData['metadata']) => Promise<void>;
   clearSearchItems: () => Promise<void>;
-  storeReviewItems: (key: string, items: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  storeReviewItems: (key: string, items: GitHubItem[], metadata: EventsData['metadata']) => Promise<void>;
   clearReviewItems: () => Promise<void>;
 }
 
@@ -344,7 +344,7 @@ export const useGitHubDataFetching = ({
       }
 
       if (sortedSearchItems.length > 0) {
-        await storeSearchItems('github-search-items-indexeddb', sortedSearchItems as unknown as GitHubEvent[], {
+        await storeSearchItems('github-search-items-indexeddb', sortedSearchItems, {
           lastFetch: Date.now(),
           usernames: usernames,
           apiMode: 'search',
@@ -354,7 +354,7 @@ export const useGitHubDataFetching = ({
       }
 
       // Always store review items (even empty) to clear stale data from previous runs
-      await storeReviewItems('github-review-items-indexeddb', sortedReviewItems as unknown as GitHubEvent[], {
+      await storeReviewItems('github-review-items-indexeddb', sortedReviewItems, {
         lastFetch: Date.now(),
         usernames: usernames,
         apiMode: 'search',

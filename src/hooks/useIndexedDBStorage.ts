@@ -2,21 +2,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { eventsStorage, type EventsData } from '../utils/indexedDB';
 import { GitHubEvent } from '../types';
 
-interface UseIndexedDBStorageReturn {
-  events: GitHubEvent[];
+interface UseIndexedDBStorageReturn<T> {
+  events: T[];
   metadata: EventsData['metadata'] | null;
   isLoading: boolean;
   error: string | null;
-  storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  storeEvents: (key: string, events: T[], metadata: EventsData['metadata']) => Promise<void>;
   clearEvents: () => Promise<void>;
   refreshEvents: () => Promise<void>;
 }
 
 /**
- * Custom hook for managing events storage using IndexedDB with localStorage fallback
+ * Custom hook for managing storage using IndexedDB with localStorage fallback.
+ * Generic over the stored item type — defaults to GitHubEvent for backwards
+ * compatibility but callers can specify GitHubItem for search/review stores.
  */
-export function useIndexedDBStorage(key: string): UseIndexedDBStorageReturn {
-  const [events, setEvents] = useState<GitHubEvent[]>([]);
+export function useIndexedDBStorage<T = GitHubEvent>(key: string): UseIndexedDBStorageReturn<T> {
+  const [events, setEvents] = useState<T[]>([]);
   const [metadata, setMetadata] = useState<EventsData['metadata'] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +31,8 @@ export function useIndexedDBStorage(key: string): UseIndexedDBStorageReturn {
     try {
       const data = await eventsStorage.retrieve(key);
       if (data) {
-        setEvents(data.events);
+        // IndexedDB stores raw JSON — cast to the caller's expected type
+        setEvents(data.events as unknown as T[]);
         setMetadata(data.metadata);
       } else {
         setEvents([]);
@@ -47,14 +50,15 @@ export function useIndexedDBStorage(key: string): UseIndexedDBStorageReturn {
 
   // Store events in storage
   const storeEvents = useCallback(async (
-    storageKey: string, 
-    newEvents: GitHubEvent[], 
+    storageKey: string,
+    newEvents: T[],
     newMetadata: EventsData['metadata']
   ) => {
     setError(null);
 
     try {
-      await eventsStorage.store(storageKey, newEvents, newMetadata);
+      // IndexedDB stores raw JSON — cast to GitHubEvent[] for the storage layer
+      await eventsStorage.store(storageKey, newEvents as unknown as GitHubEvent[], newMetadata);
       setEvents(newEvents);
       setMetadata(newMetadata);
     } catch (err) {
@@ -96,4 +100,4 @@ export function useIndexedDBStorage(key: string): UseIndexedDBStorageReturn {
     clearEvents,
     refreshEvents,
   };
-} 
+}

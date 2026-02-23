@@ -6,8 +6,8 @@ import { enrichItemsWithPRDetails } from '../utils/prEnrichment';
 
 interface UseGitHubDataProcessingProps {
   indexedDBEvents: GitHubEvent[];
-  indexedDBSearchItems: GitHubEvent[];
-  indexedDBReviewItems: GitHubEvent[];
+  indexedDBSearchItems: GitHubItem[];
+  indexedDBReviewItems: GitHubItem[];
   startDate: string;
   endDate: string;
   apiMode: 'search' | 'events' | 'summary';
@@ -45,7 +45,7 @@ export const useGitHubDataProcessing = ({
     } else if (apiMode === 'search') {
       // Issues and PRs view: only search items
       return categorizeRawSearchItems(
-        indexedDBSearchItems as unknown as GitHubItem[],
+        indexedDBSearchItems,
         startDate,
         endDate
       );
@@ -53,7 +53,7 @@ export const useGitHubDataProcessing = ({
       // Summary view: merge both events AND search items for complete picture
       const processedEvents = processRawEvents(indexedDBEvents, startDate, endDate);
       const processedSearchItems = categorizeRawSearchItems(
-        indexedDBSearchItems as unknown as GitHubItem[],
+        indexedDBSearchItems,
         startDate,
         endDate
       );
@@ -149,7 +149,7 @@ export const useGitHubDataProcessing = ({
   // Calculate counts for navigation tabs (with search filtering applied)
   const searchItemsCount = useMemo(() => {
     const rawSearchItems = categorizeRawSearchItems(
-      indexedDBSearchItems as unknown as GitHubItem[],
+      indexedDBSearchItems,
       startDate,
       endDate
     );
@@ -166,7 +166,7 @@ export const useGitHubDataProcessing = ({
   // Process review items from the reviewed-by search query
   const reviewItems = useMemo(() => {
     return categorizeRawSearchItems(
-      indexedDBReviewItems as unknown as GitHubItem[],
+      indexedDBReviewItems,
       startDate,
       endDate
     );
