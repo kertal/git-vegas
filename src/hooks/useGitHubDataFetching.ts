@@ -3,6 +3,7 @@ import { GitHubEvent, GitHubItem } from '../types';
 import { EventsData } from '../utils/indexedDB';
 import { validateUsernameList, isValidDateString } from '../utils';
 import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
+import { enrichReviewItemsWithDates } from '../utils/reviewDates';
 
 interface UseGitHubDataFetchingProps {
   username: string;
@@ -10,12 +11,15 @@ interface UseGitHubDataFetchingProps {
   startDate: string;
   endDate: string;
   indexedDBEvents: GitHubEvent[];
-  indexedDBSearchItems: GitHubEvent[];
+  indexedDBSearchItems: GitHubItem[];
+  indexedDBReviewItems: GitHubItem[];
   onError: (error: string) => void;
   storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
   clearEvents: () => Promise<void>;
-  storeSearchItems: (key: string, items: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  storeSearchItems: (key: string, items: GitHubItem[], metadata: EventsData['metadata']) => Promise<void>;
   clearSearchItems: () => Promise<void>;
+  storeReviewItems: (key: string, items: GitHubItem[], metadata: EventsData['metadata']) => Promise<void>;
+  clearReviewItems: () => Promise<void>;
 }
 
 interface UseGitHubDataFetchingReturn {
@@ -32,11 +36,14 @@ export const useGitHubDataFetching = ({
   endDate,
   indexedDBEvents,
   indexedDBSearchItems,
+  indexedDBReviewItems,
   onError,
   storeEvents,
   clearEvents,
   storeSearchItems,
   clearSearchItems,
+  storeReviewItems,
+  clearReviewItems,
 }: UseGitHubDataFetchingProps): UseGitHubDataFetchingReturn => {
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState('');
@@ -111,8 +118,6 @@ export const useGitHubDataFetching = ({
       } catch (error) {
         console.error(`Error fetching events page ${page} for ${username}:`, error);
         throw error;
-        // Continue with what we have so far
-        hasMorePages = false;
       }
     }
 
@@ -172,7 +177,7 @@ export const useGitHubDataFetching = ({
     setLoading(false);
 
     // Check if there's existing data using actual arrays
-    const hasExistingData = indexedDBEvents.length > 0 || indexedDBSearchItems.length > 0;
+    const hasExistingData = indexedDBEvents.length > 0 || indexedDBSearchItems.length > 0 || indexedDBReviewItems.length > 0;
     
     setLoading(true);
     onError(''); // Clear any previous errors
@@ -197,11 +202,13 @@ export const useGitHubDataFetching = ({
       if (!hasExistingData) {
         await clearEvents();
         await clearSearchItems();
+        await clearReviewItems();
       }
 
       // Accumulate all data from all users
       const allEvents: GitHubEvent[] = [];
       const allSearchItems: GitHubItem[] = [];
+      const allReviewItems: GitHubItem[] = [];
 
       // Fetch events for each username with pagination
       for (const singleUsername of usernames) {
@@ -210,7 +217,7 @@ export const useGitHubDataFetching = ({
         try {
 
           // Fetch issues and PRs with date range filtering (with pagination)
-          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND  (is:issue OR is:pr)`;
+          const searchQuery = `(author:${singleUsername} OR assignee:${singleUsername}) AND updated:${startDate}..${endDate} AND (is:issue OR is:pr)`;
           const searchHeaders = {
             ...(githubToken && { Authorization: `token ${githubToken}` }),
             Accept: 'application/vnd.github.v3+json',
@@ -252,6 +259,51 @@ export const useGitHubDataFetching = ({
           }
           onProgress(`Fetched ${totalSearchItems} issues/PRs for ${singleUsername}`);
 
+          // Fetch PRs reviewed by this user using the Search API (more accurate than Events API)
+          const reviewQuery = `reviewed-by:${singleUsername} is:pr updated:${startDate}..${endDate}`;
+          let reviewSearchPage = 1;
+          let totalReviewItems = 0;
+
+          while (true) {
+            const reviewResponse = await fetch(
+              `https://api.github.com/search/issues?q=${encodeURIComponent(reviewQuery)}&per_page=${GITHUB_API_PER_PAGE}&sort=updated&page=${reviewSearchPage}`,
+              { headers: searchHeaders }
+            );
+
+            if (!reviewResponse.ok) {
+              const responseJSON = await reviewResponse.json();
+              console.warn(`Failed to fetch reviewed PRs for ${singleUsername}: ${responseJSON.message}`);
+              break; // Don't fail the whole search, just skip review data
+            }
+
+            const reviewData = await reviewResponse.json();
+            const reviewItemsWithOriginal = reviewData.items.map((item: Record<string, unknown>) => ({
+              ...item,
+              assignee: item.assignee || null,
+              assignees: item.assignees || [],
+              original: item,
+              // Tag with reviewer info: item.user is the PR author, reviewer is the searched username
+              reviewedBy: {
+                login: singleUsername,
+                avatar_url: `https://github.com/${singleUsername}.png`,
+                html_url: `https://github.com/${singleUsername}`,
+              },
+            }));
+            allReviewItems.push(...reviewItemsWithOriginal);
+            totalReviewItems += reviewData.items.length;
+
+            if (totalReviewItems >= reviewData.total_count || reviewData.items.length < GITHUB_API_PER_PAGE) {
+              break;
+            }
+
+            reviewSearchPage++;
+            if (totalReviewItems >= 1000) {
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, GITHUB_API_DELAY_MS));
+          }
+          onProgress(`Fetched ${totalReviewItems} reviewed PRs for ${singleUsername}`);
+
            // Fetch all events with pagination
            const userEvents = await fetchAllEvents(singleUsername, githubToken, startDate, endDate, onProgress);
            allEvents.push(...userEvents);
@@ -273,9 +325,30 @@ export const useGitHubDataFetching = ({
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
       
-      const sortedSearchItems = allSearchItems.sort((a, b) => 
+      const sortedSearchItems = allSearchItems.sort((a, b) =>
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
+
+      const sortedReviewItems = allReviewItems.sort((a, b) =>
+        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
+
+      // Enrich review items with actual review submission dates from GraphQL
+      let enrichedReviewItems = sortedReviewItems;
+      if (sortedReviewItems.length > 0 && githubToken) {
+        try {
+          setLoadingProgress('Fetching review dates...');
+          enrichedReviewItems = await enrichReviewItemsWithDates(
+            sortedReviewItems,
+            githubToken,
+            (current, total) => {
+              setLoadingProgress(`Fetching review dates: ${current}/${total}`);
+            }
+          );
+        } catch (err) {
+          console.warn('Failed to enrich review dates, using search results as-is:', err);
+        }
+      }
 
       // Store all accumulated data at once
       if (sortedEvents.length > 0) {
@@ -289,7 +362,7 @@ export const useGitHubDataFetching = ({
       }
 
       if (sortedSearchItems.length > 0) {
-        await storeSearchItems('github-search-items-indexeddb', sortedSearchItems as unknown as GitHubEvent[], {
+        await storeSearchItems('github-search-items-indexeddb', sortedSearchItems, {
           lastFetch: Date.now(),
           usernames: usernames,
           apiMode: 'search',
@@ -297,6 +370,15 @@ export const useGitHubDataFetching = ({
           endDate,
         });
       }
+
+      // Always store review items (even empty) to clear stale data from previous runs
+      await storeReviewItems('github-review-items-indexeddb', enrichedReviewItems, {
+        lastFetch: Date.now(),
+        usernames: usernames,
+        apiMode: 'search',
+        startDate,
+        endDate,
+      });
 
       setLoadingProgress('Data fetch completed successfully!');
       setCurrentUsername('');
@@ -323,11 +405,14 @@ export const useGitHubDataFetching = ({
     endDate,
     indexedDBEvents.length,
     indexedDBSearchItems.length,
+    indexedDBReviewItems.length,
     onError,
     storeEvents,
     clearEvents,
     storeSearchItems,
     clearSearchItems,
+    storeReviewItems,
+    clearReviewItems,
   ]);
 
   return {

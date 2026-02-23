@@ -106,7 +106,13 @@ function App() {
     events: indexedDBSearchItems,
     storeEvents: storeSearchItems,
     clearEvents: clearSearchItems,
-  } = useIndexedDBStorage('github-search-items-indexeddb');
+  } = useIndexedDBStorage<GitHubItem>('github-search-items-indexeddb');
+
+  const {
+    events: indexedDBReviewItems,
+    storeEvents: storeReviewItems,
+    clearEvents: clearReviewItems,
+  } = useIndexedDBStorage<GitHubItem>('github-review-items-indexeddb');
 
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
@@ -116,9 +122,11 @@ function App() {
     eventsCount,
     rawEventsCount,
     isEnriching,
+    reviewItems,
   } = useGitHubDataProcessing({
     indexedDBEvents,
     indexedDBSearchItems,
+    indexedDBReviewItems,
     startDate,
     endDate,
     apiMode,
@@ -138,11 +146,14 @@ function App() {
     endDate,
     indexedDBEvents,
     indexedDBSearchItems,
+    indexedDBReviewItems,
     onError: setError,
     storeEvents,
     clearEvents,
     storeSearchItems,
     clearSearchItems,
+    storeReviewItems,
+    clearReviewItems,
   });
 
   // Extract unique users from results for search suggestions (with avatars)
@@ -452,7 +463,8 @@ function App() {
             <SummaryView
               items={results}
               rawEvents={indexedDBEvents}
-              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+              indexedDBSearchItems={indexedDBSearchItems}
+              reviewedPRs={reviewItems}
             />
           ) : (
             <IssuesAndPRsList results={results} />
@@ -463,6 +475,7 @@ function App() {
             onDismiss={() => setIsSettingsOpen(false)}
             onClearEvents={clearEvents}
             onClearSearchItems={clearSearchItems}
+            onClearReviewItems={clearReviewItems}
           />
         </FormContext.Provider>
       </PageLayout.Content>

@@ -139,6 +139,11 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
     const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
 
+    // For review events, the actor is the reviewer. Try to get the PR author from the payload.
+    const prAuthor = pr.user;
+    // If PR author differs from reviewer, swap: set user to PR author, reviewedBy to reviewer
+    const itemUser = (prAuthor && prAuthor.login !== actorUser.login) ? prAuthor : actorUser;
+
     return {
       id: pr.id || parseInt(event.id),
       event_id: event.id,
@@ -159,13 +164,14 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of PR user
+      user: itemUser, // PR author if available, otherwise reviewer
       pull_request: {
         merged_at: pr.merged_at,
         url: htmlUrl,
       },
       original: payload,
       originalEventType: type,
+      reviewedBy: actorUser, // The event actor is the reviewer
     };
   } else if (type === 'IssueCommentEvent' && payload.comment && payload.issue) {
     const comment = payload.comment;
@@ -596,7 +602,10 @@ export const categorizeRawSearchItems = (
       return false;
     }
     
-    const itemTime = new Date(item.updated_at).getTime();
+    // For review items use the actual review date when available,
+    // otherwise fall back to the PR's updated_at
+    const dateField = item.reviewed_at ?? item.updated_at;
+    const itemTime = new Date(dateField).getTime();
 
     // Filter by date range if dates are provided
     if (startDate && itemTime < startDateTime) {
@@ -609,13 +618,17 @@ export const categorizeRawSearchItems = (
     return true;
   });
 
-  // Then remove duplicates based on html_url (unique identifier for issues/PRs)
-  const urlSet = new Set<string>();
+  // Remove duplicates: use reviewer+url for review items (to preserve multiple reviewers),
+  // plain html_url for everything else
+  const dedupKeys = new Set<string>();
   const deduplicatedItems: GitHubItem[] = [];
-  
+
   dateFilteredItems.forEach(item => {
-    if (!urlSet.has(item.html_url)) {
-      urlSet.add(item.html_url);
+    const key = item.reviewedBy
+      ? `${item.reviewedBy.login}:${item.html_url}`
+      : item.html_url;
+    if (!dedupKeys.has(key)) {
+      dedupKeys.add(key);
       deduplicatedItems.push(item);
     }
   });

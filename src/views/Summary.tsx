@@ -39,13 +39,17 @@ interface SummaryProps {
   items: GitHubItem[];
   rawEvents?: GitHubEvent[];
   indexedDBSearchItems?: GitHubItem[];
+  /** Processed review items from the reviewed-by Search API query */
+  reviewedPRs?: GitHubItem[];
 }
 
 /** Returns the most recently updated item from a group. */
 const getMostRecent = (items: GitHubItem[]): GitHubItem =>
-  items.reduce((latest, current) =>
-    new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-  );
+  items.reduce((latest, current) => {
+    const currentDate = new Date(current.reviewed_at ?? current.updated_at);
+    const latestDate = new Date(latest.reviewed_at ?? latest.updated_at);
+    return currentDate > latestDate ? current : latest;
+  });
 
 /** Groups items by URL, deduplicating comments and separating reviewers. */
 const groupItemsByUrl = (groupItems: GitHubItem[]): Record<string, GitHubItem[]> => {
@@ -55,9 +59,12 @@ const groupItemsByUrl = (groupItems: GitHubItem[]): Record<string, GitHubItem[]>
     if (getEventType(item) === 'comment') {
       groupingKey = groupingKey.split('#')[0];
     }
-    const isReview = (item.title && item.title.startsWith('Review on:')) || item.originalEventType === 'PullRequestReviewEvent';
+    const isReview = !!item.reviewedBy
+      || (item.title && item.title.startsWith('Review on:'))
+      || item.originalEventType === 'PullRequestReviewEvent';
     if (isReview) {
-      groupingKey = `${item.user.login}:${groupingKey}`;
+      const reviewer = item.reviewedBy?.login ?? item.user.login;
+      groupingKey = `${reviewer}:${groupingKey}`;
     }
     if (!urlGroups[groupingKey]) {
       urlGroups[groupingKey] = [];
@@ -71,6 +78,7 @@ const SummaryView = memo(function SummaryView({
   items,
   rawEvents = [],
   indexedDBSearchItems = [],
+  reviewedPRs = [],
 }: SummaryProps) {
   const { startDate, endDate, searchText, setSearchText } = useFormContext();
 
@@ -85,10 +93,15 @@ const SummaryView = memo(function SummaryView({
     return filterItemsByAdvancedSearch(indexedDBSearchItems, searchText);
   }, [indexedDBSearchItems, searchText]);
 
+  // Filtered review items for summary grouping
+  const filteredReviewedPRs = useMemo(() => {
+    return filterItemsByAdvancedSearch(reviewedPRs, searchText);
+  }, [reviewedPRs, searchText]);
+
   // Group items for summary view
   const actionGroups = useMemo(() => {
-    return groupSummaryData(sortedItems, filteredIndexedDBSearchItems, startDate, endDate);
-  }, [sortedItems, filteredIndexedDBSearchItems, startDate, endDate]);
+    return groupSummaryData(sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredReviewedPRs);
+  }, [sortedItems, filteredIndexedDBSearchItems, startDate, endDate, filteredReviewedPRs]);
 
   // Build flat list of items from expanded sections for selection
   const allDisplayedItems = useMemo(() => {
