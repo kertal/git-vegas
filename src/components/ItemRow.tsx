@@ -231,7 +231,7 @@ const ItemRow = ({
                 flexShrink: 0,
               }}
             >
-              {new Date(item.updated_at).toLocaleDateString(undefined, {
+              {new Date(item.reviewed_at ?? item.updated_at).toLocaleDateString(undefined, {
                 month: 'short',
                 day: 'numeric',
                 weekday: 'short',
@@ -446,7 +446,7 @@ const ItemRow = ({
                     fontSize: '12px',
                   }}
                 >
-                  {new Date(item.updated_at).toLocaleDateString(undefined, {
+                  {new Date(item.reviewed_at ?? item.updated_at).toLocaleDateString(undefined, {
                     month: 'short',
                     day: 'numeric',
                     weekday: 'short',

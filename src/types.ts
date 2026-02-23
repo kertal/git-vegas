@@ -51,6 +51,7 @@ export interface GitHubItem {
     avatar_url: string;
     html_url: string;
   };
+  reviewed_at?: string; // Actual review submission date from GraphQL timeline
 }
 
 /** Returns the unique identifier for a GitHubItem (event_id if present, otherwise id). */

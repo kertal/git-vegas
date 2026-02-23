@@ -3,6 +3,7 @@ import { GitHubEvent, GitHubItem } from '../types';
 import { EventsData } from '../utils/indexedDB';
 import { validateUsernameList, isValidDateString } from '../utils';
 import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
+import { enrichReviewItemsWithDates } from '../utils/reviewDates';
 
 interface UseGitHubDataFetchingProps {
   username: string;
@@ -332,6 +333,23 @@ export const useGitHubDataFetching = ({
         new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
 
+      // Enrich review items with actual review submission dates from GraphQL
+      let enrichedReviewItems = sortedReviewItems;
+      if (sortedReviewItems.length > 0 && githubToken) {
+        try {
+          setLoadingProgress('Fetching review dates...');
+          enrichedReviewItems = await enrichReviewItemsWithDates(
+            sortedReviewItems,
+            githubToken,
+            (current, total) => {
+              setLoadingProgress(`Fetching review dates: ${current}/${total}`);
+            }
+          );
+        } catch (err) {
+          console.warn('Failed to enrich review dates, using search results as-is:', err);
+        }
+      }
+
       // Store all accumulated data at once
       if (sortedEvents.length > 0) {
         await storeEvents('github-events-indexeddb', sortedEvents, {
@@ -354,7 +372,7 @@ export const useGitHubDataFetching = ({
       }
 
       // Always store review items (even empty) to clear stale data from previous runs
-      await storeReviewItems('github-review-items-indexeddb', sortedReviewItems, {
+      await storeReviewItems('github-review-items-indexeddb', enrichedReviewItems, {
         lastFetch: Date.now(),
         usernames: usernames,
         apiMode: 'search',

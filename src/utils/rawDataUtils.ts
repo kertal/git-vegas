@@ -602,7 +602,10 @@ export const categorizeRawSearchItems = (
       return false;
     }
     
-    const itemTime = new Date(item.updated_at).getTime();
+    // For review items use the actual review date when available,
+    // otherwise fall back to the PR's updated_at
+    const dateField = item.reviewed_at ?? item.updated_at;
+    const itemTime = new Date(dateField).getTime();
 
     // Filter by date range if dates are provided
     if (startDate && itemTime < startDateTime) {

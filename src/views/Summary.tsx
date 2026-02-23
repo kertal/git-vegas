@@ -45,9 +45,11 @@ interface SummaryProps {
 
 /** Returns the most recently updated item from a group. */
 const getMostRecent = (items: GitHubItem[]): GitHubItem =>
-  items.reduce((latest, current) =>
-    new Date(current.updated_at) > new Date(latest.updated_at) ? current : latest
-  );
+  items.reduce((latest, current) => {
+    const currentDate = new Date(current.reviewed_at ?? current.updated_at);
+    const latestDate = new Date(latest.reviewed_at ?? latest.updated_at);
+    return currentDate > latestDate ? current : latest;
+  });
 
 /** Groups items by URL, deduplicating comments and separating reviewers. */
 const groupItemsByUrl = (groupItems: GitHubItem[]): Record<string, GitHubItem[]> => {
