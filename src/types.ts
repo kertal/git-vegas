@@ -258,6 +258,7 @@ export interface SettingsDialogProps {
   onDismiss: () => void;
   onClearEvents?: () => void;
   onClearSearchItems?: () => void;
+  onClearReviewItems?: () => void;
 }
 
 /**

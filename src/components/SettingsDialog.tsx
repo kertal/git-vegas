@@ -21,6 +21,7 @@ const SettingsDialog = memo(function SettingsDialog({
   onDismiss,
   onClearEvents,
   onClearSearchItems,
+  onClearReviewItems,
 }: SettingsDialogProps) {
   const { githubToken, setGithubToken } = useFormContext();
   const [tokenStorage, setTokenStorage] = useLocalStorage(
@@ -106,6 +107,7 @@ const SettingsDialog = memo(function SettingsDialog({
       eventsStorage.clear().catch(console.error);
       onClearEvents?.();
       onClearSearchItems?.();
+      onClearReviewItems?.();
       setIndexedDBInfo(null);
     }
   };

@@ -475,6 +475,7 @@ function App() {
             onDismiss={() => setIsSettingsOpen(false)}
             onClearEvents={clearEvents}
             onClearSearchItems={clearSearchItems}
+            onClearReviewItems={clearReviewItems}
           />
         </FormContext.Provider>
       </PageLayout.Content>
