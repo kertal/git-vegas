@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
-import { EventsData } from '../utils/indexedDB';
+import { EventsData, cacheUtils } from '../utils/indexedDB';
 import { validateUsernameList, isValidDateString } from '../utils';
 import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
 
@@ -11,6 +11,8 @@ interface UseGitHubDataFetchingProps {
   endDate: string;
   indexedDBEvents: GitHubEvent[];
   indexedDBSearchItems: GitHubEvent[];
+  eventsMetadata: EventsData['metadata'] | null;
+  searchItemsMetadata: EventsData['metadata'] | null;
   onError: (error: string) => void;
   storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
   clearEvents: () => Promise<void>;
@@ -32,6 +34,8 @@ export const useGitHubDataFetching = ({
   endDate,
   indexedDBEvents,
   indexedDBSearchItems,
+  eventsMetadata,
+  searchItemsMetadata,
   onError,
   storeEvents,
   clearEvents,
@@ -171,16 +175,38 @@ export const useGitHubDataFetching = ({
     // Reset loading state if it was stuck
     setLoading(false);
 
-    // Check if there's existing data using actual arrays
-    const hasExistingData = indexedDBEvents.length > 0 || indexedDBSearchItems.length > 0;
-    
-    setLoading(true);
+    // LOCAL-FIRST: Check if we have fresh cached data that matches the query
+    const usernames = usernameValidation.usernames;
+    const hasCachedEvents = indexedDBEvents.length > 0 && eventsMetadata;
+    const hasCachedSearchItems = indexedDBSearchItems.length > 0 && searchItemsMetadata;
+
+    // Check if either cache is fresh and matches the current query
+    const eventsCacheFresh = hasCachedEvents &&
+      cacheUtils.isValidCache(eventsMetadata!, usernames, startDate, endDate);
+    const searchItemsCacheFresh = hasCachedSearchItems &&
+      cacheUtils.isValidCache(searchItemsMetadata!, usernames, startDate, endDate);
+
+    const hasFreshCache = eventsCacheFresh || searchItemsCacheFresh;
+
+    // LOCAL-FIRST: If we have fresh cache, don't block the UI
+    // Otherwise, show loading state for initial/stale data fetch
+    if (hasFreshCache) {
+      // Non-blocking background refresh
+      setLoadingProgress('Refreshing data...');
+      console.log('🎯 Local-first: Using fresh cache, refreshing in background');
+    } else {
+      // Blocking initial load or stale cache
+      setLoading(true);
+      setLoadingProgress(hasCachedEvents || hasCachedSearchItems ?
+        'Cache outdated, fetching fresh data...' :
+        'Starting search...'
+      );
+      console.log('🎯 Local-first: No fresh cache, loading data');
+    }
+
     onError(''); // Clear any previous errors
-    setLoadingProgress(hasExistingData ? 'Updating data in background...' : 'Starting search...');
 
     try {
-      // Use the validated usernames instead of manual splitting
-      const usernames = usernameValidation.usernames;
       let currentProgress = 0;
       const totalUsernames = usernames.length;
 
@@ -189,15 +215,9 @@ export const useGitHubDataFetching = ({
         const progressPercent = Math.round(
           (currentProgress / totalUsernames) * 100
         );
-        const prefix = hasExistingData ? 'Updating' : 'Fetching';
+        const prefix = hasFreshCache ? 'Refreshing' : 'Fetching';
         setLoadingProgress(`${prefix} ${message} (${progressPercent}%)`);
       };
-
-      // Only clear existing data if this is a fresh search (no existing data)
-      if (!hasExistingData) {
-        await clearEvents();
-        await clearSearchItems();
-      }
 
       // Accumulate all data from all users
       const allEvents: GitHubEvent[] = [];
@@ -323,6 +343,8 @@ export const useGitHubDataFetching = ({
     endDate,
     indexedDBEvents.length,
     indexedDBSearchItems.length,
+    eventsMetadata,
+    searchItemsMetadata,
     onError,
     storeEvents,
     clearEvents,

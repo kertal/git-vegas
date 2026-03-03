@@ -11,6 +11,11 @@ const EVENTS_STORE = 'events';
 const METADATA_STORE = 'metadata';
 const PR_CACHE_STORE = 'prCache';
 
+/**
+ * Cache time-to-live in milliseconds (30 minutes)
+ */
+export const CACHE_TTL_MS = 30 * 60 * 1000;
+
 export interface EventsData {
   id: string;
   events: GitHubEvent[];
@@ -615,5 +620,59 @@ export const prCacheStorage = {
     } catch (error) {
       console.error('Failed to clear PR cache from IndexedDB:', error);
     }
+  },
+};
+
+/**
+ * Cache utilities for local-first data access
+ */
+export const cacheUtils = {
+  /**
+   * Check if cached data is fresh (within TTL)
+   */
+  isFresh(lastFetch: number, ttlMs: number = CACHE_TTL_MS): boolean {
+    const now = Date.now();
+    const age = now - lastFetch;
+    return age < ttlMs;
+  },
+
+  /**
+   * Check if cached data matches the current query parameters
+   */
+  matchesQuery(
+    metadata: EventsData['metadata'],
+    currentUsernames: string[],
+    currentStartDate: string,
+    currentEndDate: string
+  ): boolean {
+    // Check if usernames match (order doesn't matter)
+    const cachedUsernames = metadata.usernames.sort();
+    const queryUsernames = currentUsernames.sort();
+    const usernamesMatch =
+      cachedUsernames.length === queryUsernames.length &&
+      cachedUsernames.every((username, index) => username === queryUsernames[index]);
+
+    // Check if date range matches
+    const datesMatch =
+      metadata.startDate === currentStartDate &&
+      metadata.endDate === currentEndDate;
+
+    return usernamesMatch && datesMatch;
+  },
+
+  /**
+   * Check if cached data is both fresh and matches the query
+   */
+  isValidCache(
+    metadata: EventsData['metadata'],
+    currentUsernames: string[],
+    currentStartDate: string,
+    currentEndDate: string,
+    ttlMs: number = CACHE_TTL_MS
+  ): boolean {
+    return (
+      this.isFresh(metadata.lastFetch, ttlMs) &&
+      this.matchesQuery(metadata, currentUsernames, currentStartDate, currentEndDate)
+    );
   },
 }; 
