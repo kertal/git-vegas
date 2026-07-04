@@ -184,18 +184,22 @@ export interface GollumEventPayload {
 }
 
 // Context Types
+// Shared form state provided by App's FormContext.Provider and consumed via
+// useFormContext(). Keep this in sync with the value App actually provides.
 export interface FormContextType {
   username: string;
   startDate: string;
   endDate: string;
   githubToken: string;
   apiMode: 'search' | 'events' | 'summary';
-  setUsername: (value: string) => void;
-  setStartDate: (value: string) => void;
-  setEndDate: (value: string) => void;
-  setGithubToken: (value: string) => void;
-  setApiMode: (value: 'search' | 'events' | 'summary') => void;
-  handleSearch: (forceRefresh?: boolean) => void;
+  searchText: string;
+  setUsername: (username: string) => void;
+  setStartDate: (date: string) => void;
+  setEndDate: (date: string) => void;
+  setGithubToken: (token: string) => void;
+  setApiMode: (mode: 'search' | 'events' | 'summary') => void;
+  setSearchText: (searchText: string) => void;
+  handleSearch: () => void;
   validateUsernameFormat: (username: string) => void;
   addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
   loading: boolean;
@@ -204,7 +208,7 @@ export interface FormContextType {
   // Counts for navigation tabs
   searchItemsCount: number;
   eventsCount: number;
-  rawEventsCount?: number;
+  rawEventsCount: number;
 }
 
 export interface ResultsContextType {

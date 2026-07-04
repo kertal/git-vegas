@@ -14,7 +14,7 @@ import { useGitHubFormState } from './hooks/useGitHubFormState';
 import { useGitHubDataFetching } from './hooks/useGitHubDataFetching';
 import { useGitHubDataProcessing } from './hooks/useGitHubDataProcessing';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
-import { GitHubEvent, GitHubItem } from './types';
+import { FormContextType, GitHubEvent, GitHubItem } from './types';
 import { isTestEnvironment } from './utils/environment';
 
 import SearchForm from './components/SearchForm';
@@ -31,31 +31,7 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { PWAUpdateNotification } from './components/PWAUpdateNotification';
 import GitVegasLogo from './assets/GitVegas.svg?react';
 
-// Form context for sharing form state across components
-interface FormContextType {
-  username: string;
-  startDate: string;
-  endDate: string;
-  githubToken: string;
-  apiMode: 'search' | 'events' | 'summary';
-  searchText: string;
-  setUsername: (username: string) => void;
-  setStartDate: (date: string) => void;
-  setEndDate: (date: string) => void;
-  setGithubToken: (token: string) => void;
-  setApiMode: (mode: 'search' | 'events' | 'summary') => void;
-  setSearchText: (searchText: string) => void;
-  handleSearch: () => void;
-  validateUsernameFormat: (username: string) => void;
-  addAvatarsToCache: (avatarUrls: { [username: string]: string }) => void;
-  loading: boolean;
-  loadingProgress: string;
-  error: string | null;
-  searchItemsCount: number;
-  eventsCount: number;
-  rawEventsCount: number;
-}
-
+// Form context for sharing form state across components (shape: FormContextType)
 const FormContext = createContext<FormContextType | null>(null);
 
 // eslint-disable-next-line react-refresh/only-export-components
