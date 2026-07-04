@@ -14,7 +14,7 @@ import { useGitHubFormState } from './hooks/useGitHubFormState';
 import { useGitHubDataFetching } from './hooks/useGitHubDataFetching';
 import { useGitHubDataProcessing } from './hooks/useGitHubDataProcessing';
 import { useIndexedDBStorage } from './hooks/useIndexedDBStorage';
-import { GitHubItem } from './types';
+import { GitHubEvent, GitHubItem } from './types';
 import { isTestEnvironment } from './utils/environment';
 
 import SearchForm from './components/SearchForm';
@@ -100,13 +100,13 @@ function App() {
     events: indexedDBEvents,
     storeEvents,
     clearEvents,
-  } = useIndexedDBStorage('github-events-indexeddb');
+  } = useIndexedDBStorage<GitHubEvent>('github-events-indexeddb');
 
   const {
     events: indexedDBSearchItems,
     storeEvents: storeSearchItems,
     clearEvents: clearSearchItems,
-  } = useIndexedDBStorage('github-search-items-indexeddb');
+  } = useIndexedDBStorage<GitHubItem>('github-search-items-indexeddb');
 
   const { username, startDate, endDate, githubToken, apiMode } = formSettings;
 
@@ -452,7 +452,7 @@ function App() {
             <SummaryView
               items={results}
               rawEvents={indexedDBEvents}
-              indexedDBSearchItems={indexedDBSearchItems as unknown as GitHubItem[]}
+              indexedDBSearchItems={indexedDBSearchItems}
             />
           ) : (
             <IssuesAndPRsList results={results} />
