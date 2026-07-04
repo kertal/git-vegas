@@ -9,6 +9,15 @@ export const getBasePRUrl = (htmlUrl: string): string => {
 };
 
 /**
+ * Determines whether an item represents a pull request review. Prefers the
+ * stable GitHub event type and falls back to the "Review on:" title prefix
+ * used for items reconstructed from the Search API.
+ */
+export const isReviewItem = (item: GitHubItem): boolean =>
+  item.originalEventType === 'PullRequestReviewEvent' ||
+  !!item.title?.startsWith('Review on:');
+
+/**
  * Determines the event type based on item properties using stable GitHub event types
  * Falls back to title parsing for items without originalEventType (e.g., from Search API)
  */
@@ -40,7 +49,7 @@ export const getEventType = (item: GitHubItem): string => {
     }
   }
 
-  if (item.title.startsWith('Review on:')) return 'pull_request';
+  if (isReviewItem(item)) return 'pull_request';
   if (item.title.startsWith('Review comment on:')) return 'comment';
   if (item.title.startsWith('Comment on:')) return 'comment';
   if (item.title.startsWith('Committed')) return 'commit';
@@ -87,7 +96,7 @@ export const categorizeItem = (
   const type = getEventType(item);
 
   // Review deduplication
-  if (type === 'pull_request' && item.title?.startsWith('Review on:')) {
+  if (type === 'pull_request' && isReviewItem(item)) {
     const basePRUrl = getBasePRUrl(item.html_url);
     const reviewKey = `${item.user.login}:${basePRUrl}`;
     if (!addedReviewPRs.has(reviewKey)) {
