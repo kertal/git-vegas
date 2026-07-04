@@ -102,12 +102,7 @@ export const useGitHubDataProcessing = ({
         const enriched = await enrichItemsWithPRDetails(
           baseResults,
           githubToken,
-          // Progress callback for background fetches
-          (current, total) => {
-            if (!cancelled) {
-              console.log(`Fetching PR details: ${current}/${total}`);
-            }
-          },
+          undefined, // no progress reporting needed here
           // SWR callback: immediately show cached data while fetching fresh data
           (cachedEnrichedItems) => {
             if (!cancelled) {

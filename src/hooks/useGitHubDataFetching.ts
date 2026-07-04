@@ -110,9 +110,9 @@ export const useGitHubDataFetching = ({
         
       } catch (error) {
         console.error(`Error fetching events page ${page} for ${username}:`, error);
+        // Propagate to the per-username handler, which logs and continues with
+        // the next username.
         throw error;
-        // Continue with what we have so far
-        hasMorePages = false;
       }
     }
 

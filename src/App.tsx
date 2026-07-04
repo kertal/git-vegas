@@ -7,7 +7,7 @@ import {
   useContext,
 } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { PageLayout, PageHeader, Box, IconButton, Button } from '@primer/react';
+import { PageLayout, PageHeader, Box, IconButton } from '@primer/react';
 import { GearIcon } from '@primer/octicons-react';
 
 import { useGitHubFormState } from './hooks/useGitHubFormState';
@@ -25,6 +25,7 @@ import SettingsDialog from './components/SettingsDialog';
 import HeaderSearch from './components/HeaderSearch';
 
 import { LoadingIndicator } from './components/LoadingIndicator';
+import { LoadingScreen } from './components/LoadingScreen';
 import ShareButton from './components/ShareButton';
 import { SlotMachineLoader } from './components/SlotMachineLoader';
 import { OfflineBanner } from './components/OfflineBanner';
@@ -194,137 +195,16 @@ function App() {
 
   if (initialLoadingCount === 1) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          gap: 3,
-          px: 3,
-          '@media (max-width: 767px)': {
-            px: 2,
-            gap: 2,
-          },
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
-            mb: 4,
-          }}
-        >
-          <Box sx={{ fontSize: [30, 100], fontWeight: 'bold', color: 'fg.default', mb: 4 }}>
-            GitVegas
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 4 }}>
-            <SlotMachineLoader
-              avatarUrls={cachedAvatarUrls}
-              isLoading={loading}
-              isManuallySpinning={isManuallySpinning}
-              size="huge"
-            />
-          </Box>
-
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: isDataLoadingComplete && !loading ? 'pointer' : 'not-allowed',
-              transition: 'transform 0.2s ease',
-              opacity: isDataLoadingComplete && !loading ? 1 : 0.5,
-              mb: 4,
-              '&:hover': {
-                transform: isDataLoadingComplete && !loading ? 'scale(1.05)' : 'none',
-              },
-              '&:hover .slot-machine': {
-                animation: isDataLoadingComplete && !loading ? 'spin 0.5s ease-in-out' : 'none',
-              },
-            }}
-            onMouseEnter={isDataLoadingComplete && !loading ? handleManualSpin : undefined}
-          >
-            <Button
-              size="medium"
-              disabled={!isDataLoadingComplete || loading}
-              onClick={handleStartClick}
-              sx={{
-                fontSize: '16px',
-                fontWeight: 'bold',
-                px: 4,
-                py: 2,
-                borderRadius: '8px',
-                backgroundColor: isDataLoadingComplete && !loading ? 'white' : '#f0f0f0',
-                color: isDataLoadingComplete && !loading ? 'black' : '#666',
-                border: `2px solid ${isDataLoadingComplete && !loading ? 'black' : '#ccc'}`,
-                transition: 'all 0.2s ease',
-                minHeight: '48px',
-                cursor: isDataLoadingComplete && !loading ? 'pointer' : 'not-allowed',
-                '&:hover': {
-                  transform: isDataLoadingComplete && !loading ? 'translateY(-1px)' : 'none',
-                  boxShadow: isDataLoadingComplete && !loading ? '0 2px 8px rgba(0, 0, 0, 0.15)' : 'none',
-                },
-                '&:active': {
-                  transform: 'translateY(0)',
-                },
-                '@media (max-width: 767px)': {
-                  fontSize: '14px',
-                  px: 3,
-                  py: 2,
-                  minHeight: '44px',
-                  minWidth: '140px',
-                },
-              }}
-            >
-              🕹️ {isDataLoadingComplete && !loading ? 'Start' : 'Loading...'}
-            </Button>
-          </Box>
-
-          <Box sx={{
-            minHeight: '120px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <LoadingIndicator
-              loadingProgress={loadingProgress}
-              isLoading={loading}
-              currentUsername={currentUsername}
-            />
-            {isDataLoadingComplete && !loading && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 2,
-                  mt: 2,
-                  animation: 'fadeIn 0.5s ease-in',
-                  '@keyframes fadeIn': {
-                    from: { opacity: 0, transform: 'translateY(10px)' },
-                    to: { opacity: 1, transform: 'translateY(0)' },
-                  },
-                }}
-              >
-                <Box sx={{ textAlign: 'center', color: 'success.fg' }}>
-                  <Box sx={{ fontSize: '18px', fontWeight: 'bold', mb: 1 }}>
-                    ✅ Data loaded successfully!
-                  </Box>
-                  <Box sx={{ fontSize: '14px', color: 'fg.muted' }}>
-                    Your GitHub activity is ready to view
-                  </Box>
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </Box>
-      </Box>
+      <LoadingScreen
+        avatarUrls={cachedAvatarUrls}
+        loading={loading}
+        isManuallySpinning={isManuallySpinning}
+        isDataLoadingComplete={isDataLoadingComplete}
+        loadingProgress={loadingProgress}
+        currentUsername={currentUsername}
+        onManualSpin={handleManualSpin}
+        onStart={handleStartClick}
+      />
     );
   }
 
