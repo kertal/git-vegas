@@ -279,14 +279,5 @@ export interface ItemUIState {
   selectedItems: Set<string | number>;
 }
 
-// Username validation cache for API optimization
-export interface UsernameCache {
-  validatedUsernames: Set<string>;
-  invalidUsernames: Set<string>;
-  avatarUrls: Map<string, string>;
-  lastFetched: Map<string, number>; // Track when each username was last validated
-}
-
-
 
 
