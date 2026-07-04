@@ -6,7 +6,7 @@ UI layer stays thin.
 
 ## Data flow at a glance
 
-```
+```text
 network → rawDataUtils → viewFiltering / summaryGrouping → views
           (transform)     (filter / categorize)
 ```

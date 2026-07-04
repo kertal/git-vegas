@@ -351,7 +351,9 @@ const eventHandlers: Record<string, EventHandler> = {
 
   WatchEvent: (event) => {
     const { payload, repo } = event;
-    const action = payload?.action || 'starred';
+    // GitHub only ever sends action 'started' for WatchEvent; default to it so a
+    // missing action renders as "Starred" rather than "Unstarred".
+    const action = payload?.action || 'started';
 
     return {
       ...buildBaseItem(event),
