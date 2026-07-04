@@ -103,8 +103,7 @@ export const useGitHubFormState = (onUrlParamsProcessed?: () => void): UseGitHub
       
       // For URL params (shared links), revalidate all usernames for fresh data
       const needAvatarFetch = usernames;
-      console.log('Revalidating avatar cache for shared link usernames:', needAvatarFetch);
-      
+
       if (needAvatarFetch.length === 0) {
         // Reset URL params flag even if no fetch needed
         if (fromUrlParams) {

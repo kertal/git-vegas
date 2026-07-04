@@ -10,11 +10,6 @@ vi.mock('../assets/GitVegas.svg?react', () => ({
   default: () => <div data-testid="git-vegas-logo">GitVegas Logo</div>,
 }));
 
-// Mock the GitHub API calls
-vi.mock('../utils/githubSearch', () => ({
-  performGitHubSearch: vi.fn().mockResolvedValue([]),
-}));
-
 // Mock the offline detection
 vi.mock('../hooks/useOfflineDetection', () => ({
   useOfflineDetection: () => false,

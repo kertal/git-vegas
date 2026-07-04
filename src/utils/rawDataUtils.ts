@@ -2,7 +2,7 @@ import { GitHubItem, GitHubEvent } from '../types';
 
 /**
  * Raw Data Utilities
- * 
+ *
  * Provides functions for categorizing and processing raw data in the UI
  * instead of on the backend.
  */
@@ -10,7 +10,7 @@ import { GitHubItem, GitHubEvent } from '../types';
 /**
  * Extracts PR number from GitHub URLs
  * Handles both HTML URLs (github.com/.../pull/123) and API URLs (api.github.com/.../pulls/123)
- * 
+ *
  * @param htmlUrl - GitHub HTML URL (e.g., https://github.com/owner/repo/pull/123)
  * @param apiUrl - GitHub API URL (e.g., https://api.github.com/repos/owner/repo/pulls/123)
  * @returns PR number or undefined if not found
@@ -21,69 +21,81 @@ const extractPRNumber = (htmlUrl?: string, apiUrl?: string): number | undefined 
     const match = htmlUrl.match(/\/pull\/(\d+)/);
     if (match) return parseInt(match[1], 10);
   }
-  
+
   // Try API URL (uses /pulls/ plural)
   if (apiUrl) {
     const match = apiUrl.match(/\/pulls\/(\d+)/);
     if (match) return parseInt(match[1], 10);
   }
-  
+
   return undefined;
 };
 
+/** Builds the GitHubItem user object from an event's actor. */
+const actorUserOf = (event: GitHubEvent) => ({
+  login: event.actor.login,
+  avatar_url: event.actor.avatar_url,
+  html_url: `https://github.com/${event.actor.login}`,
+});
+
 /**
- * Transforms GitHub Event to GitHubItem
- *
- * @param event - GitHub event from Events API
- * @returns GitHubItem or null if event doesn't contain relevant data
+ * Fields shared by (almost) every item produced from an event: identity,
+ * repository, actor, and provenance. Individual handlers spread this and add
+ * or override the event-specific fields.
  */
-export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
-  const { type, payload, repo } = event;
+const buildBaseItem = (event: GitHubEvent) => ({
+  event_id: event.id,
+  created_at: event.created_at, // Use event timestamp, not the entity timestamp
+  repository_url: `https://api.github.com/repos/${event.repo.name}`,
+  repository: {
+    full_name: event.repo.name,
+    html_url: `https://github.com/${event.repo.name}`,
+  },
+  user: actorUserOf(event),
+  original: event.payload as GitHubEvent['payload'] | Record<string, unknown>,
+  originalEventType: event.type,
+});
 
-  // Create user object from event actor
-  const actorUser = {
-    login: event.actor.login,
-    avatar_url: event.actor.avatar_url,
-    html_url: `https://github.com/${event.actor.login}`,
-  };
+type EventHandler = (event: GitHubEvent) => GitHubItem | null;
 
-  // Only process events that contain issues, pull requests, or comments
-  if (type === 'IssuesEvent' && payload.issue) {
+/**
+ * Per-event-type handlers. Each maps a raw GitHub event to a GitHubItem, or
+ * returns null when the event lacks the payload it needs. Keyed by event.type.
+ */
+const eventHandlers: Record<string, EventHandler> = {
+  IssuesEvent: (event) => {
+    const { payload } = event;
+    if (!payload.issue) return null;
     const issue = payload.issue;
     return {
+      ...buildBaseItem(event),
       id: issue.id,
-      event_id: event.id,
       html_url: issue.html_url,
       title: issue.title,
       action: payload.action, // e.g., 'opened', 'closed', 'reopened', 'labeled', 'assigned'
-      created_at: event.created_at, // Use event timestamp, not issue timestamp
       updated_at: issue.updated_at,
       state: issue.state,
       body: issue.body,
       labels: issue.labels,
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
       closed_at: issue.closed_at,
       number: issue.number,
-      user: actorUser, // Use event actor instead of issue user
-      assignee: (payload as any).issue?.assignee || null, // Extract assignee from original payload
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      assignee: (payload as any).issue?.assignee || null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       assignees: (payload as any).issue?.assignees || [],
       pull_request: issue.pull_request,
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'PullRequestEvent' && payload.pull_request) {
+  },
+
+  PullRequestEvent: (event) => {
+    const { payload, repo } = event;
+    if (!payload.pull_request) return null;
     const pr = payload.pull_request;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const payloadWithAction = payload as { action?: string; number?: number; labels?: any[] };
 
     // GitHub API changed format - pr object may only contain url, not full details
-    // Try to extract PR number from various sources
     let prNumber = pr.number || payloadWithAction.number;
-
-    // If no number, try to extract from URLs
     if (!prNumber) {
       prNumber = extractPRNumber(pr.html_url, (pr as { url?: string }).url);
     }
@@ -95,152 +107,120 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     const title = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber} ${action}` : `Pull Request ${action}`);
 
     return {
+      ...buildBaseItem(event),
       id: pr.id || parseInt(event.id),
-      event_id: event.id,
       html_url: htmlUrl,
-      title: title,
+      title,
       action: payloadWithAction.action, // e.g., 'opened', 'closed', 'reopened', 'synchronize', 'ready_for_review'
-      created_at: event.created_at, // Use event timestamp, not PR timestamp
       updated_at: pr.updated_at || event.created_at,
       state: pr.state || 'open',
-      body: pr.body || `Pull request ${action} by ${actorUser.login}`,
+      body: pr.body || `Pull request ${action} by ${actorUserOf(event).login}`,
       labels: payloadWithAction.labels || pr.labels || [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
       closed_at: pr.closed_at,
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of PR user
       pull_request: {
         merged_at: pr.merged_at,
         url: htmlUrl,
       },
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'PullRequestReviewEvent' && payload.pull_request) {
+  },
+
+  PullRequestReviewEvent: (event) => {
+    const { payload, repo } = event;
+    if (!payload.pull_request) return null;
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
 
-    // GitHub API changed format - pr object may only contain url, not full details
-    // Try to extract PR number from various sources
     let prNumber = pr.number || payloadWithAction.number;
-
-    // If no number, try to extract from URLs
     if (!prNumber) {
       prNumber = extractPRNumber(pr.html_url, (pr as { url?: string }).url);
     }
 
     const htmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
-    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
     const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
 
     return {
+      ...buildBaseItem(event),
       id: pr.id || parseInt(event.id),
-      event_id: event.id,
       html_url: htmlUrl,
       title: `Review on: ${prTitle}`,
       action: payloadWithAction.action, // e.g., 'submitted', 'edited', 'dismissed'
-      created_at: event.created_at, // Use event timestamp, not PR timestamp
       updated_at: pr.updated_at || event.created_at,
       state: pr.state || 'open',
-      body: pr.body || `Review by ${actorUser.login}`,
+      body: pr.body || `Review by ${actorUserOf(event).login}`,
       labels: pr.labels || [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
       closed_at: pr.closed_at,
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of PR user
       pull_request: {
         merged_at: pr.merged_at,
         url: htmlUrl,
       },
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'IssueCommentEvent' && payload.comment && payload.issue) {
+  },
+
+  IssueCommentEvent: (event) => {
+    const { payload } = event;
+    if (!payload.comment || !payload.issue) return null;
     const comment = payload.comment;
     const issue = payload.issue;
     return {
+      ...buildBaseItem(event),
       id: comment.id,
-      event_id: event.id,
       html_url: comment.html_url,
       title: `Comment on: ${issue.title}`,
       action: payload.action, // e.g., 'created', 'edited', 'deleted'
-      created_at: event.created_at, // Use event timestamp, not comment timestamp
       updated_at: comment.updated_at,
       state: issue.state,
       body: comment.body,
       labels: issue.labels,
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
       closed_at: issue.closed_at,
       number: issue.number,
-      user: actorUser, // Use event actor instead of comment user
       pull_request: issue.pull_request,
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'PullRequestReviewCommentEvent' && payload.comment && payload.pull_request) {
+  },
+
+  PullRequestReviewCommentEvent: (event) => {
+    const { payload, repo } = event;
+    if (!payload.comment || !payload.pull_request) return null;
     const comment = payload.comment;
     const pr = payload.pull_request;
     const payloadWithAction = payload as { action?: string; number?: number };
 
-    // GitHub API changed format - pr object may only contain url, not full details
-    // Try to extract PR number from various sources
     let prNumber = pr.number || payloadWithAction.number;
-
-    // If no number, try to extract from URLs
     if (!prNumber) {
       prNumber = extractPRNumber(pr.html_url, (pr as { url?: string }).url);
     }
 
     const prHtmlUrl = pr.html_url || (prNumber ? `https://github.com/${repo.name}/pull/${prNumber}` : `https://github.com/${repo.name}/pulls`);
-    // Only use pr.title if it's a non-empty string (not undefined, null, or "undefined")
     const prTitle = (pr.title && pr.title !== 'undefined') ? pr.title : (prNumber ? `Pull Request #${prNumber}` : 'Pull Request');
 
     return {
+      ...buildBaseItem(event),
       id: comment.id,
-      event_id: event.id,
       html_url: comment.html_url,
       title: `Review comment on: ${prTitle}`,
       action: payloadWithAction.action, // e.g., 'created', 'edited', 'deleted'
-      created_at: event.created_at, // Use event timestamp, not comment timestamp
       updated_at: comment.updated_at,
       state: pr.state || 'open',
       body: comment.body,
       labels: pr.labels || [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
       closed_at: pr.closed_at,
       merged_at: pr.merged_at,
       merged: pr.merged,
       number: prNumber,
-      user: actorUser, // Use event actor instead of comment user
       pull_request: {
         merged_at: pr.merged_at,
         url: prHtmlUrl,
       },
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'PushEvent') {
-    // Handle PushEvent - create a GitHubItem from push event data
+  },
+
+  PushEvent: (event) => {
+    const { payload, repo } = event;
     const pushPayload = payload as { ref?: string; commits?: Array<{ message: string; sha: string }>; distinct_size?: number; size?: number; head?: string; before?: string };
     const branch = pushPayload?.ref?.replace('refs/heads/', '') || 'main';
 
@@ -260,8 +240,6 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         : totalCommitCount;
 
     // Use the totalCommitCount as the display count when available; otherwise use distinctCount.
-    // We prefer totalCommitCount because it represents the actual number of commits in the push,
-    // while distinctCount excludes commits that already exist in other branches.
     const displayCount = totalCommitCount > 0 ? totalCommitCount : distinctCount;
 
     // Check if we have head/before indicating commits exist even without exact count
@@ -281,9 +259,8 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     } else {
       title = `Committed 0 commits to ${repoOwner}/${branch}`;
     }
-    
+
     // Create a body with commit messages if available, or show commit range
-    // Always include the repository name for context
     let body = `**Repository:** [${repo.name}](https://github.com/${repo.name})\n\n`;
 
     if (pushPayload?.commits && pushPayload.commits.length > 0) {
@@ -301,37 +278,32 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
       const shortBefore = pushPayload.before!.substring(0, 7);
       body += `**Commits:** ${shortBefore}...${shortHead}`;
     }
-    
+
     return {
+      ...buildBaseItem(event),
       id: parseInt(event.id), // Convert string ID to number for GitHubItem
-      event_id: event.id,
       html_url: `https://github.com/${repo.name}/commits/${branch}`,
-      title: title,
+      title,
       action: 'pushed', // PushEvent doesn't have payload.action, using semantic action
-      created_at: event.created_at,
       updated_at: event.created_at, // Push events don't have updated_at, use created_at
       state: 'open', // Push events are always "open"
-      body: body,
+      body,
       labels: [], // Push events don't have labels
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      user: actorUser,
+      // PushEvent carries useful data outside payload, so keep the whole event
       original: event as unknown as Record<string, unknown>,
-      originalEventType: type,
       // Push events don't have pull_request, closed_at, merged_at, or number
     };
-  } else if (type === 'CreateEvent') {
-    // Handle CreateEvent - create a GitHubItem from create event data
+  },
+
+  CreateEvent: (event) => {
+    const { payload, repo } = event;
     const createPayload = payload as { ref_type?: string; ref?: string; master_branch?: string; description?: string };
     const refType = createPayload?.ref_type || 'repository';
     const ref = createPayload?.ref || '';
-    
+
     let title = '';
     let htmlUrl = `https://github.com/${repo.name}`;
-    
+
     if (refType === 'branch') {
       title = `Created branch ${ref}`;
       htmlUrl = `https://github.com/${repo.name}/tree/${ref}`;
@@ -344,105 +316,79 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
         title += `: ${createPayload.description}`;
       }
     }
-    
+
     return {
+      ...buildBaseItem(event),
       id: parseInt(event.id),
-      event_id: event.id,
       html_url: htmlUrl,
-      title: title,
+      title,
       action: 'created', // CreateEvent doesn't have payload.action, using semantic action
-      created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
       body: createPayload?.description || '',
       labels: [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      user: actorUser,
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'ForkEvent') {
-    // Handle ForkEvent - create a GitHubItem from fork event data
+  },
+
+  ForkEvent: (event) => {
+    const { payload, repo } = event;
     const forkPayload = payload as { forkee?: { full_name?: string; html_url?: string } };
     const forkeeName = forkPayload?.forkee?.full_name || 'unknown repository';
     const forkeeUrl = forkPayload?.forkee?.html_url || `https://github.com/${repo.name}`;
-    
+
     return {
+      ...buildBaseItem(event),
       id: parseInt(event.id),
-      event_id: event.id,
       html_url: forkeeUrl,
       title: `Forked repository to ${forkeeName}`,
       action: 'forked', // ForkEvent doesn't have payload.action, using semantic action
-      created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
       body: `Repository forked from ${repo.name} to ${forkeeName}`,
       labels: [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      user: actorUser,
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'WatchEvent') {
-    // Handle WatchEvent - create a GitHubItem from watch event data
-    const action = payload?.action || 'starred';
+  },
+
+  WatchEvent: (event) => {
+    const { payload, repo } = event;
+    // GitHub only ever sends action 'started' for WatchEvent; default to it so a
+    // missing action renders as "Starred" rather than "Unstarred".
+    const action = payload?.action || 'started';
 
     return {
+      ...buildBaseItem(event),
       id: parseInt(event.id),
-      event_id: event.id,
       html_url: `https://github.com/${repo.name}`,
       title: `${action === 'started' ? 'Starred' : 'Unstarred'} repository`,
-      action: action, // e.g., 'started' (starred)
-      created_at: event.created_at,
+      action, // e.g., 'started' (starred)
       updated_at: event.created_at,
       state: 'open',
-      body: `${actorUser.login} ${action} the repository ${repo.name}`,
+      body: `${actorUserOf(event).login} ${action} the repository ${repo.name}`,
       labels: [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      user: actorUser,
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'PublicEvent') {
-    // Handle PublicEvent - create a GitHubItem from public event data
+  },
+
+  PublicEvent: (event) => {
+    const { repo } = event;
     return {
+      ...buildBaseItem(event),
       id: parseInt(event.id),
-      event_id: event.id,
       html_url: `https://github.com/${repo.name}`,
       title: 'Made repository public',
       action: 'publicized', // PublicEvent doesn't have payload.action, using semantic action
-      created_at: event.created_at,
       updated_at: event.created_at,
       state: 'open',
-      body: `${actorUser.login} made the repository ${repo.name} public`,
+      body: `${actorUserOf(event).login} made the repository ${repo.name} public`,
       labels: [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      user: actorUser,
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'DeleteEvent') {
-    // Handle DeleteEvent - create a GitHubItem from delete event data
+  },
+
+  DeleteEvent: (event) => {
+    const { payload, repo } = event;
     const deletePayload = payload as { ref_type?: string; ref?: string };
     const refType = deletePayload?.ref_type || 'branch';
     const ref = deletePayload?.ref || '';
-    
+
     let title = '';
     if (refType === 'branch') {
       title = `Deleted branch ${ref}`;
@@ -451,83 +397,76 @@ export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
     } else {
       title = `Deleted ${refType}`;
     }
-    
+
     return {
+      ...buildBaseItem(event),
       id: parseInt(event.id),
-      event_id: event.id,
       html_url: `https://github.com/${repo.name}`,
-      title: title,
+      title,
       action: 'deleted', // DeleteEvent doesn't have payload.action, using semantic action
-      created_at: event.created_at,
       updated_at: event.created_at,
       state: 'closed',
-      body: `${actorUser.login} deleted ${refType} ${ref} from ${repo.name}`,
+      body: `${actorUserOf(event).login} deleted ${refType} ${ref} from ${repo.name}`,
       labels: [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      user: actorUser,
-      original: payload,
-      originalEventType: type,
     };
-  } else if (type === 'GollumEvent') {
-    // Handle GollumEvent - create a GitHubItem from gollum event data
+  },
+
+  GollumEvent: (event) => {
+    const { payload, repo } = event;
     const gollumPayload = payload as { pages?: Array<{ page_name: string; title: string; action: string; html_url: string }> };
     const pages = gollumPayload?.pages || [];
-    
+
     if (pages.length === 0) {
       return null; // No pages to display
     }
-    
+
     const page = pages[0]; // Show the first page
     const action = page.action || 'updated';
     const pageCount = pages.length;
-    
+
     let title = '';
     if (pageCount === 1) {
       title = `${action === 'created' ? 'Created' : action === 'edited' ? 'Updated' : 'Deleted'} wiki page: ${page.title}`;
     } else {
       title = `${action === 'created' ? 'Created' : action === 'edited' ? 'Updated' : 'Deleted'} ${pageCount} wiki pages`;
     }
-    
+
     let body = '';
     if (pages.length > 0) {
       body = pages
         .slice(0, 5)
         .map((p) => `- ${p.title} (${p.action})`)
         .join('\n');
-      
+
       if (pages.length > 5) {
         body += `\n... and ${pages.length - 5} more pages`;
       }
     }
-    
+
     return {
+      ...buildBaseItem(event),
       id: parseInt(event.id),
-      event_id: event.id,
       html_url: page.html_url || `https://github.com/${repo.name}/wiki`,
-      title: title,
-      action: action, // e.g., 'created', 'edited' (from the first wiki page)
-      created_at: event.created_at,
+      title,
+      action, // e.g., 'created', 'edited' (from the first wiki page)
       updated_at: event.created_at,
       state: 'open',
-      body: body,
+      body,
       labels: [],
-      repository_url: `https://api.github.com/repos/${repo.name}`,
-      repository: {
-        full_name: repo.name,
-        html_url: `https://github.com/${repo.name}`,
-      },
-      user: actorUser,
-      original: payload,
-      originalEventType: type,
     };
-  }
+  },
+};
 
-  // Return null for events that don't contain relevant data
-  return null;
+/**
+ * Transforms a GitHub Event into a GitHubItem.
+ *
+ * @param event - GitHub event from Events API
+ * @returns GitHubItem, or null if the event type is unsupported or lacks the
+ *          data needed to build an item
+ */
+export const transformEventToItem = (event: GitHubEvent): GitHubItem | null => {
+  const handler = eventHandlers[event.type];
+  return handler ? handler(event) : null;
 };
 
 /**
@@ -544,7 +483,7 @@ export const processRawEvents = (
   endDate?: string
 ): GitHubItem[] => {
   const items: GitHubItem[] = [];
-  
+
   // Set up date filtering if dates are provided
   const startDateTime = startDate ? new Date(startDate).getTime() : 0;
   const endDateTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 : Infinity;
@@ -595,7 +534,7 @@ export const categorizeRawSearchItems = (
       console.warn('Skipping item with missing title:', item.html_url || item.id);
       return false;
     }
-    
+
     const itemTime = new Date(item.updated_at).getTime();
 
     // Filter by date range if dates are provided
@@ -612,7 +551,7 @@ export const categorizeRawSearchItems = (
   // Then remove duplicates based on html_url (unique identifier for issues/PRs)
   const urlSet = new Set<string>();
   const deduplicatedItems: GitHubItem[] = [];
-  
+
   dateFilteredItems.forEach(item => {
     if (!urlSet.has(item.html_url)) {
       urlSet.add(item.html_url);
@@ -680,4 +619,4 @@ export const getAvailableUsersFromRawEvents = (rawEvents: GitHubEvent[]): string
   }
 
   return Array.from(userSet).sort();
-}; 
+};

@@ -11,16 +11,23 @@ const EVENTS_STORE = 'events';
 const METADATA_STORE = 'metadata';
 const PR_CACHE_STORE = 'prCache';
 
-export interface EventsData {
+export interface EventsMetadata {
+  lastFetch: number;
+  usernames: string[];
+  apiMode: 'search' | 'events' | 'summary';
+  startDate?: string;
+  endDate?: string;
+}
+
+/**
+ * A stored dataset. Generic over the item type so the same store can hold
+ * either raw events (`GitHubEvent`) or Search API items (`GitHubItem`); the
+ * underlying IndexedDB record is the same shape either way.
+ */
+export interface EventsData<T = GitHubEvent> {
   id: string;
-  events: GitHubEvent[];
-  metadata: {
-    lastFetch: number;
-    usernames: string[];
-    apiMode: 'search' | 'events' | 'summary';
-    startDate?: string;
-    endDate?: string;
-  };
+  events: T[];
+  metadata: EventsMetadata;
   timestamp: number;
 }
 
@@ -98,7 +105,7 @@ class IndexedDBManager {
   /**
    * Store events data in IndexedDB
    */
-  async storeEvents(key: string, events: GitHubEvent[], metadata: EventsData['metadata']): Promise<void> {
+  async storeEvents<T>(key: string, events: T[], metadata: EventsMetadata): Promise<void> {
     await this.init();
 
     return new Promise((resolve, reject) => {
@@ -110,7 +117,7 @@ class IndexedDBManager {
       const transaction = this.db.transaction([EVENTS_STORE], 'readwrite');
       const store = transaction.objectStore(EVENTS_STORE);
 
-      const data: EventsData = {
+      const data: EventsData<T> = {
         id: key,
         events,
         metadata,
@@ -130,7 +137,7 @@ class IndexedDBManager {
   /**
    * Retrieve events data from IndexedDB
    */
-  async getEvents(key: string): Promise<EventsData | null> {
+  async getEvents<T>(key: string): Promise<EventsData<T> | null> {
     await this.init();
 
     return new Promise((resolve, reject) => {
@@ -431,7 +438,7 @@ export const eventsStorage = {
   /**
    * Store events data
    */
-  async store(key: string, events: GitHubEvent[], metadata: EventsData['metadata']): Promise<void> {
+  async store<T>(key: string, events: T[], metadata: EventsMetadata): Promise<void> {
     if (!IndexedDBManager.isSupported()) {
       console.warn('IndexedDB not supported, falling back to localStorage');
       // Fallback to localStorage for older browsers
@@ -459,7 +466,7 @@ export const eventsStorage = {
   /**
    * Retrieve events data
    */
-  async retrieve(key: string): Promise<{ events: GitHubEvent[]; metadata: EventsData['metadata'] } | null> {
+  async retrieve<T = GitHubEvent>(key: string): Promise<{ events: T[]; metadata: EventsMetadata } | null> {
     if (!IndexedDBManager.isSupported()) {
       console.warn('IndexedDB not supported, trying localStorage');
       // Fallback to localStorage
@@ -473,7 +480,7 @@ export const eventsStorage = {
     }
 
     try {
-      const data = await indexedDBManager.getEvents(key);
+      const data = await indexedDBManager.getEvents<T>(key);
       return data ? { events: data.events, metadata: data.metadata } : null;
     } catch (error) {
       console.error('Failed to retrieve from IndexedDB, trying localStorage:', error);

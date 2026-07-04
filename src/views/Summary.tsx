@@ -27,7 +27,7 @@ import EmptyState from '../components/EmptyState';
 import './Summary.css';
 import { useFormContext } from '../App';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { groupSummaryData, getEventType } from '../utils/summaryGrouping';
+import { groupSummaryData, getEventType, isReviewItem } from '../utils/summaryGrouping';
 import {
   formatGroupedDataForClipboard,
   getAllDisplayedItems,
@@ -55,8 +55,7 @@ const groupItemsByUrl = (groupItems: GitHubItem[]): Record<string, GitHubItem[]>
     if (getEventType(item) === 'comment') {
       groupingKey = groupingKey.split('#')[0];
     }
-    const isReview = (item.title && item.title.startsWith('Review on:')) || item.originalEventType === 'PullRequestReviewEvent';
-    if (isReview) {
+    if (isReviewItem(item)) {
       groupingKey = `${item.user.login}:${groupingKey}`;
     }
     if (!urlGroups[groupingKey]) {

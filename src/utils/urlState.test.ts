@@ -9,10 +9,10 @@ import {
   copyToClipboard,
   extractShareableState,
   applyUrlOverrides,
+  createDefaultFilter,
   ShareableState,
 } from './urlState';
 import { FormSettings } from '../types';
-import { createDefaultFilter } from './resultsUtils';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

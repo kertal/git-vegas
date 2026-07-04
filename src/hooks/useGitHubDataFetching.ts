@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { GitHubEvent, GitHubItem } from '../types';
-import { EventsData } from '../utils/indexedDB';
+import { EventsMetadata } from '../utils/indexedDB';
 import { validateUsernameList, isValidDateString } from '../utils';
 import { MAX_USERNAMES_PER_REQUEST, GITHUB_API_PER_PAGE, GITHUB_API_DELAY_MS } from '../utils/settings';
 
@@ -10,11 +10,11 @@ interface UseGitHubDataFetchingProps {
   startDate: string;
   endDate: string;
   indexedDBEvents: GitHubEvent[];
-  indexedDBSearchItems: GitHubEvent[];
+  indexedDBSearchItems: GitHubItem[];
   onError: (error: string) => void;
-  storeEvents: (key: string, events: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  storeEvents: (key: string, events: GitHubEvent[], metadata: EventsMetadata) => Promise<void>;
   clearEvents: () => Promise<void>;
-  storeSearchItems: (key: string, items: GitHubEvent[], metadata: EventsData['metadata']) => Promise<void>;
+  storeSearchItems: (key: string, items: GitHubItem[], metadata: EventsMetadata) => Promise<void>;
   clearSearchItems: () => Promise<void>;
 }
 
@@ -110,9 +110,9 @@ export const useGitHubDataFetching = ({
         
       } catch (error) {
         console.error(`Error fetching events page ${page} for ${username}:`, error);
+        // Propagate to the per-username handler, which logs and continues with
+        // the next username.
         throw error;
-        // Continue with what we have so far
-        hasMorePages = false;
       }
     }
 
@@ -289,7 +289,7 @@ export const useGitHubDataFetching = ({
       }
 
       if (sortedSearchItems.length > 0) {
-        await storeSearchItems('github-search-items-indexeddb', sortedSearchItems as unknown as GitHubEvent[], {
+        await storeSearchItems('github-search-items-indexeddb', sortedSearchItems, {
           lastFetch: Date.now(),
           usernames: usernames,
           apiMode: 'search',

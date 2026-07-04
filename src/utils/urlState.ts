@@ -1,5 +1,35 @@
 import { FormSettings } from '../types';
-import { ResultsFilter } from './resultsUtils';
+
+/**
+ * Filter configuration for GitHub items, used as the URL-shareable filter state.
+ */
+export interface ResultsFilter {
+  /** Type filter: 'all', 'issue', 'pr', or 'comment' */
+  filter: 'all' | 'issue' | 'pr' | 'comment';
+  /** Status filter: 'all', 'open', 'closed', or 'merged' */
+  statusFilter: 'all' | 'open' | 'closed' | 'merged';
+  /** Array of label names to include */
+  includedLabels?: string[];
+  /** Array of label names to exclude */
+  excludedLabels?: string[];
+  /** Array of repository filters in 'owner/repo' format */
+  repoFilters?: string[];
+  /** User filter for a specific GitHub username */
+  userFilter?: string;
+  /** Text search query */
+  searchText: string;
+}
+
+/** Creates a default (no-op) filter configuration. */
+export const createDefaultFilter = (): ResultsFilter => ({
+  filter: 'all',
+  statusFilter: 'all',
+  includedLabels: [],
+  excludedLabels: [],
+  repoFilters: [],
+  userFilter: '',
+  searchText: '',
+});
 
 // Define which app state properties can be shared via URL
 export interface ShareableState {
